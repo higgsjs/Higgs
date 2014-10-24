@@ -135,6 +135,7 @@ TODO: look at V8 src wrt IR, phi nodes
 - Fixed indexed array element called as method bug
 - Fixed regexp parsing bug
 - optimized host property reads (uncaptured shapes)
+- added add of add peephole pattern
 - benchmark-vs-v8 script
 - Tried forcing capture of more functions to reduce "slow calls"
   - Not much difference
@@ -158,29 +159,34 @@ TODO: look into ropes
 - when concat'ed, set right to null
 
 TODO: turing machine for raw sound synth?
+- could graph waveform, use left and right arrows
+- start with a blank canvas
+- reuse code from Turing Turtle ***
+- possibly, cap range by moving along a sinusoidal shape
+  - could allow changing the frequency of this shape too...
 
 TODO: take a break, dust off CPU heatsink and fan
 - turn off machine, remove fan
 - listen to hyperion!
 
-TODO: add of add peephole pattern
+
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: add of add peephole pattern
 $15 = add_i32 $14, 4
 $16 = add_i32 $15, 8
-before, code size (bytes): 345992
-- Log when used
-
-
-
-
-
-
-
-
-
-
-
-
-
+before, code size (bytes): 346653
+after, code size (bytes): 345944
 
 [DONE] FIXME: maxvers=0 causes segfault on 3d-raytrace
 ./higgs --maxvers=0 benchmarks/sunspider/3d-raytrace.js

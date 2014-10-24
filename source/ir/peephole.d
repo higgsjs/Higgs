@@ -332,6 +332,7 @@ void optIR(IRFunction fun)
                     auto arg1 = instr.getArg(1);
                     auto cst0 = cast(IRConst)arg0;
                     auto cst1 = cast(IRConst)arg1;
+                    auto ins0 = cast(IRInstr)arg0;
 
                     if (cst0 && cst1 && cst0.isInt32 && cst1.isInt32)
                     {
@@ -359,6 +360,37 @@ void optIR(IRFunction fun)
                         instr.replUses(arg0);
                         delInstr(instr);
                         continue INSTR_LOOP;
+                    }
+
+                    // Add of add folding pattern:
+                    // ins0 = add_i32 arg00, cst01
+                    // instr = add_i32 ins0, cst1
+                    if (ins0 && ins0.opcode == &ADD_I32 && cst1 && cst1.isInt32)
+                    {
+                        auto arg00 = ins0.getArg(0);
+                        auto cst01 = cast(IRConst)ins0.getArg(1);
+
+                        if (cst01 && cst01.isInt32)
+                        {
+                            auto v0 = cast(int64_t)cst01.int32Val;
+                            auto v1 = cast(int64_t)cst1.int32Val;
+                            auto r = v0 + v1;
+
+                            if (r >= int32_t.min && r <= int32_t.max)
+                            {
+                                auto addInstr = block.addInstrAfter(
+                                    new IRInstr(
+                                        &ADD_I32,
+                                        arg00,
+                                        IRConst.int32Cst(cast(int32_t)r)
+                                    ),
+                                    instr
+                                );
+                                instr.replUses(addInstr);
+                                delInstr(instr);
+                                continue INSTR_LOOP;
+                            }
+                        }
                     }
                 }
 
