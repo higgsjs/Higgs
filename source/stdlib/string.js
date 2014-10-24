@@ -407,7 +407,7 @@ function string_replace(searchValue, replaceValue)
                 this.substring(pos + $rt_str_get_len(searchValue)));
         }
     }
-    else if (searchValue instanceof RegExp)
+    else if (searchValue instanceof $rt_RegExp)
     {
         // Save regexp state
         var globalFlagSave = searchValue.global;

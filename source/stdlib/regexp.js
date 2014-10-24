@@ -40,7 +40,7 @@
  * _________________________________________________________________________
  */
 
-RegExp = (function () {
+(function () {
 
 function RegExpParser () {}
 
@@ -2664,9 +2664,10 @@ RegExp.prototype.test = function (
 }
 
 /// Private name for the RegExp class
-$rt_RegExp = RegExp;
+this.$rt_RegExp = RegExp;
 
-return RegExp;
+/// Export the RegExp constructor
+this.RegExp = RegExp;
 
 })();
 

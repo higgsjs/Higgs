@@ -157,6 +157,8 @@ TODO: look into ropes
 - left, right, length
 - when concat'ed, set right to null
 
+TODO: turing machine for raw sound synth?
+
 TODO: take a break, dust off CPU heatsink and fan
 - turn off machine, remove fan
 - listen to hyperion!
