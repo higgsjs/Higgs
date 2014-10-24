@@ -134,6 +134,7 @@ TODO: look at V8 src wrt IR, phi nodes
 - Submitted rebuttal
 - Fixed indexed array element called as method bug
 - Fixed regexp parsing bug
+- Fixed bug in object init code
 - optimized host property reads (uncaptured shapes)
 - added add of add peephole pattern
 - benchmark-vs-v8 script
@@ -156,31 +157,33 @@ FIXME: gc bug in v8/regexp
 TODO: look into ropes
 - do some online reading first ***
 - left, right, length
-- when concat'ed, set right to null
+- when concat'ed, set right ptr to null, left ptr to new string
+  - need to maintain a level of indirection until GC
 
-TODO: turing machine for raw sound synth?
-- could graph waveform, use left and right arrows
-- start with a blank canvas
-- reuse code from Turing Turtle ***
-- possibly, cap range by moving along a sinusoidal shape
-  - could allow changing the frequency of this shape too...
+FIXME: pong example segfaults!
 
-TODO: take a break, dust off CPU heatsink and fan
+TODO: try a different synth system, maybe a bank of sine waves? Experiment!
+- Experiment just by using random gen, no turing machine for now
+- Multiple triangle waves and envelopes
+
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: many allocs in turing synth? do we realloc arrays for each new element?
+- setting the length does
+- should make GC test for this, see that no GC occurs, or no more than one or two
+./higgs --stats --nostdlib --e "a = []; for (var i = 0; i < 80000; ++i) a.length = i;"
+
+[DONE] TODO: take a break, dust off CPU heatsink and fan
 - turn off machine, remove fan
 - listen to hyperion!
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: add of add peephole pattern
 $15 = add_i32 $14, 4

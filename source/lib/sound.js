@@ -69,10 +69,10 @@
             chan < this.numChans
         );
 
-        var offset = pos * this.numChans;
+        if (pos >= this.numSamples)
+            this.numSamples = pos + 1;
 
-        if (offset >= this.samples.length)
-            this.samples.length = offset + this.numChans;
+        var offset = pos * this.numChans;
 
         this.samples[offset + chan] = val;
     }

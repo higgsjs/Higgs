@@ -1,4 +1,4 @@
-var snd = require('lib/sound.js');
+var snd = require('lib/sound');
 
 var stdio = require('lib/stdio');
 
