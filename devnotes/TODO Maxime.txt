@@ -147,13 +147,14 @@ TODO: look at V8 src wrt IR, phi nodes
   - Only try to predict return type when fairly sure to avoid mispredicts
   - Otherwise only predict that no shapes will be changed
 
+FIXME: gc bug in v8/regexp
+- next pointer invalid during GC
+- Ask pag for help if needed
+
 TODO: look into ropes
 - do some online reading first ***
 - left, right, length
 - when concat'ed, set right to null
-
-FIXME: gc bug in v8/regexp
-- next pointer invalid during GC
 
 TODO: take a break, dust off CPU heatsink and fan
 - turn off machine, remove fan
