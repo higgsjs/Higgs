@@ -3308,6 +3308,14 @@ void gen_obj_init_shape(
         );
 
         obj_set_shape(objPtr, cast(rawptr)shape);
+
+
+        assert (
+            vm.wUpperLimit > vm.wStack,
+            "invalid wStack after init shape"
+        );
+
+
     }
 
     auto vm = ver.state.fun.vm;
@@ -3346,8 +3354,9 @@ void gen_obj_init_shape(
         as.saveJITRegs();
 
         // Call the host function
-        as.mov(cargRegs[0].opnd(64), vmReg.opnd);
+        // Note: we move objOpnd first to avoid corruption
         as.mov(cargRegs[1].opnd(64), objOpnd);
+        as.mov(cargRegs[0].opnd(64), vmReg.opnd);
         as.mov(cargRegs[2].opnd(8), tagOpnd);
         as.ptr(scrRegs[0], &op_obj_init_shape);
         as.call(scrRegs[0]);

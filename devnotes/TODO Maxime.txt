@@ -143,6 +143,7 @@ TODO: look at V8 src wrt IR, phi nodes
   - Many more shape tests than known shapes, ~10:1
   - Interp BBV should help tremendously there
 - Type tests for 3d-raytrace, previously 3.5M (optimized), now 1.4M
+  - 5.2M with maxvers=0, eliminating 73% of type tests
 - Idea for interp BBV returns
   - Only try to predict return type when fairly sure to avoid mispredicts
   - Otherwise only predict that no shapes will be changed
@@ -158,23 +159,35 @@ TODO: look into ropes
 
 TODO: take a break, dust off CPU heatsink and fan
 - turn off machine, remove fan
+- listen to hyperion!
 
-FIXME: maxvers=0 causes segfault on 3d-raytrace
+TODO: add of add peephole pattern
+$15 = add_i32 $14, 4
+$16 = add_i32 $15, 8
+before, code size (bytes): 345992
+- Log when used
 
-TODO: hack simple kick synth, snare, see synth cookbook
+
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: maxvers=0 causes segfault on 3d-raytrace
+./higgs --maxvers=0 benchmarks/sunspider/3d-raytrace.js
+- wStack, first word of VM object, gets corrupted
+- Seems obj_init_shape slow path corrupts regs
+
+[DONE] TODO: hack simple drum synth, snare, see synth cookbook
 - for now, source/synth.js
 - produce a new Sound object for now
-
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: add shape test stats
 

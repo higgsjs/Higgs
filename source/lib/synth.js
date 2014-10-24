@@ -100,7 +100,21 @@
 
     function synthSnare(sampleRate)
     {
-        // TODO
+        var sound = new snd.Sound(30000);
+
+        for (var i = 0; i < sound.numSamples; ++i)
+        {
+            var t = i / sampleRate;
+
+            // TODO: very short attack?
+            var a = Math.max(0, 1 - (t / 0.25));
+
+            var s = a * (1.0 * triOsc(t, 20, 0.25) + 0.1 * noiseOsc());
+
+            sound.setSample(i, 0, s);
+        }
+
+        return sound;
 
 
     }
@@ -122,6 +136,7 @@
 
 
     exports.synthBassDrum = synthBassDrum;
+    exports.synthSnare = synthSnare;
 
 })(exports)
 
