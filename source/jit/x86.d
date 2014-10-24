@@ -1104,36 +1104,36 @@ void writeCmov(
 }
 
 /// cmovcc - Conditional move
-alias cmova = writeCmov!("cmova"  , 0x47);
-alias cmovae = writeCmov!("cmovae" , 0x43);
-alias cmovb = writeCmov!("cmovb"  , 0x42);
-alias cmovbe = writeCmov!("cmovbe" , 0x46);
-alias cmovc = writeCmov!("cmovc"  , 0x42);
-alias cmove = writeCmov!("cmove"  , 0x44);
-alias cmovg = writeCmov!("cmovg"  , 0x4F);
-alias cmovge = writeCmov!("cmovge" , 0x4D);
-alias cmovl = writeCmov!("cmovl"  , 0x4C);
-alias cmovle = writeCmov!("cmovle" , 0x4E);
-alias cmovna = writeCmov!("cmovna" , 0x46);
+alias cmova = writeCmov!("cmova", 0x47);
+alias cmovae = writeCmov!("cmovae", 0x43);
+alias cmovb = writeCmov!("cmovb", 0x42);
+alias cmovbe = writeCmov!("cmovbe", 0x46);
+alias cmovc = writeCmov!("cmovc", 0x42);
+alias cmove = writeCmov!("cmove", 0x44);
+alias cmovg = writeCmov!("cmovg", 0x4F);
+alias cmovge = writeCmov!("cmovge", 0x4D);
+alias cmovl = writeCmov!("cmovl", 0x4C);
+alias cmovle = writeCmov!("cmovle", 0x4E);
+alias cmovna = writeCmov!("cmovna", 0x46);
 alias cmovnae = writeCmov!("cmovnae", 0x42);
-alias cmovnb = writeCmov!("cmovnb" , 0x43);
+alias cmovnb = writeCmov!("cmovnb", 0x43);
 alias cmovnbe = writeCmov!("cmovnbe", 0x47);
-alias cmovnc = writeCmov!("cmovnc" , 0x43);
-alias cmovne = writeCmov!("cmovne" , 0x45);
-alias cmovnge = writeCmov!("cmovng" , 0x4E);
+alias cmovnc = writeCmov!("cmovnc", 0x43);
+alias cmovne = writeCmov!("cmovne", 0x45);
+alias cmovnge = writeCmov!("cmovng", 0x4E);
 alias cmovnge = writeCmov!("cmovnge", 0x4C);
-alias cmovnl = writeCmov!("cmovnl" , 0x4D);
+alias cmovnl = writeCmov!("cmovnl", 0x4D);
 alias cmovnle = writeCmov!("cmovnle", 0x4F);
-alias cmovno = writeCmov!("cmovno" , 0x41);
-alias cmovnp = writeCmov!("cmovnp" , 0x4B);
-alias cmovns = writeCmov!("cmovns" , 0x49);
-alias cmovnz = writeCmov!("cmovnz" , 0x45);
-alias cmovo = writeCmov!("cmovno" , 0x40);
-alias cmovp = writeCmov!("cmovp"  , 0x4A);
-alias cmovpe = writeCmov!("cmovpe" , 0x4A);
-alias cmovpo = writeCmov!("cmovpo" , 0x4B);
-alias cmovs = writeCmov!("cmovs"  , 0x48);
-alias cmovz = writeCmov!("cmovz"  , 0x44);
+alias cmovno = writeCmov!("cmovno", 0x41);
+alias cmovnp = writeCmov!("cmovnp", 0x4B);
+alias cmovns = writeCmov!("cmovns", 0x49);
+alias cmovnz = writeCmov!("cmovnz", 0x45);
+alias cmovo = writeCmov!("cmovno", 0x40);
+alias cmovp = writeCmov!("cmovp", 0x4A);
+alias cmovpe = writeCmov!("cmovpe", 0x4A);
+alias cmovpo = writeCmov!("cmovpo", 0x4B);
+alias cmovs = writeCmov!("cmovs", 0x48);
+alias cmovz = writeCmov!("cmovz", 0x44);
 
 /// cmp - Compare and set flags
 alias cmp = writeRMMulti!(
@@ -1336,36 +1336,36 @@ void writeJcc(string mnem, opcode...)(CodeBlock cb, Label label)
 }
 
 /// jcc - Conditional relative jump to a label
-alias ja = writeJcc!("ja" , 0x0F, 0x87);
+alias ja = writeJcc!("ja", 0x0F, 0x87);
 alias jae = writeJcc!("jae", 0x0F, 0x83);
-alias jb = writeJcc!("jb" , 0x0F, 0x82);
+alias jb = writeJcc!("jb", 0x0F, 0x82);
 alias jbe = writeJcc!("jbe", 0x0F, 0x86);
-alias jc = writeJcc!("jc" , 0x0F, 0x82);
-alias je = writeJcc!("je" , 0x0F, 0x84);
-alias jg = writeJcc!("jg" , 0x0F, 0x8F);
+alias jc = writeJcc!("jc", 0x0F, 0x82);
+alias je = writeJcc!("je", 0x0F, 0x84);
+alias jg = writeJcc!("jg", 0x0F, 0x8F);
 alias jge = writeJcc!("jge", 0x0F, 0x8D);
-alias jl = writeJcc!("jl" , 0x0F, 0x8C);
+alias jl = writeJcc!("jl", 0x0F, 0x8C);
 alias jle = writeJcc!("jle", 0x0F, 0x8E);
-alias jna = writeJcc!("jna" , 0x0F, 0x86);
+alias jna = writeJcc!("jna", 0x0F, 0x86);
 alias jnae = writeJcc!("jnae", 0x0F, 0x82);
-alias jnb = writeJcc!("jnb" , 0x0F, 0x83);
+alias jnb = writeJcc!("jnb", 0x0F, 0x83);
 alias jnbe = writeJcc!("jnbe", 0x0F, 0x87);
-alias jnc = writeJcc!("jnc" , 0x0F, 0x83);
-alias jne = writeJcc!("jne" , 0x0F, 0x85);
-alias jng = writeJcc!("jng" , 0x0F, 0x8E);
+alias jnc = writeJcc!("jnc", 0x0F, 0x83);
+alias jne = writeJcc!("jne", 0x0F, 0x85);
+alias jng = writeJcc!("jng", 0x0F, 0x8E);
 alias jnge = writeJcc!("jnge", 0x0F, 0x8C);
-alias jnl = writeJcc!("jnl" , 0x0F, 0x8D);
+alias jnl = writeJcc!("jnl", 0x0F, 0x8D);
 alias jnle = writeJcc!("jnle", 0x0F, 0x8F);
 alias jno = writeJcc!("jno", 0x0F, 0x81);
 alias jnp = writeJcc!("jnp", 0x0F, 0x8b);
 alias jns = writeJcc!("jns", 0x0F, 0x89);
 alias jnz = writeJcc!("jnz", 0x0F, 0x85);
-alias jo = writeJcc!("jo" , 0x0F, 0x80);
-alias jp = writeJcc!("jp" , 0x0F, 0x8A);
+alias jo = writeJcc!("jo", 0x0F, 0x80);
+alias jp = writeJcc!("jp", 0x0F, 0x8A);
 alias jpe = writeJcc!("jpe", 0x0F, 0x8A);
 alias jpo = writeJcc!("jpo", 0x0F, 0x8B);
-alias js = writeJcc!("js" , 0x0F, 0x88);
-alias jz = writeJcc!("jz" , 0x0F, 0x84);
+alias js = writeJcc!("js", 0x0F, 0x88);
+alias jz = writeJcc!("jz", 0x0F, 0x84);
 
 /// Opcode for direct jump with relative 8-bit offset
 const ubyte JMP_REL8_OPCODE = 0xEB;

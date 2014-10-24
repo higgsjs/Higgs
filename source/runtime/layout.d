@@ -7,19 +7,19 @@ module runtime.layout;
 import runtime.vm;
 import runtime.gc;
 
-alias funptr = ubyte*;
-alias shapeptr = ubyte*;
-alias rawptr = ubyte*;
-alias refptr = ubyte*;
-alias int8 = byte;
-alias int16 = short;
-alias int32 = int;
-alias int64 = long;
-alias uint8 = ubyte;
-alias uint16 = ushort;
-alias uint32 = uint;
-alias uint64 = ulong;
-alias float64 = double;
+alias ubyte* funptr;
+alias ubyte* shapeptr;
+alias ubyte* rawptr;
+alias ubyte* refptr;
+alias byte   int8;
+alias short  int16;
+alias int    int32;
+alias long   int64;
+alias ubyte  uint8;
+alias ushort uint16;
+alias uint   uint32;
+alias ulong  uint64;
+alias double float64;
 
 const uint32 LAYOUT_STR = 0;
 

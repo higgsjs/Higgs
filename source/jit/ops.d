@@ -359,15 +359,15 @@ void RMMOp(string op, size_t numBits, Tag tag)(
     );
 }
 
-alias gen_add_i32 = RMMOp!("add" , 32, Tag.INT32);
-alias gen_sub_i32 = RMMOp!("sub" , 32, Tag.INT32);
+alias gen_add_i32 = RMMOp!("add", 32, Tag.INT32);
+alias gen_sub_i32 = RMMOp!("sub", 32, Tag.INT32);
 alias gen_mul_i32 = RMMOp!("imul", 32, Tag.INT32);
-alias gen_and_i32 = RMMOp!("and" , 32, Tag.INT32);
-alias gen_or_i32 = RMMOp!("or"  , 32, Tag.INT32);
-alias gen_xor_i32 = RMMOp!("xor" , 32, Tag.INT32);
+alias gen_and_i32 = RMMOp!("and", 32, Tag.INT32);
+alias gen_or_i32 = RMMOp!("or", 32, Tag.INT32);
+alias gen_xor_i32 = RMMOp!("xor", 32, Tag.INT32);
 
-alias gen_add_i32_ovf = RMMOp!("add" , 32, Tag.INT32);
-alias gen_sub_i32_ovf = RMMOp!("sub" , 32, Tag.INT32);
+alias gen_add_i32_ovf = RMMOp!("add", 32, Tag.INT32);
+alias gen_sub_i32_ovf = RMMOp!("sub", 32, Tag.INT32);
 alias gen_mul_i32_ovf = RMMOp!("imul", 32, Tag.INT32);
 
 void gen_add_ptr_i32(
@@ -761,11 +761,11 @@ void LoadOp(size_t memSize, bool signed, Tag tag)(
     st.setOutTag(as, instr, tag);
 }
 
-alias gen_load_u8 = LoadOp!(8 , false, Tag.INT32);
+alias gen_load_u8 = LoadOp!(8, false, Tag.INT32);
 alias gen_load_u16 = LoadOp!(16, false, Tag.INT32);
 alias gen_load_u32 = LoadOp!(32, false, Tag.INT32);
 alias gen_load_u64 = LoadOp!(64, false, Tag.INT64);
-alias gen_load_i8 = LoadOp!(8 , true , Tag.INT32);
+alias gen_load_i8 = LoadOp!(8, true , Tag.INT32);
 alias gen_load_i16 = LoadOp!(16, true , Tag.INT32);
 alias gen_load_i32 = LoadOp!(32, true , Tag.INT32);
 alias gen_load_i64 = LoadOp!(64, true , Tag.INT64);
@@ -813,11 +813,11 @@ void StoreOp(size_t memSize, Tag tag)(
     as.mov(memOpnd, opnd2);
 }
 
-alias gen_store_u8 = StoreOp!(8 , Tag.INT32);
+alias gen_store_u8 = StoreOp!(8, Tag.INT32);
 alias gen_store_u16 = StoreOp!(16, Tag.INT32);
 alias gen_store_u32 = StoreOp!(32, Tag.INT32);
 alias gen_store_u64 = StoreOp!(64, Tag.INT64);
-alias gen_store_i8 = StoreOp!(8 , Tag.INT32);
+alias gen_store_i8 = StoreOp!(8, Tag.INT32);
 alias gen_store_i16 = StoreOp!(16, Tag.INT32);
 alias gen_store_i32 = StoreOp!(32, Tag.INT32);
 alias gen_store_u64 = StoreOp!(64, Tag.INT64);
