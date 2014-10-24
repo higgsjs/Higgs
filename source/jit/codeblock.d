@@ -85,7 +85,7 @@ enum Label : size_t
 }
 
 /// Code pointer type definition
-alias const(ubyte)* CodePtr;
+alias CodePtr = const(ubyte)*;
 
 /**
 Low-level machine code block implementation. Stores generated machine code.
@@ -102,15 +102,15 @@ class CodeBlock
     private size_t writePos = 0;
 
     /// Disassembly/comment strings, indexed by position
-    alias Tuple!(size_t, "pos", string, "str") CommentStr;
+    alias CommentStr = Tuple!(size_t, "pos", string, "str");
     private CommentStr[][] strings;
 
     // Table of label addresses
     private size_t[Label.max+1] labelAddrs;
 
     // Label reference list
-    alias Tuple!(size_t, "pos", Label, "label") LabelRef;
-    private LabelRef labelRefs[];
+    alias LabelRef = Tuple!(size_t, "pos", Label, "label");
+    private LabelRef[] labelRefs;
 
     /// Flag to enable or disable comments
     private bool hasComments;

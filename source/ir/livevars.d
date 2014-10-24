@@ -286,7 +286,7 @@ class LiveInfo
                 liveSets[instr] = LiveSet.init;
 
         // Stack of blocks for DFS traversal
-        IRBlock stack[];
+        IRBlock[] stack;
         stack.reserve(32768);
 
         /**

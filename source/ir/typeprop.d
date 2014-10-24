@@ -118,10 +118,10 @@ class TypeProp
     private static const ANY = TypeSet(0xFFFFFFFF);
 
     /// Map of IR values to type values
-    private alias TypeSet[IRDstValue] TypeMap;
+    private alias TypeMap = TypeSet[IRDstValue];
 
     /// Array of type values
-    private alias TypeSet[] TypeArr;
+    private alias TypeArr = TypeSet[];
 
     /// Argument type arrays, per instruction
     private TypeArr[IRInstr] instrArgTypes;

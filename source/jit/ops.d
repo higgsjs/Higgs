@@ -68,12 +68,12 @@ import jit.jit;
 import core.sys.posix.dlfcn;
 
 /// Instruction code generation function
-alias void function(
+alias GenFn = void function(
     BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
-) GenFn;
+);
 
 /// Get an argument by index
 void gen_get_arg(
@@ -359,16 +359,16 @@ void RMMOp(string op, size_t numBits, Tag tag)(
     );
 }
 
-alias RMMOp!("add" , 32, Tag.INT32) gen_add_i32;
-alias RMMOp!("sub" , 32, Tag.INT32) gen_sub_i32;
-alias RMMOp!("imul", 32, Tag.INT32) gen_mul_i32;
-alias RMMOp!("and" , 32, Tag.INT32) gen_and_i32;
-alias RMMOp!("or"  , 32, Tag.INT32) gen_or_i32;
-alias RMMOp!("xor" , 32, Tag.INT32) gen_xor_i32;
+alias gen_add_i32 = RMMOp!("add" , 32, Tag.INT32);
+alias gen_sub_i32 = RMMOp!("sub" , 32, Tag.INT32);
+alias gen_mul_i32 = RMMOp!("imul", 32, Tag.INT32);
+alias gen_and_i32 = RMMOp!("and" , 32, Tag.INT32);
+alias gen_or_i32 = RMMOp!("or"  , 32, Tag.INT32);
+alias gen_xor_i32 = RMMOp!("xor" , 32, Tag.INT32);
 
-alias RMMOp!("add" , 32, Tag.INT32) gen_add_i32_ovf;
-alias RMMOp!("sub" , 32, Tag.INT32) gen_sub_i32_ovf;
-alias RMMOp!("imul", 32, Tag.INT32) gen_mul_i32_ovf;
+alias gen_add_i32_ovf = RMMOp!("add" , 32, Tag.INT32);
+alias gen_sub_i32_ovf = RMMOp!("sub" , 32, Tag.INT32);
+alias gen_mul_i32_ovf = RMMOp!("imul", 32, Tag.INT32);
 
 void gen_add_ptr_i32(
     BlockVersion ver,
@@ -451,8 +451,8 @@ void divOp(string op)(
     st.setOutTag(as, instr, Tag.INT32);
 }
 
-alias divOp!("div") gen_div_i32;
-alias divOp!("mod") gen_mod_i32;
+alias gen_div_i32 = divOp!("div");
+alias gen_mod_i32 = divOp!("mod");
 
 void gen_not_i32(
     BlockVersion ver,
@@ -538,9 +538,9 @@ void ShiftOp(string op)(
     st.setOutTag(as, instr, Tag.INT32);
 }
 
-alias ShiftOp!("sal") gen_lsft_i32;
-alias ShiftOp!("sar") gen_rsft_i32;
-alias ShiftOp!("shr") gen_ursft_i32;
+alias gen_lsft_i32 = ShiftOp!("sal");
+alias gen_rsft_i32 = ShiftOp!("sar");
+alias gen_ursft_i32 = ShiftOp!("shr");
 
 void FPOp(string op)(
     BlockVersion ver,
@@ -577,10 +577,10 @@ void FPOp(string op)(
     st.setOutTag(as, instr, Tag.FLOAT64);
 }
 
-alias FPOp!("add") gen_add_f64;
-alias FPOp!("sub") gen_sub_f64;
-alias FPOp!("mul") gen_mul_f64;
-alias FPOp!("div") gen_div_f64;
+alias gen_add_f64 = FPOp!("add");
+alias gen_sub_f64 = FPOp!("sub");
+alias gen_mul_f64 = FPOp!("mul");
+alias gen_div_f64 = FPOp!("div");
 
 void HostFPOp(alias cFPFun, size_t arity = 1)(
     BlockVersion ver,
@@ -625,15 +625,15 @@ void HostFPOp(alias cFPFun, size_t arity = 1)(
     st.setOutTag(as, instr, Tag.FLOAT64);
 }
 
-alias HostFPOp!(std.c.math.sin) gen_sin_f64;
-alias HostFPOp!(std.c.math.cos) gen_cos_f64;
-alias HostFPOp!(std.c.math.sqrt) gen_sqrt_f64;
-alias HostFPOp!(std.c.math.ceil) gen_ceil_f64;
-alias HostFPOp!(std.c.math.floor) gen_floor_f64;
-alias HostFPOp!(std.c.math.log) gen_log_f64;
-alias HostFPOp!(std.c.math.exp) gen_exp_f64;
-alias HostFPOp!(std.c.math.pow, 2) gen_pow_f64;
-alias HostFPOp!(std.c.math.fmod, 2) gen_mod_f64;
+alias gen_sin_f64 = HostFPOp!(std.c.math.sin);
+alias gen_cos_f64 = HostFPOp!(std.c.math.cos);
+alias gen_sqrt_f64 = HostFPOp!(std.c.math.sqrt);
+alias gen_ceil_f64 = HostFPOp!(std.c.math.ceil);
+alias gen_floor_f64 = HostFPOp!(std.c.math.floor);
+alias gen_log_f64 = HostFPOp!(std.c.math.log);
+alias gen_exp_f64 = HostFPOp!(std.c.math.exp);
+alias gen_pow_f64 = HostFPOp!(std.c.math.pow, 2);
+alias gen_mod_f64 = HostFPOp!(std.c.math.fmod, 2);
 
 void FPToStr(string fmt)(
     BlockVersion ver,
@@ -683,8 +683,8 @@ void FPToStr(string fmt)(
     st.setOutTag(as, instr, Tag.STRING);
 }
 
-alias FPToStr!("%G") gen_f64_to_str;
-alias FPToStr!(format("%%.%sf", float64.dig)) gen_f64_to_str_lng;
+alias gen_f64_to_str = FPToStr!("%G");
+alias gen_f64_to_str_lng = FPToStr!(format("%%.%sf", float64.dig));
 
 void LoadOp(size_t memSize, bool signed, Tag tag)(
     BlockVersion ver,
@@ -761,19 +761,19 @@ void LoadOp(size_t memSize, bool signed, Tag tag)(
     st.setOutTag(as, instr, tag);
 }
 
-alias LoadOp!(8 , false, Tag.INT32) gen_load_u8;
-alias LoadOp!(16, false, Tag.INT32) gen_load_u16;
-alias LoadOp!(32, false, Tag.INT32) gen_load_u32;
-alias LoadOp!(64, false, Tag.INT64) gen_load_u64;
-alias LoadOp!(8 , true , Tag.INT32) gen_load_i8;
-alias LoadOp!(16, true , Tag.INT32) gen_load_i16;
-alias LoadOp!(32, true , Tag.INT32) gen_load_i32;
-alias LoadOp!(64, true , Tag.INT64) gen_load_i64;
-alias LoadOp!(64, false, Tag.FLOAT64) gen_load_f64;
-alias LoadOp!(64, false, Tag.REFPTR) gen_load_refptr;
-alias LoadOp!(64, false, Tag.RAWPTR) gen_load_rawptr;
-alias LoadOp!(64, false, Tag.FUNPTR) gen_load_funptr;
-alias LoadOp!(64, false, Tag.SHAPEPTR) gen_load_shapeptr;
+alias gen_load_u8 = LoadOp!(8 , false, Tag.INT32);
+alias gen_load_u16 = LoadOp!(16, false, Tag.INT32);
+alias gen_load_u32 = LoadOp!(32, false, Tag.INT32);
+alias gen_load_u64 = LoadOp!(64, false, Tag.INT64);
+alias gen_load_i8 = LoadOp!(8 , true , Tag.INT32);
+alias gen_load_i16 = LoadOp!(16, true , Tag.INT32);
+alias gen_load_i32 = LoadOp!(32, true , Tag.INT32);
+alias gen_load_i64 = LoadOp!(64, true , Tag.INT64);
+alias gen_load_f64 = LoadOp!(64, false, Tag.FLOAT64);
+alias gen_load_refptr = LoadOp!(64, false, Tag.REFPTR);
+alias gen_load_rawptr = LoadOp!(64, false, Tag.RAWPTR);
+alias gen_load_funptr = LoadOp!(64, false, Tag.FUNPTR);
+alias gen_load_shapeptr = LoadOp!(64, false, Tag.SHAPEPTR);
 
 void StoreOp(size_t memSize, Tag tag)(
     BlockVersion ver,
@@ -813,19 +813,19 @@ void StoreOp(size_t memSize, Tag tag)(
     as.mov(memOpnd, opnd2);
 }
 
-alias StoreOp!(8 , Tag.INT32) gen_store_u8;
-alias StoreOp!(16, Tag.INT32) gen_store_u16;
-alias StoreOp!(32, Tag.INT32) gen_store_u32;
-alias StoreOp!(64, Tag.INT64) gen_store_u64;
-alias StoreOp!(8 , Tag.INT32) gen_store_i8;
-alias StoreOp!(16, Tag.INT32) gen_store_i16;
-alias StoreOp!(32, Tag.INT32) gen_store_i32;
-alias StoreOp!(64, Tag.INT64) gen_store_u64;
-alias StoreOp!(64, Tag.FLOAT64) gen_store_f64;
-alias StoreOp!(64, Tag.REFPTR) gen_store_refptr;
-alias StoreOp!(64, Tag.RAWPTR) gen_store_rawptr;
-alias StoreOp!(64, Tag.FUNPTR) gen_store_funptr;
-alias StoreOp!(64, Tag.SHAPEPTR) gen_store_shapeptr;
+alias gen_store_u8 = StoreOp!(8 , Tag.INT32);
+alias gen_store_u16 = StoreOp!(16, Tag.INT32);
+alias gen_store_u32 = StoreOp!(32, Tag.INT32);
+alias gen_store_u64 = StoreOp!(64, Tag.INT64);
+alias gen_store_i8 = StoreOp!(8 , Tag.INT32);
+alias gen_store_i16 = StoreOp!(16, Tag.INT32);
+alias gen_store_i32 = StoreOp!(32, Tag.INT32);
+alias gen_store_u64 = StoreOp!(64, Tag.INT64);
+alias gen_store_f64 = StoreOp!(64, Tag.FLOAT64);
+alias gen_store_refptr = StoreOp!(64, Tag.REFPTR);
+alias gen_store_rawptr = StoreOp!(64, Tag.RAWPTR);
+alias gen_store_funptr = StoreOp!(64, Tag.FUNPTR);
+alias gen_store_shapeptr = StoreOp!(64, Tag.SHAPEPTR);
 
 void TagTestOp(Tag tag)(
     BlockVersion ver,
@@ -1023,16 +1023,16 @@ void TagTestOp(Tag tag)(
     }
 }
 
-alias TagTestOp!(Tag.CONST) gen_is_const;
-alias TagTestOp!(Tag.INT32) gen_is_int32;
-alias TagTestOp!(Tag.INT64) gen_is_int64;
-alias TagTestOp!(Tag.FLOAT64) gen_is_float64;
-alias TagTestOp!(Tag.RAWPTR) gen_is_rawptr;
-alias TagTestOp!(Tag.REFPTR) gen_is_refptr;
-alias TagTestOp!(Tag.OBJECT) gen_is_object;
-alias TagTestOp!(Tag.ARRAY) gen_is_array;
-alias TagTestOp!(Tag.CLOSURE) gen_is_closure;
-alias TagTestOp!(Tag.STRING) gen_is_string;
+alias gen_is_const = TagTestOp!(Tag.CONST);
+alias gen_is_int32 = TagTestOp!(Tag.INT32);
+alias gen_is_int64 = TagTestOp!(Tag.INT64);
+alias gen_is_float64 = TagTestOp!(Tag.FLOAT64);
+alias gen_is_rawptr = TagTestOp!(Tag.RAWPTR);
+alias gen_is_refptr = TagTestOp!(Tag.REFPTR);
+alias gen_is_object = TagTestOp!(Tag.OBJECT);
+alias gen_is_array = TagTestOp!(Tag.ARRAY);
+alias gen_is_closure = TagTestOp!(Tag.CLOSURE);
+alias gen_is_string = TagTestOp!(Tag.STRING);
 
 void CmpOp(string op, size_t numBits)(
     BlockVersion ver,
@@ -1426,27 +1426,27 @@ void CmpOp(string op, size_t numBits)(
     }
 }
 
-alias CmpOp!("eq", 8) gen_eq_i8;
-alias CmpOp!("eq", 32) gen_eq_i32;
-alias CmpOp!("ne", 32) gen_ne_i32;
-alias CmpOp!("lt", 32) gen_lt_i32;
-alias CmpOp!("le", 32) gen_le_i32;
-alias CmpOp!("gt", 32) gen_gt_i32;
-alias CmpOp!("ge", 32) gen_ge_i32;
-alias CmpOp!("eq", 64) gen_eq_i64;
+alias gen_eq_i8 = CmpOp!("eq", 8);
+alias gen_eq_i32 = CmpOp!("eq", 32);
+alias gen_ne_i32 = CmpOp!("ne", 32);
+alias gen_lt_i32 = CmpOp!("lt", 32);
+alias gen_le_i32 = CmpOp!("le", 32);
+alias gen_gt_i32 = CmpOp!("gt", 32);
+alias gen_ge_i32 = CmpOp!("ge", 32);
+alias gen_eq_i64 = CmpOp!("eq", 64);
 
-alias CmpOp!("eq", 8) gen_eq_const;
-alias CmpOp!("ne", 8) gen_ne_const;
-alias CmpOp!("eq", 64) gen_eq_refptr;
-alias CmpOp!("ne", 64) gen_ne_refptr;
-alias CmpOp!("eq", 64) gen_eq_rawptr;
-alias CmpOp!("ne", 64) gen_ne_rawptr;
-alias CmpOp!("feq", 64) gen_eq_f64;
-alias CmpOp!("fne", 64) gen_ne_f64;
-alias CmpOp!("flt", 64) gen_lt_f64;
-alias CmpOp!("fle", 64) gen_le_f64;
-alias CmpOp!("fgt", 64) gen_gt_f64;
-alias CmpOp!("fge", 64) gen_ge_f64;
+alias gen_eq_const = CmpOp!("eq", 8);
+alias gen_ne_const = CmpOp!("ne", 8);
+alias gen_eq_refptr = CmpOp!("eq", 64);
+alias gen_ne_refptr = CmpOp!("ne", 64);
+alias gen_eq_rawptr = CmpOp!("eq", 64);
+alias gen_ne_rawptr = CmpOp!("ne", 64);
+alias gen_eq_f64 = CmpOp!("feq", 64);
+alias gen_ne_f64 = CmpOp!("fne", 64);
+alias gen_lt_f64 = CmpOp!("flt", 64);
+alias gen_le_f64 = CmpOp!("fle", 64);
+alias gen_gt_f64 = CmpOp!("fgt", 64);
+alias gen_ge_f64 = CmpOp!("fge", 64);
 
 void gen_if_true(
     BlockVersion ver,
@@ -1539,8 +1539,8 @@ void JumpOp(size_t succIdx)(
     );
 }
 
-alias JumpOp!(0) gen_jump;
-alias JumpOp!(1) gen_jump_false;
+alias gen_jump = JumpOp!(0);
+alias gen_jump_false = JumpOp!(1);
 
 /**
 Throw an exception and unwind the stack when one calls a non-function.
@@ -2731,12 +2731,12 @@ void GetValOp(Tag tag, string fName)(
     st.setOutTag(as, instr, tag);
 }
 
-alias GetValOp!(Tag.OBJECT, "objProto.word") gen_get_obj_proto;
-alias GetValOp!(Tag.OBJECT, "arrProto.word") gen_get_arr_proto;
-alias GetValOp!(Tag.OBJECT, "funProto.word") gen_get_fun_proto;
-alias GetValOp!(Tag.OBJECT, "globalObj.word") gen_get_global_obj;
-alias GetValOp!(Tag.INT32, "heapSize") gen_get_heap_size;
-alias GetValOp!(Tag.INT32, "gcCount") gen_get_gc_count;
+alias gen_get_obj_proto = GetValOp!(Tag.OBJECT, "objProto.word");
+alias gen_get_arr_proto = GetValOp!(Tag.OBJECT, "arrProto.word");
+alias gen_get_fun_proto = GetValOp!(Tag.OBJECT, "funProto.word");
+alias gen_get_global_obj = GetValOp!(Tag.OBJECT, "globalObj.word");
+alias gen_get_heap_size = GetValOp!(Tag.INT32, "heapSize");
+alias gen_get_gc_count = GetValOp!(Tag.INT32, "gcCount");
 
 void gen_get_heap_free(
     BlockVersion ver,
@@ -2854,11 +2854,11 @@ void HeapAllocOp(Tag tag)(
     st.setOutTag(as, instr, tag);
 }
 
-alias HeapAllocOp!(Tag.REFPTR) gen_alloc_refptr;
-alias HeapAllocOp!(Tag.OBJECT) gen_alloc_object;
-alias HeapAllocOp!(Tag.ARRAY) gen_alloc_array;
-alias HeapAllocOp!(Tag.CLOSURE) gen_alloc_closure;
-alias HeapAllocOp!(Tag.STRING) gen_alloc_string;
+alias gen_alloc_refptr = HeapAllocOp!(Tag.REFPTR);
+alias gen_alloc_object = HeapAllocOp!(Tag.OBJECT);
+alias gen_alloc_array = HeapAllocOp!(Tag.ARRAY);
+alias gen_alloc_closure = HeapAllocOp!(Tag.CLOSURE);
+alias gen_alloc_string = HeapAllocOp!(Tag.STRING);
 
 void gen_gc_collect(
     BlockVersion ver,
@@ -4961,7 +4961,7 @@ void gen_call_ffi(
     auto outOpnd = st.getOutOpnd(as, instr, 64);
 
     // Indices of arguments to be pushed on the stack
-    size_t stackArgs[];
+    size_t[] stackArgs;
 
     // Set up arguments
     for (size_t idx = 0; idx < argCount; ++idx)

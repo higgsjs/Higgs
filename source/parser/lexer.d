@@ -67,7 +67,7 @@ struct OpInfo
     bool nonAssoc = false;
 }
 
-alias const(OpInfo)* Operator;
+alias Operator = const(OpInfo)*;
 
 // Maximum operator precedence
 const int MAX_PREC = 16;
@@ -405,7 +405,7 @@ Source token value
 */
 struct Token
 {
-    alias int Type;
+    alias Type = int;
     enum : Type
     {
         OP,
@@ -512,7 +512,7 @@ struct Token
 /**
 Lexer flags, used to parameterize lexical analysis
 */
-alias uint LexFlags;
+alias LexFlags = uint;
 const LexFlags LEX_MAYBE_RE = 1 << 0;
 
 /**

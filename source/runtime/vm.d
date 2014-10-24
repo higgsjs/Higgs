@@ -1196,14 +1196,14 @@ class VM
     }
 
     /// Stack frame visit function
-    alias void delegate(
+    alias VisitFrameFn = void delegate(
         IRFunction fun,
         Word* wsp,
         Tag* tsp,
         size_t depth,
         size_t frameSize,
         IRInstr curInstr
-    ) VisitFrameFn;
+    );
 
     /**
     Visit each stack frame currently on the stack
