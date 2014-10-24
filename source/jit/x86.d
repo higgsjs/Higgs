@@ -54,7 +54,7 @@ Representation of an x86 register
 */
 struct X86Reg
 {
-    alias uint8_t Type;
+    alias Type = uint8_t;
     enum : Type
     {
         GP,
@@ -1010,7 +1010,7 @@ void writeRMUnary(
 }
 
 /// add - Integer addition
-alias writeRMMulti!(
+alias add = writeRMMulti!(
     "add",
     0x00, // opMemReg8
     0x01, // opMemRegPref
@@ -1020,7 +1020,7 @@ alias writeRMMulti!(
     0x83, // opMemImmSml
     0x81, // opMemImmLrg
     0x00  // opExtImm
-) add;
+);
 
 /// add - Add with register and immediate operand
 void add(CodeBlock as, X86Reg dst, int64_t imm)
@@ -1032,15 +1032,15 @@ void add(CodeBlock as, X86Reg dst, int64_t imm)
 }
 
 /// addsd - Add scalar double
-alias writeXMM64!(
+alias addsd = writeXMM64!(
     "addsd",
     0xF2, // prefix
     0x0F, // opRegMem0
     0x58  // opRegMem1
-) addsd;
+);
 
 /// and - Bitwise AND
-alias writeRMMulti!(
+alias and = writeRMMulti!(
     "and",
     0x20, // opMemReg8
     0x21, // opMemRegPref
@@ -1050,7 +1050,7 @@ alias writeRMMulti!(
     0x83, // opMemImmSml
     0x81, // opMemImmLrg
     0x04  // opExtImm
-) and;
+);
 
 // TODO: relative call encoding
 // For this, we will need a patchable 32-bit offset
@@ -1104,39 +1104,39 @@ void writeCmov(
 }
 
 /// cmovcc - Conditional move
-alias writeCmov!("cmova"  , 0x47) cmova;
-alias writeCmov!("cmovae" , 0x43) cmovae;
-alias writeCmov!("cmovb"  , 0x42) cmovb;
-alias writeCmov!("cmovbe" , 0x46) cmovbe;
-alias writeCmov!("cmovc"  , 0x42) cmovc;
-alias writeCmov!("cmove"  , 0x44) cmove;
-alias writeCmov!("cmovg"  , 0x4F) cmovg;
-alias writeCmov!("cmovge" , 0x4D) cmovge;
-alias writeCmov!("cmovl"  , 0x4C) cmovl;
-alias writeCmov!("cmovle" , 0x4E) cmovle;
-alias writeCmov!("cmovna" , 0x46) cmovna;
-alias writeCmov!("cmovnae", 0x42) cmovnae;
-alias writeCmov!("cmovnb" , 0x43) cmovnb;
-alias writeCmov!("cmovnbe", 0x47) cmovnbe;
-alias writeCmov!("cmovnc" , 0x43) cmovnc;
-alias writeCmov!("cmovne" , 0x45) cmovne;
-alias writeCmov!("cmovng" , 0x4E) cmovnge;
-alias writeCmov!("cmovnge", 0x4C) cmovnge;
-alias writeCmov!("cmovnl" , 0x4D) cmovnl;
-alias writeCmov!("cmovnle", 0x4F) cmovnle;
-alias writeCmov!("cmovno" , 0x41) cmovno;
-alias writeCmov!("cmovnp" , 0x4B) cmovnp;
-alias writeCmov!("cmovns" , 0x49) cmovns;
-alias writeCmov!("cmovnz" , 0x45) cmovnz;
-alias writeCmov!("cmovno" , 0x40) cmovo;
-alias writeCmov!("cmovp"  , 0x4A) cmovp;
-alias writeCmov!("cmovpe" , 0x4A) cmovpe;
-alias writeCmov!("cmovpo" , 0x4B) cmovpo;
-alias writeCmov!("cmovs"  , 0x48) cmovs;
-alias writeCmov!("cmovz"  , 0x44) cmovz;
+alias cmova = writeCmov!("cmova", 0x47);
+alias cmovae = writeCmov!("cmovae", 0x43);
+alias cmovb = writeCmov!("cmovb", 0x42);
+alias cmovbe = writeCmov!("cmovbe", 0x46);
+alias cmovc = writeCmov!("cmovc", 0x42);
+alias cmove = writeCmov!("cmove", 0x44);
+alias cmovg = writeCmov!("cmovg", 0x4F);
+alias cmovge = writeCmov!("cmovge", 0x4D);
+alias cmovl = writeCmov!("cmovl", 0x4C);
+alias cmovle = writeCmov!("cmovle", 0x4E);
+alias cmovna = writeCmov!("cmovna", 0x46);
+alias cmovnae = writeCmov!("cmovnae", 0x42);
+alias cmovnb = writeCmov!("cmovnb", 0x43);
+alias cmovnbe = writeCmov!("cmovnbe", 0x47);
+alias cmovnc = writeCmov!("cmovnc", 0x43);
+alias cmovne = writeCmov!("cmovne", 0x45);
+alias cmovnge = writeCmov!("cmovng", 0x4E);
+alias cmovnge = writeCmov!("cmovnge", 0x4C);
+alias cmovnl = writeCmov!("cmovnl", 0x4D);
+alias cmovnle = writeCmov!("cmovnle", 0x4F);
+alias cmovno = writeCmov!("cmovno", 0x41);
+alias cmovnp = writeCmov!("cmovnp", 0x4B);
+alias cmovns = writeCmov!("cmovns", 0x49);
+alias cmovnz = writeCmov!("cmovnz", 0x45);
+alias cmovo = writeCmov!("cmovno", 0x40);
+alias cmovp = writeCmov!("cmovp", 0x4A);
+alias cmovpe = writeCmov!("cmovpe", 0x4A);
+alias cmovpo = writeCmov!("cmovpo", 0x4B);
+alias cmovs = writeCmov!("cmovs", 0x48);
+alias cmovz = writeCmov!("cmovz", 0x44);
 
 /// cmp - Compare and set flags
-alias writeRMMulti!(
+alias cmp = writeRMMulti!(
     "cmp",
     0x38, // opMemReg8
     0x39, // opMemRegPref
@@ -1146,7 +1146,7 @@ alias writeRMMulti!(
     0x83, // opMemImmSml
     0x81, // opMemImmLrg
     0x07  // opExtImm
-) cmp;
+);
 
 /// cdq - Convert doubleword to quadword
 void cdq(CodeBlock cb)
@@ -1214,36 +1214,36 @@ void cvttsd2si(CodeBlock cb, X86Opnd dst, X86Opnd src)
 }
 
 // dec - Decrement integer by 1
-alias writeRMUnary!(
+alias dec = writeRMUnary!(
     "dec", 
     0xFE, // opMemReg8 
     0xFF, // opMemRegPref
     0x01  // opExt
-) dec;
+);
 
 // div - Unsigned integer division
-alias writeRMUnary!(
+alias div = writeRMUnary!(
     "div", 
     0xF6, // opMemReg8 
     0xF7, // opMemRegPref
     0x06  // opExt
-) div;
+);
 
 /// divsd - Divide scalar double
-alias writeXMM64!(
+alias divsd = writeXMM64!(
     "divsd",
     0xF2, // prefix
     0x0F, // opRegMem0
     0x5E  // opRegMem1
-) divsd;
+);
 
 // idiv - Signed integer division
-alias writeRMUnary!(
+alias idiv = writeRMUnary!(
     "idiv", 
     0xF6, // opMemReg8 
     0xF7, // opMemRegPref
     0x07  // opExt
-) idiv;
+);
 
 /// imul - Signed integer multiplication with two operands
 void imul(CodeBlock cb, X86Opnd opnd0, X86Opnd opnd1)
@@ -1310,12 +1310,12 @@ void imul(CodeBlock cb, X86Opnd opnd0, X86Opnd opnd1, X86Opnd opnd2)
 }
 
 // inc - Increment integer by 1
-alias writeRMUnary!(
+alias inc = writeRMUnary!(
     "inc", 
     0xFE, // opMemReg8 
     0xFF, // opMemRegPref
     0x00  // opExt
-) inc;
+);
 
 /**
 Encode a relative jump to a label (direct or conditional)
@@ -1336,36 +1336,36 @@ void writeJcc(string mnem, opcode...)(CodeBlock cb, Label label)
 }
 
 /// jcc - Conditional relative jump to a label
-alias writeJcc!("ja" , 0x0F, 0x87) ja;
-alias writeJcc!("jae", 0x0F, 0x83) jae;
-alias writeJcc!("jb" , 0x0F, 0x82) jb;
-alias writeJcc!("jbe", 0x0F, 0x86) jbe;
-alias writeJcc!("jc" , 0x0F, 0x82) jc;
-alias writeJcc!("je" , 0x0F, 0x84) je;
-alias writeJcc!("jg" , 0x0F, 0x8F) jg;
-alias writeJcc!("jge", 0x0F, 0x8D) jge;
-alias writeJcc!("jl" , 0x0F, 0x8C) jl;
-alias writeJcc!("jle", 0x0F, 0x8E) jle;
-alias writeJcc!("jna" , 0x0F, 0x86) jna;
-alias writeJcc!("jnae", 0x0F, 0x82) jnae;
-alias writeJcc!("jnb" , 0x0F, 0x83) jnb;
-alias writeJcc!("jnbe", 0x0F, 0x87) jnbe;
-alias writeJcc!("jnc" , 0x0F, 0x83) jnc;
-alias writeJcc!("jne" , 0x0F, 0x85) jne;
-alias writeJcc!("jng" , 0x0F, 0x8E) jng;
-alias writeJcc!("jnge", 0x0F, 0x8C) jnge;
-alias writeJcc!("jnl" , 0x0F, 0x8D) jnl;
-alias writeJcc!("jnle", 0x0F, 0x8F) jnle;
-alias writeJcc!("jno", 0x0F, 0x81) jno;
-alias writeJcc!("jnp", 0x0F, 0x8b) jnp;
-alias writeJcc!("jns", 0x0F, 0x89) jns;
-alias writeJcc!("jnz", 0x0F, 0x85) jnz;
-alias writeJcc!("jo" , 0x0F, 0x80) jo;
-alias writeJcc!("jp" , 0x0F, 0x8A) jp;
-alias writeJcc!("jpe", 0x0F, 0x8A) jpe;
-alias writeJcc!("jpo", 0x0F, 0x8B) jpo;
-alias writeJcc!("js" , 0x0F, 0x88) js;
-alias writeJcc!("jz" , 0x0F, 0x84) jz;
+alias ja = writeJcc!("ja", 0x0F, 0x87);
+alias jae = writeJcc!("jae", 0x0F, 0x83);
+alias jb = writeJcc!("jb", 0x0F, 0x82);
+alias jbe = writeJcc!("jbe", 0x0F, 0x86);
+alias jc = writeJcc!("jc", 0x0F, 0x82);
+alias je = writeJcc!("je", 0x0F, 0x84);
+alias jg = writeJcc!("jg", 0x0F, 0x8F);
+alias jge = writeJcc!("jge", 0x0F, 0x8D);
+alias jl = writeJcc!("jl", 0x0F, 0x8C);
+alias jle = writeJcc!("jle", 0x0F, 0x8E);
+alias jna = writeJcc!("jna", 0x0F, 0x86);
+alias jnae = writeJcc!("jnae", 0x0F, 0x82);
+alias jnb = writeJcc!("jnb", 0x0F, 0x83);
+alias jnbe = writeJcc!("jnbe", 0x0F, 0x87);
+alias jnc = writeJcc!("jnc", 0x0F, 0x83);
+alias jne = writeJcc!("jne", 0x0F, 0x85);
+alias jng = writeJcc!("jng", 0x0F, 0x8E);
+alias jnge = writeJcc!("jnge", 0x0F, 0x8C);
+alias jnl = writeJcc!("jnl", 0x0F, 0x8D);
+alias jnle = writeJcc!("jnle", 0x0F, 0x8F);
+alias jno = writeJcc!("jno", 0x0F, 0x81);
+alias jnp = writeJcc!("jnp", 0x0F, 0x8b);
+alias jns = writeJcc!("jns", 0x0F, 0x89);
+alias jnz = writeJcc!("jnz", 0x0F, 0x85);
+alias jo = writeJcc!("jo", 0x0F, 0x80);
+alias jp = writeJcc!("jp", 0x0F, 0x8A);
+alias jpe = writeJcc!("jpe", 0x0F, 0x8A);
+alias jpo = writeJcc!("jpo", 0x0F, 0x8B);
+alias js = writeJcc!("js", 0x0F, 0x88);
+alias jz = writeJcc!("jz", 0x0F, 0x84);
 
 /// Opcode for direct jump with relative 8-bit offset
 const ubyte JMP_REL8_OPCODE = 0xEB;
@@ -1377,7 +1377,7 @@ const ubyte JMP_REL32_OPCODE = 0xE9;
 const ubyte[] JE_REL32_OPCODE = [0x0F, 0x84];
 
 /// jmp - Direct relative jump to label
-alias writeJcc!("jmp", JMP_REL32_OPCODE) jmp;
+alias jmp = writeJcc!("jmp", JMP_REL32_OPCODE);
 
 /// jmp - Indirect jump near to an R/M operand
 void jmp(CodeBlock cb, X86Opnd opnd)
@@ -1622,28 +1622,28 @@ void movzx(CodeBlock cb, X86Opnd dst, X86Opnd src)
 }
 
 // mul - Unsigned integer multiply
-alias writeRMUnary!(
+alias mul = writeRMUnary!(
     "mul", 
     0xF6, // opMemReg8 
     0xF7, // opMemRegPref
     0x04  // opExt
-) mul;
+);
 
 // mulsd - Multiply scalar double
-alias writeXMM64!(
+alias mulsd = writeXMM64!(
     "mulsd",
     0xF2, // prefix
     0x0F, // opRegMem0
     0x59  // opRegMem1
-) mulsd;
+);
 
 // neg - Integer negation (multiplication by -1)
-alias writeRMUnary!(
+alias neg = writeRMUnary!(
     "neg",
     0xF6, // opMemReg8 
     0xF7, // opMemRegPref
     0x03  // opExt
-) neg;
+);
 
 /// nop - Noop, one or multiple bytes long
 void nop(CodeBlock cb, size_t length = 1)
@@ -1711,15 +1711,15 @@ void nop(CodeBlock cb, size_t length = 1)
 }
 
 // not - Bitwise NOT
-alias writeRMUnary!(
+alias not = writeRMUnary!(
     "not",
     0xF6, // opMemReg8 
     0xF7, // opMemRegPref
     0x02  // opExt
-) not;
+);
 
 /// or - Bitwise OR
-alias writeRMMulti!(
+alias or = writeRMMulti!(
     "or",
     0x08, // opMemReg8
     0x09, // opMemRegPref
@@ -1729,7 +1729,7 @@ alias writeRMMulti!(
     0x83, // opMemImmSml
     0x81, // opMemImmLrg
     0x01  // opExtImm
-) or;
+);
 
 /// push - Push a register on the stack
 void push(CodeBlock cb, immutable X86Reg reg)
@@ -1772,12 +1772,12 @@ void popfq(CodeBlock cb)
 }
 
 // pxor - Logical Exclusive OR of XMM registers
-alias writeXMM64!(
+alias pxor = writeXMM64!(
     "pxor",
     0x66, // prefix
     0x0F, // opRegMem0
     0xEF  // opRegMem1
-) pxor;
+);
 
 /// ret - Return from call, popping only the return address
 void ret(CodeBlock cb)
@@ -1838,51 +1838,51 @@ void writeShift(
 }
 
 /// sal - Shift arithmetic left
-alias writeShift!(
+alias sal = writeShift!(
     "sal",
     0xD1, // opMemOnePref,
     0xD3, // opMemClPref,
     0xC1, // opMemImmPref,
     0x04
-) sal;
+);
 
 /// shl - Shift logical left
-alias writeShift!(
+alias shl = writeShift!(
     "shl",
     0xD1, // opMemOnePref,
     0xD3, // opMemClPref,
     0xC1, // opMemImmPref,
     0x04
-) shl;
+);
 
 /// sar - Shift arithmetic right (signed)
-alias writeShift!(
+alias sar = writeShift!(
     "sar",
     0xD1, // opMemOnePref,
     0xD3, // opMemClPref,
     0xC1, // opMemImmPref,
     0x07
-) sar;
+);
 
 /// shr - Shift logical right (unsigned)
-alias writeShift!(
+alias shr = writeShift!(
     "shr", 
     0xD1, // opMemOnePref,
     0xD3, // opMemClPref,
     0xC1, // opMemImmPref,
     0x05
-) shr;
+);
 
 // sqrtsd - Square root of scalar double (SSE2)
-alias writeXMM64!(
+alias sqrtsd = writeXMM64!(
     "sqrtsd",
     0xF2, // prefix
     0x0F, // opRegMem0
     0x51  // opRegMem1
-) sqrtsd;
+);
 
 /// sub - Integer subtraction
-alias writeRMMulti!(
+alias sub = writeRMMulti!(
     "sub",
     0x28, // opMemReg8
     0x29, // opMemRegPref
@@ -1892,7 +1892,7 @@ alias writeRMMulti!(
     0x83, // opMemImmSml
     0x81, // opMemImmLrg
     0x05  // opExtImm
-) sub;
+);
 
 /// sub - Subtract with register and immediate operand
 void sub(CodeBlock as, X86Reg dst, int64_t imm)
@@ -1904,23 +1904,23 @@ void sub(CodeBlock as, X86Reg dst, int64_t imm)
 }
 
 // subsd - Subtract scalar double
-alias writeXMM64!(
+alias subsd = writeXMM64!(
     "subsd",
     0xF2, // prefix
     0x0F, // opRegMem0
     0x5C  // opRegMem1
-) subsd;
+);
 
 // ucomisd - Unordered compare scalar double
-alias writeXMM64!(
+alias ucomisd = writeXMM64!(
     "ucomisd",
     0x66, // prefix
     0x0F, // opRegMem0
     0x2E  // opRegMem1
-) ucomisd;
+);
 
 /// xor - Exclusive bitwise OR
-alias writeRMMulti!(
+alias xor = writeRMMulti!(
     "xor",
     0x30, // opMemReg8
     0x31, // opMemRegPref
@@ -1930,13 +1930,13 @@ alias writeRMMulti!(
     0x83, // opMemImmSml
     0x81, // opMemImmLrg
     0x06  // opExtImm
-) xor;
+);
 
 // xorps - Exclusive bitwise OR for single-precision floats
-alias writeXMM64!(
+alias xorps = writeXMM64!(
     "xorps",
     0xFF, // prefix
     0x0F, // opRegMem0
     0x57  // opRegMem1
-) xorps;
+);
 

@@ -61,16 +61,16 @@ import jit.moves;
 import jit.ops;
 
 /// R15: VM object pointer (C callee-save) 
-alias R15 vmReg;
+alias vmReg = R15;
 
 /// R14: word stack pointer (C callee-save)
-alias R14 wspReg;
+alias wspReg = R14;
 
 /// R13: type stack pointer (C callee-save)
-alias R13 tspReg;
+alias tspReg = R13;
 
 // RSP: C stack pointer (used for C calls only)
-alias RSP cspReg;
+alias cspReg = RSP;
 
 /// C argument registers
 immutable X86Reg[] cargRegs = [RDI, RSI, RDX, RCX, R8, R9];
@@ -79,7 +79,7 @@ immutable X86Reg[] cargRegs = [RDI, RSI, RDX, RCX, R8, R9];
 immutable X86Reg[] cfpArgRegs = [XMM0, XMM1, XMM2, XMM3, XMM4, XMM5, XMM6, XMM7];
 
 /// C return value register
-alias RAX cretReg;
+alias cretReg = RAX;
 
 /// Scratch registers, these do not conflict with the C arguments
 immutable X86Reg[] scrRegs = [RAX, RBX, RBP];
@@ -88,10 +88,10 @@ immutable X86Reg[] scrRegs = [RAX, RBX, RBP];
 immutable X86Reg[] allocRegs = [RDI, RSI, RCX, RDX, R8, R9, R10, R11, R12];
 
 /// Return word register
-alias RCX retWordReg;
+alias retWordReg = RCX;
 
 /// Return type tag register
-alias DL retTagReg;
+alias retTagReg = DL;
 
 /// Minimum heap space required to compile a block (256KB)
 const size_t JIT_MIN_BLOCK_SPACE = 1 << 18; 
@@ -833,7 +833,7 @@ class CodeGenState
     }
 
     /// Spill test function
-    alias bool delegate(LiveInfo liveInfo, IRDstValue value) SpillTestFn;
+    alias SpillTestFn = bool delegate(LiveInfo liveInfo, IRDstValue value);
 
     /**
     Spill a set of values to the stack
@@ -1598,10 +1598,10 @@ class ExitCode : CodeFragment
 }
 
 /// Branch edge prelude code generation delegate
-alias void delegate(
+alias PrelGenFn = void delegate(
     CodeBlock as,
     VM vm
-) PrelGenFn;
+);
 
 /**
 Branch edge transition code
@@ -1641,13 +1641,13 @@ enum BranchShape
 }
 
 /// Branch code generation delegate
-alias void delegate(
+alias BranchGenFn = void delegate(
     CodeBlock as,
     VM vm,
     CodeFragment target0,
     CodeFragment target1,
     BranchShape shape
-) BranchGenFn;
+);
 
 /**
 Basic block version
@@ -2193,19 +2193,19 @@ void genBranchMoves(
 }
 
 /// Return address entry
-alias Tuple!(
+alias RetEntry = Tuple!(
     IRInstr, "callInstr",
     CodeFragment, "retCode",
     CodeFragment, "excCode"
-) RetEntry;
+);
 
 /// Fragment reference tuple
-alias Tuple!(
+alias FragmentRef = Tuple!(
     size_t, "pos",
     size_t, "size",
     CodeFragment, "frag",
     size_t, "targetIdx"
-) FragmentRef;
+);
 
 /**
 Add a fragment reference to the reference list

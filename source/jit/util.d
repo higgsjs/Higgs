@@ -73,37 +73,37 @@ void writeJcc32Ref(string mnem, opcode...)(
 }
 
 /// 32-bit relative jumps with fragment references
-alias writeJcc32Ref!("ja"  , 0x0F, 0x87) ja32Ref;
-alias writeJcc32Ref!("jae" , 0x0F, 0x83) jae32Ref;
-alias writeJcc32Ref!("jb"  , 0x0F, 0x82) jb32Ref;
-alias writeJcc32Ref!("jbe" , 0x0F, 0x86) jbe32Ref;
-alias writeJcc32Ref!("jc"  , 0x0F, 0x82) jc32Ref;
-alias writeJcc32Ref!("je"  , 0x0F, 0x84) je32Ref;
-alias writeJcc32Ref!("jg"  , 0x0F, 0x8F) jg32Ref;
-alias writeJcc32Ref!("jge" , 0x0F, 0x8D) jge32Ref;
-alias writeJcc32Ref!("jl"  , 0x0F, 0x8C) jl32Ref;
-alias writeJcc32Ref!("jle" , 0x0F, 0x8E) jle32Ref;
-alias writeJcc32Ref!("jna" , 0x0F, 0x86) jna32Ref;
-alias writeJcc32Ref!("jnae", 0x0F, 0x82) jnae32Ref;
-alias writeJcc32Ref!("jnb" , 0x0F, 0x83) jnb32Ref;
-alias writeJcc32Ref!("jnbe", 0x0F, 0x87) jnbe32Ref;
-alias writeJcc32Ref!("jnc" , 0x0F, 0x83) jnc32Ref;
-alias writeJcc32Ref!("jne" , 0x0F, 0x85) jne32Ref;
-alias writeJcc32Ref!("jng" , 0x0F, 0x8E) jng32Ref;
-alias writeJcc32Ref!("jnge", 0x0F, 0x8C) jnge32Ref;
-alias writeJcc32Ref!("jnl" , 0x0F, 0x8D) jnl32Ref;
-alias writeJcc32Ref!("jnle", 0x0F, 0x8F) jnle32Ref;
-alias writeJcc32Ref!("jno" , 0x0F, 0x81) jno32Ref;
-alias writeJcc32Ref!("jnp" , 0x0F, 0x8b) jnp32Ref;
-alias writeJcc32Ref!("jns" , 0x0F, 0x89) jns32Ref;
-alias writeJcc32Ref!("jnz" , 0x0F, 0x85) jnz32Ref;
-alias writeJcc32Ref!("jo"  , 0x0F, 0x80) jo32Ref;
-alias writeJcc32Ref!("jp"  , 0x0F, 0x8A) jp32Ref;
-alias writeJcc32Ref!("jpe" , 0x0F, 0x8A) jpe32Ref;
-alias writeJcc32Ref!("jpo" , 0x0F, 0x8B) jpo32Ref;
-alias writeJcc32Ref!("js"  , 0x0F, 0x88) js32Ref;
-alias writeJcc32Ref!("jz"  , 0x0F, 0x84) jz32Ref;
-alias writeJcc32Ref!("jmp" , 0xE9) jmp32Ref;
+alias ja32Ref = writeJcc32Ref!("ja", 0x0F, 0x87);
+alias jae32Ref = writeJcc32Ref!("jae", 0x0F, 0x83);
+alias jb32Ref = writeJcc32Ref!("jb", 0x0F, 0x82);
+alias jbe32Ref = writeJcc32Ref!("jbe", 0x0F, 0x86);
+alias jc32Ref = writeJcc32Ref!("jc", 0x0F, 0x82);
+alias je32Ref = writeJcc32Ref!("je", 0x0F, 0x84);
+alias jg32Ref = writeJcc32Ref!("jg", 0x0F, 0x8F);
+alias jge32Ref = writeJcc32Ref!("jge", 0x0F, 0x8D);
+alias jl32Ref = writeJcc32Ref!("jl", 0x0F, 0x8C);
+alias jle32Ref = writeJcc32Ref!("jle", 0x0F, 0x8E);
+alias jna32Ref = writeJcc32Ref!("jna", 0x0F, 0x86);
+alias jnae32Ref = writeJcc32Ref!("jnae", 0x0F, 0x82);
+alias jnb32Ref = writeJcc32Ref!("jnb", 0x0F, 0x83);
+alias jnbe32Ref = writeJcc32Ref!("jnbe", 0x0F, 0x87);
+alias jnc32Ref = writeJcc32Ref!("jnc", 0x0F, 0x83);
+alias jne32Ref = writeJcc32Ref!("jne", 0x0F, 0x85);
+alias jng32Ref = writeJcc32Ref!("jng", 0x0F, 0x8E);
+alias jnge32Ref = writeJcc32Ref!("jnge", 0x0F, 0x8C);
+alias jnl32Ref = writeJcc32Ref!("jnl", 0x0F, 0x8D);
+alias jnle32Ref = writeJcc32Ref!("jnle", 0x0F, 0x8F);
+alias jno32Ref = writeJcc32Ref!("jno", 0x0F, 0x81);
+alias jnp32Ref = writeJcc32Ref!("jnp", 0x0F, 0x8b);
+alias jns32Ref = writeJcc32Ref!("jns", 0x0F, 0x89);
+alias jnz32Ref = writeJcc32Ref!("jnz", 0x0F, 0x85);
+alias jo32Ref = writeJcc32Ref!("jo", 0x0F, 0x80);
+alias jp32Ref = writeJcc32Ref!("jp", 0x0F, 0x8A);
+alias jpe32Ref = writeJcc32Ref!("jpe", 0x0F, 0x8A);
+alias jpo32Ref = writeJcc32Ref!("jpo", 0x0F, 0x8B);
+alias js32Ref = writeJcc32Ref!("js", 0x0F, 0x88);
+alias jz32Ref = writeJcc32Ref!("jz", 0x0F, 0x84);
+alias jmp32Ref = writeJcc32Ref!("jmp", 0xE9);
 
 /**
 Move an absolute reference to a fragment's address into a register

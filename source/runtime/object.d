@@ -80,7 +80,7 @@ const uint32_t ARRLEN_SLOT_IDX = 2;
 const size_t ARRLEN_SLOT_OFS = clos_ofs_word(null, ARRLEN_SLOT_IDX);
 
 /// Property attribute type
-alias uint8_t PropAttr;
+alias PropAttr = uint8_t;
 
 /// Property attribute flag bit definitions
 const PropAttr ATTR_CONFIGURABLE    = 1 << 0;

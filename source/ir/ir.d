@@ -62,10 +62,10 @@ import jit.jit;
 const wstring RT_PREFIX = "$rt_";
 
 /// Stack variable index type
-alias int32 StackIdx;
+alias StackIdx = int32;
 
 /// Link table index type
-alias uint32 LinkIdx;
+alias LinkIdx = uint32;
 
 /// Null local constant
 immutable StackIdx NULL_STACK = StackIdx.max;
@@ -592,7 +592,7 @@ class BranchEdge : IdObject
     IRBlock target;
 
     /// Mapping of incoming phi values (block arguments)
-    Use args[];
+    Use[] args;
 
     this(IRInstr branch, IRBlock target)
     {
