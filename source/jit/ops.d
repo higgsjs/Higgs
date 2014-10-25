@@ -2938,14 +2938,8 @@ void gen_get_str(
         return str;
     }
 
-    // Spill the values live before the instruction
-    st.spillValues(
-        as,
-        delegate bool(LiveInfo liveInfo, IRDstValue value)
-        {
-            return liveInfo.liveBefore(value, instr);
-        }
-    );
+    // Spill the values live before this instruction
+    st.spillLiveBefore(as, instr);
 
     // Get the string pointer
     auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, true, false);
@@ -2965,7 +2959,7 @@ void gen_get_str(
     as.loadJITRegs();
 
     // Store the output value into the output operand
-    as.mov(outOpnd, X86Opnd(RAX));
+    as.mov(outOpnd, cretReg.opnd);
 
     // The output is a reference pointer
     st.setOutTag(as, instr, Tag.STRING);

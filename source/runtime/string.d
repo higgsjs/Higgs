@@ -58,7 +58,7 @@ wstring extractWStr(refptr ptr)
 {
     assert (
         obj_get_header(ptr) == LAYOUT_STR,
-        "invalid string object"
+        "invalid string object in extractWStr, incorrect header"
     );
 
     auto len = str_get_len(ptr);

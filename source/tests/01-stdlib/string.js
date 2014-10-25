@@ -216,14 +216,13 @@ function test_slice()
 
 function test_substring()
 {
-    if ('foo'.substring(0) !== 'foo')
-        return 1;
-    if ('foo'.substring(1) !== 'oo')
-        return 2;
-    if ('foobar'.substring(1,4) !== 'oob')
-        return 3;
+    assert ('foo'.substring(0) === 'foo');
 
-    return 0;
+    assert ('foo'.substring(1) === 'oo');
+
+    assert ('foobar'.substring(1,4) === 'oob');
+
+    assert ('foobar'.substring(-1,1.6) === 'f');
 }
 
 function test_substr()
@@ -426,9 +425,7 @@ function test()
     if (r != 0)
         return 1200 + r;
 
-    var r = test_substring();
-    if (r != 0)
-        return 1300 + r;
+    test_substring();
 
     var r = test_substr();
     if (r != 0)

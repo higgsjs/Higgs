@@ -150,10 +150,6 @@ TODO: look at V8 src wrt IR, phi nodes
   - Only try to predict return type when fairly sure to avoid mispredicts
   - Otherwise only predict that no shapes will be changed
 
-FIXME: gc bug in v8/regexp
-- next pointer invalid during GC
-- Ask pag for help if needed
-
 TODO: look into ropes
 - do some online reading first ***
 - left, right, length
@@ -165,6 +161,16 @@ TODO: try a different synth system, maybe a bank of sine waves? Experiment!
 - Experiment just by using random gen, no turing machine for now
 - Multiple triangle waves and envelopes
 
+TODO: try using consonance to build random sequences
+- getNextNote function
+
+TODO: try AR envelope with exp release
+
+FIXME: gc bug in v8/regexp
+./higgs benchmarks/v8bench/base.js benchmarks/v8bench/regexp.js benchmarks/v8bench/drv-regexp.js
+- entering gcCollect, then segfault
+- String data gets written over one of the source strings, over its next pointer
+- Seems the issue is with FP indexes making it into the substring function
 
 
 
@@ -172,10 +178,10 @@ TODO: try a different synth system, maybe a bank of sine waves? Experiment!
 
 
 
+[DONE] TODO: add regression test
 
-
-
-
+[DONE] TODO: substring
+- use $ir_f64_to_i32() to truncate the numbers
 
 [DONE] FIXME: pong example segfaults!
 - using wrong IIR instruction
