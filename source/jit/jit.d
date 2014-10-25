@@ -2747,7 +2747,7 @@ extern (C) CodePtr compileEntry(EntryStub stub)
     catch (Error err)
     {
         assert (
-            false, 
+            false,
             "failed to generate IR for: \"" ~ fun.getName ~ "\"\n" ~
             err.toString
         );

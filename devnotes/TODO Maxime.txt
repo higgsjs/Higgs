@@ -160,9 +160,8 @@ TODO: look into ropes
 - when concat'ed, set right ptr to null, left ptr to new string
   - need to maintain a level of indirection until GC
 
-FIXME: pong example segfaults!
-
 TODO: try a different synth system, maybe a bank of sine waves? Experiment!
+- test-synth.js
 - Experiment just by using random gen, no turing machine for now
 - Multiple triangle waves and envelopes
 
@@ -175,6 +174,11 @@ TODO: try a different synth system, maybe a bank of sine waves? Experiment!
 
 
 
+
+
+
+[DONE] FIXME: pong example segfaults!
+- using wrong IIR instruction
 
 [DONE] FIXME: many allocs in turing synth? do we realloc arrays for each new element?
 - setting the length does

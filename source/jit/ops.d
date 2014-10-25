@@ -1850,12 +1850,22 @@ void gen_call(
     {
         as.incStatCnt(&stats.numCallFast, scrRegs[0]);
 
-        //writeln("compiling");
-
         // If the function is not yet compiled, compile it now
         if (fun.entryBlock is null)
         {
-            astToIR(fun.vm, fun.ast, fun);
+            try
+            {
+                astToIR(fun.vm, fun.ast, fun);
+            }
+
+            catch (Error err)
+            {
+                assert (
+                    false,
+                    "failed to generate IR for: \"" ~ fun.getName ~ "\"\n" ~
+                    err.toString
+                );
+            }
         }
 
         // Copy the function arguments in reverse order
