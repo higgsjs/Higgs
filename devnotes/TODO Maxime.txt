@@ -135,6 +135,7 @@ TODO: look at V8 src wrt IR, phi nodes
 - Fixed indexed array element called as method bug
 - Fixed regexp parsing bug
 - Fixed bug in object init code
+- Fixed substring bug, fp indices unhandled
 - optimized host property reads (uncaptured shapes)
 - added add of add peephole pattern
 - benchmark-vs-v8 script
@@ -156,27 +157,37 @@ TODO: look into ropes
 - when concat'ed, set right ptr to null, left ptr to new string
   - need to maintain a level of indirection until GC
 
-TODO: try a different synth system, maybe a bank of sine waves? Experiment!
-- test-synth.js
-- Experiment just by using random gen, no turing machine for now
-- Multiple triangle waves and envelopes
+FIXME: infinite loop in regexp?
+s2 = 'QBZPbageby_cynprubyqre'; re2 = /^\s*|\s*$/g; s2.replace(re2, '');
 
-TODO: try using consonance to build random sequences
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: graph sound waves
+- plot single points
+
+[DONE] TODO: try using consonance to build random sequences
 - getNextNote function
 
-TODO: try AR envelope with exp release
+[DONE] TODO: try AR envelope with exp release
 
-FIXME: gc bug in v8/regexp
+[DONE] FIXME: gc bug in v8/regexp
 ./higgs benchmarks/v8bench/base.js benchmarks/v8bench/regexp.js benchmarks/v8bench/drv-regexp.js
 - entering gcCollect, then segfault
 - String data gets written over one of the source strings, over its next pointer
 - Seems the issue is with FP indexes making it into the substring function
-
-
-
-
-
-
 
 [DONE] TODO: add regression test
 
