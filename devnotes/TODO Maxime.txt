@@ -24,12 +24,6 @@ List of possible contributions:
 
 ------------------------------------------------------------------------------
 
-FIXME: v8bench/regexp segfaults
-
-FIXME: date-format-tofte
-- keeps using more and more memory
-- some kind of memory leak issue?
-
 TODO: make $ runtime/stdlib variables read-only, non-enumerable, non-configurable
 
 TODO: const globals
@@ -61,12 +55,6 @@ maintaining 50% of free space turned out to be the sweet spot. Whenever less tha
 50% of free space are available after a collection, the heap grows.
 => grow on next GC
 
-TODO: try embedded arg list for IR instrs?
-- What is the object we allocate most of? stats?
-At EA, in C++, we have exactly this type in our standard template library as
-eastl::fixed_vector<T>. It's definitely kind of annoying to implement, but
-extremely useful once you have it for exactly this kind of use case.
-
 TODO: liveness analysis flipped...?
 - TODO: start by implementing system to measure total liveness analysis time
   - test on 3d-raytrace, other big benchmarks which don't GC, find slowest
@@ -82,8 +70,8 @@ TODO: liveness analysis flipped...?
   - For most values, small embedded list will work
 - Values that are never live don't even have a live set
 
-TODO: optimize host get_prop
-- doing shape lookup twice
+FIXME: infinite loop in regexp?
+s2 = 'QBZPbageby_cynprubyqre'; re2 = /^\s*|\s*$/g; s2.replace(re2, '');
 
 ------------------------------------------------------------------------------
 
@@ -107,8 +95,6 @@ TODO: blog post, Higgs' Fancy New Object System => get started
 
 TODO: stub branches, pre-reserve space, put block idx in there
 - should ideally jump ahead and not backwards
-- don't alloc objects for each stub
-  - or maybe have an array of stubs, flat
 - could use this for function entry stubs too
   - need to become specialized for interprocedural BBV
 TODO: stub space, no more generic stubs
@@ -120,15 +106,23 @@ TODO: stub space, no more generic stubs
 TODO: blog post, the lazy compiler
 - log current ideas in writing
 
-TODO: push to master
-TODO: phi nodes, store in inline array?
-- Issue: no more pointers to phi nodes?
-TODO: push to master
-TODO: attempt inline array for IRInstr args
-- measure compilation time before
-TODO: look at V8 src wrt IR, phi nodes
-- How do they represent/alloc this efficiently?
-- No pointers?
+class AstNode: public ZoneObject
+class InstructionOperand : public ZoneObject
+typedef ZoneVector<InstructionOperand*> InstructionOperandVector;
+// The Zone supports very fast allocation of small chunks of
+// memory. The chunks cannot be deallocated individually, but instead
+// the Zone supports deallocating all chunks in one fast
+// operation. The Zone is used to hold temporary data structures like
+// the abstract syntax tree, which is deallocated after compilation.
+std.conv:
+T emplace(T, Args...)(void[] chunk, auto ref Args args) if (is(T == class));
+// AST nodes are allocated in a separate zone, which allows faster
+// allocation and constant-time deallocation of the entire syntax
+// tree.
+- Free list approach: fast reallocation, but still need to allocate many
+  objects. D GC will still prove extremely slow.
+- Seems we really should allocate our own large memory blocks
+  - Must call addRange on the memory range
 
 2014-10-2X Meeting:
 - Submitted rebuttal
@@ -139,6 +133,8 @@ TODO: look at V8 src wrt IR, phi nodes
 - optimized host property reads (uncaptured shapes)
 - added add of add peephole pattern
 - benchmark-vs-v8 script
+- Looked into V8 allocation memory for AST, IR
+  - "zones", bump allocation, freed all at once
 - Tried forcing capture of more functions to reduce "slow calls"
   - Not much difference
   - Slow calls result from unorthodox calls or argument count mismatches
@@ -151,14 +147,21 @@ TODO: look at V8 src wrt IR, phi nodes
   - Only try to predict return type when fairly sure to avoid mispredicts
   - Otherwise only predict that no shapes will be changed
 
+TODO: try to implement inline array for instr args, phi args
+
 TODO: look into ropes
 - do some online reading first ***
 - left, right, length
 - when concat'ed, set right ptr to null, left ptr to new string
   - need to maintain a level of indirection until GC
 
-FIXME: infinite loop in regexp?
-s2 = 'QBZPbageby_cynprubyqre'; re2 = /^\s*|\s*$/g; s2.replace(re2, '');
+TODO: are we creating tons of useless phi nodes and then pruning them?
+
+TODO: benchmark normal vs pool alloc for allocating a long linked list
+- Try 10M objects, how slow is this
+- Try it in C, too
+
+TODO: try snare/kick again with envelope
 
 
 
@@ -170,10 +173,14 @@ s2 = 'QBZPbageby_cynprubyqre'; re2 = /^\s*|\s*$/g; s2.replace(re2, '');
 
 
 
+[DONE] TODO: are we using assumeSafeAppend when adding to the block list???
+- no we aren't!
 
-
-
-
+[DONE] TODO: look at V8 src wrt IR, phi nodes
+- How do they represent/alloc this efficiently?
+- Probably want pools for instructions and phi nodes
+  - Manually free on function deallocation
+  - Avoid having the D GC ever getting its paws on it
 
 [DONE] TODO: graph sound waves
 - plot single points

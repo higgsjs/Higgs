@@ -1481,7 +1481,7 @@ abstract class CodeFragment
         endIdx = cast(uint32_t)as.getWritePos();
 
         // Add this fragment to the back of to the list of compiled fragments
-        vm.fragList ~= this;
+        vm.fragList.assumeSafeAppend ~= this;
 
         // Update the generated code size stat
         stats.genCodeSize += this.length();
