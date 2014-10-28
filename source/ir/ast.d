@@ -896,7 +896,7 @@ void stmtToIR(IRGenCtx ctx, ASTStmt stmt)
         );
 
         // Store a copy of the loop entry phi nodes
-        auto entryLocals = testCtx.localMap.dup;        
+        auto entryLocals = testCtx.localMap.dup;
 
         // Compile the loop test in the entry context
         auto testVal = exprToIR(testCtx, forStmt.testExpr);

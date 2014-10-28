@@ -86,22 +86,15 @@ TODO: think about interprocedural BBV
   - remark: for many runtime functions, we should know the return type,
     but it may also not be very relevant
 - Shape changed flag in context
+- Need function entry stubs, management of entry versions
+  - Do we need entry stubs?
+  - When going to specialized entry, could we compile immediately?
 
 TODO: blog post, Higgs' Fancy New Object System => get started
 - use knightmare image for featured image
 - quick sketching program, online?
 - post to r/compilers, r/higgsjs
 - Typed shapes + BBV a bit of a gamble
-
-TODO: stub branches, pre-reserve space, put block idx in there
-- should ideally jump ahead and not backwards
-- could use this for function entry stubs too
-  - need to become specialized for interprocedural BBV
-TODO: stub space, no more generic stubs
-- Do we need entry stubs? compile immediately?
-- Do we need stub objects?
-  - Entry stubs would need a pointer to the entry state
-- This should yield interesting performance improvements
 
 TODO: blog post, the lazy compiler
 - log current ideas in writing
@@ -123,9 +116,29 @@ T emplace(T, Args...)(void[] chunk, auto ref Args args) if (is(T == class));
   objects. D GC will still prove extremely slow.
 - Seems we really should allocate our own large memory blocks
   - Must call addRange on the memory range
+http://wiki.dlang.org/Memory_Management#Explicit_Class_Instance_Allocation
+- Use @nogc attribute
+
+TODO: try to implement inline array for instr args, phi args
+
+TODO: try to create a filter with multiple tap points
+- Apply to sound objects
+- Try synthesizing ping and adding filter, for example
+TODO: filter, stateful closure?
+- see vanalog
+
+TODO: look into ropes
+- do some online reading first ***
+- left, right, length
+- when concat'ed, set right ptr to null, left ptr to new string
+  - need to maintain a level of indirection until GC
 
 2014-10-2X Meeting:
 - Submitted rebuttal
+- Implemented out of line branch stubs to eliminate moves
+  - Slightly smaller code
+  - Not much performance impact, ~4% on fibonacci, up to 10%
+  - Register writes are very fast, no latency
 - Fixed indexed array element called as method bug
 - Fixed regexp parsing bug
 - Fixed bug in object init code
@@ -135,6 +148,7 @@ T emplace(T, Args...)(void[] chunk, auto ref Args args) if (is(T == class));
 - benchmark-vs-v8 script
 - Looked into V8 allocation memory for AST, IR
   - "zones", bump allocation, freed all at once
+  - Benchmarked D GC, allocating 10M linked list nodes takes 3 minutes...
 - Tried forcing capture of more functions to reduce "slow calls"
   - Not much difference
   - Slow calls result from unorthodox calls or argument count mismatches
@@ -147,31 +161,97 @@ T emplace(T, Args...)(void[] chunk, auto ref Args args) if (is(T == class));
   - Only try to predict return type when fairly sure to avoid mispredicts
   - Otherwise only predict that no shapes will be changed
 
-TODO: try to implement inline array for instr args, phi args
+TODO: v8-raytrace, why so slow? can we beat baseline?
+- look at trace
+- it's probably all the apply calls
 
-TODO: look into ropes
-- do some online reading first ***
-- left, right, length
-- when concat'ed, set right ptr to null, left ptr to new string
-  - need to maintain a level of indirection until GC
+TODO: richards, why slower than baseline?
+- look at trace
 
-TODO: are we creating tons of useless phi nodes and then pruning them?
+TODO: use global VM ptr in stats.d for code size, stub size?
+- remove code size computation
 
-TODO: benchmark normal vs pool alloc for allocating a long linked list
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: fix codegen space assertion to take stub start pos into account
+
+[DONE] TODO: add block idx to jump reference system
+- Problem: if we regenerate the branch, we do not know the block idx
+- Pass block pointer instead
+
+[DONE] TODO: generate the branch stubs during jump reference linkage
+
+[DONE] TODO: pre-reserve space in the exec heap for the stubs, e.g.: 1/16
+- should jump ahead and not backwards, so space is at end
+- Need a stubStartPos, stubWritePos
+
+[DONE] TODO: measure nocomptime stats, code size
+./benchmark.py --vm_cmd=./higgs --bench_list=benchmarks/nocomptime/benchmark-list.csv
+3bits-byte: 1.58789
+3d-cube: 8.94531
+3d-morph: 12.1797
+3d-raytrace: 62.75
+base64: 4405.0
+binary-trees: 1.80664
+bits-in-byte: 6.58594
+bitwise-and: 1.31934
+cordic: 6.94141
+crypto-aes: 12.5547
+crypto-md5: 25.4375
+crypto-sha1: 6.01562
+date-xparb: 41.875
+deltablue: 2.12109
+earley-boyer: 36.8125
+fannkuch: 10.0547
+fasta: 269.5
+navier-stokes: 23.8594
+nbody: 2.60352
+nsieve: 3.0957
+nsieve-bits: 4.79297
+partial-sums: 9.26562
+recursive: 1.96289
+regexp-dna: 6146.0
+richards: 1.87988
+spectral-norm: 2.50977
+splay: 43301.0
+tagcloud: 2749.0
+unpack-code: 732.5
+v8-crypto: 44.9531
+v8-raytrace: 29.4531
+valid-input: 21983.0
+./higgs --nostdlib --stats benchmarks/micro/loop-global-incr.js
+exec time (ms): 10318
+code size (bytes): 32614
+./higgs --nostdlib --stats benchmarks/micro/fib42.js
+exec time (ms): 5731
+code size (bytes): 33015
+
+[DONE] TODO: are we creating tons of useless phi nodes and then pruning them?
+- unfortunately yes, but seems hard to avoid
+
+[DONE] TODO: benchmark normal vs pool alloc for allocating a long linked list
 - Try 10M objects, how slow is this
 - Try it in C, too
+- Dog slow
 
-TODO: try snare/kick again with envelope
-
-
-
-
-
-
-
-
-
-
+[DONE] TODO: try snare/kick again with envelope
 
 [DONE] TODO: are we using assumeSafeAppend when adding to the block list???
 - no we aren't!
@@ -679,7 +759,7 @@ mov rsi, rax;                           4889C6
 - Should only need to generate code for default ordering
 
 [DONE] FIXME: breakage in asmString, probably due to ir_break
-./higgs --genasm --e "print(test.asmString())" benchmarks/micro/loop-global-incr.js 
+./higgs --genasm --e "print(test.asmString())" benchmarks/micro/loop-global-incr.js
 - Instructions with both branches going to same target
 
 [DONE] TODO: verify that second GC leaves alloc ptr at same offset
