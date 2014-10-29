@@ -241,6 +241,48 @@ Function.prototype.apply = function (thisArg, argArray)
 */
 Function.prototype.call = function (thisArg)
 {
+    // thisArg + 1 argument
+    if ($ir_eq_i32($argc, 2))
+    {
+        return $ir_call(
+            this,
+            thisArg,
+            $ir_get_arg(1)
+        );
+    }
+
+    // thisArg + 2 arguments
+    if ($ir_eq_i32($argc, 3))
+    {
+        return $ir_call(
+            this,
+            thisArg,
+            $ir_get_arg(1),
+            $ir_get_arg(2)
+        );
+    }
+
+    // thisArg + 3 arguments
+    if ($ir_eq_i32($argc, 4))
+    {
+        return $ir_call(
+            this,
+            thisArg,
+            $ir_get_arg(1),
+            $ir_get_arg(2),
+            $ir_get_arg(3)
+        );
+    }
+
+    // No arguments
+    if ($ir_eq_i32($argc, 1))
+    {
+        return $ir_call(
+            this,
+            thisArg
+        );
+    }
+
     var numArgs = $argc - 1;
 
     // Create an array for the arguments

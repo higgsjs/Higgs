@@ -75,10 +75,7 @@ s2 = 'QBZPbageby_cynprubyqre'; re2 = /^\s*|\s*$/g; s2.replace(re2, '');
 
 ------------------------------------------------------------------------------
 
-ECOOP - Dec 21st
-- Jan Vitek is on organizing committee
-
-VEE - Nov 25th?
+TODO: thread global obj as hidden fn argument?
 
 TODO: think about interprocedural BBV
 - Return info: try to predict what the function will return
@@ -89,12 +86,6 @@ TODO: think about interprocedural BBV
 - Need function entry stubs, management of entry versions
   - Do we need entry stubs?
   - When going to specialized entry, could we compile immediately?
-
-TODO: blog post, Higgs' Fancy New Object System => get started
-- use knightmare image for featured image
-- quick sketching program, online?
-- post to r/compilers, r/higgsjs
-- Typed shapes + BBV a bit of a gamble
 
 TODO: blog post, the lazy compiler
 - log current ideas in writing
@@ -116,14 +107,38 @@ T emplace(T, Args...)(void[] chunk, auto ref Args args) if (is(T == class));
   objects. D GC will still prove extremely slow.
 - Seems we really should allocate our own large memory blocks
   - Must call addRange on the memory range
+  - Free list: maybe use a vector, no need to inherit from PoolObject?
 http://wiki.dlang.org/Memory_Management#Explicit_Class_Instance_Allocation
 - Use @nogc attribute
 
+------------------------------------------------------------------------------
+
+ECOOP - Dec 21st
+- Jan Vitek is on organizing committee
+- Look into the conf more
+
+TODO: blog post, Higgs' Fancy New Object System => get started
+- use knightmare image for featured image
+- quick sketching program, online?
+- post to r/compilers, r/higgsjs
+- Typed shapes + BBV a bit of a gamble
+
 TODO: try to implement inline array for instr args, phi args
 
-TODO: try to create a filter with multiple tap points
-- Apply to sound objects
-- Try synthesizing ping and adding filter, for example
+TODO: richards, look at trace
+- Look at machine code
+
+2014-11-0X Meeting:
+- ECOOP Paper
+  - Do we want to have the type analysis?
+    - Not sure how to fit shapes into that, doesn't quite compare
+- Should probably focus paper on OO aspects
+  - What are shapes, how are ours different
+  - How our system is better than a simple inline cache
+  - Should we implement an inline cache?
+  - Resolving callee identities effectively, optimized calls
+  - No on-stack replacement needed
+
 TODO: filter, stateful closure?
 - see vanalog
 
@@ -132,19 +147,65 @@ TODO: look into ropes
 - left, right, length
 - when concat'ed, set right ptr to null, left ptr to new string
   - need to maintain a level of indirection until GC
+- in stdlib/string, make toString return a non-rope string
 
-2014-10-2X Meeting:
+TODO: look into octane benchmarks again
+- Add issues on github for non-working benchmarks if possible
+
+TODO: use global VM ptr in stats.d for code size, stub size?
+- remove code size computation
+
+
+TODO: look into jetstream benchmarks
+http://browserbench.org/JetStream/
+hash-map seems interesting
+
+FIXME: parse error: "benchmarks/jetstream/dry.c.js"@1752:11: invalid property name
+./higgs benchmarks/jetstream/dry.c.js
+- make this parse error more specific?
+  - prop name in object literal??
+- Add new parser regression test
+
+TODO: slow call stat, unknown callee
+- num call unknown
+- look at deltablue and richards
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: look at deltablue
+./higgs benchmarks/nocomptime/deltablue.js => 1.72ms
+- uses .call with 1, 2 or 3 args
+- try implementing small opt
+- after => 1.61
+- unseen benefit is less gc
+
+[DONE] 2014-10-28 Meeting:
 - Submitted rebuttal
 - Implemented out of line branch stubs to eliminate moves
   - Slightly smaller code
   - Not much performance impact, ~4% on fibonacci, up to 10%
   - Register writes are very fast, no latency
+- Optimized host property reads (uncaptured shapes)
+- Added add of add peephole pattern
+- Re-timed with and without shape spec, using nocomptime
+  - Mixed results, not all faster, but 21% faster on average using geo mean
+  - Could possibly try for an ECOOP paper, Dec 21, Jan Vitek is on committee
+  - Type analysis?
+  - Next step: ropes or interp BBV?
+    Marc says: go for ropes, otherwise will keep hindering us
 - Fixed indexed array element called as method bug
 - Fixed regexp parsing bug
 - Fixed bug in object init code
 - Fixed substring bug, fp indices unhandled
-- optimized host property reads (uncaptured shapes)
-- added add of add peephole pattern
 - benchmark-vs-v8 script
 - Looked into V8 allocation memory for AST, IR
   - "zones", bump allocation, freed all at once
@@ -161,34 +222,13 @@ TODO: look into ropes
   - Only try to predict return type when fairly sure to avoid mispredicts
   - Otherwise only predict that no shapes will be changed
 
-TODO: v8-raytrace, why so slow? can we beat baseline?
-- look at trace
-- it's probably all the apply calls
+[DONE] TODO: try with nospec
+./benchmark.py --vm_cmd="./higgs" --bench_list=benchmarks/nocomptime/benchmark-list.csv
+./benchmark.py --vm_cmd="./higgs --shape_notagspec --shape_nofptrspec" --bench_list=benchmarks/nocomptime/benchmark-list.csv
+- With nocomptime, mixed results, not all faster, but 21% faster on average using geo mean
 
-TODO: richards, why slower than baseline?
-- look at trace
-
-TODO: use global VM ptr in stats.d for code size, stub size?
-- remove code size computation
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+[DONE] TODO: apply microbenchmark with 1 arg to estimate time
+- can do about 5K apply calls in 1ms
 
 [DONE] TODO: fix codegen space assertion to take stub start pos into account
 
