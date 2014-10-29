@@ -87,6 +87,18 @@ TODO: think about interprocedural BBV
   - Do we need entry stubs?
   - When going to specialized entry, could we compile immediately?
 
+Return info propagation...
+The return provokes the compilation of the continuation stub
+The continuation stub is not compiled until this return happens
+When the first return point is compiled, establish a prediction for other returns
+Compiling other return points will either match or violate the prediction
+Continuation stubs can be compiled in function of this prediction
+For stubs that make no prediction, the mispredict return is a noop
+- Can separate return predictions by entry point versions ***
+TODO: verify proportion of calls modifying shapes
+- Can also do this through profiling, set some bit to zero on call
+TODO: profile return values, are they often monomorphic?
+
 TODO: blog post, the lazy compiler
 - log current ideas in writing
 
@@ -140,6 +152,7 @@ TODO: richards, look at trace
   - No on-stack replacement needed
 - Optimized .call syntax for few args, previously going through apply
 - Improved fast calls, now works with argument count mismatch
+  - unknown call percentage is % on average
 
 TODO: filter, stateful closure?
 - see vanalog
@@ -164,27 +177,28 @@ FIXME: parse error: "benchmarks/jetstream/dry.c.js"@1752:11: invalid property na
   - prop name in object literal??
 - Add new parser regression test
 
-Move on after this!
+FIXME: nsieve has 439 unknown calls? why? same for bitwise-and, must be from stdlib
+
+FIXME: base64 has more unknown calls than known calls
+
+FIXME: bits-in-byte has a ton of unknown calls, 90K
+
 TODO: do we lose fptrs on calls, because we really shouldn't, verify
 - Vast majority of get props are fast, meaning shape captured
 - But fair chunk of calls are unoptimized
 
-TODO: remove numCallUnknown?
 
-TODO: support for fast calls with args mismatch
+
+
+
+
+
+
+
+[DONE] TODO: support for fast calls with args mismatch
 - Separate loop for missing args?
 - compute numArgsPassed
 - compute frameSize, see VM call
-
-
-
-
-
-
-
-
-
-
 
 [DONE] FIXME: call to non-function no longer reports fn name
 - did we not test for this !?

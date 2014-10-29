@@ -1846,16 +1846,16 @@ void gen_call(
     // This may throw an exception if the callee is not a closure
     auto mayThrow = !closType.tagKnown || closType.tag !is Tag.CLOSURE;
 
-    // Get the function pointer if known
-    IRFunction fun = closType.fptrKnown? closType.fptr:null;
-
-    // Get the number of arguments passed
+    // Get the number of arguments supplied
     auto numArgs = cast(uint32_t)instr.numArgs - 2;
 
-    // If the callee function is known and the argument count matches
-    if (fun !is null && numArgs is fun.numParams)
+    // If the callee function is known
+    if (closType.fptrKnown)
     {
         as.incStatCnt(&stats.numCallFast, scrRegs[0]);
+
+        // Get the function pointer
+        IRFunction fun = closType.fptr;
 
         // If the function is not yet compiled, compile it now
         if (fun.entryBlock is null)
@@ -1875,11 +1875,23 @@ void gen_call(
             }
         }
 
-        // Copy the function arguments in reverse order
-        for (size_t i = 0; i < numArgs; ++i)
+        // Compute the number of missing arguments
+        auto numMissing = (fun.numParams > numArgs)? (fun.numParams - numArgs):0;
+
+        // Compute the actual number of extra arguments
+        auto numExtra = (numArgs > fun.numParams)? (numArgs - fun.numParams):0;
+
+        // Compute the number of arguments we actually need to pass
+        auto numPassed = numArgs + numMissing;
+
+        // Compute the number of locals in this frame
+        auto frameSize = fun.numLocals + numExtra;
+
+        // Copy the function arguments supplied
+        for (int32_t i = 0; i < numArgs; ++i)
         {
-            auto instrArgIdx = instr.numArgs - (1+i);
-            auto dstIdx = -(cast(int32_t)i + 1);
+            auto instrArgIdx = 2 + i;
+            auto dstIdx = -(numPassed - i);
 
             // Copy the argument word
             auto argOpnd = st.getWordOpnd(
@@ -1904,8 +1916,17 @@ void gen_call(
             as.setTag(dstIdx, tagOpnd);
         }
 
+        // Write undefined values for the missing arguments
+        for (int32_t i = 0; i < numMissing; ++i)
+        {
+            auto dstIdx = -(i + 1);
+
+            as.setWord(dstIdx, UNDEF.word.int8Val);
+            as.setTag(dstIdx, UNDEF.tag);
+        }
+
         // Write the argument count
-        as.setWord(-numArgs - 1, numArgs);
+        as.setWord(-numPassed - 1, numArgs);
 
         // Write the "this" argument
         if (fun.thisVal.hasUses)
@@ -1919,7 +1940,7 @@ void gen_call(
                 true,
                 false
             );
-            as.setWord(-numArgs - 2, thisReg);
+            as.setWord(-numPassed - 2, thisReg);
             auto tagOpnd = st.getTagOpnd(
                 as,
                 instr,
@@ -1927,7 +1948,7 @@ void gen_call(
                 scrRegs[1].opnd(8),
                 true
             );
-            as.setTag(-numArgs - 2, tagOpnd);
+            as.setTag(-numPassed - 2, tagOpnd);
         }
 
         // Write the closure argument
@@ -1942,24 +1963,18 @@ void gen_call(
                 false,
                 false
             );
-            as.setWord(-numArgs - 3, closReg);
+            as.setWord(-numPassed - 3, closReg);
         }
 
         // Spill the values that are live after the call
-        st.spillValues(
-            as,
-            delegate bool(LiveInfo liveInfo, IRDstValue value)
-            {
-                return liveInfo.liveAfter(value, instr);
-            }
-        );
+        st.spillLiveBefore(as, instr);
 
         // Clear the known shape information
         st.clearShapes();
 
         // Push space for the callee arguments and locals
-        as.sub(X86Opnd(tspReg), X86Opnd(fun.numLocals));
-        as.sub(X86Opnd(wspReg), X86Opnd(8 * fun.numLocals));
+        as.sub(X86Opnd(tspReg), X86Opnd(frameSize));
+        as.sub(X86Opnd(wspReg), X86Opnd(8 * frameSize));
 
         // Request an instance for the function entry block
         auto entryVer = getBlockVersion(
@@ -1988,15 +2003,11 @@ void gen_call(
                 as.movAbsRef(vm, scrRegs[0], block, target0, 0);
                 as.setWord(raSlot, scrRegs[0].opnd(64));
 
-                //as.printStr("jumping ****************");
-
                 // Jump to the function entry block
                 jmp32Ref(as, vm, block, entryVer, 0);
             },
             false
         );
-
-        //writeln("compiled");
 
         return;
     }

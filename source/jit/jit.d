@@ -891,6 +891,20 @@ class CodeGenState
     }
 
     /**
+    Spill the values live after a given instruction
+    */
+    void spillLiveAfter(CodeBlock as, IRInstr instr)
+    {
+        return spillValues(
+            as,
+            delegate bool(LiveInfo liveInfo, IRDstValue value)
+            {
+                return liveInfo.liveAfter(value, instr);
+            }
+        );
+    }
+
+    /**
     Spill live registers from the register save space
     */
     void spillSavedRegs(SpillTestFn spillTest)
@@ -974,7 +988,10 @@ class CodeGenState
         foreach (value, state; valMap)
         {
             if (state.type.shapeKnown)
+            {
+                assert (!state.type.fptrKnown);
                 valMap[value] = state.clearShape();
+            }
         }
     }
 

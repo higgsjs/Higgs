@@ -96,9 +96,6 @@ ulong numCallFast = 0;
 /// Number of unoptimized dynamic calls
 ulong numCallSlow = 0;
 
-/// Number of calls to unknown targets
-ulong numCallUnknown = 0;
-
 /// Number of calls performed using apply
 ulong numCallApply = 0;
 
@@ -262,7 +259,6 @@ static ~this()
 
         writefln("num call fast: %s", numCallFast);
         writefln("num call slow: %s", numCallSlow);
-        writefln("num call unknown: %s", numCallUnknown);
         writefln("num call apply: %s", numCallApply);
 
         alias PrimCallCnt = Tuple!(string, "name", ulong, "cnt");
