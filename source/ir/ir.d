@@ -1401,26 +1401,60 @@ string getCalleeName(IRInstr callInstr)
 {
     assert (callInstr.opcode.isCall);
 
-    // Get the instruction providing the closure being called
-    auto closInstr = cast(IRInstr)callInstr.getArg(0);
-    if (closInstr is null)
-        return null;
-
-    // If the callee is a method we're getting from some object
-    if (closInstr.opcode == &CALL_PRIM)
+    /// Recover the property name for a get instruction
+    string getPropName(IRInstr getInstr)
     {
-        auto primName = cast(IRString)closInstr.getArg(0);
-
-        // Call to get a global function
-        if (primName.str == "$rt_getGlobalInl"w)
+        // If this is a primitive call
+        if (getInstr.opcode == &CALL_PRIM)
         {
-            return to!string(closInstr.getArgStrCst(1));
+            auto primName = cast(IRString)getInstr.getArg(0);
+
+            if (primName.str == "$rt_getGlobalInl"w)
+                return to!string(getInstr.getArgStrCst(1));
+            if (primName.str == "$rt_getGlobal"w)
+                return to!string(getInstr.getArgStrCst(2));
+            if (primName.str == "$rt_getPropField"w)
+                return to!string(getInstr.getArgStrCst(2));
+            if (primName.str == "$rt_getProp"w)
+                return to!string(getInstr.getArgStrCst(2));
         }
 
-        // Call to get a property (method)
-        if (primName.str == "$rt_getPropField"w)
+        // If this is an object property read
+        if (getInstr.opcode == &OBJ_GET_PROP)
         {
-            return to!string(closInstr.getArgStrCst(2));
+            return to!string(getInstr.getArgStrCst(1));
+        }
+
+        // Callee name unrecoverable
+        return null;
+    }
+
+    // If this is a regular call instruction
+    if (callInstr.opcode is &CALL)
+    {
+        // Get the closure argument
+        auto closArg = callInstr.getArg(0);
+
+        // If the closure argument is a phi node
+        if (auto closPhi = cast(PhiNode)closArg)
+        {
+            // For each phi argument
+            for (size_t iIdx = 0; iIdx < closPhi.block.numIncoming; ++iIdx)
+            {
+                auto branch = closPhi.block.getIncoming(iIdx);
+                auto arg = branch.getPhiArg(closPhi);
+
+                if (auto instrArg = cast(IRInstr)arg)
+                {
+                    return getPropName(instrArg);
+                }
+            }
+        }
+
+        // If the closure argument is an instruction
+        if (auto closInstr = cast(IRInstr)closArg)
+        {
+            return getPropName(closInstr);
         }
     }
 

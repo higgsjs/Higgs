@@ -138,9 +138,18 @@ TODO: richards, look at trace
   - Should we implement an inline cache?
   - Resolving callee identities effectively, optimized calls
   - No on-stack replacement needed
+- Optimized .call syntax for few args, previously going through apply
+- Improved fast calls, now works with argument count mismatch
 
 TODO: filter, stateful closure?
 - see vanalog
+
+TODO: test downloaded jetstream benchmarks again
+http://browserbench.org/JetStream/
+hash-map seems interesting
+
+TODO: use global VM ptr in stats.d for code size, stub size?
+- remove code size computation
 
 TODO: look into ropes
 - do some online reading first ***
@@ -149,37 +158,45 @@ TODO: look into ropes
   - need to maintain a level of indirection until GC
 - in stdlib/string, make toString return a non-rope string
 
-TODO: look into octane benchmarks again
-- Add issues on github for non-working benchmarks if possible
-
-TODO: use global VM ptr in stats.d for code size, stub size?
-- remove code size computation
-
-
-TODO: look into jetstream benchmarks
-http://browserbench.org/JetStream/
-hash-map seems interesting
-
 FIXME: parse error: "benchmarks/jetstream/dry.c.js"@1752:11: invalid property name
 ./higgs benchmarks/jetstream/dry.c.js
 - make this parse error more specific?
   - prop name in object literal??
 - Add new parser regression test
 
-TODO: slow call stat, unknown callee
+Move on after this!
+TODO: do we lose fptrs on calls, because we really shouldn't, verify
+- Vast majority of get props are fast, meaning shape captured
+- But fair chunk of calls are unoptimized
+
+TODO: remove numCallUnknown?
+
+TODO: support for fast calls with args mismatch
+- Separate loop for missing args?
+- compute numArgsPassed
+- compute frameSize, see VM call
+
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: call to non-function no longer reports fn name
+- did we not test for this !?
+./higgs tests/02-regress/call-non-function.js
+- Primitive not inlined because inside of try block!
+  - Find the primitive call through a phi node...
+
+[DONE] TODO: slow call stat, unknown callee
 - num call unknown
 - look at deltablue and richards
-
-
-
-
-
-
-
-
-
-
-
+- in the case of deltablue, only half of slow calls are unknown
+- this is true in earley-boyer as well
 
 [DONE] TODO: look at deltablue
 ./higgs benchmarks/nocomptime/deltablue.js => 1.72ms

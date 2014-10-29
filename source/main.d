@@ -132,7 +132,7 @@ void main(string[] args)
 
         catch (RunError e)
         {
-            writeln("run-time error: ", e);
+            writeln(e);
             exit(-1);
         }
 
