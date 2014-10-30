@@ -1893,16 +1893,35 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
             // If the property is a constant string
             if (auto strProp = cast(StringExpr)indexExpr.index)
             {
+                auto propName = strProp.val;
+
                 // If the property does not start with a digit
-                if (strProp.val.length > 0 && !strProp.val[0].isDigit)
+                if (propName.length > 0 && !propName[0].isDigit)
                 {
-                    // Use a primitive specialized for object fields
-                    closVal = genRtCall(
-                        ctx,
-                        "getPropField",
-                        [thisVal, keyVal],
-                        expr.pos
-                    );
+                    // If this is a probable string method name
+                    if (propName == "charAt"     ||
+                        propName == "charCodeAt" ||
+                        propName == "substr"     ||
+                        propName == "substring")
+                    {
+                        // Use a primitive specialized for string methods
+                        closVal = genRtCall(
+                            ctx,
+                            "getStrMethod",
+                            [thisVal, keyVal],
+                            expr.pos
+                        );
+                    }
+                    else
+                    {
+                        // Use a primitive specialized for object fields
+                        closVal = genRtCall(
+                            ctx,
+                            "getPropField",
+                            [thisVal, keyVal],
+                            expr.pos
+                        );
+                    }
                 }
             }
             else

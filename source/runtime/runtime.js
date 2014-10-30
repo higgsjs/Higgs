@@ -2064,7 +2064,7 @@ function $rt_getProp(base, prop)
             return $rt_str_get_len(base);
 
         // Recurse on String.prototype
-        return $rt_getProp(String.prototype, prop);
+        return $rt_getProp($ir_get_str_proto(), prop);
     }
 
     // If the base is a number
@@ -2146,6 +2146,36 @@ function $rt_getPropField(base, propStr)
             {
                 return $undef;
             }
+        }
+    }
+
+    return $rt_getProp(base, propStr);
+}
+
+/**
+Specialized version of getProp for field accesses where
+the base is a string value and the key is a constant string
+*/
+function $rt_getStrMethod(base, propStr)
+{
+    // If the base is a simple object
+    if ($ir_is_string(base))
+    {
+        // Get the string prototype object
+        var obj = $ir_get_str_proto();
+
+        // Capture the object shape
+        var objShape = $ir_obj_read_shape(obj);
+        if ($ir_break());
+        if ($ir_capture_shape(obj, objShape))
+            if ($ir_capture_shape(obj, objShape))
+
+        // If the property value can be read directly
+        var propVal;
+        if (propVal = $ir_obj_get_prop(obj, propStr))
+        {
+            // Return the property value
+            return propVal;
         }
     }
 
@@ -2902,7 +2932,7 @@ function $rt_getPropEnum(obj)
                 else
                 {
                     // Move up the prototype chain
-                    curObj = String.prototype;
+                    curObj = $ir_get_str_proto();
                     curShape = $rt_valIsObj(curObj)? $rt_obj_get_shape(curObj):$nullptr;
                     curIdx = 0;
                     continue;

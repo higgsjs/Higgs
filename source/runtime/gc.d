@@ -301,6 +301,7 @@ void gcCollect(VM vm, size_t heapSize = 0)
     vm.objProto.word.ptrVal     = gcForward(vm, vm.objProto.word.ptrVal);
     vm.arrProto.word.ptrVal     = gcForward(vm, vm.arrProto.word.ptrVal);
     vm.funProto.word.ptrVal     = gcForward(vm, vm.funProto.word.ptrVal);
+    vm.strProto.word.ptrVal     = gcForward(vm, vm.strProto.word.ptrVal);
     vm.globalObj.word.ptrVal    = gcForward(vm, vm.globalObj.word.ptrVal);
 
     //writeln("visiting stack roots");

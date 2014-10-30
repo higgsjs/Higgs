@@ -87,7 +87,7 @@ TODO: think about interprocedural BBV
   - Do we need entry stubs?
   - When going to specialized entry, could we compile immediately?
 
-Return info propagation...
+Return info propagation:
 The return provokes the compilation of the continuation stub
 The continuation stub is not compiled until this return happens
 When the first return point is compiled, establish a prediction for other returns
@@ -98,6 +98,14 @@ For stubs that make no prediction, the mispredict return is a noop
 TODO: verify proportion of calls modifying shapes
 - Can also do this through profiling, set some bit to zero on call
 TODO: profile return values, are they often monomorphic?
+
+Global object threading:
+- Needs to be phi-like or a pseudo-argument so the input ctx can provide it
+  - get global obj instruction won't quite work
+- Pseudo-arg might work, but we don't want to count this in hidden args, do we?
+  - Would like to avoid copying this on the stack
+  - Could use special handling, it's a hidden arg but we don't write it?
+  - Or swap vmReg for a global obj reg?
 
 TODO: blog post, the lazy compiler
 - log current ideas in writing
@@ -150,12 +158,10 @@ TODO: richards, look at trace
   - Should we implement an inline cache?
   - Resolving callee identities effectively, optimized calls
   - No on-stack replacement needed
-- Optimized .call syntax for few args, previously going through apply
-- Improved fast calls, now works with argument count mismatch
-  - unknown call percentage is % on average
-
-TODO: filter, stateful closure?
-- see vanalog
+- Sidetracked, more small optimizations, addictive
+  - Optimized .call syntax for few args, previously going through apply
+  - Improved fast calls, now works with argument count mismatch
+  - Optimized string method lookups
 
 TODO: test downloaded jetstream benchmarks again
 http://browserbench.org/JetStream/
@@ -171,21 +177,15 @@ TODO: look into ropes
   - need to maintain a level of indirection until GC
 - in stdlib/string, make toString return a non-rope string
 
+TODO: take a break, filter, stateful closure?
+- see vanalog
+
 FIXME: parse error: "benchmarks/jetstream/dry.c.js"@1752:11: invalid property name
 ./higgs benchmarks/jetstream/dry.c.js
 - make this parse error more specific?
   - prop name in object literal??
 - Add new parser regression test
 
-FIXME: nsieve has 439 unknown calls? why? same for bitwise-and, must be from stdlib
-
-FIXME: base64 has more unknown calls than known calls
-
-FIXME: bits-in-byte has a ton of unknown calls, 90K
-
-TODO: do we lose fptrs on calls, because we really shouldn't, verify
-- Vast majority of get props are fast, meaning shape captured
-- But fair chunk of calls are unoptimized
 
 
 
@@ -194,6 +194,28 @@ TODO: do we lose fptrs on calls, because we really shouldn't, verify
 
 
 
+
+
+
+
+
+[DONE] TODO: optimize string prop access, they result in unknown calls
+- check if prop name exists on string prototype?
+  - no, use pre-established list
+- most unknown calls in base64
+- implement in method call logic, $rt_getStrMethod
+- before:
+    num call fast: 57724
+    num call slow: 9198
+- after
+    num call fast: 61907
+    num call slow: 6865
+  - base64 issue fixed
+  - code very slightly smaller
+
+[DONE] TODO: strProto in VM, get_str_proto instruction
+- need to change stdlib code too
+- grep for String.prototype
 
 [DONE] TODO: support for fast calls with args mismatch
 - Separate loop for missing args?

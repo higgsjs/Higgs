@@ -514,6 +514,9 @@ class VM
     /// Function prototype object
     ValuePair funProto;
 
+    /// String prototype object
+    ValuePair strProto;
+
     /// Global object reference
     ValuePair globalObj;
 
@@ -669,6 +672,12 @@ class VM
 
         // Allocate the array prototype object
         arrProto = newObj(
+            this,
+            objProto
+        );
+
+        // Allocate the string prototype object
+        strProto = newObj(
             this,
             objProto
         );

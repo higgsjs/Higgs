@@ -78,6 +78,9 @@ function String(value)
     }
 }
 
+// Set the string prototype object
+String.prototype = $ir_get_str_proto();
+
 //-----------------------------------------------------------------------------
 
 /**
@@ -794,6 +797,7 @@ function string_toUpperCase()
     for (var i = 0; i < a.length; i++)
     {
         var c = a[i];
+
         // FIXME: support full Unicode
         if (c > 255)
             error("Only ASCII characters are currently supported");
