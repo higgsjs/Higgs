@@ -182,8 +182,12 @@ hash-map seems interesting
 TODO: use global VM ptr in stats.d for code size, stub size?
 - remove code size computation
 TODO: move global VM pointer to runtime/vm, avoid needing to import main
+- maybe want a static VM.init? make ctor private
 
 TODO: blog post about ropes
+
+TODO: put 2nd rev of BBV paper on arxiv now, CC rev
+- copy files to external dir, remove refs to CC
 
 TODO: look into ropes
 - do some online reading first ***
@@ -192,18 +196,12 @@ TODO: look into ropes
   - need to maintain a level of indirection until GC
 - in stdlib/string, make toString return a non-rope string
 
-TODO: put 2nd rev of BBV paper on arxiv now, CC rev
-- copy files to external dir, remove refs to CC
-
-FIXME: parse error: "benchmarks/jetstream/dry.c.js"@1752:11: invalid property name
-./higgs benchmarks/jetstream/dry.c.js
-- make this parse error more specific?
-  - prop name in object literal??
-- Add new parser regression test
-
 TODO: blog post about wave output, screenshot, link to wav format
 - Higgs plenty fast enough!
+- ALSA support soon
+- keep it short
 
+TODO: try triangle wave + steep filter for kick
 TODO: take a break, filter, stateful closure?
 - see vanalog
 
@@ -217,7 +215,13 @@ TODO: take a break, filter, stateful closure?
 
 
 
+[DONE] TODO: add parser test for trailing comma
 
+[DONE] FIXME: parse error: "benchmarks/jetstream/dry.c.js"@1752:11: invalid property name
+./higgs benchmarks/jetstream/dry.c.js
+- make this parse error more specific?
+  - prop name in object literal??
+- Add new parser regression test
 
 [DONE] TODO: regress, gc-new-date
 

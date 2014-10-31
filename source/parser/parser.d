@@ -876,14 +876,14 @@ ASTExpr parseAtom(TokenStream input)
         StringExpr[] names = [];
         ASTExpr[] values = [];
 
+        // For each property
         for (;;)
         {
+            // If this is the end of the literal, stop
             if (input.matchSep("}"))
                 break;
 
-            if (values.length > 0 && input.matchSep(",") == false)
-                throw new ParseError("expected comma", input.getPos());
-
+            // Read a property name
             auto tok = input.read();
             StringExpr stringExpr = null;
             if (tok.type is Token.IDENT ||
@@ -896,7 +896,7 @@ ASTExpr parseAtom(TokenStream input)
                 stringExpr = new StringExpr(to!wstring(tok.intVal), tok.pos);
 
             if (!stringExpr)
-                throw new ParseError("invalid property name", tok.pos);
+                throw new ParseError("expected property name in object literal", tok.pos);
             names ~= [stringExpr];
 
             input.readSep(":");
@@ -904,6 +904,17 @@ ASTExpr parseAtom(TokenStream input)
             // Parse an expression with priority above the comma operator
             auto valueExpr = parseExpr(input, COMMA_PREC+1);
             values ~= [valueExpr];
+
+            // If there is no separating comma
+            if (!input.matchSep(","))
+            {
+                // If this is the end of the literal, stop
+                if (input.matchSep("}"))
+                    break;
+
+                // Comma expected before next property
+                throw new ParseError("expected comma in object literal", input.getPos());
+            }
         }
 
         return new ObjectExpr(names, values, pos);
