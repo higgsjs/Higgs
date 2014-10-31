@@ -107,6 +107,11 @@ Global object threading:
   - Could use special handling, it's a hidden arg but we don't write it?
   - Or swap vmReg for a global obj reg?
 
+Version explosion:
+- Probably won't have explosion, many of the types of input args already exposed
+- If problem, can have smarter versioning scheme
+  - Limit per-value polymorphism, refuse versions or return a compromise
+
 TODO: blog post, the lazy compiler
 - log current ideas in writing
 
@@ -136,6 +141,9 @@ http://wiki.dlang.org/Memory_Management#Explicit_Class_Instance_Allocation
 ECOOP - Dec 21st
 - Jan Vitek is on organizing committee
 - Look into the conf more
+- Highly polymorphic objects: only the object shapes flowing into that code matter
+"Can change people's perception of your proposal without changing your proposal,
+compare to something less favorable first"
 
 TODO: blog post, Higgs' Fancy New Object System => get started
 - use knightmare image for featured image
@@ -162,6 +170,10 @@ TODO: richards, look at trace
   - Optimized .call syntax for few args, previously going through apply
   - Improved fast calls, now works with argument count mismatch
   - Optimized string method lookups
+- If paper not in, typed shapes anyway?
+  - Would like a motivation break
+  - Submit intra BBV at Computing Frontier in Jan, submit 2 papers soon
+- HHVM and tracelets at OOPSLA
 
 TODO: test downloaded jetstream benchmarks again
 http://browserbench.org/JetStream/
@@ -169,6 +181,9 @@ hash-map seems interesting
 
 TODO: use global VM ptr in stats.d for code size, stub size?
 - remove code size computation
+TODO: move global VM pointer to runtime/vm, avoid needing to import main
+
+TODO: blog post about ropes
 
 TODO: look into ropes
 - do some online reading first ***
@@ -177,8 +192,8 @@ TODO: look into ropes
   - need to maintain a level of indirection until GC
 - in stdlib/string, make toString return a non-rope string
 
-TODO: take a break, filter, stateful closure?
-- see vanalog
+TODO: put 2nd rev of BBV paper on arxiv now, CC rev
+- copy files to external dir, remove refs to CC
 
 FIXME: parse error: "benchmarks/jetstream/dry.c.js"@1752:11: invalid property name
 ./higgs benchmarks/jetstream/dry.c.js
@@ -186,6 +201,11 @@ FIXME: parse error: "benchmarks/jetstream/dry.c.js"@1752:11: invalid property na
   - prop name in object literal??
 - Add new parser regression test
 
+TODO: blog post about wave output, screenshot, link to wav format
+- Higgs plenty fast enough!
+
+TODO: take a break, filter, stateful closure?
+- see vanalog
 
 
 
@@ -198,6 +218,19 @@ FIXME: parse error: "benchmarks/jetstream/dry.c.js"@1752:11: invalid property na
 
 
 
+
+[DONE] TODO: regress, gc-new-date
+
+[DONE] TODO: bug signaled by Brett
+- add regression test
+- take a quick look at first
+- segfault happens during GC
+  - stack frame traversal fails
+We get into gcCollect with a null curInstr... Who triggers gcCollect?
+instrPtr: obj_set_prop $253, "__s__", $221 => call_merge(4E4D8), if_join(4E4E2)
+curFun: computeDate(126FE)
+
+[DONE] TODO: add existing arxiv link to blog
 
 [DONE] TODO: optimize string prop access, they result in unknown calls
 - check if prop name exists on string prototype?

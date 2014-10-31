@@ -3438,6 +3438,8 @@ void gen_obj_set_prop(
 
         auto vm = instr.block.fun.vm;
 
+        vm.setCurInstr(instr);
+
         auto objPair = vm.getArgVal(instr, 0);
         auto strPtr = vm.getArgStr(instr, 1);
         auto valPair = vm.getArgVal(instr, 2);
@@ -3458,6 +3460,8 @@ void gen_obj_set_prop(
             propStr,
             valPair
         );
+
+        vm.setCurInstr(null);
 
         return (!defShape || defShape.isGetSet is false)? 1:0;
     }
