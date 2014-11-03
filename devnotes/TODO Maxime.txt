@@ -170,6 +170,11 @@ TODO: richards, look at trace
   - Optimized .call syntax for few args, previously going through apply
   - Improved fast calls, now works with argument count mismatch
   - Optimized string method lookups
+- Looked into splay, worst performing string benchmark
+  - String concat did not explain terrible slowness
+  - Flaw is string hash function, tail problem
+  - Replaced by murmurHash2A, 64-bit
+  - splay 4x faster, all other string benchmarks faster
 - If paper not in, typed shapes anyway?
   - Would like a motivation break
   - Submit intra BBV at Computing Frontier in Jan, submit 2 papers soon
@@ -186,34 +191,79 @@ TODO: move global VM pointer to runtime/vm, avoid needing to import main
 
 TODO: blog post about ropes
 
-TODO: put 2nd rev of BBV paper on arxiv now, CC rev
-- copy files to external dir, remove refs to CC
-
-TODO: look into ropes
-- do some online reading first ***
-- left, right, length
-- when concat'ed, set right ptr to null, left ptr to new string
-  - need to maintain a level of indirection until GC
-- in stdlib/string, make toString return a non-rope string
-
 TODO: blog post about wave output, screenshot, link to wav format
 - Higgs plenty fast enough!
 - ALSA support soon
 - keep it short
 
-TODO: try triangle wave + steep filter for kick
-TODO: take a break, filter, stateful closure?
+TODO: put 2nd rev of BBV paper on arxiv now, CC rev
+- copy files to external dir, remove refs to CC
+
+TODO: try allowing either tri or sine in osc bank
+TODO: synth, right for new synth, up for new melody
+- log the melody
+
+TODO: getter and setter syntax
+
+TODO: begin implementing ropes
+- custom GC tag: Tag.ROPE
+- left, right, length (uint32), two refptrs
+- when concat'ed, set right ptr to null, left ptr to new string
+  - need to maintain a level of indirection until GC
+  - PROBLEM: if GC is to remove rope indirection, needs to change tag
+    - can try not removing this indirection
+    - access to large concat'ed strings is probably semi-rare?
+- in stdlib/string, make String.toString return an atom string
+- try to get simple benchmarks working
+
+TODO: strcat benchmarks w/ short strings and with accumulation
+strcat, add does toprim then tostring, seems inefficient
+strcat is fairly inefficient, mul, add for offset computation
+- add, mul, add for store, why a dynamic add?
+- add to master ***
+
+TODO: benchmark vs v8
+
+push to master
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: put BBV paper r3 on arxiv
+
+[DONE] TODO: make hash table use internal string hash, whai not
+
+[DONE] TODO: test key making code of splay, string hash lookups may be super slow
+
+[DONE] TODO: num chars hashed
+base64, 500M chars, 5s, loads of GC
+tagcloud, 372M, 12s, loads of GC
+validate-input, 3B, 30s, loads of GC
+unpack-code, 1.6M, 2.3s
+3d-raytrace, 6.6M, 0.751s
+splay, only 15M, 58s
+
+[DONE] TODO: try bank of sine waves
+- can try approx freq multiples at first, divide amplitude
+
+[DONE] TODO: look into ropes, do some online reading
+http://blog.cdleary.com/2012/01/string-representation-in-spidermonkey/
+- left, right, length
+- when concat'ed, set right ptr to null, left ptr to new string
+  - need to maintain a level of indirection until GC
+- in stdlib/string, make toString return a non-rope string
+
+[DONE] TODO: try triangle wave + steep filter for kick
+
+[DONE] TODO: take a break, filter, stateful closure?
 - see vanalog
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: add parser test for trailing comma
 

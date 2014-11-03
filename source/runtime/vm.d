@@ -388,7 +388,7 @@ struct ValuePair
             return "closure";
 
             case Tag.STRING:
-            return "\"" ~ extractStr(word.ptrVal) ~ "\"";
+            return extractStr(word.ptrVal);
 
             default:
             assert (false, "unsupported value type");
