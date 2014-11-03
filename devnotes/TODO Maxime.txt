@@ -180,6 +180,11 @@ TODO: richards, look at trace
   - Submit intra BBV at Computing Frontier in Jan, submit 2 papers soon
 - HHVM and tracelets at OOPSLA
 
+Paper notes:
+- Compilation time graph
+- vs baseline graph
+- No bbv... compile eagerly
+
 TODO: test downloaded jetstream benchmarks again
 http://browserbench.org/JetStream/
 hash-map seems interesting
@@ -189,21 +194,16 @@ TODO: use global VM ptr in stats.d for code size, stub size?
 TODO: move global VM pointer to runtime/vm, avoid needing to import main
 - maybe want a static VM.init? make ctor private
 
-TODO: blog post about ropes
-
 TODO: blog post about wave output, screenshot, link to wav format
 - Higgs plenty fast enough!
 - ALSA support soon
 - keep it short
 
-TODO: put 2nd rev of BBV paper on arxiv now, CC rev
-- copy files to external dir, remove refs to CC
-
 TODO: try allowing either tri or sine in osc bank
 TODO: synth, right for new synth, up for new melody
 - log the melody
 
-TODO: getter and setter syntax
+TODO: blog post about ropes
 
 TODO: begin implementing ropes
 - custom GC tag: Tag.ROPE
@@ -216,13 +216,8 @@ TODO: begin implementing ropes
 - in stdlib/string, make String.toString return an atom string
 - try to get simple benchmarks working
 
-TODO: strcat benchmarks w/ short strings and with accumulation
-strcat, add does toprim then tostring, seems inefficient
-strcat is fairly inefficient, mul, add for offset computation
-- add, mul, add for store, why a dynamic add?
-- add to master ***
-
-TODO: benchmark vs v8
+TODO: getter and setter syntax
+- needed for hash map benchmark
 
 
 
@@ -233,8 +228,7 @@ TODO: benchmark vs v8
 
 
 
-
-
+[DONE] TODO: try optimizing strcat
 
 [DONE] TODO: put BBV paper r3 on arxiv
 
