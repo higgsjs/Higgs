@@ -2064,7 +2064,7 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
     else if (auto arrayExpr = cast(ArrayExpr)expr)
     {
         // Create the array
-        auto numVal = cast(IRValue)IRConst.int32Cst(cast(int32_t)arrayExpr.exprs.length);
+        auto numVal = IRConst.int32Cst(cast(int32_t)arrayExpr.exprs.length);
         auto arrVal = genRtCall(
             ctx,
             "newArr",

@@ -1849,12 +1849,12 @@ function $rt_newObj(protoPtr)
 }
 
 /**
-Allocate an array
+Allocate an array of the given length
 */
-function $rt_newArr(numElems)
+function $rt_newArr(length)
 {
     // Allocate the array table
-    var tblPtr = $rt_arrtbl_alloc(numElems);
+    var tblPtr = $rt_arrtbl_alloc(length);
 
     // Allocate the array
     var objPtr = $rt_arr_alloc($rt_OBJ_MIN_CAP);
@@ -1864,7 +1864,9 @@ function $rt_newArr(numElems)
     $rt_setProto(objPtr, $ir_get_arr_proto());
     $rt_setArrTbl(objPtr, tblPtr);
     $rt_obj_set_tag(objPtr, $rt_ARRTBL_SLOT_IDX, $ir_get_tag(null));
-    $rt_setArrLen(objPtr, numElems);
+
+    // Set the array length
+    $rt_setArrLen(objPtr, length);
 
     //$ir_print_str("Allocated array\n");
 
