@@ -1,6 +1,7 @@
 var sha = require('lib/sha');
 
-assert(typeof(sha.jsSHA) === "object");
+assert(typeof(sha) === "object");
+assert(typeof(sha.jsSHA) === "function");
 
 var test = new sha.jsSHA("This is a Test", "TEXT");
 
