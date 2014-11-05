@@ -95,21 +95,70 @@ string extractStr(refptr ptr)
 }
 
 /**
+MurmurHash2, 64-bit version for 64-but platforms
+All hail Austin Appleby
+*/
+uint64_t murmurHash64A(const void* key, size_t len, uint64_t seed = 1337)
+{
+	const uint64_t m = 0xc6a4a7935bd1e995;
+	const int r = 47;
+
+	uint64_t h = seed ^ (len * m);
+
+    uint64_t* data = cast(uint64_t*)key;
+	uint64_t* end = data + (len/8);
+
+	while (data != end)
+	{
+		uint64_t k = *data++;
+
+		k *= m;
+		k ^= k >> r;
+		k *= m;
+
+		h ^= k;
+		h *= m;
+	}
+
+	ubyte* tail = cast(ubyte*)data;
+
+	switch (len & 7)
+	{
+	    case 7: h ^= uint64_t(tail[6]) << 48;
+	    case 6: h ^= uint64_t(tail[5]) << 40;
+	    case 5: h ^= uint64_t(tail[4]) << 32;
+	    case 4: h ^= uint64_t(tail[3]) << 24;
+	    case 3: h ^= uint64_t(tail[2]) << 16;
+	    case 2: h ^= uint64_t(tail[1]) << 8;
+	    case 1: h ^= uint64_t(tail[0]);
+	            h *= m;
+        default:
+	};
+ 
+	h ^= h >> r;
+	h *= m;
+	h ^= h >> r;
+
+	return h;
+}
+
+/**
 Compute the hash value for a given string object
 */
 uint32 compStrHash(refptr str)
 {
-    // TODO: operate on multiple characters at a time, look at Murmur hash
-
     auto len = str_get_len(str);
+    auto ptr = str + str_ofs_data(null, 0);
 
-    uint32 hashCode = 0;
+    uint32 hashCode = cast(uint32_t)murmurHash64A(ptr, len);
 
+    /*
     for (uint32 i = 0; i < len; ++i)
     {
         auto ch = str_get_data(str, i);
         hashCode = (((hashCode << 8) + ch) & 536870911) % 426870919;
     }
+    */
 
     // Store the hash code on the string object
     str_set_hash(str, hashCode);
@@ -130,7 +179,7 @@ bool streq(refptr strA, refptr strB)
 
     auto ptrA = strA + str_ofs_data(strA, 0);
     auto ptrB = strB + str_ofs_data(strB, 0);
-    return memcmp(ptrA, ptrB, uint16_t.sizeof * lenA) == 0;   
+    return memcmp(ptrA, ptrB, uint16_t.sizeof * lenA) == 0;
 }
 
 /**

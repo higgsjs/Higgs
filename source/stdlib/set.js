@@ -182,7 +182,7 @@ Set.prototype.delete = function (key)
                 var distToFree =
                     (shiftIndex < curFreeIndex)?
                     (shiftIndex + this.array.length - curFreeIndex):
-                    (shiftIndex - curFreeIndex);                    
+                    (shiftIndex - curFreeIndex);
 
                 // If the free slot is between the element and its origin
                 if (distToFree <= distToOrig)

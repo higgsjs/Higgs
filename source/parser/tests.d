@@ -237,6 +237,7 @@ unittest
     testParse("a = { a:1, \"b\":2 };");
     testParse("a = { a:1, b:2+3*4 };");
     testParse("a = { new:3 };");
+    testParse("o = { p:3, }");
     testParse("a = /f+/ig;");
 
     testParse("new Foo();");
