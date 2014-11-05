@@ -11,7 +11,7 @@ Conference deadlines:
 - DYLA workshop         March
 - ISMM                  Feb
 - Computing Frontier    Jan 2015, notify Feb
-- SLASH 2015
+- SPLASH 2015
 
 List of possible contributions:
 - Type tagging scheme
@@ -156,6 +156,20 @@ TODO: try to implement inline array for instr args, phi args
 TODO: richards, look at trace
 - Look at machine code
 
+TODO: use global VM ptr in stats.d for code size, stub size?
+- remove code size computation
+TODO: move global VM pointer to runtime/vm, avoid needing to import main
+- maybe want a static VM.init? make ctor private
+
+TODO: synth, right for new synth, up for new melody
+- log the melody
+TODO: try allowing either tri or sine in osc bank
+
+TODO: change paper template for PLDI
+- fix references
+TODO: push paper to pldi15 repo
+git@github.com:udem-dlteam/pldi2015.git
+
 2014-11-0X Meeting:
 - ECOOP Paper
   - Do we want to have the type analysis?
@@ -175,35 +189,28 @@ TODO: richards, look at trace
   - Flaw is string hash function, tail problem
   - Replaced by murmurHash2A, 64-bit
   - splay 4x faster, all other string benchmarks faster
-- If paper not in, typed shapes anyway?
-  - Would like a motivation break
-  - Submit intra BBV at Computing Frontier in Jan, submit 2 papers soon
 - HHVM and tracelets at OOPSLA
+  - Realized it's good we have this on arXiv, put latest paper there too
+- Paper notes:
+  - PLDI: two phase process, 2nd phase response too late for computing frontier
+  - Do we still want the analysis?
+    - analysis can't have typed shapes, versioning based on shapes
+    - needs inline cache, makes comparison more complex
+    - disabling typed shapes loses us some of our advantage against TM
+  - When comparing against BBV & analysis only... compile eagerly?
+    - more like regular method JIT?
+- Good news: TraceMonkey is not a moving target
+  - We can keep beating it more and more
+  - Almost beating TraceMonkey on 3d-cube, fixed that
 
-Paper notes:
-- Compilation time graph
-- vs baseline graph
-- No bbv... compile eagerly
-
-TODO: test downloaded jetstream benchmarks again
-http://browserbench.org/JetStream/
-hash-map seems interesting
-
-TODO: use global VM ptr in stats.d for code size, stub size?
-- remove code size computation
-TODO: move global VM pointer to runtime/vm, avoid needing to import main
-- maybe want a static VM.init? make ctor private
-
-TODO: blog post about wave output, screenshot, link to wav format
-- Higgs plenty fast enough!
-- ALSA support soon
-- keep it short
-
-TODO: try allowing either tri or sine in osc bank
-TODO: synth, right for new synth, up for new melody
-- log the melody
+TODO: getter and setter syntax
+- needed for hash map benchmark
+- Easy to recognize the grammar, but need to modify the AST
+  - Use a struct for object literal property descriptors
+- Probably want some kind of runtime call to define getters and setters
 
 TODO: blog post about ropes
+- also mention murmurHash
 
 TODO: begin implementing ropes
 - custom GC tag: Tag.ROPE
@@ -216,8 +223,18 @@ TODO: begin implementing ropes
 - in stdlib/string, make String.toString return an atom string
 - try to get simple benchmarks working
 
-TODO: getter and setter syntax
-- needed for hash map benchmark
+TODO: implement inline cache
+- Needed for typed shapes paper, next BBV paper
+
+TODO: look at trace for nbody
+
+TODO: create vs tracemonkey graph
+
+TODO: email Jan Vitek
+- Advice for ECOOP submission
+  - Explain general idea
+  - Structure, contents
+  - Do we have a chance at ECOOP, or go for a workshop like ICOOOLPS
 
 
 
@@ -227,6 +244,26 @@ TODO: getter and setter syntax
 
 
 
+
+
+
+[DONE] TODO: optimize 3d-cube:
+- fair amount of rt_add, why?
+  - i++ on float values
+- many setProp calls
+  - comes from setting array props out of bounds
+
+[DONE] TODO: get latest tracemonkey rev, revision cb5d09b48f03
+http://hg.mozilla.org/mozilla-central/file/cb5d09b48f03/js/src
+- look into how to disable method JIT
+  options -j and -m toggle JITs
+  both disabled by default in 1.8.5
+Version: JavaScript-C 1.8.5+ 2011-04-16
+
+[DONE] TODO: create pldi15 branch
+
+[DONE] TODO: can we get the last working version of tracemonkey?
+https://bugzilla.mozilla.org/show_bug.cgi?id=698201
 
 [DONE] TODO: try optimizing strcat
 

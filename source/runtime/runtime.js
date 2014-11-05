@@ -295,8 +295,8 @@ Create a string representing an integer value
 function $rt_intToStr(intVal, radix)
 {
     assert (
-        $ir_is_int32(radix)    &&
-        $ir_gt_i32(radix, 0) && 
+        $ir_is_int32(radix) &&
+        $ir_gt_i32(radix, 0) &&
         $ir_le_i32(radix, 36),
         'invalid radix'
     );
@@ -363,8 +363,6 @@ Compute the integer value of a string
 function $rt_strToInt(strVal)
 {
     // TODO: add radix support
-
-    // TODO: add floating-point support
 
     var strLen = $rt_str_get_len(strVal);
 
@@ -821,7 +819,7 @@ function $rt_add(x, y)
 /**
 Specialized add for the (int,int) case (e.g.: index increment)
 */
-function $rt_addInt(x, y)
+/*function $rt_addInt(x, y)
 {
     // If x,y are integer
     if ($ir_is_int32(x) && $ir_is_int32(y))
@@ -840,7 +838,7 @@ function $rt_addInt(x, y)
     }
 
     return $rt_add(x, y);
-}
+}*/
 
 /**
 Specialized add for the (int,int) and (float,float) cases
@@ -862,11 +860,6 @@ function $rt_addIntFloat(x, y)
                 // Reconstruct x from r and y
                 // Hence x is not live after the add
                 x = $ir_sub_i32(r, y);
-
-                // Handle the overflow case
-                var fx = $ir_i32_to_f64(x);
-                var fy = $ir_i32_to_f64(y);
-                return $ir_add_f64(fx, fy);
             }
         }
 
@@ -942,12 +935,6 @@ function $rt_subIntFloat(x, y)
             {
                 return r;
             }
-            else
-            {
-                var fx = $ir_i32_to_f64(x);
-                var fy = $ir_i32_to_f64(y);
-                return $ir_sub_f64(fx, fy);
-            }
         }
 
         if ($ir_is_float64(y))
@@ -962,24 +949,6 @@ function $rt_subIntFloat(x, y)
 
         if ($ir_is_float64(y))
             return $ir_sub_f64(x, y);
-    }
-
-    return $rt_sub(x, y);
-}
-
-/**
-Specialized subtract for the (int,int) case (e.g.: index decrement)
-*/
-function $rt_subInt(x, y)
-{
-    // If x,y are integer
-    if ($ir_is_int32(x) && $ir_is_int32(y))
-    {
-        var r;
-        if (r = $ir_sub_i32_ovf(x, y))
-        {
-            return r;
-        }
     }
 
     return $rt_sub(x, y);

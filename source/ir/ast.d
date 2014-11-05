@@ -1736,7 +1736,7 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
                 {
                     return genRtCall(
                         ctx,
-                        (op.str == "++")? "addInt":"subInt",
+                        (op.str == "++")? "addIntFloat":"subIntFloat",
                         [lArg, rArg],
                         expr.pos
                     );
@@ -1764,7 +1764,7 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
 
                     return genRtCall(
                         ctx, 
-                        (op.str == "++")? "addInt":"subInt",
+                        (op.str == "++")? "addIntFloat":"subIntFloat",
                         [lArg, rArg],
                         expr.pos
                     );
