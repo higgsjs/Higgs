@@ -137,6 +137,11 @@ void assertBool(VM vm, string input, bool boolVal)
     );
 }
 
+void assertTrue(VM vm, string input)
+{
+    assertBool(vm, input, true);
+}
+
 void assertStr(VM vm, string input, string strVal)
 {
     auto ret = vm.evalString(input);
@@ -658,17 +663,19 @@ unittest
 
     auto vm = new VMNoStdLib();
 
-    vm.assertStr("return 'foo'", "foo");
-    vm.assertStr("return 'foo' + 'bar'", "foobar");
-    vm.assertStr("return 'foo' + 1", "foo1");
-    vm.assertStr("return 'foo' + true", "footrue");
-    vm.assertInt("return 'foo'? 1:0", 1);
-    vm.assertInt("return ''? 1:0", 0);
-    vm.assertBool("return ('foo' === 'foo')", true);
-    vm.assertBool("return ('foo' === 'f' + 'oo')", true);
-    vm.assertBool("return ('bar' == 'bar')", true);
-    vm.assertBool("return ('bar' != 'b')", true);
-    vm.assertBool("return ('bar' != 'bar')", false);
+    vm.assertStr("'foo'", "foo");
+    vm.assertInt("'foo'? 1:0", 1);
+    vm.assertInt("''? 1:0", 0);
+    vm.assertStr("'foo' + 1", "foo1");
+    vm.assertStr("'foo' + true", "footrue");
+    vm.assertTrue("'foo' + 'bar' == 'foobar'");
+    vm.assertTrue("'foo' === 'foo'");
+    vm.assertTrue("'foo' === 'f' + 'oo'");
+    vm.assertTrue("'foo' !== 'f' + 'o'");
+    vm.assertTrue("'f' + 'oo' !== null");
+    vm.assertTrue("'bar' == 'bar'");
+    vm.assertTrue("'bar' != 'b'");
+    vm.assertBool("'bar' != 'bar'", false);
 
     vm.assertStr(
         "
@@ -693,16 +700,16 @@ unittest
 
     auto vm = new VMNoStdLib();
 
-    vm.assertStr("return typeof 'foo'", "string");
-    vm.assertStr("return typeof 1", "number");
-    vm.assertStr("return typeof true", "boolean");
-    vm.assertStr("return typeof false", "boolean");
-    vm.assertStr("return typeof null", "object");
-    vm.assertInt("return (typeof 'foo' === 'string')? 1:0", 1);
+    vm.assertStr("typeof 'foo'", "string");
+    vm.assertStr("typeof 1", "number");
+    vm.assertStr("typeof true", "boolean");
+    vm.assertStr("typeof false", "boolean");
+    vm.assertStr("typeof null", "object");
+    vm.assertStr("typeof ('f' + 'oo')", "string");
+    vm.assertTrue("typeof 'foo' === 'string'");
     vm.assertStr("x = 3; return typeof x;", "number");
     vm.assertStr("x = 3; return typeof void x;", "undefined");
-    // FIXME: re-enable once delete supported
-    //vm.assertStr("delete x; return typeof x;", "undefined");
+    vm.assertStr("delete x; return typeof x;", "undefined");
 }
 
 /// Global scope, global object
@@ -1136,7 +1143,7 @@ unittest
     vm.assertInt("$rt_add(5, 3)", 8);
     vm.assertFloat("$rt_add(5, 3.5)", 8.5);
     vm.assertStr("$rt_add(5, 'bar')", "5bar");
-    vm.assertStr("$rt_add('foo', 'bar')", "foobar");
+    vm.assertBool("$rt_add('foo', 'bar') == 'foobar'", true);
 
     vm.assertInt("$rt_sub(5, 3)", 2);
     vm.assertFloat("$rt_sub(5, 3.5)", 1.5);
@@ -1372,20 +1379,20 @@ unittest
 
     // Intraprocedural tests
     vm.load("tests/core/exceptions/throw_intra.js");
-    vm.assertStr("str;", "abc");
+    vm.assertTrue("str == 'abc'");
     vm.load("tests/core/exceptions/finally_ret.js");
-    vm.assertStr("test();", "abcd");
-    vm.assertStr("str;", "abcdef");
+    vm.assertTrue("test() == 'abcd'");
+    vm.assertTrue("str == 'abcdef'");
     vm.load("tests/core/exceptions/finally_break.js");
-    vm.assertStr("test(); return str;", "abcdefg");
+    vm.assertTrue("test(); return str == 'abcdefg'");
     vm.load("tests/core/exceptions/finally_cont.js");
-    vm.assertStr("test(); return str;", "abcdefbcdefg");
+    vm.assertTrue("test(); return str == 'abcdefbcdefg'");
     vm.load("tests/core/exceptions/finally_throw.js");
-    vm.assertStr("test(); return str;", "abcdefghijk");
+    vm.assertTrue("test(); return str == 'abcdefghijk'");
     vm.load("tests/core/exceptions/throw_in_finally.js");
-    vm.assertStr("str;", "abcdef");
+    vm.assertTrue("str == 'abcdef'");
     vm.load("tests/core/exceptions/throw_in_catch.js");
-    vm.assertStr("str;", "abcdefg");
+    vm.assertTrue("str == 'abcdefg'");
 
     writefln("exceptions (inter)");
 
@@ -1393,11 +1400,11 @@ unittest
     vm.load("tests/core/exceptions/throw_inter.js");
     vm.assertInt("test();", 0);
     vm.load("tests/core/exceptions/throw_inter_fnl.js");
-    vm.assertStr("str;", "abcdef");
+    vm.assertTrue("str == 'abcdef'");
     vm.load("tests/core/exceptions/try_call.js");
-    vm.assertStr("str;", "abc");
+    vm.assertTrue("str == 'abc'");
     vm.load("tests/core/exceptions/try_loop_getprop.js");
-    vm.assertStr("str;", "abcd");
+    vm.assertTrue("str == 'abcd'");
 }
 
 /// Dynamic code loading and eval

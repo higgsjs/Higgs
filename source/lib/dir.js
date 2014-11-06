@@ -160,6 +160,8 @@ Functions for dealing with the filesystem
     */
     function dirRange(path)
     {
+        path = String(path);
+
         if (!this instanceof dirRange)
             return new dirRange(path);
 

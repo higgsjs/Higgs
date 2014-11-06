@@ -1,0 +1,9 @@
+Negative info should be propagated using bit sets. This would allow having a
+type test, is_object() for all objects at once, and still gain type information.
+
+Some amount of constant propagation should be built in. Useful for many simple
+cases.
+
+Should do transformations at the IR level.
+
+Incremental inlining at the IR level.

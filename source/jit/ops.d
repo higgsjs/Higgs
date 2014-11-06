@@ -1036,6 +1036,7 @@ alias gen_is_object = TagTestOp!(Tag.OBJECT);
 alias gen_is_array = TagTestOp!(Tag.ARRAY);
 alias gen_is_closure = TagTestOp!(Tag.CLOSURE);
 alias gen_is_string = TagTestOp!(Tag.STRING);
+alias gen_is_rope = TagTestOp!(Tag.ROPE);
 
 void CmpOp(string op, size_t numBits)(
     BlockVersion ver,
@@ -1726,7 +1727,7 @@ void gen_call_prim(
     auto numArgs = cast(int32_t)instr.numArgs - 1;
     assert (
         numArgs is fun.numParams,
-        "incorrect argument count for primitive call"
+        "incorrect argument count for call to primitive " ~ fun.getName
     );
 
     // Check that the hidden arguments are not used
@@ -2894,6 +2895,7 @@ alias gen_alloc_object = HeapAllocOp!(Tag.OBJECT);
 alias gen_alloc_array = HeapAllocOp!(Tag.ARRAY);
 alias gen_alloc_closure = HeapAllocOp!(Tag.CLOSURE);
 alias gen_alloc_string = HeapAllocOp!(Tag.STRING);
+alias gen_alloc_rope = HeapAllocOp!(Tag.ROPE);
 
 void gen_gc_collect(
     BlockVersion ver,
@@ -4891,10 +4893,10 @@ void gen_get_sym(
 
         assert (
             libArg.tag == Tag.RAWPTR,
-            "invalid rawptr value"
+            "get_sym: invalid lib rawptr value"
         );
 
-        // Symbol name (D string)
+        // Symbol name string
         auto strArg = cast(IRString)instr.getArg(1);
         assert (strArg !is null);
         auto symname = to!string(strArg.str);

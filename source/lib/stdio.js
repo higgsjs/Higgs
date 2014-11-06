@@ -344,6 +344,7 @@ Bindings for common c I/O functions
             len = c.fread(this.buffer, 1, max, this.ptr);
             str += ffi.string(this.buffer, len);
         } while (c.feof(this.ptr) === 0);
+
         return str;
     };
 
@@ -436,16 +437,19 @@ Bindings for common c I/O functions
     };
 
     /**
-    Write to a file.
+    Write text data to a file
     */
     File.prototype.write = function(data)
     {
+        data = String(data);
+
         var max = data.length;
-        var r;
         if (max > this.buf_size)
             this.resizeBuf(max + 1);
+
         ffi.jsstrcpy(this.buffer, data);
-        r = c.fwrite(this.buffer, 1, max, this.ptr);
+        var r = c.fwrite(this.buffer, 1, max, this.ptr);
+
         return r === max;
     };
 

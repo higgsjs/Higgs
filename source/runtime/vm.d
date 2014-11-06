@@ -180,7 +180,6 @@ enum Tag : ubyte
     RAWPTR,
     RETADDR,
     FUNPTR,
-    MAPPTR,
     SHAPEPTR,
 
     // GC heap pointer tags
@@ -188,7 +187,8 @@ enum Tag : ubyte
     OBJECT,
     ARRAY,
     CLOSURE,
-    STRING
+    STRING,
+    ROPE
 }
 
 /**
@@ -203,10 +203,21 @@ bool isHeapPtr(Tag tag)
         case Tag.ARRAY:
         case Tag.CLOSURE:
         case Tag.STRING:
+        case Tag.ROPE:
         return true;
 
-        default:
+        case Tag.CONST:
+        case Tag.INT32:
+        case Tag.INT64:
+        case Tag.FLOAT64:
+        case Tag.RAWPTR:
+        case Tag.RETADDR:
+        case Tag.FUNPTR:
+        case Tag.SHAPEPTR:
         return false;
+
+        default:
+        assert (false);
     }
 }
 
@@ -242,7 +253,6 @@ string tagToString(Tag tag)
         case Tag.RETADDR:  return "retaddr";
         case Tag.CONST:    return "const";
         case Tag.FUNPTR:   return "funptr";
-        case Tag.MAPPTR:   return "mapptr";
         case Tag.SHAPEPTR: return "shapeptr";
 
         case Tag.REFPTR:   return "refptr";
@@ -250,6 +260,7 @@ string tagToString(Tag tag)
         case Tag.ARRAY:    return "array";
         case Tag.CLOSURE:  return "closure";
         case Tag.STRING:   return "string";
+        case Tag.ROPE:     return "rope";
 
         default:
         assert (false, "unsupported type tag");
@@ -349,9 +360,6 @@ struct ValuePair
             case Tag.FUNPTR:
             return "funptr";
 
-            case Tag.MAPPTR:
-            return "mapptr";
-
             case Tag.REFPTR:
             if (this == NULL)
                 return "null";
@@ -389,6 +397,9 @@ struct ValuePair
 
             case Tag.STRING:
             return extractStr(word.ptrVal);
+
+            case Tag.ROPE:
+            return "rope";
 
             default:
             assert (false, "unsupported value type");

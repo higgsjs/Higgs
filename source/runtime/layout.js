@@ -24,14 +24,9 @@ function $rt_str_ofs_hash(o)
     return $ir_add_i32($ir_add_i32($ir_add_i32(0, 8), 4), 4);
 }
 
-function $rt_str_ofs_align(o)
-{    
-    return $ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32(0, 8), 4), 4), 4);
-}
-
 function $rt_str_ofs_data(o, i)
 {    
-    return $ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32(0, 8), 4), 4), 4), 4), $ir_mul_i32(2, i));
+    return $ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32(0, 8), 4), 4), 4), $ir_mul_i32(2, i));
 }
 
 function $rt_str_get_next(o)
@@ -52,11 +47,6 @@ function $rt_str_get_len(o)
 function $rt_str_get_hash(o)
 {    
     return $ir_load_u32(o, $rt_str_ofs_hash(o));
-}
-
-function $rt_str_get_align(o)
-{    
-    return $ir_load_u32(o, $rt_str_ofs_align(o));
 }
 
 function $rt_str_get_data(o, i)
@@ -84,11 +74,6 @@ function $rt_str_set_hash(o, v)
     $ir_store_u32(o, $rt_str_ofs_hash(o), v);
 }
 
-function $rt_str_set_align(o, v)
-{    
-    $ir_store_u32(o, $rt_str_ofs_align(o), v);
-}
-
 function $rt_str_set_data(o, i, v)
 {    
     $ir_store_u16(o, $rt_str_ofs_data(o, i), v);
@@ -96,7 +81,7 @@ function $rt_str_set_data(o, i, v)
 
 function $rt_str_comp_size(len)
 {    
-    return $ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32(0, 8), 4), 4), 4), 4), $ir_mul_i32(2, len));
+    return $ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32(0, 8), 4), 4), 4), $ir_mul_i32(2, len));
 }
 
 function $rt_str_sizeof(o)
@@ -221,7 +206,108 @@ function $rt_strtbl_visit_gc(o)
     }
 }
 
-var $rt_LAYOUT_OBJ = 2;
+var $rt_LAYOUT_ROPE = 2;
+
+function $rt_rope_ofs_next(o)
+{    
+    return 0;
+}
+
+function $rt_rope_ofs_header(o)
+{    
+    return $ir_add_i32(0, 8);
+}
+
+function $rt_rope_ofs_len(o)
+{    
+    return $ir_add_i32($ir_add_i32(0, 8), 4);
+}
+
+function $rt_rope_ofs_left(o)
+{    
+    return $ir_add_i32($ir_add_i32($ir_add_i32(0, 8), 4), 4);
+}
+
+function $rt_rope_ofs_right(o)
+{    
+    return $ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32(0, 8), 4), 4), 8);
+}
+
+function $rt_rope_get_next(o)
+{    
+    return $ir_load_refptr(o, $rt_rope_ofs_next(o));
+}
+
+function $rt_rope_get_header(o)
+{    
+    return $ir_load_u32(o, $rt_rope_ofs_header(o));
+}
+
+function $rt_rope_get_len(o)
+{    
+    return $ir_load_u32(o, $rt_rope_ofs_len(o));
+}
+
+function $rt_rope_get_left(o)
+{    
+    return $ir_load_refptr(o, $rt_rope_ofs_left(o));
+}
+
+function $rt_rope_get_right(o)
+{    
+    return $ir_load_refptr(o, $rt_rope_ofs_right(o));
+}
+
+function $rt_rope_set_next(o, v)
+{    
+    $ir_store_refptr(o, $rt_rope_ofs_next(o), v);
+}
+
+function $rt_rope_set_header(o, v)
+{    
+    $ir_store_u32(o, $rt_rope_ofs_header(o), v);
+}
+
+function $rt_rope_set_len(o, v)
+{    
+    $ir_store_u32(o, $rt_rope_ofs_len(o), v);
+}
+
+function $rt_rope_set_left(o, v)
+{    
+    $ir_store_refptr(o, $rt_rope_ofs_left(o), v);
+}
+
+function $rt_rope_set_right(o, v)
+{    
+    $ir_store_refptr(o, $rt_rope_ofs_right(o), v);
+}
+
+function $rt_rope_comp_size()
+{    
+    return $ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32($ir_add_i32(0, 8), 4), 4), 8), 8);
+}
+
+function $rt_rope_sizeof(o)
+{    
+    return $rt_rope_comp_size();
+}
+
+function $rt_rope_alloc()
+{    
+    var o = $ir_alloc_rope($rt_rope_comp_size());
+    $rt_rope_set_header(o, 2);
+    return o;
+}
+
+function $rt_rope_visit_gc(o)
+{    
+    $rt_rope_set_next(o, $rt_gcForward(vm, $rt_rope_get_next(o)));
+    $rt_rope_set_left(o, $rt_gcForward(vm, $rt_rope_get_left(o)));
+    $rt_rope_set_right(o, $rt_gcForward(vm, $rt_rope_get_right(o)));
+}
+
+var $rt_LAYOUT_OBJ = 3;
 
 function $rt_obj_ofs_next(o)
 {    
@@ -327,7 +413,7 @@ function $rt_obj_alloc(cap)
 {    
     var o = $ir_alloc_object($rt_obj_comp_size(cap));
     $rt_obj_set_cap(o, cap);
-    $rt_obj_set_header(o, 2);
+    $rt_obj_set_header(o, 3);
     return o;
 }
 
@@ -341,7 +427,7 @@ function $rt_obj_visit_gc(o)
     }
 }
 
-var $rt_LAYOUT_CLOS = 3;
+var $rt_LAYOUT_CLOS = 4;
 
 function $rt_clos_ofs_next(o)
 {    
@@ -478,7 +564,7 @@ function $rt_clos_alloc(cap, num_cells)
     var o = $ir_alloc_closure($rt_clos_comp_size(cap, num_cells));
     $rt_clos_set_cap(o, cap);
     $rt_clos_set_num_cells(o, num_cells);
-    $rt_clos_set_header(o, 3);
+    $rt_clos_set_header(o, 4);
     return o;
 }
 
@@ -497,7 +583,7 @@ function $rt_clos_visit_gc(o)
     }
 }
 
-var $rt_LAYOUT_CELL = 4;
+var $rt_LAYOUT_CELL = 5;
 
 function $rt_cell_ofs_next(o)
 {    
@@ -572,7 +658,7 @@ function $rt_cell_sizeof(o)
 function $rt_cell_alloc()
 {    
     var o = $ir_alloc_refptr($rt_cell_comp_size());
-    $rt_cell_set_header(o, 4);
+    $rt_cell_set_header(o, 5);
     $rt_cell_set_word(o, $ir_get_word($undef));
     return o;
 }
@@ -583,7 +669,7 @@ function $rt_cell_visit_gc(o)
     $rt_cell_set_word(o, $rt_gcForward(vm, $rt_cell_get_word(o), $rt_cell_get_tag(o)));
 }
 
-var $rt_LAYOUT_ARR = 5;
+var $rt_LAYOUT_ARR = 6;
 
 function $rt_arr_ofs_next(o)
 {    
@@ -689,7 +775,7 @@ function $rt_arr_alloc(cap)
 {    
     var o = $ir_alloc_array($rt_arr_comp_size(cap));
     $rt_arr_set_cap(o, cap);
-    $rt_arr_set_header(o, 5);
+    $rt_arr_set_header(o, 6);
     return o;
 }
 
@@ -703,7 +789,7 @@ function $rt_arr_visit_gc(o)
     }
 }
 
-var $rt_LAYOUT_ARRTBL = 6;
+var $rt_LAYOUT_ARRTBL = 7;
 
 function $rt_arrtbl_ofs_next(o)
 {    
@@ -794,7 +880,7 @@ function $rt_arrtbl_alloc(cap)
 {    
     var o = $ir_alloc_refptr($rt_arrtbl_comp_size(cap));
     $rt_arrtbl_set_cap(o, cap);
-    $rt_arrtbl_set_header(o, 6);
+    $rt_arrtbl_set_header(o, 7);
     for (var i = 0; $ir_lt_i32(i, cap); i = $ir_add_i32(i, 1))
     {    
         $rt_arrtbl_set_word(o, i, $ir_get_word($undef));
@@ -822,6 +908,10 @@ function $rt_layout_sizeof(o)
     if ($ir_eq_i32(t, LAYOUT_STRTBL))
     {    
         return $rt_strtbl_sizeof(o);
+    }
+    if ($ir_eq_i32(t, LAYOUT_ROPE))
+    {    
+        return $rt_rope_sizeof(o);
     }
     if ($ir_eq_i32(t, LAYOUT_OBJ))
     {    
@@ -857,6 +947,11 @@ function $rt_layout_visit_gc(o)
     if ($ir_eq_i32(t, LAYOUT_STRTBL))
     {    
         $rt_strtbl_visit_gc(vm, o);
+        return;
+    }
+    if ($ir_eq_i32(t, LAYOUT_ROPE))
+    {    
+        $rt_rope_visit_gc(vm, o);
         return;
     }
     if ($ir_eq_i32(t, LAYOUT_OBJ))

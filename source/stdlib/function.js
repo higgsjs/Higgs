@@ -80,7 +80,7 @@ function Function()
         throw new SyntaxError('Invalid function body');
 
     var fn = 'function(' + argList.join(', ') + '){\n' + body + '\n}';
-    return $ir_eval_str(fn);
+    return eval(fn);
 
     function isValidFunctionBody(body) 
     {

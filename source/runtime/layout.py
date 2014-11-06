@@ -55,9 +55,6 @@ layouts = [
             # Hash code
             { 'name': 'hash', 'tag':'uint32' },
 
-            # Align the character data to a 64-bit boundary
-            { 'name': 'align', 'tag':'uint32' },
-
             # UTF-16 character data
             { 'name': 'data', 'tag':'uint16', 'szField':'len' }
         ]
@@ -77,6 +74,23 @@ layouts = [
 
             # Array of strings
             { 'name':'str', 'tag':'refptr', 'szField':'cap', 'init':'null' },
+        ]
+    },
+
+    # Rope
+    {
+        'name':'rope',
+        'tag':'rope',
+        'fields': 
+        [
+            # Total length
+            { 'name':'len', 'tag':'uint32' },
+
+            # Left string (rope or string)
+            { 'name':'left', 'tag':'refptr' },
+
+            # Right string (always a string)
+            { 'name':'right', 'tag':'refptr' },
         ]
     },
 

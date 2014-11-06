@@ -1850,7 +1850,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
                `function(lib)
                 {
                     var fun_sym = $ir_get_sym(lib, '` + fname + `');
-                    return function(` + arg_str  + `)
+                    return function(` + arg_str + `)
                     {
                         return $ir_call_ffi(fun_sym, ` +
                             ('\'' + sig + '\'') +

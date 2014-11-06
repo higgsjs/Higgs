@@ -43,14 +43,9 @@ extern (C) uint32 str_ofs_hash(refptr o)
     return (((0 + 8) + 4) + 4);
 }
 
-extern (C) uint32 str_ofs_align(refptr o)
-{    
-    return ((((0 + 8) + 4) + 4) + 4);
-}
-
 extern (C) uint32 str_ofs_data(refptr o, uint32 i)
 {    
-    return ((((((0 + 8) + 4) + 4) + 4) + 4) + (2 * i));
+    return (((((0 + 8) + 4) + 4) + 4) + (2 * i));
 }
 
 extern (C) refptr str_get_next(refptr o)
@@ -71,11 +66,6 @@ extern (C) uint32 str_get_len(refptr o)
 extern (C) uint32 str_get_hash(refptr o)
 {    
     return *cast(uint32*)(o + str_ofs_hash(o));
-}
-
-extern (C) uint32 str_get_align(refptr o)
-{    
-    return *cast(uint32*)(o + str_ofs_align(o));
 }
 
 extern (C) uint16 str_get_data(refptr o, uint32 i)
@@ -103,11 +93,6 @@ extern (C) void str_set_hash(refptr o, uint32 v)
     *cast(uint32*)(o + str_ofs_hash(o)) = v;
 }
 
-extern (C) void str_set_align(refptr o, uint32 v)
-{    
-    *cast(uint32*)(o + str_ofs_align(o)) = v;
-}
-
 extern (C) void str_set_data(refptr o, uint32 i, uint16 v)
 {    
     *cast(uint16*)(o + str_ofs_data(o, i)) = v;
@@ -115,7 +100,7 @@ extern (C) void str_set_data(refptr o, uint32 i, uint16 v)
 
 extern (C) uint32 str_comp_size(uint32 len)
 {    
-    return ((((((0 + 8) + 4) + 4) + 4) + 4) + (2 * len));
+    return (((((0 + 8) + 4) + 4) + 4) + (2 * len));
 }
 
 extern (C) uint32 str_sizeof(refptr o)
@@ -240,7 +225,108 @@ extern (C) void strtbl_visit_gc(VM vm, refptr o)
     }
 }
 
-const uint32 LAYOUT_OBJ = 2;
+const uint32 LAYOUT_ROPE = 2;
+
+extern (C) uint32 rope_ofs_next(refptr o)
+{    
+    return 0;
+}
+
+extern (C) uint32 rope_ofs_header(refptr o)
+{    
+    return (0 + 8);
+}
+
+extern (C) uint32 rope_ofs_len(refptr o)
+{    
+    return ((0 + 8) + 4);
+}
+
+extern (C) uint32 rope_ofs_left(refptr o)
+{    
+    return (((0 + 8) + 4) + 4);
+}
+
+extern (C) uint32 rope_ofs_right(refptr o)
+{    
+    return ((((0 + 8) + 4) + 4) + 8);
+}
+
+extern (C) refptr rope_get_next(refptr o)
+{    
+    return *cast(refptr*)(o + rope_ofs_next(o));
+}
+
+extern (C) uint32 rope_get_header(refptr o)
+{    
+    return *cast(uint32*)(o + rope_ofs_header(o));
+}
+
+extern (C) uint32 rope_get_len(refptr o)
+{    
+    return *cast(uint32*)(o + rope_ofs_len(o));
+}
+
+extern (C) refptr rope_get_left(refptr o)
+{    
+    return *cast(refptr*)(o + rope_ofs_left(o));
+}
+
+extern (C) refptr rope_get_right(refptr o)
+{    
+    return *cast(refptr*)(o + rope_ofs_right(o));
+}
+
+extern (C) void rope_set_next(refptr o, refptr v)
+{    
+    *cast(refptr*)(o + rope_ofs_next(o)) = v;
+}
+
+extern (C) void rope_set_header(refptr o, uint32 v)
+{    
+    *cast(uint32*)(o + rope_ofs_header(o)) = v;
+}
+
+extern (C) void rope_set_len(refptr o, uint32 v)
+{    
+    *cast(uint32*)(o + rope_ofs_len(o)) = v;
+}
+
+extern (C) void rope_set_left(refptr o, refptr v)
+{    
+    *cast(refptr*)(o + rope_ofs_left(o)) = v;
+}
+
+extern (C) void rope_set_right(refptr o, refptr v)
+{    
+    *cast(refptr*)(o + rope_ofs_right(o)) = v;
+}
+
+extern (C) uint32 rope_comp_size()
+{    
+    return (((((0 + 8) + 4) + 4) + 8) + 8);
+}
+
+extern (C) uint32 rope_sizeof(refptr o)
+{    
+    return rope_comp_size();
+}
+
+extern (C) refptr rope_alloc(VM vm)
+{    
+    auto o = vm.heapAlloc(rope_comp_size());
+    rope_set_header(o, 2);
+    return o;
+}
+
+extern (C) void rope_visit_gc(VM vm, refptr o)
+{    
+    rope_set_next(o, gcForward(vm, rope_get_next(o)));
+    rope_set_left(o, gcForward(vm, rope_get_left(o)));
+    rope_set_right(o, gcForward(vm, rope_get_right(o)));
+}
+
+const uint32 LAYOUT_OBJ = 3;
 
 extern (C) uint32 obj_ofs_next(refptr o)
 {    
@@ -346,7 +432,7 @@ extern (C) refptr obj_alloc(VM vm, uint32 cap)
 {    
     auto o = vm.heapAlloc(obj_comp_size(cap));
     obj_set_cap(o, cap);
-    obj_set_header(o, 2);
+    obj_set_header(o, 3);
     return o;
 }
 
@@ -360,7 +446,7 @@ extern (C) void obj_visit_gc(VM vm, refptr o)
     }
 }
 
-const uint32 LAYOUT_CLOS = 3;
+const uint32 LAYOUT_CLOS = 4;
 
 extern (C) uint32 clos_ofs_next(refptr o)
 {    
@@ -497,7 +583,7 @@ extern (C) refptr clos_alloc(VM vm, uint32 cap, uint32 num_cells)
     auto o = vm.heapAlloc(clos_comp_size(cap, num_cells));
     clos_set_cap(o, cap);
     clos_set_num_cells(o, num_cells);
-    clos_set_header(o, 3);
+    clos_set_header(o, 4);
     return o;
 }
 
@@ -516,7 +602,7 @@ extern (C) void clos_visit_gc(VM vm, refptr o)
     }
 }
 
-const uint32 LAYOUT_CELL = 4;
+const uint32 LAYOUT_CELL = 5;
 
 extern (C) uint32 cell_ofs_next(refptr o)
 {    
@@ -591,7 +677,7 @@ extern (C) uint32 cell_sizeof(refptr o)
 extern (C) refptr cell_alloc(VM vm)
 {    
     auto o = vm.heapAlloc(cell_comp_size());
-    cell_set_header(o, 4);
+    cell_set_header(o, 5);
     cell_set_word(o, UNDEF.word.uint8Val);
     return o;
 }
@@ -602,7 +688,7 @@ extern (C) void cell_visit_gc(VM vm, refptr o)
     cell_set_word(o, gcForward(vm, cell_get_word(o), cell_get_tag(o)));
 }
 
-const uint32 LAYOUT_ARR = 5;
+const uint32 LAYOUT_ARR = 6;
 
 extern (C) uint32 arr_ofs_next(refptr o)
 {    
@@ -708,7 +794,7 @@ extern (C) refptr arr_alloc(VM vm, uint32 cap)
 {    
     auto o = vm.heapAlloc(arr_comp_size(cap));
     arr_set_cap(o, cap);
-    arr_set_header(o, 5);
+    arr_set_header(o, 6);
     return o;
 }
 
@@ -722,7 +808,7 @@ extern (C) void arr_visit_gc(VM vm, refptr o)
     }
 }
 
-const uint32 LAYOUT_ARRTBL = 6;
+const uint32 LAYOUT_ARRTBL = 7;
 
 extern (C) uint32 arrtbl_ofs_next(refptr o)
 {    
@@ -813,7 +899,7 @@ extern (C) refptr arrtbl_alloc(VM vm, uint32 cap)
 {    
     auto o = vm.heapAlloc(arrtbl_comp_size(cap));
     arrtbl_set_cap(o, cap);
-    arrtbl_set_header(o, 6);
+    arrtbl_set_header(o, 7);
     for (uint32 i = 0; i < cap; ++i)
     {    
         arrtbl_set_word(o, i, UNDEF.word.uint8Val);
@@ -841,6 +927,10 @@ extern (C) uint32 layout_sizeof(refptr o)
     if ((t == LAYOUT_STRTBL))
     {    
         return strtbl_sizeof(o);
+    }
+    if ((t == LAYOUT_ROPE))
+    {    
+        return rope_sizeof(o);
     }
     if ((t == LAYOUT_OBJ))
     {    
@@ -876,6 +966,11 @@ extern (C) void layout_visit_gc(VM vm, refptr o)
     if ((t == LAYOUT_STRTBL))
     {    
         strtbl_visit_gc(vm, o);
+        return;
+    }
+    if ((t == LAYOUT_ROPE))
+    {    
+        rope_visit_gc(vm, o);
         return;
     }
     if ((t == LAYOUT_OBJ))

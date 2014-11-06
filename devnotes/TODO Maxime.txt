@@ -136,21 +136,6 @@ T emplace(T, Args...)(void[] chunk, auto ref Args args) if (is(T == class));
 http://wiki.dlang.org/Memory_Management#Explicit_Class_Instance_Allocation
 - Use @nogc attribute
 
-------------------------------------------------------------------------------
-
-ECOOP - Dec 21st
-- Jan Vitek is on organizing committee
-- Look into the conf more
-- Highly polymorphic objects: only the object shapes flowing into that code matter
-"Can change people's perception of your proposal without changing your proposal,
-compare to something less favorable first"
-
-TODO: blog post, Higgs' Fancy New Object System => get started
-- use knightmare image for featured image
-- quick sketching program, online?
-- post to r/compilers, r/higgsjs
-- Typed shapes + BBV a bit of a gamble
-
 TODO: try to implement inline array for instr args, phi args
 
 TODO: getter and setter syntax
@@ -167,15 +152,107 @@ TODO: synth, right for new synth, up for new melody
 - log the melody
 TODO: try allowing either tri or sine in osc bank
 
-TODO: change paper template for PLDI?
-- fix references
-TODO: push paper to pldi15 repo
-git@github.com:udem-dlteam/pldi2015.git
+------------------------------------------------------------------------------
+
+ECOOP - Dec 21st
+- Jan Vitek is on organizing committee
+- Look into the conf more
+- Highly polymorphic objects: only the object shapes flowing into that code matter
+"Can change people's perception of your proposal without changing your proposal,
+compare to something less favorable first"
+- Comparison with inline cache
+
+TODO: blog post, Higgs' Fancy New Object System => get started
+- use knightmare image for featured image
+- quick sketching program, online?
+- post to r/compilers, r/higgsjs
+- Typed shapes + BBV a bit of a gamble
+
+TODO: flag to disable shape versioning
+- no propagation of shape info
+- what about read_shape, capture_shape, capture_tag?
+
+TODO: fixup analysis
+- no longer need to force run every time
 
 TODO: implement inline cache
-- Needed for typed shapes paper, next BBV paper
+- Needed for both papers
 
-2014-11-0X Meeting:
+TODO: catch missing file exception in main.d
+
+TODO: low-level toString support for ropes
+- doesn't need to be optimized
+- implement in runtime/string.d
+
+FIXME: throw of TypeError doesn't show error message?
+- add regression test for this
+
+TODO: add Marc's stdlib/string opts
+- introduce inline opt first, table second
+
+TODO: compare performance against master
+
+TODO: optimize ropeToStr
+
+TODO: make rt_layout_str and such constants
+- should be easy with def_const syntax
+
+FIXME: string-base64 calls ropeToStr 114K times, why?
+- presumably to access the concatenated rope
+- how is this rope accessed? may be able to optimize
+$ir_load_string?
+
+TODO: test ./benchmark.py to make sure not broken
+
+FIXME: 3d-raytrace calls ropeToStr 901 times, why?
+
+FIXME: calls to getProp introduced into crypto-md5, why?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: 3d-raytrace calls toString 9K times
+
+[DONE] TODO: disable instrPtr code in jit.d once all working
+
+[DONE] FIXME: load doesn't accept ropes
+
+[DONE] TODO: fixup comparison operators ns
+
+[DONE] TODO: add comparison operator tests with concats
+
+[DONE] TODO: rope caching
+- need type tag for left string?
+- can try h4xx
+
+[DONE] TODO: rope concat with lhs rope
+
+[DONE] TODO: get rid of map ptr
+
+[DONE] FIXME: base64 segfaults
+Caught segmentation fault
+IP=C
+instrPtr: $0 = load_u32 $12, 12
+curFun: $rt_ropeToStr(2DB6)
+exiting
+- GC seems to have corrupted the rope
+  - seems it sets the pointer to null
+  - length of curRope is set to zero
+
+[DONE] TODO: would like an ir_print_ptr
+- add on master
+
+[DONE] 2014-11-06 Meeting:
 - ECOOP Paper
   - Do we want to have the type analysis?
     - Not sure how to fit shapes into that, doesn't quite compare
@@ -207,32 +284,16 @@ TODO: implement inline cache
 - Good news: TraceMonkey is not a moving target
   - We can keep beating it more and more
   - Almost beating TraceMonkey on 3d-cube, fixed that
+Marc says: can't include hidden gains from typed shapes
+- Deactivate typed shapes
+- Deactivate shape versioning, use inline caches
+- Keep analysis for comparison
 
-TODO: blog post about ropes
-- also mention murmurHash
+[DONE] TODO: make $rt_toString and toPrim convert ropes to strings
 
-TODO: begin implementing ropes
-- custom GC tag: Tag.ROPE
-- left, right, length (uint32), two refptrs
-- when concat'ed, set right ptr to null, left ptr to new string
-  - need to maintain a level of indirection until GC
-  - PROBLEM: if GC is to remove rope indirection, needs to change tag
-    - can try not removing this indirection
-    - access to large concat'ed strings is probably semi-rare?
-- in stdlib/string, make String.toString return an atom string
-- try to get simple benchmarks working
+[DONE] TODO: $rt_ropeToStr()
 
-
-
-
-
-
-
-
-
-
-
-
+[DONE] TODO: $ir_is_rope()
 
 [DONE] FIXME: this.queueCount++ seems to call into getProp...
 assgToIR is to blame

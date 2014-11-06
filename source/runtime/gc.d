@@ -571,6 +571,7 @@ Word gcForward(VM vm, Word word, Tag tag)
         case Tag.ARRAY:
         case Tag.CLOSURE:
         case Tag.STRING:
+        case Tag.ROPE:
         return Word.ptrv(gcForward(vm, word.ptrVal));
 
         // Function pointer (IRFunction)
@@ -603,9 +604,17 @@ Word gcForward(VM vm, Word word, Tag tag)
         }
         return word;
 
+        // Non-GCd types
         // Return the word unchanged
-        default:
+        case Tag.CONST:
+        case Tag.INT32:
+        case Tag.INT64:
+        case Tag.FLOAT64:
+        case Tag.RAWPTR:
         return word;
+
+        default:
+        assert (false);
     }
 }
 

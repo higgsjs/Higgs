@@ -26,7 +26,7 @@ sheet.writeFile(tmpName);
 // Read a spreadsheet from a CSV file
 sheet = csv.readFile(tmpName);
 
-assert(sheet.getNumRows() === 4);
+assert(sheet.getNumRows() === 4, 'failed to read all rows');
 
 assert (sheet.getCell(3, 0) === 'John');
 

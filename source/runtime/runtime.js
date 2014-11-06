@@ -67,10 +67,10 @@ Load and execute a source file
 */
 function load(fileName)
 {
-    if (!$ir_is_string(fileName))
-        throw TypeError("expected filename string argument");
+    if (!$ir_is_string(fileName) && !$ir_is_rope(fileName))
+        throw TypeError("expected string for file name argument");
 
-    return $ir_load_file(fileName);
+    return $ir_load_file($rt_toString(fileName));
 }
 
 /**
@@ -78,8 +78,8 @@ Evaluate a source string in the global scope
 */
 function eval(input)
 {
-    if ($ir_is_string(input))
-        return $ir_eval_str(input);
+    if ($ir_is_string(input) || $ir_is_rope(input))
+        return $ir_eval_str($rt_toString(input));
 
     return input;
 }
@@ -290,74 +290,6 @@ function $rt_strcmp(strA, strB)
 }
 
 /**
-Create a string representing an integer value
-*/
-function $rt_intToStr(intVal, radix)
-{
-    assert (
-        $ir_is_int32(radix) &&
-        $ir_gt_i32(radix, 0) &&
-        $ir_le_i32(radix, 36),
-        'invalid radix'
-    );
-
-    var strLen;
-    var neg;
-
-    // If the integer is negative, adjust the string length for the minus sign
-    if (intVal < 0)
-    {
-        strLen = 1;
-        intVal *= -1;
-        neg = true;
-    }
-    else
-    {
-        strLen = 0;
-        neg = false;
-    }
-
-    // Compute the number of digits to add to the string length
-    var intVal2 = intVal;
-    do
-    {
-        strLen = $ir_add_i32(strLen, 1);
-        intVal2 = $ir_div_i32(intVal2, radix);
-
-    } while ($ir_ne_i32(intVal2, 0));
-
-    // Allocate a string object
-    var strObj = $rt_str_alloc(strLen);
-
-    // If the string is negative, write the minus sign
-    if ($ir_eq_const(neg, true))
-    {
-        $rt_str_set_data(strObj, 0, 45);
-    }
-
-    var digits = '0123456789abcdefghijklmnopqrstuvwxyz';
-
-    // Write the digits in the string
-    var i = $ir_sub_i32(strLen, 1);
-    do
-    {
-        var digit = $ir_mod_i32(intVal, radix);
-
-        var ch = $rt_str_get_data(digits, digit);
-
-        $rt_str_set_data(strObj, i, ch);
-
-        intVal = $ir_div_i32(intVal, radix);
-
-        i = $ir_sub_i32(i, 1);
-
-    } while ($ir_ne_i32(intVal, 0));
-
-    // Get the corresponding string from the string table
-    return $ir_get_str(strObj);
-}
-
-/**
 Compute the integer value of a string
 */
 function $rt_strToInt(strVal)
@@ -451,56 +383,71 @@ function $rt_strToInt(strVal)
 }
 
 /**
-Get the string representation of a value
+Create a string representing an integer value
 */
-function $rt_toString(v)
+function $rt_intToStr(intVal, radix)
 {
-    if ($rt_valIsObj(v))
+    assert (
+        $ir_is_int32(radix) &&
+        $ir_gt_i32(radix, 0) &&
+        $ir_le_i32(radix, 36),
+        'invalid radix'
+    );
+
+    var strLen;
+    var neg;
+
+    // If the integer is negative, adjust the string length for the minus sign
+    if (intVal < 0)
     {
-        var str = v.toString();
-
-        if ($ir_is_string(str))
-            return str;
-
-        if ($rt_valIsObj(str))
-            throw TypeError('toString produced non-primitive value');
-
-        return $rt_toString(str);
+        strLen = 1;
+        intVal *= -1;
+        neg = true;
+    }
+    else
+    {
+        strLen = 0;
+        neg = false;
     }
 
-    if ($ir_is_int32(v))
+    // Compute the number of digits to add to the string length
+    var intVal2 = intVal;
+    do
     {
-        return $rt_intToStr(v, 10);
+        strLen = $ir_add_i32(strLen, 1);
+        intVal2 = $ir_div_i32(intVal2, radix);
+
+    } while ($ir_ne_i32(intVal2, 0));
+
+    // Allocate a string object
+    var strObj = $rt_str_alloc(strLen);
+
+    // If the string is negative, write the minus sign
+    if ($ir_eq_const(neg, true))
+    {
+        $rt_str_set_data(strObj, 0, 45);
     }
 
-    if ($ir_is_float64(v))
+    var digits = '0123456789abcdefghijklmnopqrstuvwxyz';
+
+    // Write the digits in the string
+    var i = $ir_sub_i32(strLen, 1);
+    do
     {
-        return $rt_numToStr(v, 10);
-    }
+        var digit = $ir_mod_i32(intVal, radix);
 
-    if ($ir_is_string(v))
-    {
-        return v;
-    }
+        var ch = $rt_str_get_data(digits, digit);
 
-    if ($ir_is_const(v))
-    {
-        if ($ir_eq_const(v, $undef))
-            return "undefined";
+        $rt_str_set_data(strObj, i, ch);
 
-        if ($ir_eq_const(v, true))
-            return "true";
+        intVal = $ir_div_i32(intVal, radix);
 
-        if ($ir_eq_const(v, false))
-            return "false";
-    }
+        i = $ir_sub_i32(i, 1);
 
-    if ($ir_is_refptr(v) && $ir_eq_refptr(v, null))
-    {
-        return "null";
-    }
+    } while ($ir_ne_i32(intVal, 0));
 
-    assert (false, "unhandled type in toString");
+    // Get the corresponding string from the string table
+    return $ir_get_str(strObj);
 }
 
 /**
@@ -535,6 +482,153 @@ function $rt_numToStr(v, radix)
 }
 
 /**
+Convert a rope to a string
+*/
+function $rt_ropeToStr(rope)
+{
+    // Get the right-hand string
+    var rightStr = $rt_rope_get_right(rope);
+
+    // If this rope was already converted to a string
+    if ($ir_eq_refptr(rightStr, null))
+    {
+        var strPtr = $rt_rope_get_left(rope);
+        var strTag = $ir_get_tag('');
+        return $ir_make_value(strPtr, strTag);
+    }
+
+    var ropeLen = $rt_rope_get_len(rope);
+
+    // Allocate a string object for the output
+    var dstStr = $rt_str_alloc(ropeLen);
+
+    var curRope = rope;
+
+    // TODO: use dst ptr instead
+    var curIdx = $ir_sub_i32(ropeLen, 1);
+
+    // Until we are done traversing the ropes
+    for (;;)
+    {
+        // The right-hand node must be a string
+        var rightLen = $rt_str_get_len(rightStr);
+
+        for (var i = $ir_sub_i32(rightLen, 1); $ir_ge_i32(i, 0); i = $ir_sub_i32(i, 1), curIdx = $ir_sub_i32(curIdx, 1))
+        {
+            var ch = $rt_str_get_data(rightStr, i);
+            $rt_str_set_data(dstStr, curIdx, ch);
+        }
+
+        // Move to the next rope
+        curRope = $rt_rope_get_left(curRope);
+
+        // FIXME: global getprop, make these constants
+
+        // If this is the last string in the chain, stop
+        if ($ir_eq_i32($rt_rope_get_header(curRope), $rt_LAYOUT_STR))
+        {
+            var leftStr = curRope;
+            break;
+        }
+
+        // Get the right-hand string for the current rope
+        rightStr = $rt_rope_get_right(curRope);
+
+        // If the rope was already converted to a string
+        if ($ir_eq_refptr(rightStr, null))
+        {
+            var leftStr = $rt_rope_get_left(curRope);
+            break;
+        }
+    }
+
+
+
+
+
+
+    // Copy the last string
+    var leftLen = $rt_str_get_len(leftStr);
+
+    for (var i = $ir_sub_i32(leftLen, 1); $ir_ge_i32(i, 0); i = $ir_sub_i32(i, 1), curIdx = $ir_sub_i32(curIdx, 1))
+    {
+        var ch = $rt_str_get_data(leftStr, i);
+        $rt_str_set_data(dstStr, curIdx, ch);
+    }
+
+
+
+
+    // Get the corresponding string from the string table
+    dstStr = $ir_get_str(dstStr);
+
+    // Cache the concatenated string in the original rope
+    $rt_rope_set_left(rope, dstStr);
+    $rt_rope_set_right(rope, null);
+
+    return dstStr;
+}
+
+/**
+Get the string representation of a value
+Note: this function returns plain strings only, no ropes
+*/
+function $rt_toString(v)
+{
+    if ($rt_valIsObj(v))
+    {
+        var str = v.toString();
+
+        if ($ir_is_string(str))
+            return str;
+
+        if ($rt_valIsObj(str))
+            throw TypeError('toString produced non-primitive value');
+
+        return $rt_toString(str);
+    }
+
+    if ($ir_is_int32(v))
+    {
+        return $rt_intToStr(v, 10);
+    }
+
+    if ($ir_is_float64(v))
+    {
+        return $rt_numToStr(v, 10);
+    }
+
+    if ($ir_is_string(v))
+    {
+        return v;
+    }
+
+    if ($ir_is_rope(v))
+    {
+        return $rt_ropeToStr(v);
+    }
+
+    if ($ir_is_const(v))
+    {
+        if ($ir_eq_const(v, $undef))
+            return "undefined";
+
+        if ($ir_eq_const(v, true))
+            return "true";
+
+        if ($ir_eq_const(v, false))
+            return "false";
+    }
+
+    if ($ir_is_refptr(v) && $ir_eq_refptr(v, null))
+    {
+        return "null";
+    }
+
+    assert (false, "unhandled type in toString");
+}
+
+/**
 Convert any value to a primitive value
 */
 function $rt_toPrim(v)
@@ -550,11 +644,14 @@ function $rt_toPrim(v)
     if ($ir_is_string(v))
         return v;
 
-    if ($ir_is_object(v) || $ir_is_array(v) || $ir_is_closure(v))
+    if ($ir_is_rope(v))
+        return $rt_ropeToStr(v);
+
+    if ($rt_valIsObj(v))
     {
         var str = v.toString();
 
-        if ($ir_is_refptr(str) && $ir_ne_refptr(str, null) && !$ir_is_string(str))
+        if ($rt_valIsObj(str))
             throw TypeError('toString produced non-primitive value');
 
         return str;
@@ -699,7 +796,7 @@ function $rt_typeof(v)
     if ($ir_is_closure(v))
         return "function";
 
-    if ($ir_is_string(v))
+    if ($ir_is_string(v) || $ir_is_rope(v))
         return "string";
 
     if ($ir_is_rawptr(v))
@@ -796,6 +893,34 @@ function $rt_add(x, y)
             return $ir_add_f64(x, y);
     }
 
+    // If x is a string
+    else if ($ir_is_string(x))
+    {
+        if ($ir_is_string(y))
+        {
+            var rope = $rt_rope_alloc();
+            var len = $ir_add_i32($rt_str_get_len(x), $rt_str_get_len(y));
+            $rt_rope_set_left(rope, x);
+            $rt_rope_set_right(rope, y);
+            $rt_rope_set_len(rope, len);
+            return rope;
+        }
+    }
+
+    // If x is a rope
+    else if ($ir_is_rope(x))
+    {
+        var sy = $ir_is_string(y)? y:$rt_toString(y);
+
+        var rope = $rt_rope_alloc();
+        var len = $ir_add_i32($rt_rope_get_len(x), $rt_str_get_len(sy));
+        $rt_rope_set_left(rope, x);
+        $rt_rope_set_right(rope, sy);
+        $rt_rope_set_len(rope, len);
+        return rope;
+    }
+
+    // TODO: eliminate toPrim call, specialize more
     // Convert x and y to primitives
     var px = $rt_toPrim(x);
     var py = $rt_toPrim(y);
@@ -1725,7 +1850,14 @@ function $rt_se(x, y)
     {
         if ($ir_is_string(y))
             return $ir_eq_refptr(x, y);
+        if ($ir_is_rope(y))
+            return $rt_se(x, $rt_ropeToStr(y));
         return false;
+    }
+
+    else if ($ir_is_rope(x))
+    {
+        return $rt_se($rt_ropeToStr(x), y);
     }
 
     else if ($ir_is_refptr(x))
@@ -1809,7 +1941,14 @@ function $rt_ns(x, y)
     {
         if ($ir_is_string(y))
             return $ir_ne_refptr(x, y);
+        if ($ir_is_rope(y))
+            return $rt_ns(x, $rt_ropeToStr(y));
         return true;
+    }
+
+    else if ($ir_is_rope(x))
+    {
+        return $rt_ns($rt_ropeToStr(x), y);
     }
 
     else if ($ir_is_refptr(x))
@@ -1994,12 +2133,6 @@ Get a property from an object using a string as key
 */
 function $rt_objGetProp(obj, propStr)
 {
-    /*
-    $ir_print_str(propStr); $ir_print_str('\n');
-    if ($ir_is_object(obj))
-        $ir_print_str("is obj\n");
-    */
-
     // Capture the object shape
     var objShape = $ir_obj_read_shape(obj);
     if ($ir_break());
@@ -2113,6 +2246,23 @@ function $rt_getProp(base, prop)
         return $rt_getProp($ir_get_str_proto(), prop);
     }
 
+    // If the base is a rope
+    if ($ir_is_rope(base))
+    {
+        // If the property is an integer
+        if ($ir_is_int32(prop))
+        {
+            return $rt_getProp($rt_ropeToStr(base), prop);
+        }
+
+        // If this is the length property
+        if ($ir_is_string(prop) && $ir_eq_refptr(prop, 'length'))
+            return $rt_rope_get_len(base);
+
+        // Recurse on String.prototype
+        return $rt_getProp($ir_get_str_proto(), prop);
+    }
+
     // If the base is a number
     if ($ir_is_int32(base) || $ir_is_float64(base))
     {
@@ -2205,7 +2355,7 @@ the base is a string value and the key is a constant string
 function $rt_getStrMethod(base, propStr)
 {
     // If the base is a simple object
-    if ($ir_is_string(base))
+    if ($ir_is_string(base) || $ir_is_rope(base))
     {
         // Get the string prototype object
         var obj = $ir_get_str_proto();

@@ -118,6 +118,7 @@ Opcode IS_OBJECT = { "is_object", true, [OpArg.LOCAL], &gen_is_object, OpInfo.BO
 Opcode IS_ARRAY = { "is_array", true, [OpArg.LOCAL], &gen_is_array, OpInfo.BOOL_VAL };
 Opcode IS_CLOSURE = { "is_closure", true, [OpArg.LOCAL], &gen_is_closure, OpInfo.BOOL_VAL };
 Opcode IS_STRING = { "is_string", true, [OpArg.LOCAL], &gen_is_string, OpInfo.BOOL_VAL };
+Opcode IS_ROPE = { "is_rope", true, [OpArg.LOCAL], &gen_is_rope, OpInfo.BOOL_VAL };
 
 // Type conversion
 Opcode I32_TO_F64 = { "i32_to_f64", true, [OpArg.LOCAL], &gen_i32_to_f64 };
@@ -272,6 +273,7 @@ Opcode ALLOC_OBJECT = { "alloc_object", true, [OpArg.LOCAL], &gen_alloc_object, 
 Opcode ALLOC_ARRAY = { "alloc_array", true, [OpArg.LOCAL], &gen_alloc_array, OpInfo.MAY_GC };
 Opcode ALLOC_CLOSURE = { "alloc_closure", true, [OpArg.LOCAL], &gen_alloc_closure, OpInfo.MAY_GC };
 Opcode ALLOC_STRING = { "alloc_string", true, [OpArg.LOCAL], &gen_alloc_string, OpInfo.MAY_GC };
+Opcode ALLOC_ROPE = { "alloc_rope", true, [OpArg.LOCAL], &gen_alloc_rope, OpInfo.MAY_GC };
 
 /// Trigger a garbage collection
 Opcode GC_COLLECT = { "gc_collect", false, [OpArg.LOCAL], &gen_gc_collect, OpInfo.MAY_GC | OpInfo.IMPURE };
