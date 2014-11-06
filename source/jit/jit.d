@@ -891,6 +891,20 @@ class CodeGenState
     }
 
     /**
+    Spill the values live after a given instruction
+    */
+    void spillLiveAfter(CodeBlock as, IRInstr instr)
+    {
+        return spillValues(
+            as,
+            delegate bool(LiveInfo liveInfo, IRDstValue value)
+            {
+                return liveInfo.liveAfter(value, instr);
+            }
+        );
+    }
+
+    /**
     Spill live registers from the register save space
     */
     void spillSavedRegs(SpillTestFn spillTest)
@@ -974,7 +988,10 @@ class CodeGenState
         foreach (value, state; valMap)
         {
             if (state.type.shapeKnown)
+            {
+                assert (!state.type.fptrKnown);
                 valMap[value] = state.clearShape();
+            }
         }
     }
 
@@ -1481,7 +1498,7 @@ abstract class CodeFragment
         endIdx = cast(uint32_t)as.getWritePos();
 
         // Add this fragment to the back of to the list of compiled fragments
-        vm.fragList ~= this;
+        vm.fragList.assumeSafeAppend ~= this;
 
         // Update the generated code size stat
         stats.genCodeSize += this.length();
@@ -1644,6 +1661,7 @@ enum BranchShape
 alias BranchGenFn = void delegate(
     CodeBlock as,
     VM vm,
+    BlockVersion block,
     CodeFragment target0,
     CodeFragment target1,
     BranchShape shape
@@ -1697,21 +1715,7 @@ class BlockVersion : CodeFragment
         // Compute the code length
         codeLen = cast(uint32_t)as.getWritePos - startIdx;
 
-        // If this block doesn't end in a call and there are two targets
-        if (block.lastInstr.opcode.isCall is false && target1 !is null)
-        {
-            // Write the block idx in scrReg[0]
-            size_t blockIdx = vm.fragList.length;
-            as.mov(scrRegs[0].opnd(32), X86Opnd(blockIdx));
-        }
-
         // Determine the branch shape
-        /*auto shape = (target1 is null)? BranchShape.NEXT0:BranchShape.DEFAULT;
-        assert (
-            (shape !is BranchShape.NEXT0) ||
-            (vm.compQueue.length > 0 && vm.compQueue.back is targets[0])
-        );*/
-
         BranchShape shape = BranchShape.DEFAULT;
         if (vm.compQueue.length > 0)
         {
@@ -1725,6 +1729,7 @@ class BlockVersion : CodeFragment
         branchGenFn(
             as,
             vm,
+            this,
             target0,
             target1,
             shape
@@ -1737,7 +1742,7 @@ class BlockVersion : CodeFragment
     /**
     Rewrite the final branch of this block
     */
-    void regenBranch(CodeBlock as, size_t blockIdx)
+    void regenBranch(CodeBlock as)
     {
         // Ensure that this block has already been compiled
         assert (started && ended);
@@ -1761,13 +1766,6 @@ class BlockVersion : CodeFragment
             !targets[1].started &&
             !vm.compQueue.canFind(targets[1])
         );
-
-        // If this block doesn't end in a call and at least one target is a stub
-        if (!block.lastInstr.opcode.isCall && (stub0 || stub1))
-        {
-            // Write the block idx in scrReg[0]
-            as.mov(scrRegs[0].opnd(32), X86Opnd(blockIdx));
-        }
 
         // Determine the branch shape, whether a target is immediately next
         BranchShape shape = BranchShape.DEFAULT;
@@ -1795,6 +1793,7 @@ class BlockVersion : CodeFragment
         branchGenFn(
             as,
             vm,
+            this,
             targets[0],
             targets[1],
             shape
@@ -2201,10 +2200,11 @@ alias RetEntry = Tuple!(
 
 /// Fragment reference tuple
 alias FragmentRef = Tuple!(
-    size_t, "pos",
-    size_t, "size",
-    CodeFragment, "frag",
-    size_t, "targetIdx"
+    BlockVersion, "srcBlock",   // Source block, origin fragment
+    CodeFragment, "frag",       // Referenced/destination code fragment
+    uint32_t, "pos",            // Position of the reference
+    uint16_t, "targetIdx",      // Branch target index at source fragment
+    uint16_t, "size"            // Size of the reference (32-bit rel or 64-bit abs)
 );
 
 /**
@@ -2214,11 +2214,18 @@ void addFragRef(
     VM vm,
     size_t pos,
     size_t size,
+    BlockVersion src,
     CodeFragment frag,
     size_t targetIdx
 )
 {
-    vm.refList ~= FragmentRef(pos, size, frag, targetIdx);
+    vm.refList ~= FragmentRef(
+        src,
+        frag,
+        cast(uint32_t)pos,
+        cast(uint16_t)targetIdx,
+        cast(uint16_t)size
+    );
 }
 
 /**
@@ -2280,7 +2287,7 @@ void compile(VM vm, IRInstr curInstr)
     while (vm.compQueue.length > 0)
     {
         assert (
-            as.getRemSpace() >= JIT_MIN_BLOCK_SPACE,
+            vm.stubStartPos - as.getWritePos >= JIT_MIN_BLOCK_SPACE,
             "insufficient space to compile version"
         );
 
@@ -2315,7 +2322,11 @@ void compile(VM vm, IRInstr curInstr)
                 writeln("compiling block: ", block.getName);
 
             if (opts.trace_instrs)
+            {
+                if (block is block.fun.entryBlock)
+                    as.printStr("; entry block for " ~ block.fun.getName);
                 as.printStr(block.getName ~ ":");
+            }
 
             // For each instruction of the block
             for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
@@ -2418,7 +2429,7 @@ void compile(VM vm, IRInstr curInstr)
             if (branch.target.started)
             {
                 // Encode the final jump and version reference
-                as.jmp32Ref(vm, branch.target);
+                as.jmp32Ref(vm, null, branch.target);
             }
 
             // Store the code end index
@@ -2500,16 +2511,44 @@ void compile(VM vm, IRInstr curInstr)
     // For each fragment reference
     foreach (refr; vm.refList)
     {
-        // If the target is not compiled, substitute it for a branch stub
-        CodeFragment target;
+        // Code position to jump to
+        size_t jumpDstPos;
+
+        // If the target is compiled, get its start index
         if (refr.frag.started)
         {
-            target = refr.frag;
+            jumpDstPos = cast(int32_t)refr.frag.startIdx;
         }
+
+        // The target is not yet compiled
         else
         {
+            // Store the current write position
+            auto startPos = as.getWritePos();
+
+            // Store the code position for the custom branch stub
+            jumpDstPos = vm.stubWritePos;
+
+            // Move the write position to the stub write position
+            as.setWritePos(vm.stubWritePos);
+
+            // Write the block pointer scrRegs[0]
+            assert (refr.srcBlock !is null);
+            as.ptr(scrRegs[0], refr.srcBlock);
+
+            // Get the branch stub corresponding to this target index
             assert (refr.targetIdx < 2);
-            target = getBranchStub(vm, refr.targetIdx);
+            auto branchStub = getBranchStub(vm, refr.targetIdx);
+
+            // Jump to the generic branch stub
+            auto offset = cast(int32_t)(branchStub.startIdx - (as.getWritePos + 5));
+            as.jmp32(offset);
+
+            // Update the stub write position
+            vm.stubWritePos = as.getWritePos;
+
+            // Return to the previous write position
+            as.setWritePos(startPos);
         }
 
         // Set the write position at the reference point
@@ -2520,16 +2559,13 @@ void compile(VM vm, IRInstr curInstr)
         switch (refr.size)
         {
             case 32:
-            auto offset = cast(int32_t)target.startIdx - (cast(int32_t)refr.pos + 4);
+            auto offset = jumpDstPos - (cast(int32_t)refr.pos + 4);
             as.writeInt(offset, 32);
-            if (opts.dumpinfo)
-                writefln("linking ref to %s, offset=%s", target.getName, offset);
             break;
 
             case 64:
-            as.writeInt(cast(int64_t)target.getCodePtr(as), 64);
-            if (opts.dumpinfo)
-                writefln("linking absolute ref to %s", target.getName);
+            auto targetAddr = cast(int64_t)as.getAddress(0) + jumpDstPos;
+            as.writeInt(targetAddr, 64);
             break;
 
             default:
@@ -2747,7 +2783,7 @@ extern (C) CodePtr compileEntry(EntryStub stub)
     catch (Error err)
     {
         assert (
-            false, 
+            false,
             "failed to generate IR for: \"" ~ fun.getName ~ "\"\n" ~
             err.toString
         );
@@ -2811,23 +2847,20 @@ extern (C) CodePtr compileEntry(EntryStub stub)
 /**
 Compile the branch code when a branch stub is hit
 */
-extern (C) CodePtr compileBranch(VM vm, uint32_t blockIdx, uint32_t targetIdx)
+extern (C) CodePtr compileBranch(VM vm, BlockVersion srcBlock, uint32_t targetIdx)
 {
     // Stop recording execution time, start recording compilation time
     stats.execTimeStop();
     stats.compTimeStart();
 
+    assert (srcBlock !is null);
+
     if (opts.dumpinfo)
     {
         writeln("entering compileBranch");
-        writeln("blockIdx=", blockIdx);
+        writeln("srcBlock name: ", srcBlock.getName);
         writeln("targetIdx=", targetIdx);
     }
-
-    // Get the block from which the stub hit originated
-    assert (blockIdx < vm.fragList.length, "invalid block idx");
-    auto srcBlock = cast(BlockVersion)vm.fragList[blockIdx];
-    assert (srcBlock !is null);
 
     // Get the branch edge
     assert (targetIdx < srcBlock.targets.length);
@@ -2858,7 +2891,7 @@ extern (C) CodePtr compileBranch(VM vm, uint32_t blockIdx, uint32_t targetIdx)
     vm.queue(branchCode);
 
     // Rewrite the final branch of the source block
-    srcBlock.regenBranch(vm.execHeap, blockIdx);
+    srcBlock.regenBranch(vm.execHeap);
 
     // Compile fragments and patch references
     vm.compile(branchCode.branch.target.firstInstr);
@@ -2906,7 +2939,7 @@ extern (C) CodePtr compileCont(ContStub stub)
     stub.callVer.targets[0] = contBranch;
 
     // Rewrite the final branch of the call block
-    stub.callVer.regenBranch(vm.execHeap, 0);
+    stub.callVer.regenBranch(vm.execHeap);
 
     // Compile fragments and patch references
     vm.compile(contBranch.branch.target.firstInstr);
@@ -2975,7 +3008,8 @@ CodePtr getEntryStub(VM vm, bool ctorCall)
 }
 
 /**
-Get the branch target stub for a given target index
+Get the generic branch target stub for a given target index
+This stub expects the source block pointer to be written in scrRegs[0]
 */
 BranchStub getBranchStub(VM vm, size_t targetIdx)
 {
@@ -3005,9 +3039,9 @@ BranchStub getBranchStub(VM vm, size_t targetIdx)
     // The first argument is the VM object
     as.mov(cargRegs[0].opnd, vmReg.opnd);
 
-    // The second argument is the src block index,
+    // The second argument is the src block pointer,
     // which was passed in scrRegs[0]
-    as.mov(cargRegs[1].opnd(32), scrRegs[0].opnd(32));
+    as.mov(cargRegs[1].opnd(64), scrRegs[0].opnd(64));
 
     // The third argument is the branch target index
     as.mov(cargRegs[2].opnd(32), X86Opnd(targetIdx));

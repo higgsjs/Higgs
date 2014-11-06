@@ -69,12 +69,30 @@
             chan < this.numChans
         );
 
+        if (pos >= this.numSamples)
+            this.numSamples = pos + 1;
+
         var offset = pos * this.numChans;
 
-        if (offset >= this.samples.length)
-            this.samples.length = offset + this.numChans;
-
         this.samples[offset + chan] = val;
+    }
+
+    /**
+    Get the value of a sample
+    */
+    Sound.prototype.getSample = function (pos, chan)
+    {
+        assert (
+            chan < this.numChans
+        );
+
+        assert (
+            pos < this.numSamples
+        );
+
+        var offset = pos * this.numChans;
+
+        return this.samples[offset + chan];
     }
 
     Sound.prototype.writeWAV = function (fileName)

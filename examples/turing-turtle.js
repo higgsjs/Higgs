@@ -3,7 +3,7 @@
 Program to produce drawings using a turtle plotter controlled
 by a randonly generated Turing machine.
 
-usage: higgs turtle.js
+usage: higgs turing-turtle.js
 
 @author
 Maxime Chevalier-Boisvert

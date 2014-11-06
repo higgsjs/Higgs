@@ -67,10 +67,10 @@ ulong[ulong] numVerBlocks;
 ulong numShapes = 0;
 
 /// Number of shape lookups with a known shape
-ulong numDefShapeKnown = 0;
+ulong numShapeKnown = 0;
 
-/// Number of shape lookups with dynamic dispatches
-ulong numDefShapeDisp = 0;
+/// Number of shape tests
+ulong numShapeTests = 0;
 
 /// Number of property writes
 ulong numSetProp = 0;
@@ -95,6 +95,9 @@ ulong numCallFast = 0;
 
 /// Number of unoptimized dynamic calls
 ulong numCallSlow = 0;
+
+/// Number of calls performed using apply
+ulong numCallApply = 0;
 
 /// Number of primitive calls by primitive name
 private ulong*[string] numPrimCalls;
@@ -245,8 +248,8 @@ static ~this()
         writefln("max versions: %s", maxVersions);
         writefln("num shapes: %s", numShapes);
 
-        writefln("num def shape known: %s", numDefShapeKnown);
-        writefln("num def shape dispatch: %s", numDefShapeDisp);
+        writefln("num shape known: %s", numShapeKnown);
+        writefln("num shape tests: %s", numShapeTests);
         writefln("num set prop: %s", numSetProp);
         writefln("num set prop host: %s", numSetPropHost);
         writefln("num get prop: %s", numGetProp);
@@ -256,6 +259,7 @@ static ~this()
 
         writefln("num call fast: %s", numCallFast);
         writefln("num call slow: %s", numCallSlow);
+        writefln("num call apply: %s", numCallApply);
 
         alias PrimCallCnt = Tuple!(string, "name", ulong, "cnt");
         PrimCallCnt[] primCallCnts;

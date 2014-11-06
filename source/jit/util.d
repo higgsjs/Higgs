@@ -57,6 +57,7 @@ Create a relative 32-bit jump to a code fragment
 void writeJcc32Ref(string mnem, opcode...)(
     CodeBlock as,
     VM vm,
+    BlockVersion srcBlock,
     CodeFragment frag,
     size_t targetIdx = size_t.max
 )
@@ -67,7 +68,7 @@ void writeJcc32Ref(string mnem, opcode...)(
 
     as.writeBytes(opcode);
 
-    vm.addFragRef(as.getWritePos(), 32, frag, targetIdx);
+    vm.addFragRef(as.getWritePos(), 32, srcBlock, frag, targetIdx);
 
     as.writeInt(0, 32);
 }
@@ -112,6 +113,7 @@ void movAbsRef(
     CodeBlock as,
     VM vm,
     X86Reg dstReg,
+    BlockVersion srcBlock,
     CodeFragment frag,
     size_t targetIdx = size_t.max
 )
@@ -120,7 +122,7 @@ void movAbsRef(
         as.writeASM("mov", dstReg, frag.getName);
 
     as.mov(dstReg.opnd(64), X86Opnd(uint64_t.max));
-    vm.addFragRef(as.getWritePos() - 8, 64, frag, targetIdx);
+    vm.addFragRef(as.getWritePos() - 8, 64, srcBlock, frag, targetIdx);
 }
 
 /// Load a pointer constant into a register

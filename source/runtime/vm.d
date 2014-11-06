@@ -388,7 +388,7 @@ struct ValuePair
             return "closure";
 
             case Tag.STRING:
-            return "\"" ~ extractStr(word.ptrVal) ~ "\"";
+            return extractStr(word.ptrVal);
 
             default:
             assert (false, "unsupported value type");
@@ -424,6 +424,9 @@ immutable size_t GLOBAL_OBJ_INIT_SIZE = 1024;
 
 /// Initial executable heap size 16M bytes
 immutable size_t EXEC_HEAP_INIT_SIZE = 2 ^^ 24;
+
+/// Fraction of the executable heap reserved for stubs
+immutable size_t EXEC_HEAP_STUB_FRAC = 8;
 
 /// Initial subroutine heap size, 64K bytes
 immutable size_t SUBS_HEAP_INIT_SIZE = 2 ^^ 16;
@@ -511,20 +514,29 @@ class VM
     /// Function prototype object
     ValuePair funProto;
 
+    /// String prototype object
+    ValuePair strProto;
+
     /// Global object reference
     ValuePair globalObj;
 
     /// Runtime error value (uncaught exceptions)
     RunError runError;
 
+    /// Current instruction (set when calling into host code)
+    IRInstr curInstr;
+
     /// Executable heap
     CodeBlock execHeap;
 
+    /// Stub space start position
+    size_t stubStartPos;
+
+    /// Current stub space write position
+    size_t stubWritePos;
+
     /// Subroutine heap
     CodeBlock subsHeap;
-
-    /// Current instruction (set when calling into host code)
-    IRInstr curInstr;
 
     /// Map of return addresses to return entries
     RetEntry[CodePtr] retAddrMap;
@@ -541,7 +553,7 @@ class VM
     /// Function entry stub
     EntryStub entryStub;
 
-    /// Branch target stubs
+    /// Generic branch target stubs
     BranchStub[] branchStubs;
 
     /// Shape lookup fallback subroutine
@@ -664,6 +676,12 @@ class VM
             objProto
         );
 
+        // Allocate the string prototype object
+        strProto = newObj(
+            this,
+            objProto
+        );
+
         // Allocate the function prototype object
         funProto = newObj(
             this,
@@ -679,6 +697,10 @@ class VM
 
         // Allocate the executable heap
         execHeap = new CodeBlock(EXEC_HEAP_INIT_SIZE, opts.genasm);
+
+        // Compute the stub space start position
+        stubStartPos = execHeap.getSize - (execHeap.getSize / EXEC_HEAP_STUB_FRAC);
+        stubWritePos = stubStartPos;
 
         // Allocate the subroutine heap
         subsHeap = new CodeBlock(SUBS_HEAP_INIT_SIZE, opts.genasm);

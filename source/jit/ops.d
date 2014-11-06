@@ -336,6 +336,7 @@ void RMMOp(string op, size_t numBits, Tag tag)(
         delegate void(
             CodeBlock as,
             VM vm,
+            BlockVersion block,
             CodeFragment target0,
             CodeFragment target1,
             BranchShape shape
@@ -344,16 +345,16 @@ void RMMOp(string op, size_t numBits, Tag tag)(
             final switch (shape)
             {
                 case BranchShape.NEXT0:
-                jo32Ref(as, vm, target1, 1);
+                jo32Ref(as, vm, block, target1, 1);
                 break;
 
                 case BranchShape.NEXT1:
-                jno32Ref(as, vm, target0, 0);
+                jno32Ref(as, vm, block, target0, 0);
                 break;
 
                 case BranchShape.DEFAULT:
-                jo32Ref(as, vm, target1, 1);
-                jmp32Ref(as, vm, target0, 0);
+                jo32Ref(as, vm, block, target1, 1);
+                jmp32Ref(as, vm, block, target0, 0);
             }
         }
     );
@@ -928,6 +929,7 @@ void TagTestOp(Tag tag)(
                 delegate void(
                     CodeBlock as,
                     VM vm,
+                    BlockVersion block,
                     CodeFragment target0,
                     CodeFragment target1,
                     BranchShape shape
@@ -940,7 +942,7 @@ void TagTestOp(Tag tag)(
 
                         case BranchShape.NEXT1:
                         case BranchShape.DEFAULT:
-                        jmp32Ref(as, vm, target0, 0);
+                        jmp32Ref(as, vm, block, target0, 0);
                     }
                 }
             );
@@ -999,6 +1001,7 @@ void TagTestOp(Tag tag)(
             delegate void(
                 CodeBlock as,
                 VM vm,
+                BlockVersion block,
                 CodeFragment target0,
                 CodeFragment target1,
                 BranchShape shape
@@ -1007,16 +1010,16 @@ void TagTestOp(Tag tag)(
                 final switch (shape)
                 {
                     case BranchShape.NEXT0:
-                    jne32Ref(as, vm, target1, 1);
+                    jne32Ref(as, vm, block, target1, 1);
                     break;
 
                     case BranchShape.NEXT1:
-                    je32Ref(as, vm, target0, 0);
+                    je32Ref(as, vm, block, target0, 0);
                     break;
 
                     case BranchShape.DEFAULT:
-                    jne32Ref(as, vm, target1, 1);
-                    jmp32Ref(as, vm, target0, 0);
+                    jne32Ref(as, vm, block, target1, 1);
+                    jmp32Ref(as, vm, block, target0, 0);
                 }
             }
         );
@@ -1271,6 +1274,7 @@ void CmpOp(string op, size_t numBits)(
             delegate void(
                 CodeBlock as,
                 VM vm,
+                BlockVersion block,
                 CodeFragment target0,
                 CodeFragment target1,
                 BranchShape shape
@@ -1282,16 +1286,16 @@ void CmpOp(string op, size_t numBits)(
                     final switch (shape)
                     {
                         case BranchShape.NEXT0:
-                        jne32Ref(as, vm, target1, 1);
+                        jne32Ref(as, vm, block, target1, 1);
                         break;
 
                         case BranchShape.NEXT1:
-                        je32Ref(as, vm, target0, 0);
+                        je32Ref(as, vm, block, target0, 0);
                         break;
 
                         case BranchShape.DEFAULT:
-                        je32Ref(as, vm, target0, 0);
-                        jmp32Ref(as, vm, target1, 1);
+                        je32Ref(as, vm, block, target0, 0);
+                        jmp32Ref(as, vm, block, target1, 1);
                     }
                 }
                 else if (op == "ne")
@@ -1299,16 +1303,16 @@ void CmpOp(string op, size_t numBits)(
                     final switch (shape)
                     {
                         case BranchShape.NEXT0:
-                        je32Ref(as, vm, target1, 1);
+                        je32Ref(as, vm, block, target1, 1);
                         break;
 
                         case BranchShape.NEXT1:
-                        jne32Ref(as, vm, target0, 0);
+                        jne32Ref(as, vm, block, target0, 0);
                         break;
 
                         case BranchShape.DEFAULT:
-                        jne32Ref(as, vm, target0, 0);
-                        jmp32Ref(as, vm, target1, 1);
+                        jne32Ref(as, vm, block, target0, 0);
+                        jmp32Ref(as, vm, block, target1, 1);
                     }
                 }
                 else if (op == "lt")
@@ -1316,16 +1320,16 @@ void CmpOp(string op, size_t numBits)(
                     final switch (shape)
                     {
                         case BranchShape.NEXT0:
-                        jge32Ref(as, vm, target1, 1);
+                        jge32Ref(as, vm, block, target1, 1);
                         break;
 
                         case BranchShape.NEXT1:
-                        jl32Ref(as, vm, target0, 0);
+                        jl32Ref(as, vm, block, target0, 0);
                         break;
 
                         case BranchShape.DEFAULT:
-                        jl32Ref(as, vm, target0, 0);
-                        jmp32Ref(as, vm, target1, 1);
+                        jl32Ref(as, vm, block, target0, 0);
+                        jmp32Ref(as, vm, block, target1, 1);
                     }
                 }
                 else if (op == "le")
@@ -1333,16 +1337,16 @@ void CmpOp(string op, size_t numBits)(
                     final switch (shape)
                     {
                         case BranchShape.NEXT0:
-                        jg32Ref(as, vm, target1, 1);
+                        jg32Ref(as, vm, block, target1, 1);
                         break;
 
                         case BranchShape.NEXT1:
-                        jle32Ref(as, vm, target0, 0);
+                        jle32Ref(as, vm, block, target0, 0);
                         break;
 
                         case BranchShape.DEFAULT:
-                        jle32Ref(as, vm, target0, 0);
-                        jmp32Ref(as, vm, target1, 1);
+                        jle32Ref(as, vm, block, target0, 0);
+                        jmp32Ref(as, vm, block, target1, 1);
                     }
                 }
                 else if (op == "gt")
@@ -1350,16 +1354,16 @@ void CmpOp(string op, size_t numBits)(
                     final switch (shape)
                     {
                         case BranchShape.NEXT0:
-                        jle32Ref(as, vm, target1, 1);
+                        jle32Ref(as, vm, block, target1, 1);
                         break;
 
                         case BranchShape.NEXT1:
-                        jg32Ref(as, vm, target0, 0);
+                        jg32Ref(as, vm, block, target0, 0);
                         break;
 
                         case BranchShape.DEFAULT:
-                        jg32Ref(as, vm, target0, 0);
-                        jmp32Ref(as, vm, target1, 1);
+                        jg32Ref(as, vm, block, target0, 0);
+                        jmp32Ref(as, vm, block, target1, 1);
                     }
                 }
                 else if (op == "ge")
@@ -1367,16 +1371,16 @@ void CmpOp(string op, size_t numBits)(
                     final switch (shape)
                     {
                         case BranchShape.NEXT0:
-                        jl32Ref(as, vm, target1, 1);
+                        jl32Ref(as, vm, block, target1, 1);
                         break;
 
                         case BranchShape.NEXT1:
-                        jge32Ref(as, vm, target0, 0);
+                        jge32Ref(as, vm, block, target0, 0);
                         break;
 
                         case BranchShape.DEFAULT:
-                        jge32Ref(as, vm, target0, 0);
-                        jmp32Ref(as, vm, target1, 1);
+                        jge32Ref(as, vm, block, target0, 0);
+                        jmp32Ref(as, vm, block, target1, 1);
                     }
                 }
 
@@ -1387,9 +1391,9 @@ void CmpOp(string op, size_t numBits)(
                     // True: 100
                     // False: 111 or 000 or 001
                     // False: JNE + JP
-                    jne32Ref(as, vm, target1, 1);
-                    jp32Ref(as, vm, target1, 1);
-                    jmp32Ref(as, vm, target0, 0);
+                    jne32Ref(as, vm, block, target1, 1);
+                    jp32Ref(as, vm, block, target1, 1);
+                    jmp32Ref(as, vm, block, target0, 0);
                 }
                 else if (op == "fne")
                 {
@@ -1397,29 +1401,29 @@ void CmpOp(string op, size_t numBits)(
                     // True: 111 or 000 or 001
                     // False: 100
                     // True: JNE + JP
-                    jne32Ref(as, vm, target0, 0);
-                    jp32Ref(as, vm, target0, 0);
-                    jmp32Ref(as, vm, target1, 1);
+                    jne32Ref(as, vm, block, target0, 0);
+                    jp32Ref(as, vm, block, target0, 0);
+                    jmp32Ref(as, vm, block, target1, 1);
                 }
                 else if (op == "flt")
                 {
-                    ja32Ref(as, vm, target0, 0);
-                    jmp32Ref(as, vm, target1, 1);
+                    ja32Ref(as, vm, block, target0, 0);
+                    jmp32Ref(as, vm, block, target1, 1);
                 }
                 else if (op == "fle")
                 {
-                    jae32Ref(as, vm, target0, 0);
-                    jmp32Ref(as, vm, target1, 1);
+                    jae32Ref(as, vm, block, target0, 0);
+                    jmp32Ref(as, vm, block, target1, 1);
                 }
                 else if (op == "fgt")
                 {
-                    ja32Ref(as, vm, target0, 0);
-                    jmp32Ref(as, vm, target1, 1);
+                    ja32Ref(as, vm, block, target0, 0);
+                    jmp32Ref(as, vm, block, target1, 1);
                 }
                 else if (op == "fge")
                 {
-                    jae32Ref(as, vm, target0, 0);
-                    jmp32Ref(as, vm, target1, 1);
+                    jae32Ref(as, vm, block, target0, 0);
+                    jmp32Ref(as, vm, block, target1, 1);
                 }
             }
         );
@@ -1475,6 +1479,7 @@ void gen_if_true(
         delegate void(
             CodeBlock as,
             VM vm,
+            BlockVersion block,
             CodeFragment target0,
             CodeFragment target1,
             BranchShape shape
@@ -1483,16 +1488,16 @@ void gen_if_true(
             final switch (shape)
             {
                 case BranchShape.NEXT0:
-                jne32Ref(as, vm, target1, 1);
+                jne32Ref(as, vm, block, target1, 1);
                 break;
 
                 case BranchShape.NEXT1:
-                je32Ref(as, vm, target0, 0);
+                je32Ref(as, vm, block, target0, 0);
                 break;
 
                 case BranchShape.DEFAULT:
-                je32Ref(as, vm, target0, 0);
-                jmp32Ref(as, vm, target1, 1);
+                je32Ref(as, vm, block, target0, 0);
+                jmp32Ref(as, vm, block, target1, 1);
             }
         }
     );
@@ -1519,6 +1524,7 @@ void JumpOp(size_t succIdx)(
         delegate void(
             CodeBlock as,
             VM vm,
+            BlockVersion block,
             CodeFragment target0,
             CodeFragment target1,
             BranchShape shape
@@ -1533,7 +1539,7 @@ void JumpOp(size_t succIdx)(
                 assert (false);
 
                 case BranchShape.DEFAULT:
-                jmp32Ref(as, vm, target0, 0);
+                jmp32Ref(as, vm, block, target0, 0);
             }
         }
     );
@@ -1802,6 +1808,7 @@ void gen_call_prim(
         delegate void(
             CodeBlock as,
             VM vm,
+            BlockVersion block,
             CodeFragment target0,
             CodeFragment target1,
             BranchShape shape
@@ -1812,11 +1819,11 @@ void gen_call_prim(
             assert (raSlot !is NULL_STACK);
 
             // Write the return address on the stack
-            as.movAbsRef(vm, scrRegs[0], target0, 0);
+            as.movAbsRef(vm, scrRegs[0], block, target0, 0);
             as.setWord(raSlot, scrRegs[0].opnd(64));
 
             // Jump to the function entry block
-            jmp32Ref(as, vm, entryVer, 0);
+            jmp32Ref(as, vm, block, entryVer, 0);
         },
         false
     );
@@ -1839,30 +1846,52 @@ void gen_call(
     // This may throw an exception if the callee is not a closure
     auto mayThrow = !closType.tagKnown || closType.tag !is Tag.CLOSURE;
 
-    // Get the function pointer if known
-    IRFunction fun = closType.fptrKnown? closType.fptr:null;
-
-    // Get the number of arguments passed
+    // Get the number of arguments supplied
     auto numArgs = cast(uint32_t)instr.numArgs - 2;
 
-    // If the callee function is known and the argument count matches
-    if (fun !is null && numArgs is fun.numParams)
+    // If the callee function is known
+    if (closType.fptrKnown)
     {
         as.incStatCnt(&stats.numCallFast, scrRegs[0]);
 
-        //writeln("compiling");
+        // Get the function pointer
+        IRFunction fun = closType.fptr;
 
         // If the function is not yet compiled, compile it now
         if (fun.entryBlock is null)
         {
-            astToIR(fun.vm, fun.ast, fun);
+            try
+            {
+                astToIR(fun.vm, fun.ast, fun);
+            }
+
+            catch (Error err)
+            {
+                assert (
+                    false,
+                    "failed to generate IR for: \"" ~ fun.getName ~ "\"\n" ~
+                    err.toString
+                );
+            }
         }
 
-        // Copy the function arguments in reverse order
-        for (size_t i = 0; i < numArgs; ++i)
+        // Compute the number of missing arguments
+        auto numMissing = (fun.numParams > numArgs)? (fun.numParams - numArgs):0;
+
+        // Compute the actual number of extra arguments
+        auto numExtra = (numArgs > fun.numParams)? (numArgs - fun.numParams):0;
+
+        // Compute the number of arguments we actually need to pass
+        auto numPassed = numArgs + numMissing;
+
+        // Compute the number of locals in this frame
+        auto frameSize = fun.numLocals + numExtra;
+
+        // Copy the function arguments supplied
+        for (int32_t i = 0; i < numArgs; ++i)
         {
-            auto instrArgIdx = instr.numArgs - (1+i);
-            auto dstIdx = -(cast(int32_t)i + 1);
+            auto instrArgIdx = 2 + i;
+            auto dstIdx = -(numPassed - i);
 
             // Copy the argument word
             auto argOpnd = st.getWordOpnd(
@@ -1887,8 +1916,17 @@ void gen_call(
             as.setTag(dstIdx, tagOpnd);
         }
 
+        // Write undefined values for the missing arguments
+        for (int32_t i = 0; i < numMissing; ++i)
+        {
+            auto dstIdx = -(i + 1);
+
+            as.setWord(dstIdx, UNDEF.word.int8Val);
+            as.setTag(dstIdx, UNDEF.tag);
+        }
+
         // Write the argument count
-        as.setWord(-numArgs - 1, numArgs);
+        as.setWord(-numPassed - 1, numArgs);
 
         // Write the "this" argument
         if (fun.thisVal.hasUses)
@@ -1902,7 +1940,7 @@ void gen_call(
                 true,
                 false
             );
-            as.setWord(-numArgs - 2, thisReg);
+            as.setWord(-numPassed - 2, thisReg);
             auto tagOpnd = st.getTagOpnd(
                 as,
                 instr,
@@ -1910,7 +1948,7 @@ void gen_call(
                 scrRegs[1].opnd(8),
                 true
             );
-            as.setTag(-numArgs - 2, tagOpnd);
+            as.setTag(-numPassed - 2, tagOpnd);
         }
 
         // Write the closure argument
@@ -1925,24 +1963,18 @@ void gen_call(
                 false,
                 false
             );
-            as.setWord(-numArgs - 3, closReg);
+            as.setWord(-numPassed - 3, closReg);
         }
 
         // Spill the values that are live after the call
-        st.spillValues(
-            as,
-            delegate bool(LiveInfo liveInfo, IRDstValue value)
-            {
-                return liveInfo.liveAfter(value, instr);
-            }
-        );
+        st.spillLiveBefore(as, instr);
 
         // Clear the known shape information
         st.clearShapes();
 
         // Push space for the callee arguments and locals
-        as.sub(X86Opnd(tspReg), X86Opnd(fun.numLocals));
-        as.sub(X86Opnd(wspReg), X86Opnd(8 * fun.numLocals));
+        as.sub(X86Opnd(tspReg), X86Opnd(frameSize));
+        as.sub(X86Opnd(wspReg), X86Opnd(8 * frameSize));
 
         // Request an instance for the function entry block
         auto entryVer = getBlockVersion(
@@ -1957,6 +1989,7 @@ void gen_call(
             delegate void(
                 CodeBlock as,
                 VM vm,
+                BlockVersion block,
                 CodeFragment target0,
                 CodeFragment target1,
                 BranchShape shape
@@ -1967,25 +2000,19 @@ void gen_call(
                 assert (raSlot !is NULL_STACK);
 
                 // Write the return address on the stack
-                as.movAbsRef(vm, scrRegs[0], target0, 0);
+                as.movAbsRef(vm, scrRegs[0], block, target0, 0);
                 as.setWord(raSlot, scrRegs[0].opnd(64));
 
-                //as.printStr("jumping ****************");
-
                 // Jump to the function entry block
-                jmp32Ref(as, vm, entryVer, 0);
+                jmp32Ref(as, vm, block, entryVer, 0);
             },
             false
         );
-
-        //writeln("compiled");
 
         return;
     }
 
     as.incStatCnt(&stats.numCallSlow, scrRegs[0]);
-
-    //as.printStr("regular call!");
 
     // If an exception may be thrown
     if (mayThrow)
@@ -2147,13 +2174,14 @@ void gen_call(
         delegate void(
             CodeBlock as,
             VM vm,
+            BlockVersion block,
             CodeFragment target0,
             CodeFragment target1,
             BranchShape shape
         )
         {
             // Write the return address on the stack
-            as.movAbsRef(vm, scrReg3, target0, 0);
+            as.movAbsRef(vm, scrReg3, block, target0, 0);
             movArgWord(as, numArgs + 3, scrReg3.opnd);
 
             // Adjust the stack pointers
@@ -2186,6 +2214,9 @@ void gen_call_apply(
         CodePtr retAddr
     )
     {
+        // Increment the number of calls performed using apply
+        stats.numCallApply++;
+
         vm.setCurInstr(instr);
 
         auto closVal = vm.getArgVal(instr, 0);
@@ -2256,6 +2287,7 @@ void gen_call_apply(
         delegate void(
             CodeBlock as,
             VM vm,
+            BlockVersion block,
             CodeFragment target0,
             CodeFragment target1,
             BranchShape shape
@@ -2268,7 +2300,7 @@ void gen_call_apply(
             as.ptr(cargRegs[1], instr);
 
             // Pass the return address as third argument
-            as.movAbsRef(vm, cargRegs[2], target0, 0);
+            as.movAbsRef(vm, cargRegs[2], block, target0, 0);
 
             // Call the host function
             as.ptr(scrRegs[0], &op_call_apply);
@@ -2387,6 +2419,7 @@ void gen_load_file(
         delegate void(
             CodeBlock as,
             VM vm,
+            BlockVersion block,
             CodeFragment target0,
             CodeFragment target1,
             BranchShape shape
@@ -2508,6 +2541,7 @@ void gen_eval_str(
         delegate void(
             CodeBlock as,
             VM vm,
+            BlockVersion block,
             CodeFragment target0,
             CodeFragment target1,
             BranchShape shape
@@ -2734,6 +2768,7 @@ void GetValOp(Tag tag, string fName)(
 alias gen_get_obj_proto = GetValOp!(Tag.OBJECT, "objProto.word");
 alias gen_get_arr_proto = GetValOp!(Tag.OBJECT, "arrProto.word");
 alias gen_get_fun_proto = GetValOp!(Tag.OBJECT, "funProto.word");
+alias gen_get_str_proto = GetValOp!(Tag.OBJECT, "strProto.word");
 alias gen_get_global_obj = GetValOp!(Tag.OBJECT, "globalObj.word");
 alias gen_get_heap_size = GetValOp!(Tag.INT32, "heapSize");
 alias gen_get_gc_count = GetValOp!(Tag.INT32, "gcCount");
@@ -2925,14 +2960,8 @@ void gen_get_str(
         return str;
     }
 
-    // Spill the values live before the instruction
-    st.spillValues(
-        as,
-        delegate bool(LiveInfo liveInfo, IRDstValue value)
-        {
-            return liveInfo.liveBefore(value, instr);
-        }
-    );
+    // Spill the values live before this instruction
+    st.spillLiveBefore(as, instr);
 
     // Get the string pointer
     auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, true, false);
@@ -2952,7 +2981,7 @@ void gen_get_str(
     as.loadJITRegs();
 
     // Store the output value into the output operand
-    as.mov(outOpnd, X86Opnd(RAX));
+    as.mov(outOpnd, cretReg.opnd);
 
     // The output is a reference pointer
     st.setOutTag(as, instr, Tag.STRING);
@@ -3057,6 +3086,7 @@ void gen_break(
         delegate void(
             CodeBlock as,
             VM vm,
+            BlockVersion block,
             CodeFragment target0,
             CodeFragment target1,
             BranchShape shape
@@ -3071,7 +3101,7 @@ void gen_break(
                 break;
 
                 case BranchShape.DEFAULT:
-                jmp32Ref(as, vm, target0, 1);
+                jmp32Ref(as, vm, block, target0, 1);
             }
         }
     );
@@ -3137,6 +3167,7 @@ void gen_capture_tag(
         delegate void(
             CodeBlock as,
             VM vm,
+            BlockVersion block,
             CodeFragment target0,
             CodeFragment target1,
             BranchShape shape
@@ -3145,16 +3176,16 @@ void gen_capture_tag(
             final switch (shape)
             {
                 case BranchShape.NEXT0:
-                je32Ref(as, vm, target1, 1);
+                je32Ref(as, vm, block, target1, 1);
                 break;
 
                 case BranchShape.NEXT1:
-                jne32Ref(as, vm, target0, 0);
+                jne32Ref(as, vm, block, target0, 0);
                 break;
 
                 case BranchShape.DEFAULT:
-                jne32Ref(as, vm, target0, 0);
-                jmp32Ref(as, vm, target1, 1);
+                jne32Ref(as, vm, block, target0, 0);
+                jmp32Ref(as, vm, block, target1, 1);
             }
         }
     );
@@ -3187,9 +3218,15 @@ void gen_capture_shape(
     // If the shape is marked as known
     if (objType.shapeKnown)
     {
+        // Increment the count of known shape instances
+        as.incStatCnt(&stats.numShapeKnown, scrRegs[0]);
+
         // Jump directly to the false successor block
         return gen_jump_false(ver, st, instr, as);
     }
+
+    // Increment the count of shape tests
+    as.incStatCnt(&stats.numShapeTests, scrRegs[0]);
 
     // Get the current shape argument word
     assert (shapeVal.block !is instr.block);
@@ -3219,6 +3256,7 @@ void gen_capture_shape(
         delegate void(
             CodeBlock as,
             VM vm,
+            BlockVersion block,
             CodeFragment target0,
             CodeFragment target1,
             BranchShape shape
@@ -3227,16 +3265,16 @@ void gen_capture_shape(
             final switch (shape)
             {
                 case BranchShape.NEXT0:
-                je32Ref(as, vm, target1, 1);
+                je32Ref(as, vm, block, target1, 1);
                 break;
 
                 case BranchShape.NEXT1:
-                jne32Ref(as, vm, target0, 0);
+                jne32Ref(as, vm, block, target0, 0);
                 break;
 
                 case BranchShape.DEFAULT:
-                jne32Ref(as, vm, target0, 0);
-                jmp32Ref(as, vm, target1, 1);
+                jne32Ref(as, vm, block, target0, 0);
+                jmp32Ref(as, vm, block, target1, 1);
             }
         }
     );
@@ -3299,6 +3337,14 @@ void gen_obj_init_shape(
         );
 
         obj_set_shape(objPtr, cast(rawptr)shape);
+
+
+        assert (
+            vm.wUpperLimit > vm.wStack,
+            "invalid wStack after init shape"
+        );
+
+
     }
 
     auto vm = ver.state.fun.vm;
@@ -3337,8 +3383,9 @@ void gen_obj_init_shape(
         as.saveJITRegs();
 
         // Call the host function
-        as.mov(cargRegs[0].opnd(64), vmReg.opnd);
+        // Note: we move objOpnd first to avoid corruption
         as.mov(cargRegs[1].opnd(64), objOpnd);
+        as.mov(cargRegs[0].opnd(64), vmReg.opnd);
         as.mov(cargRegs[2].opnd(8), tagOpnd);
         as.ptr(scrRegs[0], &op_obj_init_shape);
         as.call(scrRegs[0]);
@@ -3391,6 +3438,8 @@ void gen_obj_set_prop(
 
         auto vm = instr.block.fun.vm;
 
+        vm.setCurInstr(instr);
+
         auto objPair = vm.getArgVal(instr, 0);
         auto strPtr = vm.getArgStr(instr, 1);
         auto valPair = vm.getArgVal(instr, 2);
@@ -3411,6 +3460,8 @@ void gen_obj_set_prop(
             propStr,
             valPair
         );
+
+        vm.setCurInstr(null);
 
         return (!defShape || defShape.isGetSet is false)? 1:0;
     }
@@ -3454,6 +3505,7 @@ void gen_obj_set_prop(
             delegate void(
                 CodeBlock as,
                 VM vm,
+                BlockVersion block,
                 CodeFragment target0,
                 CodeFragment target1,
                 BranchShape shape
@@ -3462,16 +3514,16 @@ void gen_obj_set_prop(
                 final switch (shape)
                 {
                     case BranchShape.NEXT0:
-                    jne32Ref(as, vm, target1, 1);
+                    jne32Ref(as, vm, block, target1, 1);
                     break;
 
                     case BranchShape.NEXT1:
-                    je32Ref(as, vm, target0, 0);
+                    je32Ref(as, vm, block, target0, 0);
                     break;
 
                     case BranchShape.DEFAULT:
-                    je32Ref(as, vm, target0, 0);
-                    jmp32Ref(as, vm, target1, 1);
+                    je32Ref(as, vm, block, target0, 0);
+                    jmp32Ref(as, vm, block, target1, 1);
                 }
             }
         );
@@ -3789,6 +3841,7 @@ void gen_obj_get_prop(
             delegate void(
                 CodeBlock as,
                 VM vm,
+                BlockVersion block,
                 CodeFragment target0,
                 CodeFragment target1,
                 BranchShape shape
@@ -3797,16 +3850,16 @@ void gen_obj_get_prop(
                 final switch (shape)
                 {
                     case BranchShape.NEXT0:
-                    jne32Ref(as, vm, target1, 1);
+                    jne32Ref(as, vm, block, target1, 1);
                     break;
 
                     case BranchShape.NEXT1:
-                    je32Ref(as, vm, target0, 0);
+                    je32Ref(as, vm, block, target0, 0);
                     break;
 
                     case BranchShape.DEFAULT:
-                    je32Ref(as, vm, target0, 0);
-                    jmp32Ref(as, vm, target1, 1);
+                    je32Ref(as, vm, block, target0, 0);
+                    jmp32Ref(as, vm, block, target1, 1);
                 }
             }
         );

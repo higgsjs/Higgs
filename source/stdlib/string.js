@@ -78,6 +78,9 @@ function String(value)
     }
 }
 
+// Set the string prototype object
+String.prototype = $ir_get_str_proto();
+
 //-----------------------------------------------------------------------------
 
 /**
@@ -407,7 +410,7 @@ function string_replace(searchValue, replaceValue)
                 this.substring(pos + $rt_str_get_len(searchValue)));
         }
     }
-    else if (searchValue instanceof RegExp)
+    else if (searchValue instanceof $rt_RegExp)
     {
         // Save regexp state
         var globalFlagSave = searchValue.global;
@@ -673,14 +676,25 @@ function string_substring(start, end)
     var source = this.toString();
     var length = $rt_str_get_len(source);
 
+    if (!$ir_is_int32(start))
+    {
+        start = $rt_toInt32(start);
+    }
+
+    if (!$ir_is_int32(end))
+    {
+        if (end === undefined)
+            end = length;
+        else
+            end = $rt_toInt32(end);
+    }
+
     if (start < 0)
         start = 0;
     else if (start > length)
         start = length;
 
-    if (end === undefined)
-        end = length;
-    else if (end > length)
+    if (end > length)
         end = length;
     else if (end < 0)
         end = 0;
@@ -692,10 +706,10 @@ function string_substring(start, end)
         end = tmp;
     }
 
-    // Allocate new string.
+    // Allocate new string
     var s = $rt_str_alloc(end - start);
 
-    // Copy substring characters in the new allocated string.
+    // Copy substring characters in the new allocated string
     for (var i = start, j = 0; i < end; ++i, ++j)
     {
         var ch = $rt_str_get_data(source, i);
@@ -783,6 +797,7 @@ function string_toUpperCase()
     for (var i = 0; i < a.length; i++)
     {
         var c = a[i];
+
         // FIXME: support full Unicode
         if (c > 255)
             error("Only ASCII characters are currently supported");

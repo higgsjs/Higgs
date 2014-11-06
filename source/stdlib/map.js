@@ -45,43 +45,44 @@ Default hash function implementation
 */
 Map.defHashFn = function (val)
 {
-    if (typeof val === 'number')
+    if ($ir_is_int32(val))
     {
-        return Math.floor(val);
+        return val;
     }
 
-    else if (typeof val === 'string')
+    if ($ir_is_float64(val))
     {
-        var hashCode = 0;
-
-        for (var i = 0; i < val.length; ++i)
-        {
-            var ch = val.charCodeAt(i);
-            hashCode = (((hashCode << 8) + ch) & 536870911) % 426870919;
-        }
-
-        return hashCode;
+        return val | 0;
     }
 
-    else if (typeof val === 'boolean')
+    if ($ir_is_string(val))
     {
-        return val? 1:0;
+        return $rt_str_get_hash(val);
     }
 
-    else if (val === null || val === undefined)
+    if ($ir_is_const(val))
+    {
+        if (val === false)
+            return 0;
+        if (val === true)
+            return 1;
+        if (val === undefined)
+            return 2;
+
+        assert (false);
+    }
+
+    if (val === null)
     {
         return 0;
     }
 
-    else
+    if (val.__hashCode__ === undefined)
     {
-        if (val.__hashCode__ === undefined)
-        {
-            val.__hashCode__ = defHashFn.nextObjSerial++;
-        }
-
-        return val.__hashCode__;
+        val.__hashCode__ = defHashFn.nextObjSerial++;
     }
+
+    return val.__hashCode__;
 }
 Object.defineProperty(Map, 'defHashFn', { writable:false });
 

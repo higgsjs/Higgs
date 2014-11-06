@@ -203,19 +203,54 @@ function $rt_strcat(strA, strB)
     var lenO = $ir_add_i32(lenA, lenB);
     var strO = $rt_str_alloc(lenO);
 
-    // Copy the character data from the first string
-    for (var i = 0; $ir_lt_i32(i, lenA); i = $ir_add_i32(i, 1))
-    {
-        var ch = $rt_str_get_data(strA, i);
-        $rt_str_set_data(strO, i, ch);
-    }
+    // Output pointer
+    var dataO = $ir_add_ptr_i32(strO, $rt_str_ofs_data(strO, 0));
 
-    // Copy the character data from the second string
-    for (var i = 0; $ir_lt_i32(i, lenB); i = $ir_add_i32(i, 1))
-    {
-        var ch = $rt_str_get_data(strB, i);
-        $rt_str_set_data(strO, $ir_add_i32(lenA, i), ch);
-    }
+    // A string pointers
+    var dataA = $ir_add_ptr_i32(strA, $rt_str_ofs_data(strA, 0));
+    var endA = $ir_add_ptr_i32(dataA, $ir_lsft_i32($ir_rsft_i32(lenA, 2), 3));
+
+    // 8 by 8 copy
+	while ($ir_ne_rawptr(dataA, endA))
+	{
+        $ir_store_u64(dataO, 0, $ir_load_u64(dataA, 0));
+        dataA = $ir_add_ptr_i32(dataA, 8);
+        dataO = $ir_add_ptr_i32(dataO, 8);
+	}
+
+    var remA = $ir_and_i32(lenA, 3);
+
+    // Tail remainder copy
+	switch (remA)
+	{
+	    case 3: $ir_store_u16(dataO, 4, $ir_load_u64(dataA, 4));
+	    case 2: $ir_store_u16(dataO, 2, $ir_load_u64(dataA, 2));
+	    case 1: $ir_store_u16(dataO, 0, $ir_load_u64(dataA, 0));
+	};
+
+    dataO = $ir_add_ptr_i32(dataO, $ir_lsft_i32(remA, 1));
+
+    // B string pointers
+    var dataB = $ir_add_ptr_i32(strB, $rt_str_ofs_data(strB, 0));
+    var endB = $ir_add_ptr_i32(dataB, $ir_lsft_i32($ir_rsft_i32(lenB, 2), 3));
+
+    // 8 by 8 copy
+	while ($ir_ne_rawptr(dataB, endB))
+	{
+        $ir_store_u64(dataO, 0, $ir_load_u64(dataB, 0));
+        dataB = $ir_add_ptr_i32(dataB, 8);
+        dataO = $ir_add_ptr_i32(dataO, 8);
+	}
+
+    var remB = $ir_and_i32(lenB, 3);
+
+    // Tail remainder copy
+	switch (remB)
+	{
+	    case 3: $ir_store_u16(dataO, 4, $ir_load_u64(dataB, 4));
+	    case 2: $ir_store_u16(dataO, 2, $ir_load_u64(dataB, 2));
+	    case 1: $ir_store_u16(dataO, 0, $ir_load_u64(dataB, 0));
+	};
 
     // Find/add the concatenated string in the string table
     return $ir_get_str(strO);
@@ -260,8 +295,8 @@ Create a string representing an integer value
 function $rt_intToStr(intVal, radix)
 {
     assert (
-        $ir_is_int32(radix)    &&
-        $ir_gt_i32(radix, 0) && 
+        $ir_is_int32(radix) &&
+        $ir_gt_i32(radix, 0) &&
         $ir_le_i32(radix, 36),
         'invalid radix'
     );
@@ -328,8 +363,6 @@ Compute the integer value of a string
 function $rt_strToInt(strVal)
 {
     // TODO: add radix support
-
-    // TODO: add floating-point support
 
     var strLen = $rt_str_get_len(strVal);
 
@@ -786,7 +819,7 @@ function $rt_add(x, y)
 /**
 Specialized add for the (int,int) case (e.g.: index increment)
 */
-function $rt_addInt(x, y)
+/*function $rt_addInt(x, y)
 {
     // If x,y are integer
     if ($ir_is_int32(x) && $ir_is_int32(y))
@@ -805,7 +838,7 @@ function $rt_addInt(x, y)
     }
 
     return $rt_add(x, y);
-}
+}*/
 
 /**
 Specialized add for the (int,int) and (float,float) cases
@@ -827,11 +860,6 @@ function $rt_addIntFloat(x, y)
                 // Reconstruct x from r and y
                 // Hence x is not live after the add
                 x = $ir_sub_i32(r, y);
-
-                // Handle the overflow case
-                var fx = $ir_i32_to_f64(x);
-                var fy = $ir_i32_to_f64(y);
-                return $ir_add_f64(fx, fy);
             }
         }
 
@@ -907,12 +935,6 @@ function $rt_subIntFloat(x, y)
             {
                 return r;
             }
-            else
-            {
-                var fx = $ir_i32_to_f64(x);
-                var fy = $ir_i32_to_f64(y);
-                return $ir_sub_f64(fx, fy);
-            }
         }
 
         if ($ir_is_float64(y))
@@ -927,24 +949,6 @@ function $rt_subIntFloat(x, y)
 
         if ($ir_is_float64(y))
             return $ir_sub_f64(x, y);
-    }
-
-    return $rt_sub(x, y);
-}
-
-/**
-Specialized subtract for the (int,int) case (e.g.: index decrement)
-*/
-function $rt_subInt(x, y)
-{
-    // If x,y are integer
-    if ($ir_is_int32(x) && $ir_is_int32(y))
-    {
-        var r;
-        if (r = $ir_sub_i32_ovf(x, y))
-        {
-            return r;
-        }
     }
 
     return $rt_sub(x, y);
@@ -1071,14 +1075,40 @@ Specialized divide for integers and floats
 */
 function $rt_divIntFloat(x, y)
 {
-    // If either value is floating-point or integer
-    if (($ir_is_float64(x) || $ir_is_int32(x)) &&
-        ($ir_is_float64(y) || $ir_is_int32(y)))
+    // If x is integer
+    if ($ir_is_int32(x))
     {
-        var fx = $ir_is_float64(x)? x:$ir_i32_to_f64(x);
-        var fy = $ir_is_float64(y)? y:$ir_i32_to_f64(y);
+        if ($ir_is_int32(y) && $ir_ne_i32(y, 0))
+        {
+            // Perform integer division
+            var r = $ir_div_i32(x, y);
 
-        return $ir_div_f64(fx, fy);
+            // Verify that there was no remainder
+            var v = $ir_mul_i32(r, y);
+            if ($ir_eq_i32(x, v))
+                return r;
+        }
+
+        if ($ir_is_float64(y))
+        {
+            var fx = $ir_i32_to_f64(x);
+            return $ir_div_f64(fx, y);
+        }
+    }
+
+    // If x is floating-point
+    else if ($ir_is_float64(x))
+    {
+        if ($ir_is_float64(y))
+        {
+            return $ir_div_f64(x, y);
+        }
+
+        if ($ir_is_int32(y))
+        {
+            var fy = $ir_i32_to_f64(y);
+            return $ir_div_f64(x, fy);
+        }
     }
 
     return $rt_div(x, y);
@@ -1640,6 +1670,20 @@ function $rt_ne(x, y)
 }
 
 /**
+Optimized inequality (!=) for comparisons with null
+*/
+function $rt_neNull(x)
+{
+    if ($ir_is_refptr(x) && $ir_eq_refptr(x, null))
+        return false;
+
+    if ($ir_is_const(x) && $ir_eq_const(x, $undef))
+        return false;
+
+    return true;
+}
+
+/**
 JS strict equality (===) comparison operator
 */
 function $rt_se(x, y)
@@ -1849,12 +1893,12 @@ function $rt_newObj(protoPtr)
 }
 
 /**
-Allocate an array
+Allocate an array of the given length
 */
-function $rt_newArr(numElems)
+function $rt_newArr(length)
 {
     // Allocate the array table
-    var tblPtr = $rt_arrtbl_alloc(numElems);
+    var tblPtr = $rt_arrtbl_alloc(length);
 
     // Allocate the array
     var objPtr = $rt_arr_alloc($rt_OBJ_MIN_CAP);
@@ -1864,7 +1908,9 @@ function $rt_newArr(numElems)
     $rt_setProto(objPtr, $ir_get_arr_proto());
     $rt_setArrTbl(objPtr, tblPtr);
     $rt_obj_set_tag(objPtr, $rt_ARRTBL_SLOT_IDX, $ir_get_tag(null));
-    $rt_setArrLen(objPtr, numElems);
+
+    // Set the array length
+    $rt_setArrLen(objPtr, length);
 
     //$ir_print_str("Allocated array\n");
 
@@ -2064,7 +2110,7 @@ function $rt_getProp(base, prop)
             return $rt_str_get_len(base);
 
         // Recurse on String.prototype
-        return $rt_getProp(String.prototype, prop);
+        return $rt_getProp($ir_get_str_proto(), prop);
     }
 
     // If the base is a number
@@ -2146,6 +2192,36 @@ function $rt_getPropField(base, propStr)
             {
                 return $undef;
             }
+        }
+    }
+
+    return $rt_getProp(base, propStr);
+}
+
+/**
+Specialized version of getProp for field accesses where
+the base is a string value and the key is a constant string
+*/
+function $rt_getStrMethod(base, propStr)
+{
+    // If the base is a simple object
+    if ($ir_is_string(base))
+    {
+        // Get the string prototype object
+        var obj = $ir_get_str_proto();
+
+        // Capture the object shape
+        var objShape = $ir_obj_read_shape(obj);
+        if ($ir_break());
+        if ($ir_capture_shape(obj, objShape))
+            if ($ir_capture_shape(obj, objShape))
+
+        // If the property value can be read directly
+        var propVal;
+        if (propVal = $ir_obj_get_prop(obj, propStr))
+        {
+            // Return the property value
+            return propVal;
         }
     }
 
@@ -2393,13 +2469,18 @@ function $rt_setArrLength(arr, newLen)
         // If the new length would exceed the capacity
         if (newLen > cap)
         {
+            // Compute the new size to resize to
+            var newSize = $ir_mul_i32(cap, 2);
+            if ($ir_gt_i32(newLen, newSize))
+                newSize = newLen;
+
             // Extend the internal table
-            $rt_extArrTbl(arr, tbl, len, cap, newLen);
+            $rt_extArrTbl(arr, tbl, len, cap, newSize);
         }
     }
     else
     {
-        // Initialize removed entries to undefined
+        // Set the removed entries to undefined
         for (var i = newLen; i < len; i++)
         {
             $rt_arrtbl_set_word(tbl, i, $ir_get_word(undefined));
@@ -2897,7 +2978,7 @@ function $rt_getPropEnum(obj)
                 else
                 {
                     // Move up the prototype chain
-                    curObj = String.prototype;
+                    curObj = $ir_get_str_proto();
                     curShape = $rt_valIsObj(curObj)? $rt_obj_get_shape(curObj):$nullptr;
                     curIdx = 0;
                     continue;

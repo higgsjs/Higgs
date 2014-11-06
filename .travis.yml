@@ -7,7 +7,7 @@ language: c
 before_install:
  - sudo apt-get update -qq
  - sudo apt-get install -qq gcc-multilib time
- - wget "http://downloads.dlang.org/releases/2013/dmd_2.064.2-0_amd64.deb" -O dmd.deb
+ - wget "http://downloads.dlang.org/releases/2014/dmd_2.066.1-0_amd64.deb" -O dmd.deb
  - sudo dpkg -i dmd.deb
 
 # skip dependency install step

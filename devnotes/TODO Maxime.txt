@@ -11,7 +11,7 @@ Conference deadlines:
 - DYLA workshop         March
 - ISMM                  Feb
 - Computing Frontier    Jan 2015, notify Feb
-- SLASH 2015
+- SPLASH 2015
 
 List of possible contributions:
 - Type tagging scheme
@@ -23,12 +23,6 @@ List of possible contributions:
 - Typed shapes and basic block versioning
 
 ------------------------------------------------------------------------------
-
-FIXME: v8bench/regexp segfaults
-
-FIXME: date-format-tofte
-- keeps using more and more memory
-- some kind of memory leak issue?
 
 TODO: make $ runtime/stdlib variables read-only, non-enumerable, non-configurable
 
@@ -61,12 +55,6 @@ maintaining 50% of free space turned out to be the sweet spot. Whenever less tha
 50% of free space are available after a collection, the heap grows.
 => grow on next GC
 
-TODO: try embedded arg list for IR instrs?
-- What is the object we allocate most of? stats?
-At EA, in C++, we have exactly this type in our standard template library as
-eastl::fixed_vector<T>. It's definitely kind of annoying to implement, but
-extremely useful once you have it for exactly this kind of use case.
-
 TODO: liveness analysis flipped...?
 - TODO: start by implementing system to measure total liveness analysis time
   - test on 3d-raytrace, other big benchmarks which don't GC, find slowest
@@ -82,15 +70,12 @@ TODO: liveness analysis flipped...?
   - For most values, small embedded list will work
 - Values that are never live don't even have a live set
 
-TODO: optimize host get_prop
-- doing shape lookup twice
+FIXME: infinite loop in regexp?
+s2 = 'QBZPbageby_cynprubyqre'; re2 = /^\s*|\s*$/g; s2.replace(re2, '');
 
 ------------------------------------------------------------------------------
 
-ECOOP - Dec 21st
-- Jan Vitek is on organizing committee
-
-VEE - Nov 25th?
+TODO: thread global obj as hidden fn argument?
 
 TODO: think about interprocedural BBV
 - Return info: try to predict what the function will return
@@ -98,6 +83,67 @@ TODO: think about interprocedural BBV
   - remark: for many runtime functions, we should know the return type,
     but it may also not be very relevant
 - Shape changed flag in context
+- Need function entry stubs, management of entry versions
+  - Do we need entry stubs?
+  - When going to specialized entry, could we compile immediately?
+
+Return info propagation:
+The return provokes the compilation of the continuation stub
+The continuation stub is not compiled until this return happens
+When the first return point is compiled, establish a prediction for other returns
+Compiling other return points will either match or violate the prediction
+Continuation stubs can be compiled in function of this prediction
+For stubs that make no prediction, the mispredict return is a noop
+- Can separate return predictions by entry point versions ***
+TODO: verify proportion of calls modifying shapes
+- Can also do this through profiling, set some bit to zero on call
+TODO: profile return values, are they often monomorphic?
+
+Global object threading:
+- Needs to be phi-like or a pseudo-argument so the input ctx can provide it
+  - get global obj instruction won't quite work
+- Pseudo-arg might work, but we don't want to count this in hidden args, do we?
+  - Would like to avoid copying this on the stack
+  - Could use special handling, it's a hidden arg but we don't write it?
+  - Or swap vmReg for a global obj reg?
+
+Version explosion:
+- Probably won't have explosion, many of the types of input args already exposed
+- If problem, can have smarter versioning scheme
+  - Limit per-value polymorphism, refuse versions or return a compromise
+
+TODO: blog post, the lazy compiler
+- log current ideas in writing
+
+class AstNode: public ZoneObject
+class InstructionOperand : public ZoneObject
+typedef ZoneVector<InstructionOperand*> InstructionOperandVector;
+// The Zone supports very fast allocation of small chunks of
+// memory. The chunks cannot be deallocated individually, but instead
+// the Zone supports deallocating all chunks in one fast
+// operation. The Zone is used to hold temporary data structures like
+// the abstract syntax tree, which is deallocated after compilation.
+std.conv:
+T emplace(T, Args...)(void[] chunk, auto ref Args args) if (is(T == class));
+// AST nodes are allocated in a separate zone, which allows faster
+// allocation and constant-time deallocation of the entire syntax
+// tree.
+- Free list approach: fast reallocation, but still need to allocate many
+  objects. D GC will still prove extremely slow.
+- Seems we really should allocate our own large memory blocks
+  - Must call addRange on the memory range
+  - Free list: maybe use a vector, no need to inherit from PoolObject?
+http://wiki.dlang.org/Memory_Management#Explicit_Class_Instance_Allocation
+- Use @nogc attribute
+
+------------------------------------------------------------------------------
+
+ECOOP - Dec 21st
+- Jan Vitek is on organizing committee
+- Look into the conf more
+- Highly polymorphic objects: only the object shapes flowing into that code matter
+"Can change people's perception of your proposal without changing your proposal,
+compare to something less favorable first"
 
 TODO: blog post, Higgs' Fancy New Object System => get started
 - use knightmare image for featured image
@@ -105,59 +151,383 @@ TODO: blog post, Higgs' Fancy New Object System => get started
 - post to r/compilers, r/higgsjs
 - Typed shapes + BBV a bit of a gamble
 
-TODO: stub branches, pre-reserve space, put block idx in there
-- should ideally jump ahead and not backwards
-- don't alloc objects for each stub
-  - or maybe have an array of stubs, flat
-- could use this for function entry stubs too
-  - need to become specialized for interprocedural BBV
-TODO: stub space, no more generic stubs
-- Do we need entry stubs? compile immediately?
-- Do we need stub objects?
-  - Entry stubs would need a pointer to the entry state
-- This should yield interesting performance improvements
+TODO: try to implement inline array for instr args, phi args
 
-TODO: blog post, the lazy compiler
-- log current ideas in writing
+TODO: getter and setter syntax
+- needed for hash map benchmark
+- Easy to recognize the grammar, but need to modify the AST
+  - Use a struct for object literal property descriptors
+- Probably want some kind of runtime call to define getters and setters
+TODO: use global VM ptr in stats.d for code size, stub size?
+- remove code size computation
+TODO: move global VM pointer to runtime/vm, avoid needing to import main
+- maybe want a static VM.init? make ctor private
 
-TODO: ropes
-- do some online reading first ***
+TODO: synth, right for new synth, up for new melody
+- log the melody
+TODO: try allowing either tri or sine in osc bank
+
+TODO: change paper template for PLDI?
+- fix references
+TODO: push paper to pldi15 repo
+git@github.com:udem-dlteam/pldi2015.git
+
+TODO: implement inline cache
+- Needed for typed shapes paper, next BBV paper
+
+2014-11-0X Meeting:
+- ECOOP Paper
+  - Do we want to have the type analysis?
+    - Not sure how to fit shapes into that, doesn't quite compare
+- Should probably focus paper on OO aspects
+  - What are shapes, how are ours different
+  - How our system is better than a simple inline cache
+  - Should we implement an inline cache?
+  - Resolving callee identities effectively, optimized calls
+  - No on-stack replacement needed
+- Sidetracked, more small optimizations, addictive
+  - Optimized .call syntax for few args, previously going through apply
+  - Improved fast calls, now works with argument count mismatch
+  - Optimized string method lookups
+- Looked into splay, worst performing string benchmark
+  - String concat did not explain terrible slowness
+  - Flaw is string hash function, tail problem
+  - Replaced by murmurHash2A, 64-bit
+  - splay 4x faster, all other string benchmarks faster
+- HHVM and tracelets at OOPSLA
+  - Realized it's good we have this on arXiv, put latest paper there too
+- Paper notes:
+  - PLDI: two phase process, 2nd phase response too late for computing frontier
+  - Do we still want the analysis?
+    - analysis can't have typed shapes, versioning based on shapes
+    - needs inline cache, makes comparison more complex
+    - disabling typed shapes loses us some of our advantage against TM
+  - When comparing against BBV & analysis only... compile eagerly?
+    - more like regular method JIT?
+- Good news: TraceMonkey is not a moving target
+  - We can keep beating it more and more
+  - Almost beating TraceMonkey on 3d-cube, fixed that
+
+TODO: blog post about ropes
+- also mention murmurHash
+
+TODO: begin implementing ropes
+- custom GC tag: Tag.ROPE
+- left, right, length (uint32), two refptrs
+- when concat'ed, set right ptr to null, left ptr to new string
+  - need to maintain a level of indirection until GC
+  - PROBLEM: if GC is to remove rope indirection, needs to change tag
+    - can try not removing this indirection
+    - access to large concat'ed strings is probably semi-rare?
+- in stdlib/string, make String.toString return an atom string
+- try to get simple benchmarks working
+
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: this.queueCount++ seems to call into getProp...
+assgToIR is to blame
+currently 10K host get props
+- Now beating baseline, much of the overhead was property accesses!
+
+[DONE] FIXME: problem for crypto-md5... Integer division produces integer, but we
+convert it into a float. This screws up much of the logic afterwards.
+Could possibly do div i32 and test with a simple multiplication
+
+[DONE] TODO: create vs tracemonkey graph
+
+[DONE] TODO: copy paper into new dir without pushing to repo, remove git metainfo
+
+[DONE] TODO: email Jan Vitek
+- Advice for ECOOP submission
+  - Explain general idea
+  - Structure, contents
+  - Do we have a chance at ECOOP, or go for a workshop like ICOOOLPS
+
+[DONE] TODO: optimize 3d-cube:
+- fair amount of rt_add, why?
+  - i++ on float values
+- many setProp calls
+  - comes from setting array props out of bounds
+
+[DONE] TODO: get latest tracemonkey rev, revision cb5d09b48f03
+http://hg.mozilla.org/mozilla-central/file/cb5d09b48f03/js/src
+- look into how to disable method JIT
+  options -j and -m toggle JITs
+  both disabled by default in 1.8.5
+Version: JavaScript-C 1.8.5+ 2011-04-16
+
+[DONE] TODO: create pldi15 branch
+
+[DONE] TODO: can we get the last working version of tracemonkey?
+https://bugzilla.mozilla.org/show_bug.cgi?id=698201
+
+[DONE] TODO: try optimizing strcat
+
+[DONE] TODO: put BBV paper r3 on arxiv
+
+[DONE] TODO: make hash table use internal string hash, whai not
+
+[DONE] TODO: test key making code of splay, string hash lookups may be super slow
+
+[DONE] TODO: num chars hashed
+base64, 500M chars, 5s, loads of GC
+tagcloud, 372M, 12s, loads of GC
+validate-input, 3B, 30s, loads of GC
+unpack-code, 1.6M, 2.3s
+3d-raytrace, 6.6M, 0.751s
+splay, only 15M, 58s
+
+[DONE] TODO: try bank of sine waves
+- can try approx freq multiples at first, divide amplitude
+
+[DONE] TODO: look into ropes, do some online reading
+http://blog.cdleary.com/2012/01/string-representation-in-spidermonkey/
 - left, right, length
-- when concat'ed, set right to null
+- when concat'ed, set right ptr to null, left ptr to new string
+  - need to maintain a level of indirection until GC
+- in stdlib/string, make toString return a non-rope string
 
-TODO: push to master
-TODO: phi nodes, store in inline array?
-- Issue: no more pointers to phi nodes?
-TODO: push to master
-TODO: attempt inline array for IRInstr args
-- measure compilation time before
-TODO: look at V8 src wrt IR, phi nodes
-- How do they represent/alloc this efficiently?
-- No pointers?
+[DONE] TODO: try triangle wave + steep filter for kick
 
-2014-10-2X Meeting:
+[DONE] TODO: take a break, filter, stateful closure?
+- see vanalog
+
+[DONE] TODO: add parser test for trailing comma
+
+[DONE] FIXME: parse error: "benchmarks/jetstream/dry.c.js"@1752:11: invalid property name
+./higgs benchmarks/jetstream/dry.c.js
+- make this parse error more specific?
+  - prop name in object literal??
+- Add new parser regression test
+
+[DONE] TODO: regress, gc-new-date
+
+[DONE] TODO: bug signaled by Brett
+- add regression test
+- take a quick look at first
+- segfault happens during GC
+  - stack frame traversal fails
+We get into gcCollect with a null curInstr... Who triggers gcCollect?
+instrPtr: obj_set_prop $253, "__s__", $221 => call_merge(4E4D8), if_join(4E4E2)
+curFun: computeDate(126FE)
+
+[DONE] TODO: add existing arxiv link to blog
+
+[DONE] TODO: optimize string prop access, they result in unknown calls
+- check if prop name exists on string prototype?
+  - no, use pre-established list
+- most unknown calls in base64
+- implement in method call logic, $rt_getStrMethod
+- before:
+    num call fast: 57724
+    num call slow: 9198
+- after
+    num call fast: 61907
+    num call slow: 6865
+  - base64 issue fixed
+  - code very slightly smaller
+
+[DONE] TODO: strProto in VM, get_str_proto instruction
+- need to change stdlib code too
+- grep for String.prototype
+
+[DONE] TODO: support for fast calls with args mismatch
+- Separate loop for missing args?
+- compute numArgsPassed
+- compute frameSize, see VM call
+
+[DONE] FIXME: call to non-function no longer reports fn name
+- did we not test for this !?
+./higgs tests/02-regress/call-non-function.js
+- Primitive not inlined because inside of try block!
+  - Find the primitive call through a phi node...
+
+[DONE] TODO: slow call stat, unknown callee
+- num call unknown
+- look at deltablue and richards
+- in the case of deltablue, only half of slow calls are unknown
+- this is true in earley-boyer as well
+
+[DONE] TODO: look at deltablue
+./higgs benchmarks/nocomptime/deltablue.js => 1.72ms
+- uses .call with 1, 2 or 3 args
+- try implementing small opt
+- after => 1.61
+- unseen benefit is less gc
+
+[DONE] 2014-10-28 Meeting:
 - Submitted rebuttal
+- Implemented out of line branch stubs to eliminate moves
+  - Slightly smaller code
+  - Not much performance impact, ~4% on fibonacci, up to 10%
+  - Register writes are very fast, no latency
+- Optimized host property reads (uncaptured shapes)
+- Added add of add peephole pattern
+- Re-timed with and without shape spec, using nocomptime
+  - Mixed results, not all faster, but 21% faster on average using geo mean
+  - Could possibly try for an ECOOP paper, Dec 21, Jan Vitek is on committee
+  - Type analysis?
+  - Next step: ropes or interp BBV?
+    Marc says: go for ropes, otherwise will keep hindering us
 - Fixed indexed array element called as method bug
-- optimized host property reads (uncaptured shapes)
+- Fixed regexp parsing bug
+- Fixed bug in object init code
+- Fixed substring bug, fp indices unhandled
 - benchmark-vs-v8 script
+- Looked into V8 allocation memory for AST, IR
+  - "zones", bump allocation, freed all at once
+  - Benchmarked D GC, allocating 10M linked list nodes takes 3 minutes...
+- Tried forcing capture of more functions to reduce "slow calls"
+  - Not much difference
+  - Slow calls result from unorthodox calls or argument count mismatches
+- Added shape test stat
+  - Many more shape tests than known shapes, ~10:1
+  - Interp BBV should help tremendously there
+- Type tests for 3d-raytrace, previously 3.5M (optimized), now 1.4M
+  - 5.2M with maxvers=0, eliminating 73% of type tests
+- Idea for interp BBV returns
+  - Only try to predict return type when fairly sure to avoid mispredicts
+  - Otherwise only predict that no shapes will be changed
 
-FIXME: gc bug in v8/regexp
-- next pointer invalid during GC
+[DONE] TODO: try with nospec
+./benchmark.py --vm_cmd="./higgs" --bench_list=benchmarks/nocomptime/benchmark-list.csv
+./benchmark.py --vm_cmd="./higgs --shape_notagspec --shape_nofptrspec" --bench_list=benchmarks/nocomptime/benchmark-list.csv
+- With nocomptime, mixed results, not all faster, but 21% faster on average using geo mean
 
-TODO: Sound.append(), appends in-place
-TODO: hack simple kick synth, snare, see synth cookbook
+[DONE] TODO: apply microbenchmark with 1 arg to estimate time
+- can do about 5K apply calls in 1ms
+
+[DONE] TODO: fix codegen space assertion to take stub start pos into account
+
+[DONE] TODO: add block idx to jump reference system
+- Problem: if we regenerate the branch, we do not know the block idx
+- Pass block pointer instead
+
+[DONE] TODO: generate the branch stubs during jump reference linkage
+
+[DONE] TODO: pre-reserve space in the exec heap for the stubs, e.g.: 1/16
+- should jump ahead and not backwards, so space is at end
+- Need a stubStartPos, stubWritePos
+
+[DONE] TODO: measure nocomptime stats, code size
+./benchmark.py --vm_cmd=./higgs --bench_list=benchmarks/nocomptime/benchmark-list.csv
+3bits-byte: 1.58789
+3d-cube: 8.94531
+3d-morph: 12.1797
+3d-raytrace: 62.75
+base64: 4405.0
+binary-trees: 1.80664
+bits-in-byte: 6.58594
+bitwise-and: 1.31934
+cordic: 6.94141
+crypto-aes: 12.5547
+crypto-md5: 25.4375
+crypto-sha1: 6.01562
+date-xparb: 41.875
+deltablue: 2.12109
+earley-boyer: 36.8125
+fannkuch: 10.0547
+fasta: 269.5
+navier-stokes: 23.8594
+nbody: 2.60352
+nsieve: 3.0957
+nsieve-bits: 4.79297
+partial-sums: 9.26562
+recursive: 1.96289
+regexp-dna: 6146.0
+richards: 1.87988
+spectral-norm: 2.50977
+splay: 43301.0
+tagcloud: 2749.0
+unpack-code: 732.5
+v8-crypto: 44.9531
+v8-raytrace: 29.4531
+valid-input: 21983.0
+./higgs --nostdlib --stats benchmarks/micro/loop-global-incr.js
+exec time (ms): 10318
+code size (bytes): 32614
+./higgs --nostdlib --stats benchmarks/micro/fib42.js
+exec time (ms): 5731
+code size (bytes): 33015
+
+[DONE] TODO: are we creating tons of useless phi nodes and then pruning them?
+- unfortunately yes, but seems hard to avoid
+
+[DONE] TODO: benchmark normal vs pool alloc for allocating a long linked list
+- Try 10M objects, how slow is this
+- Try it in C, too
+- Dog slow
+
+[DONE] TODO: try snare/kick again with envelope
+
+[DONE] TODO: are we using assumeSafeAppend when adding to the block list???
+- no we aren't!
+
+[DONE] TODO: look at V8 src wrt IR, phi nodes
+- How do they represent/alloc this efficiently?
+- Probably want pools for instructions and phi nodes
+  - Manually free on function deallocation
+  - Avoid having the D GC ever getting its paws on it
+
+[DONE] TODO: graph sound waves
+- plot single points
+
+[DONE] TODO: try using consonance to build random sequences
+- getNextNote function
+
+[DONE] TODO: try AR envelope with exp release
+
+[DONE] FIXME: gc bug in v8/regexp
+./higgs benchmarks/v8bench/base.js benchmarks/v8bench/regexp.js benchmarks/v8bench/drv-regexp.js
+- entering gcCollect, then segfault
+- String data gets written over one of the source strings, over its next pointer
+- Seems the issue is with FP indexes making it into the substring function
+
+[DONE] TODO: add regression test
+
+[DONE] TODO: substring
+- use $ir_f64_to_i32() to truncate the numbers
+
+[DONE] FIXME: pong example segfaults!
+- using wrong IIR instruction
+
+[DONE] FIXME: many allocs in turing synth? do we realloc arrays for each new element?
+- setting the length does
+- should make GC test for this, see that no GC occurs, or no more than one or two
+./higgs --stats --nostdlib --e "a = []; for (var i = 0; i < 80000; ++i) a.length = i;"
+
+[DONE] TODO: take a break, dust off CPU heatsink and fan
+- turn off machine, remove fan
+- listen to hyperion!
+
+[DONE] TODO: add of add peephole pattern
+$15 = add_i32 $14, 4
+$16 = add_i32 $15, 8
+before, code size (bytes): 346653
+after, code size (bytes): 345944
+
+[DONE] FIXME: maxvers=0 causes segfault on 3d-raytrace
+./higgs --maxvers=0 benchmarks/sunspider/3d-raytrace.js
+- wStack, first word of VM object, gets corrupted
+- Seems obj_init_shape slow path corrupts regs
+
+[DONE] TODO: hack simple drum synth, snare, see synth cookbook
+- for now, source/synth.js
 - produce a new Sound object for now
 
-TODO: take a break, dust off CPU heatsink and fan
-- turn off machine, remove fan
+[DONE] TODO: add shape test stats
 
-
-
-
-
-
-
-
+[DONE] TODO: num call apply stat
 
 [DONE] FIXME: regexp parsing bug
 /\\/g;
@@ -606,7 +976,7 @@ mov rsi, rax;                           4889C6
 - Should only need to generate code for default ordering
 
 [DONE] FIXME: breakage in asmString, probably due to ir_break
-./higgs --genasm --e "print(test.asmString())" benchmarks/micro/loop-global-incr.js 
+./higgs --genasm --e "print(test.asmString())" benchmarks/micro/loop-global-incr.js
 - Instructions with both branches going to same target
 
 [DONE] TODO: verify that second GC leaves alloc ptr at same offset

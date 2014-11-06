@@ -221,7 +221,7 @@
 
         // Add the octave number to the note name
         name += String(octNo);
-        
+
         return name;
     }
 

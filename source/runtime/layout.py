@@ -55,6 +55,9 @@ layouts = [
             # Hash code
             { 'name': 'hash', 'tag':'uint32' },
 
+            # Align the character data to a 64-bit boundary
+            { 'name': 'align', 'tag':'uint32' },
+
             # UTF-16 character data
             { 'name': 'data', 'tag':'uint16', 'szField':'len' }
         ]
