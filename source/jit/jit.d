@@ -2322,7 +2322,11 @@ void compile(VM vm, IRInstr curInstr)
                 writeln("compiling block: ", block.getName);
 
             if (opts.trace_instrs)
+            {
+                if (block is block.fun.entryBlock)
+                    as.printStr("; entry block for " ~ block.fun.getName);
                 as.printStr(block.getName ~ ":");
+            }
 
             // For each instruction of the block
             for (auto instr = block.firstInstr; instr !is null; instr = instr.next)

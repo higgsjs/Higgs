@@ -1075,14 +1075,40 @@ Specialized divide for integers and floats
 */
 function $rt_divIntFloat(x, y)
 {
-    // If either value is floating-point or integer
-    if (($ir_is_float64(x) || $ir_is_int32(x)) &&
-        ($ir_is_float64(y) || $ir_is_int32(y)))
+    // If x is integer
+    if ($ir_is_int32(x))
     {
-        var fx = $ir_is_float64(x)? x:$ir_i32_to_f64(x);
-        var fy = $ir_is_float64(y)? y:$ir_i32_to_f64(y);
+        if ($ir_is_int32(y) && $ir_ne_i32(y, 0))
+        {
+            // Perform integer division
+            var r = $ir_div_i32(x, y);
 
-        return $ir_div_f64(fx, fy);
+            // Verify that there was no remainder
+            var v = $ir_mul_i32(r, y);
+            if ($ir_eq_i32(x, v))
+                return r;
+        }
+
+        if ($ir_is_float64(y))
+        {
+            var fx = $ir_i32_to_f64(x);
+            return $ir_div_f64(fx, y);
+        }
+    }
+
+    // If x is floating-point
+    else if ($ir_is_float64(x))
+    {
+        if ($ir_is_float64(y))
+        {
+            return $ir_div_f64(x, y);
+        }
+
+        if ($ir_is_int32(y))
+        {
+            var fy = $ir_i32_to_f64(y);
+            return $ir_div_f64(x, fy);
+        }
     }
 
     return $rt_div(x, y);
@@ -1641,6 +1667,20 @@ JS inequality (!=) comparison operator
 function $rt_ne(x, y)
 {
     return !$rt_eq(x, y);
+}
+
+/**
+Optimized inequality (!=) for comparisons with null
+*/
+function $rt_neNull(x)
+{
+    if ($ir_is_refptr(x) && $ir_eq_refptr(x, null))
+        return false;
+
+    if ($ir_is_const(x) && $ir_eq_const(x, $undef))
+        return false;
+
+    return true;
 }
 
 /**

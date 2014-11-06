@@ -153,9 +153,11 @@ TODO: blog post, Higgs' Fancy New Object System => get started
 
 TODO: try to implement inline array for instr args, phi args
 
-TODO: richards, look at trace
-- Look at machine code
-
+TODO: getter and setter syntax
+- needed for hash map benchmark
+- Easy to recognize the grammar, but need to modify the AST
+  - Use a struct for object literal property descriptors
+- Probably want some kind of runtime call to define getters and setters
 TODO: use global VM ptr in stats.d for code size, stub size?
 - remove code size computation
 TODO: move global VM pointer to runtime/vm, avoid needing to import main
@@ -165,10 +167,13 @@ TODO: synth, right for new synth, up for new melody
 - log the melody
 TODO: try allowing either tri or sine in osc bank
 
-TODO: change paper template for PLDI
+TODO: change paper template for PLDI?
 - fix references
 TODO: push paper to pldi15 repo
 git@github.com:udem-dlteam/pldi2015.git
+
+TODO: implement inline cache
+- Needed for typed shapes paper, next BBV paper
 
 2014-11-0X Meeting:
 - ECOOP Paper
@@ -203,12 +208,6 @@ git@github.com:udem-dlteam/pldi2015.git
   - We can keep beating it more and more
   - Almost beating TraceMonkey on 3d-cube, fixed that
 
-TODO: getter and setter syntax
-- needed for hash map benchmark
-- Easy to recognize the grammar, but need to modify the AST
-  - Use a struct for object literal property descriptors
-- Probably want some kind of runtime call to define getters and setters
-
 TODO: blog post about ropes
 - also mention murmurHash
 
@@ -223,29 +222,36 @@ TODO: begin implementing ropes
 - in stdlib/string, make String.toString return an atom string
 - try to get simple benchmarks working
 
-TODO: implement inline cache
-- Needed for typed shapes paper, next BBV paper
 
-TODO: look at trace for nbody
 
-TODO: create vs tracemonkey graph
 
-TODO: email Jan Vitek
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: this.queueCount++ seems to call into getProp...
+assgToIR is to blame
+currently 10K host get props
+- Now beating baseline, much of the overhead was property accesses!
+
+[DONE] FIXME: problem for crypto-md5... Integer division produces integer, but we
+convert it into a float. This screws up much of the logic afterwards.
+Could possibly do div i32 and test with a simple multiplication
+
+[DONE] TODO: create vs tracemonkey graph
+
+[DONE] TODO: copy paper into new dir without pushing to repo, remove git metainfo
+
+[DONE] TODO: email Jan Vitek
 - Advice for ECOOP submission
   - Explain general idea
   - Structure, contents
   - Do we have a chance at ECOOP, or go for a workshop like ICOOOLPS
-
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: optimize 3d-cube:
 - fair amount of rt_add, why?

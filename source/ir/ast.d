@@ -1439,6 +1439,22 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
             return genBinOp("eq");
         }
 
+        IRValue genNe()
+        {
+            if (cast(NullExpr)binExpr.rExpr)
+            {
+                auto lVal = exprToIR(ctx, binExpr.lExpr);
+                return genRtCall(
+                    ctx,
+                    "neNull",
+                    [lVal],
+                    expr.pos
+                );
+            }
+
+            return genBinOp("ne");
+        }
+
         auto op = binExpr.op;
 
         // Arithmetic operators
@@ -1483,7 +1499,7 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
         else if (op.str == "==")
             return genEq();
         else if (op.str == "!=")
-            return genBinOp("ne");
+            return genNe();
         else if (op.str == "<")
             return genBinOp("ltIntFloat");
         else if (op.str == "<=")
@@ -1890,50 +1906,13 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
             // Evaluate the index expression
             auto keyVal = exprToIR(ctx, indexExpr.index);
 
-            // If the property is a constant string
-            if (auto strProp = cast(StringExpr)indexExpr.index)
-            {
-                auto propName = strProp.val;
-
-                // If the property does not start with a digit
-                if (propName.length > 0 && !propName[0].isDigit)
-                {
-                    // If this is a probable string method name
-                    if (propName == "charAt"     ||
-                        propName == "charCodeAt" ||
-                        propName == "substr"     ||
-                        propName == "substring")
-                    {
-                        // Use a primitive specialized for string methods
-                        closVal = genRtCall(
-                            ctx,
-                            "getStrMethod",
-                            [thisVal, keyVal],
-                            expr.pos
-                        );
-                    }
-                    else
-                    {
-                        // Use a primitive specialized for object fields
-                        closVal = genRtCall(
-                            ctx,
-                            "getPropField",
-                            [thisVal, keyVal],
-                            expr.pos
-                        );
-                    }
-                }
-            }
-            else
-            {
-                // Get the method property using a generic primitive
-                closVal = genRtCall(
-                    ctx,
-                    "getProp",
-                    [thisVal, keyVal],
-                    expr.pos
-                );
-            }
+            // Get the closure value
+            closVal = genGetProp(
+                ctx,
+                thisVal,
+                keyVal,
+                expr.pos
+            );
         }
         else
         {
@@ -2010,55 +1989,13 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
         // Evaluate the index expression
         auto idxVal = exprToIR(ctx, indexExpr.index);
 
-        // If the property is a constant string
-        if (auto strProp = cast(StringExpr)indexExpr.index)
-        {
-            auto str = strProp.val;
-
-            // If the property is "length"
-            if (str == "length")
-            {
-                // Use a primitive specialized for array length
-                return genRtCall(
-                    ctx,
-                    "getPropLength",
-                    [baseVal],
-                    expr.pos
-                );
-            }
-
-            // If the property does not start with a digit
-            if (str.length > 0 && !str[0].isDigit)
-            {
-                // Use a primitive specialized for object fields
-                return genRtCall(
-                    ctx,
-                    "getPropField",
-                    [baseVal, idxVal],
-                    expr.pos
-                );
-            }
-
-            // Use the generic property read primitive
-            return genRtCall(
-                ctx,
-                "getProp",
-                [baseVal, idxVal],
-                expr.pos
-            );
-        }
-
-        // The property is non-constant, likely an array index
-        else
-        {
-            // Use a primitive specialized for object fields
-            return genRtCall(
-                ctx,
-                "getPropElem",
-                [baseVal, idxVal],
-                expr.pos
-            );
-        }
+        // Get the property value
+        return genGetProp(
+            ctx,
+            baseVal,
+            idxVal,
+            expr.pos
+        );
     }
 
     else if (auto arrayExpr = cast(ArrayExpr)expr)
@@ -2187,6 +2124,70 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
     {
         assert (false, "unhandled expression type:\n" ~ expr.toString());
     }
+}
+
+/**
+Generate the appropriate get-property call for an indexing operation
+*/
+IRValue genGetProp(
+    IRGenCtx ctx,
+    IRValue base,
+    IRValue index,
+    SrcPos pos
+)
+{
+    // If the property is a constant string
+    if (auto indexStr = cast(IRString)index)
+    {
+        auto propName = indexStr.str;
+
+        // If the property does not start with a digit
+        if (propName.length > 0 && !propName[0].isDigit)
+        {
+            // If the property is "length"
+            if (propName == "length")
+            {
+                // Use a primitive specialized for array & string length
+                return genRtCall(
+                    ctx,
+                    "getPropLength",
+                    [base],
+                    pos
+                );
+            }
+
+            // If this is a probable string method name
+            if (propName == "charAt"     ||
+                propName == "charCodeAt" ||
+                propName == "substr"     ||
+                propName == "substring")
+            {
+                // Use a primitive specialized for string methods
+                return genRtCall(
+                    ctx,
+                    "getStrMethod",
+                    [base, index],
+                    pos
+                );
+            }
+
+            // Use a primitive specialized for object fields
+            return genRtCall(
+                ctx,
+                "getPropField",
+                [base, index],
+                pos
+            );
+        }
+    }
+
+    // Use a primitive specialized for array elements
+    return genRtCall(
+        ctx,
+        "getPropElem",
+        [base, index],
+        pos
+    );
 }
 
 /**
@@ -2327,10 +2328,10 @@ IRValue assgToIR(
             if (base !is null)
             {
                 // Get the property from the object
-                lhsTemp = genRtCall(
+                lhsTemp = genGetProp(
                     ctx,
-                    "getProp",
-                    [base, index],
+                    base,
+                    index,
                     lhsExpr.pos
                 );
             }

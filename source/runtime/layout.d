@@ -43,9 +43,14 @@ extern (C) uint32 str_ofs_hash(refptr o)
     return (((0 + 8) + 4) + 4);
 }
 
+extern (C) uint32 str_ofs_align(refptr o)
+{    
+    return ((((0 + 8) + 4) + 4) + 4);
+}
+
 extern (C) uint32 str_ofs_data(refptr o, uint32 i)
 {    
-    return (((((0 + 8) + 4) + 4) + 4) + (2 * i));
+    return ((((((0 + 8) + 4) + 4) + 4) + 4) + (2 * i));
 }
 
 extern (C) refptr str_get_next(refptr o)
@@ -66,6 +71,11 @@ extern (C) uint32 str_get_len(refptr o)
 extern (C) uint32 str_get_hash(refptr o)
 {    
     return *cast(uint32*)(o + str_ofs_hash(o));
+}
+
+extern (C) uint32 str_get_align(refptr o)
+{    
+    return *cast(uint32*)(o + str_ofs_align(o));
 }
 
 extern (C) uint16 str_get_data(refptr o, uint32 i)
@@ -93,6 +103,11 @@ extern (C) void str_set_hash(refptr o, uint32 v)
     *cast(uint32*)(o + str_ofs_hash(o)) = v;
 }
 
+extern (C) void str_set_align(refptr o, uint32 v)
+{    
+    *cast(uint32*)(o + str_ofs_align(o)) = v;
+}
+
 extern (C) void str_set_data(refptr o, uint32 i, uint16 v)
 {    
     *cast(uint16*)(o + str_ofs_data(o, i)) = v;
@@ -100,7 +115,7 @@ extern (C) void str_set_data(refptr o, uint32 i, uint16 v)
 
 extern (C) uint32 str_comp_size(uint32 len)
 {    
-    return (((((0 + 8) + 4) + 4) + 4) + (2 * len));
+    return ((((((0 + 8) + 4) + 4) + 4) + 4) + (2 * len));
 }
 
 extern (C) uint32 str_sizeof(refptr o)
