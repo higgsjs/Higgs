@@ -4439,6 +4439,18 @@ void gen_print_str(
     as.popRegs();
 }
 
+void gen_print_ptr(
+    BlockVersion ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    auto opnd = st.getWordOpnd(as, instr, 0, 64, scrRegs[0].opnd, false, false);
+
+    as.printPtr(opnd);
+}
+
 void gen_get_time_ms(
     BlockVersion ver,
     CodeGenState st,

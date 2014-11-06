@@ -344,6 +344,9 @@ Opcode NEW_CLOS = { "new_clos", true, [OpArg.FUN], &gen_new_clos, OpInfo.MAY_GC 
 /// Print a string to standard output
 Opcode PRINT_STR = { "print_str", false, [OpArg.LOCAL], &gen_print_str, OpInfo.IMPURE };
 
+/// Print a pointer value (in hex notation) to standard output
+Opcode PRINT_PTR = { "print_ptr", false, [OpArg.LOCAL], &gen_print_ptr, OpInfo.IMPURE };
+
 /// Get the time in milliseconds since process start
 Opcode GET_TIME_MS = { "get_time_ms", true, [], &gen_get_time_ms };
 
