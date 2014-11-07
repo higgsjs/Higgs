@@ -482,7 +482,7 @@ function $rt_numToStr(v, radix)
 }
 
 /**
-Convert a rope to a string
+Inlined rope to string conversion with cache check
 */
 function $rt_ropeToStr(rope)
 {
@@ -492,37 +492,46 @@ function $rt_ropeToStr(rope)
     // If this rope was already converted to a string
     if ($ir_eq_refptr(rightStr, null))
     {
-        var strPtr = $rt_rope_get_left(rope);
-        var strTag = $ir_get_tag('');
-        return $ir_make_value(strPtr, strTag);
+        return $ir_load_string(rope, $rt_rope_ofs_left(rope));
     }
 
+    return $rt_concatRope(rope, rightStr);
+}
+
+/**
+Convert a rope to a string by concatenation
+*/
+function $rt_concatRope(rope, rightStr)
+{
     var ropeLen = $rt_rope_get_len(rope);
 
     // Allocate a string object for the output
     var dstStr = $rt_str_alloc(ropeLen);
 
-    var curRope = rope;
-
-    // TODO: use dst ptr instead
-    var curIdx = $ir_sub_i32(ropeLen, 1);
+    // Output string data pointer
+    var dataO = $ir_add_ptr_i32(dstStr, $rt_str_ofs_data(null, 0));
+    var idxO = $ir_lsft_i32(ropeLen, 1);
 
     // Until we are done traversing the ropes
-    for (;;)
+    for (var curRope = rope;;)
     {
         // The right-hand node must be a string
         var rightLen = $rt_str_get_len(rightStr);
+       
+        // Right string data pointers
+        var dataI = $ir_add_ptr_i32(rightStr, $rt_str_ofs_data(null, 0));
+        var idxI = $ir_lsft_i32(rightLen, 1);
 
-        for (var i = $ir_sub_i32(rightLen, 1); $ir_ge_i32(i, 0); i = $ir_sub_i32(i, 1), curIdx = $ir_sub_i32(curIdx, 1))
-        {
-            var ch = $rt_str_get_data(rightStr, i);
-            $rt_str_set_data(dstStr, curIdx, ch);
-        }
+        // Copy the string characters
+	    while ($ir_ne_i32(idxI, 0))
+	    {
+            idxI = $ir_sub_i32(idxI, 2);
+            idxO = $ir_sub_i32(idxO, 2);
+            $ir_store_u16(dataO, idxO, $ir_load_u16(dataI, idxI));
+	    }
 
         // Move to the next rope
         curRope = $rt_rope_get_left(curRope);
-
-        // FIXME: global getprop, make these constants
 
         // If this is the last string in the chain, stop
         if ($ir_eq_i32($rt_rope_get_header(curRope), $rt_LAYOUT_STR))
@@ -542,22 +551,20 @@ function $rt_ropeToStr(rope)
         }
     }
 
-
-
-
-
-
     // Copy the last string
     var leftLen = $rt_str_get_len(leftStr);
 
-    for (var i = $ir_sub_i32(leftLen, 1); $ir_ge_i32(i, 0); i = $ir_sub_i32(i, 1), curIdx = $ir_sub_i32(curIdx, 1))
+    // Right string data pointers
+    var dataI = $ir_add_ptr_i32(leftStr, $rt_str_ofs_data(null, 0));
+    var idxI = $ir_lsft_i32(leftLen, 1);
+
+    // Copy the string characters
+    while ($ir_ne_i32(idxI, 0))
     {
-        var ch = $rt_str_get_data(leftStr, i);
-        $rt_str_set_data(dstStr, curIdx, ch);
+        idxI = $ir_sub_i32(idxI, 2);
+        idxO = $ir_sub_i32(idxO, 2);
+        $ir_store_u16(dataO, idxO, $ir_load_u16(dataI, idxI));
     }
-
-
-
 
     // Get the corresponding string from the string table
     dstStr = $ir_get_str(dstStr);
@@ -2175,7 +2182,12 @@ Get a property from a value using a value as a key
 */
 function $rt_getProp(base, prop)
 {
-    //$ir_print_str(prop); $ir_print_str('\n');
+    /*
+    if ($ir_is_string(prop))
+    {
+        $ir_print_str(prop); $ir_print_str('\n');
+    }
+    */
 
     // If the base is an object or closure
     if ($ir_is_object(base) || $ir_is_closure(base))
@@ -2414,6 +2426,12 @@ function $rt_getPropLength(base)
         return $rt_str_get_len(base);
     }
 
+    // If the base is a rope
+    if ($ir_is_rope(base))
+    {
+        return $rt_rope_get_len(base);
+    }
+
     return $rt_getProp(base, "length");
 }
 
@@ -2451,8 +2469,9 @@ function $rt_getGlobal(obj, propStr)
     // If the prototype is null, the property is not defined
     if ($ir_eq_refptr(proto, null))
     {
-        var errStr = 'global property not defined: "' + propStr + '"';
+        //$ir_print_str(propStr); $ir_print_str('\n');
 
+        var errStr = 'global property not defined: "' + propStr + '"';
         if (obj.ReferenceError)
             throw ReferenceError(errStr);
         else

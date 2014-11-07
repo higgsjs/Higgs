@@ -211,12 +211,17 @@ function string_charAt(pos)
 */
 function string_charCodeAt(pos)
 {
-    if ($ir_is_string(this) &&
-        $ir_is_int32(pos) &&
-        $ir_ge_i32(pos, 0) &&
-        $ir_lt_i32(pos, $rt_str_get_len(this)))
+    if ($ir_is_int32(pos) && $ir_ge_i32(pos, 0))
     {
-        return $rt_str_get_data(this, pos);
+        if ($ir_is_string(this) && $ir_lt_i32(pos, $rt_str_get_len(this)))
+        {
+            return $rt_str_get_data(this, pos);
+        }
+
+        if ($ir_is_rope(this) && $ir_lt_i32(pos, $rt_rope_get_len(this)))
+        {
+            return $rt_str_get_data($rt_ropeToStr(this), pos);
+        }
     }
 
     var source = this.toString();

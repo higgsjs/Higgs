@@ -772,6 +772,7 @@ alias gen_load_i32 = LoadOp!(32, true , Tag.INT32);
 alias gen_load_i64 = LoadOp!(64, true , Tag.INT64);
 alias gen_load_f64 = LoadOp!(64, false, Tag.FLOAT64);
 alias gen_load_refptr = LoadOp!(64, false, Tag.REFPTR);
+alias gen_load_string = LoadOp!(64, false, Tag.STRING);
 alias gen_load_rawptr = LoadOp!(64, false, Tag.RAWPTR);
 alias gen_load_funptr = LoadOp!(64, false, Tag.FUNPTR);
 alias gen_load_shapeptr = LoadOp!(64, false, Tag.SHAPEPTR);

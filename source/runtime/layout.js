@@ -2,7 +2,7 @@
 // Code auto-generated from "runtime/layout.py". Do not modify.
 //
 
-var $rt_LAYOUT_STR = 0;
+$ir_obj_def_const(this, "$rt_LAYOUT_STR", 0, false);
 
 function $rt_str_ofs_next(o)
 {    
@@ -101,7 +101,7 @@ function $rt_str_visit_gc(o)
     $rt_str_set_next(o, $rt_gcForward(vm, $rt_str_get_next(o)));
 }
 
-var $rt_LAYOUT_STRTBL = 1;
+$ir_obj_def_const(this, "$rt_LAYOUT_STRTBL", 1, false);
 
 function $rt_strtbl_ofs_next(o)
 {    
@@ -206,7 +206,7 @@ function $rt_strtbl_visit_gc(o)
     }
 }
 
-var $rt_LAYOUT_ROPE = 2;
+$ir_obj_def_const(this, "$rt_LAYOUT_ROPE", 2, false);
 
 function $rt_rope_ofs_next(o)
 {    
@@ -307,7 +307,7 @@ function $rt_rope_visit_gc(o)
     $rt_rope_set_right(o, $rt_gcForward(vm, $rt_rope_get_right(o)));
 }
 
-var $rt_LAYOUT_OBJ = 3;
+$ir_obj_def_const(this, "$rt_LAYOUT_OBJ", 3, false);
 
 function $rt_obj_ofs_next(o)
 {    
@@ -427,7 +427,7 @@ function $rt_obj_visit_gc(o)
     }
 }
 
-var $rt_LAYOUT_CLOS = 4;
+$ir_obj_def_const(this, "$rt_LAYOUT_CLOS", 4, false);
 
 function $rt_clos_ofs_next(o)
 {    
@@ -583,7 +583,7 @@ function $rt_clos_visit_gc(o)
     }
 }
 
-var $rt_LAYOUT_CELL = 5;
+$ir_obj_def_const(this, "$rt_LAYOUT_CELL", 5, false);
 
 function $rt_cell_ofs_next(o)
 {    
@@ -669,7 +669,7 @@ function $rt_cell_visit_gc(o)
     $rt_cell_set_word(o, $rt_gcForward(vm, $rt_cell_get_word(o), $rt_cell_get_tag(o)));
 }
 
-var $rt_LAYOUT_ARR = 6;
+$ir_obj_def_const(this, "$rt_LAYOUT_ARR", 6, false);
 
 function $rt_arr_ofs_next(o)
 {    
@@ -789,7 +789,7 @@ function $rt_arr_visit_gc(o)
     }
 }
 
-var $rt_LAYOUT_ARRTBL = 7;
+$ir_obj_def_const(this, "$rt_LAYOUT_ARRTBL", 7, false);
 
 function $rt_arrtbl_ofs_next(o)
 {    

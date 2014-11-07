@@ -180,33 +180,24 @@ TODO: implement inline cache
 
 TODO: catch missing file exception in main.d
 
-TODO: low-level toString support for ropes
-- doesn't need to be optimized
-- implement in runtime/string.d
+TODO: look for arguments usage in the library
+- can try profiling, newArguments uninlined runtime call
 
 FIXME: throw of TypeError doesn't show error message?
 - add regression test for this
+- also test for var name in unresolved global
+
+TODO: look into 32K getProp in string-base64
+
+TODO: compare performance against master
 
 TODO: add Marc's stdlib/string opts
 - introduce inline opt first, table second
 
-TODO: compare performance against master
-
-TODO: optimize ropeToStr
-
-TODO: make rt_layout_str and such constants
-- should be easy with def_const syntax
-
-FIXME: string-base64 calls ropeToStr 114K times, why?
-- presumably to access the concatenated rope
-- how is this rope accessed? may be able to optimize
-$ir_load_string?
-
-TODO: test ./benchmark.py to make sure not broken
-
 FIXME: 3d-raytrace calls ropeToStr 901 times, why?
 
-FIXME: calls to getProp introduced into crypto-md5, why?
+TODO: look into crypto-aes, slightly slower?
+- Anything obvious?
 
 
 
@@ -217,9 +208,27 @@ FIXME: calls to getProp introduced into crypto-md5, why?
 
 
 
+[DONE] TODO: optimize ropeToStr to use pointer arithmetic
 
+[DONE] TODO: make rt_layout_str and such constants
+- should be easy with def_const syntax
 
+[DONE] FIXME: string-base64 calls ropeToStr 114K times
+- presumably to access the concatenated rope
+- is this fixed now?
 
+[DONE] TODO: optimize charCodeAt for ropes
+- avoid ropeToStr call if possible
+- benchmark crypto-md5 and string-base64 again
+  - currently 17 and 65
+
+[DONE] TODO: implement ir_load_string
+
+[DONE] FIXME: calls to getProp introduced into crypto-md5, why?
+- log the property names
+- getPropLength
+
+[DONE] TODO: test ./benchmark.py to make sure not broken
 
 [DONE] FIXME: 3d-raytrace calls toString 9K times
 

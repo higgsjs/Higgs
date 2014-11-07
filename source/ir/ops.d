@@ -203,6 +203,7 @@ Opcode LOAD_I16 = { "load_i16", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_i16 
 Opcode LOAD_I32 = { "load_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_i32 };
 Opcode LOAD_F64 = { "load_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_f64 };
 Opcode LOAD_REFPTR = { "load_refptr", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_refptr };
+Opcode LOAD_STRING = { "load_string", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_string };
 Opcode LOAD_RAWPTR = { "load_rawptr", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_rawptr };
 Opcode LOAD_FUNPTR = { "load_funptr", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_funptr };
 Opcode LOAD_SHAPEPTR = { "load_shapeptr", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_shapeptr };

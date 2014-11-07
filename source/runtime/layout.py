@@ -242,7 +242,10 @@ class ConstDef:
         self.val = val
 
     def genJS(self):
-        return 'var ' + JS_DEF_PREFIX + self.name + ' = ' + str(self.val) + ';'
+        #return 'var ' + JS_DEF_PREFIX + self.name + ' = ' + str(self.val) + ';'
+        name = JS_DEF_PREFIX + self.name
+        val = str(self.val)
+        return '$ir_obj_def_const(this, "%s", %s, false);' % (name, val)
 
     def genD(self):
         return 'const ' + self.type + ' ' + self.name + ' = ' + str(self.val) + ';'
