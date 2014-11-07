@@ -1951,6 +1951,8 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
     */
     function cstr(str, len)
     {
+        str = $rt_toString(str);
+
         var c_str, i;
         len = len || str.length;
         c_str = c.malloc(len + 1);

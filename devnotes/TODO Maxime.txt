@@ -178,16 +178,42 @@ TODO: fixup analysis
 TODO: implement inline cache
 - Needed for both papers
 
+Meeting 2014-10-1X:
+- regexp: regexp-dna, string-tagcloud, crypto-aes, string-unpack-code, date-format-xparb
+  - we do badly at all of these
+  - have a logical reason to exclude them
+  - 27 benchmarks left
+- may want to reverse performance graphs, speedup
+  - allows fitting both V8 and TM in same graph easier
+  - focuses on how much we leave them behind
+  - makes our poor performance look less bad
+  - do we want to do the same for BBV speedups?
+- if we exclude regexp, beat TM on 14 benchmarks to do more than half
+  - just 1 more
+
 TODO: catch missing file exception in main.d
 
 TODO: look for arguments usage in the library
 - can try profiling, newArguments uninlined runtime call
+- possible that some slow benchmarks use this a lot
+
+TODO: profile functions by name in stats
+- add code to entry, get a named counter
+
+TODO: fasta, makes use of array.join, which seems inefficient
+- modify benchmark, check if part using substring or join is slowest
+
+TODO: examine v8-crypto, not that far from TM
+
+FIXME: 3d-raytrace calls ropeToStr 901 times, why?
 
 FIXME: throw of TypeError doesn't show error message?
 - add regression test for this
 - also test for var name in unresolved global
 
-FIXME: 3d-raytrace calls ropeToStr 901 times, why?
+TODO: ValuePair.toString support for ropes
+- implement in string.d
+- doesn't need to be optimized
 
 
 
@@ -195,6 +221,18 @@ FIXME: 3d-raytrace calls ropeToStr 901 times, why?
 
 
 
+
+
+
+
+
+
+[DONE] FIXME: turing-turtle fails
+./higgs ../examples/turing-turtle.js
+$rt_throwExc(2E2D) ("runtime/runtime.js"@138:1)
+CanvasProto_setFont(351B7) ("lib/draw.js"@526:37)
+Canvas(34FDC) ("lib/draw.js"@349:9)
+Window(34FC5) ("lib/draw.js"@130:21)
 
 [DONE] TODO: crypto-md5, many getprops, look at trace
 - Fetching missing array elements

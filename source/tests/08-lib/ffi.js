@@ -39,6 +39,10 @@ var ffi = require('lib/ffi');
 var c = ffi.c;
 var console = require('lib/console');
 
+// JS <=> C string conversion
+assert(ffi.string(ffi.cstr('foo')) == 'foo');
+assert(ffi.string(ffi.cstr('f' + 'oo')) == 'foo');
+
 // Test array wrappers
 c.cdef("\
        int TestIntArray[3];\
