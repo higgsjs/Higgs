@@ -248,7 +248,9 @@ function string_charAt(pos)
     }
 
     var ch = source.charCodeAt(pos);
-    return string_internal_fromCharCodeArray([ch]);
+    var str = $rt_str_alloc(1);
+    $rt_str_set_data(str, 0, ch);
+    return $ir_get_str(str);
 }
 
 /**
@@ -259,14 +261,10 @@ function string_charCodeAt(pos)
     if ($ir_is_int32(pos) && $ir_ge_i32(pos, 0))
     {
         if ($ir_is_string(this) && $ir_lt_i32(pos, $rt_str_get_len(this)))
-        {
             return $rt_str_get_data(this, pos);
-        }
 
         if ($ir_is_rope(this) && $ir_lt_i32(pos, $rt_rope_get_len(this)))
-        {
             return $rt_str_get_data($rt_ropeToStr(this), pos);
-        }
     }
 
     var source = this.toString();

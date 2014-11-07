@@ -187,13 +187,8 @@ FIXME: throw of TypeError doesn't show error message?
 - add regression test for this
 - also test for var name in unresolved global
 
-TODO: look into 32K getProp in string-base64
-
-TODO: compare performance against master
-
 FIXME: 3d-raytrace calls ropeToStr 901 times, why?
 
-TODO: optimize charAt
 
 
 
@@ -201,8 +196,8 @@ TODO: optimize charAt
 
 
 
-
-
+[DONE] TODO: crypto-md5, many getprops, look at trace
+- Fetching missing array elements
 
 [DONE] TODO: add Marc's stdlib/string opts
 - introduce inline opt first, table second
