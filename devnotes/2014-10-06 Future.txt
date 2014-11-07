@@ -6,4 +6,9 @@ cases.
 
 Should do transformations at the IR level.
 
-Incremental inlining at the IR level.
+Incremental inlining at the IR level
+- Could try to reg alloc inlined code
+- Probably want on-the-fly stack allocation
+  - Except for parameters
+- If more stack slots are needed, could resize stack frame
+  - Remap slots and invalidate all compiled blocks for the function

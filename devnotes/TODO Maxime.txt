@@ -191,13 +191,9 @@ TODO: look into 32K getProp in string-base64
 
 TODO: compare performance against master
 
-TODO: add Marc's stdlib/string opts
-- introduce inline opt first, table second
-
 FIXME: 3d-raytrace calls ropeToStr 901 times, why?
 
-TODO: look into crypto-aes, slightly slower?
-- Anything obvious?
+TODO: optimize charAt
 
 
 
@@ -207,6 +203,9 @@ TODO: look into crypto-aes, slightly slower?
 
 
 
+
+[DONE] TODO: add Marc's stdlib/string opts
+- introduce inline opt first, table second
 
 [DONE] TODO: optimize ropeToStr to use pointer arithmetic
 
