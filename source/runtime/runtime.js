@@ -554,7 +554,7 @@ function $rt_concatRope(rope, rightStr)
     // Copy the last string
     var leftLen = $rt_str_get_len(leftStr);
 
-    // Right string data pointers
+    // Left string data pointers
     var dataI = $ir_add_ptr_i32(leftStr, $rt_str_ofs_data(null, 0));
     var idxI = $ir_lsft_i32(leftLen, 1);
 
@@ -3106,10 +3106,6 @@ function $rt_getPropEnum(obj)
                     // If this is not an enumerable property, skip it
                     if ((propAttrs & $rt_ATTR_ENUMERABLE) == 0)
                         continue;
-
-                    // If this is not a valid key in this object, skip it
-                    //if ($ir_eq_refptr(keyVal, null))
-                    //    continue;
 
                     // If this is not the defining shape for this property, skip it
                     var defShape = $ir_obj_prop_shape(curObj, propName);

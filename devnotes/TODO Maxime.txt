@@ -13,6 +13,8 @@ Conference deadlines:
 - Computing Frontier    Jan 2015, notify Feb
 - SPLASH 2015
 
+ACM Transactions on Architecture and Code Optimization: http://taco.acm.org/
+
 List of possible contributions:
 - Type tagging scheme
 - Register allocation
@@ -152,6 +154,11 @@ TODO: synth, right for new synth, up for new melody
 - log the melody
 TODO: try allowing either tri or sine in osc bank
 
+TODO: email author of jsfft
+https://github.com/dntj/jsfft
+has its own tests
+not quite perfect, multiple files
+
 ------------------------------------------------------------------------------
 
 ECOOP - Dec 21st
@@ -161,6 +168,8 @@ ECOOP - Dec 21st
 "Can change people's perception of your proposal without changing your proposal,
 compare to something less favorable first"
 - Comparison with inline cache
+- Not strictly a replacement for inline caches, can use both, fall back on inline
+caches, or use shape dispatch in select locations
 
 TODO: blog post, Higgs' Fancy New Object System => get started
 - use knightmare image for featured image
@@ -168,15 +177,8 @@ TODO: blog post, Higgs' Fancy New Object System => get started
 - post to r/compilers, r/higgsjs
 - Typed shapes + BBV a bit of a gamble
 
-TODO: flag to disable shape versioning
-- no propagation of shape info
-- what about read_shape, capture_shape, capture_tag?
-
 TODO: fixup analysis
 - no longer need to force run every time
-
-TODO: implement inline cache
-- Needed for both papers
 
 Meeting 2014-10-1X:
 - regexp: regexp-dna, string-tagcloud, crypto-aes, string-unpack-code, date-format-xparb
@@ -190,6 +192,12 @@ Meeting 2014-10-1X:
   - do we want to do the same for BBV speedups?
 - if we exclude regexp, beat TM on 14 benchmarks to do more than half
   - just 1 more
+Jan Vitek says:
+- a good idea but lack of credibility. 
+- You are being forced to provide more and more evidence
+- expected to compare favorably to commercial systems built by tens of programmers.
+- What has worked for me in the past is to provide drown the reader in data until he or she can’t deny that the proposal actually works.  
+- Maybe add more benchmarks
 
 TODO: catch missing file exception in main.d
 
@@ -198,33 +206,49 @@ TODO: look for arguments usage in the library
 - possible that some slow benchmarks use this a lot
 
 TODO: profile functions by name in stats
-- add code to entry, get a named counter
+- add code to entry, get a named counter!
+- might provide very valuable info
 
-TODO: fasta, makes use of array.join, which seems inefficient
-- modify benchmark, check if part using substring or join is slowest
+TODO: string-fasta is quite slow, find out why
+- fastaRandom part is way slower
+- use of for-in loop is the problem
+  - iterating 60K times over a for-in loop
 
 TODO: examine v8-crypto, not that far from TM
 
 FIXME: 3d-raytrace calls ropeToStr 901 times, why?
 
-FIXME: throw of TypeError doesn't show error message?
+TODO: flag to disable shape versioning
+- no propagation of shape info
+- what about break, read_shape, capture_shape, capture_tag?
+  - should compile to nothing
+
+TODO: implement inline cache
+- Needed for both papers
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: throw of TypeError doesn't show error message?
 - add regression test for this
 - also test for var name in unresolved global
 
-TODO: ValuePair.toString support for ropes
+[DONE] TODO: ValuePair.toString support for ropes
 - implement in string.d
 - doesn't need to be optimized
 
-
-
-
-
-
-
-
-
-
-
+[DONE] TODO: exclude benchmarks using regexps
+regexp-dna, string-tagcloud, crypto-aes, string-unpack-code, date-format-xparb
 
 
 [DONE] FIXME: turing-turtle fails

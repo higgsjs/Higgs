@@ -97,8 +97,7 @@ class RunError : Error
                 "name"w
             );
 
-            if (errName.tag is Tag.STRING)
-                this.name = to!string(extractWStr(errName.ptr));
+            this.name = errName.toString;
 
             auto msgStr = getProp(
                 vm,
@@ -106,11 +105,11 @@ class RunError : Error
                 "message"w
             );
 
-            this.message = msgStr.toString();
+            this.message = msgStr.toString;
         }
         else
         {
-            this.message = excVal.toString();
+            this.message = excVal.toString;
         }
 
         super(toString());
@@ -399,7 +398,7 @@ struct ValuePair
             return extractStr(word.ptrVal);
 
             case Tag.ROPE:
-            return "rope";
+            return ropeToStr(word.ptrVal);
 
             default:
             assert (false, "unsupported value type");

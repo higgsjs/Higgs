@@ -95,6 +95,60 @@ string extractStr(refptr ptr)
 }
 
 /**
+Assemble the string represented by a rope
+*/
+wstring ropeToWStr(refptr rope)
+{
+    refptr rightStr = rope_get_right(rope);
+
+    // If the string was already generated and cached
+    if (rightStr is null)
+        return extractWStr(rope_get_left(rope));
+
+    wstring output;
+
+    refptr leftStr;
+
+    // Until we are done traversing the ropes
+    for (auto curRope = rope;;)
+    {
+        output = tempWStr(rightStr) ~ output;
+
+        // Move to the next rope
+        curRope = rope_get_left(curRope);
+
+        // If this is the last string in the chain, stop
+        if (refIsLayout(curRope, LAYOUT_STR))
+        {
+            leftStr = curRope;
+            break;
+        }
+
+        // Get the right-hand string for the current rope
+        rightStr = rope_get_right(curRope);
+
+        // If the rope was already converted to a string
+        if (rightStr is null)
+        {
+            leftStr = rope_get_left(curRope);
+            break;
+        }
+    }
+
+    output = tempWStr(leftStr) ~ output;
+
+    return output;
+}
+
+/**
+Extract a D string from a rope object
+*/
+string ropeToStr(refptr ptr)
+{
+    return to!string(ropeToWStr(ptr));
+}
+
+/**
 MurmurHash2, 64-bit version for 64-but platforms
 All hail Austin Appleby
 */
@@ -151,14 +205,6 @@ uint32 compStrHash(refptr str)
     auto ptr = str + str_ofs_data(null, 0);
 
     uint32 hashCode = cast(uint32_t)murmurHash64A(ptr, len);
-
-    /*
-    for (uint32 i = 0; i < len; ++i)
-    {
-        auto ch = str_get_data(str, i);
-        hashCode = (((hashCode << 8) + ch) & 536870911) % 426870919;
-    }
-    */
 
     // Store the hash code on the string object
     str_set_hash(str, hashCode);
@@ -327,7 +373,7 @@ void extStrTable(VM vm, refptr curTbl, uint32 curSize, uint32 numStrings)
 }
 
 /**
-Get the string object for a given string
+Get the interned string object for a given character string
 */
 refptr getString(VM vm, wstring str)
 {
