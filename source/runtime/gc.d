@@ -62,11 +62,8 @@ struct GCRoot
     {
         this.vm = vm;
 
-        this.prev = null;
-        this.next = vm.firstRoot;
-        vm.firstRoot = &this;
-
-        this.pair = pair;
+        // Use the assignment operator
+        this = pair;
     }
 
     this(VM vm, Word w, Tag t)
@@ -100,13 +97,29 @@ struct GCRoot
 
     GCRoot* opAssign(ValuePair v)
     {
+        // Store the value pair
         pair = v;
+
+        // If the pointer isn't null and this root isn't listed yet
+        if (v.word.ptrVal && !this.next && !this.prev)
+        {
+            this.next = vm.firstRoot;
+
+            if (vm.firstRoot)
+            {
+                assert (vm.firstRoot.prev is null);
+                vm.firstRoot.prev = &this;
+            }
+
+            vm.firstRoot = &this;
+        }
+
         return &this;
     }
 
     GCRoot* opAssign(GCRoot v)
     {
-        pair = v.pair;
+        this = v.pair;
         return &this;
     }
 
@@ -130,6 +143,7 @@ struct GCRoot
     private GCRoot* prev;
     private GCRoot* next;
 
+    // Warning: do not assign directly
     ValuePair pair;
 }
 

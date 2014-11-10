@@ -161,7 +161,11 @@ not quite perfect, multiple files
 
 ------------------------------------------------------------------------------
 
-ECOOP - Dec 21st
+Computing Frontiers - Jan 16
+- Mention that approach is novel, alternative compiler architecture
+- More lazyness, future JITs
+
+ECOOP - Dec 21
 - Jan Vitek is on organizing committee
 - Look into the conf more
 - Highly polymorphic objects: only the object shapes flowing into that code matter
@@ -170,6 +174,8 @@ compare to something less favorable first"
 - Comparison with inline cache
 - Not strictly a replacement for inline caches, can use both, fall back on inline
 caches, or use shape dispatch in select locations
+- Jan Vitek: "What has worked for me in the past is to provide drown the reader
+in data until he or she can’t deny that the proposal actually works"
 
 TODO: blog post, Higgs' Fancy New Object System => get started
 - use knightmare image for featured image
@@ -180,11 +186,78 @@ TODO: blog post, Higgs' Fancy New Object System => get started
 TODO: fixup analysis
 - no longer need to force run every time
 
-Meeting 2014-10-1X:
-- regexp: regexp-dna, string-tagcloud, crypto-aes, string-unpack-code, date-format-xparb
+TODO: profile functions by name in stats
+- add code to entry, get a named counter!
+- might provide very valuable info
+
+TODO: implement inline caches
+- Needed for both papers
+- Needed for setProp too?
+- Needs to decide branching direction as well
+  - use multiple cmovs?
+
+TODO: flag to disable shape versioning, shape_novers
+- no propagation of shape info
+  - also turn shape_notagspec, shape_nofptrspec
+- break, read_shape, capture_shape, capture_tag?
+  - should compile to nothing
+
+TODO: ask Marc for ECOOP repo
+
+TODO: catch missing file exception in main.d
+
+TODO: inline for-in code *if necessary*
+- goal is to perform decently on fasta benchmark ***
+- Need curObj and curProp
+- getNextProp and getNextObj
+TODO: eliminate shadowed test for root obj?
+
+TODO: eliminate shape_get_parent, shape_prop_name
+
+TODO: lazily generate an enumerable property table
+- Should GCRoot this?
+  - Make it an array table with JS strings inside
+Often, prototypes have no enum props
+- Hence there are no shadowed calls
+- No need to call isShadowed on the original object
+
+Want an instruction shape_enum_tbl
+- Checks if the table pointer is null, if so call host fn, otherwise return
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: GCRoots pointing to null should not add themselves to the list, verify
+
+[DONE] TODO: for-in microbenchmark
+- compare with V8, TM
+- Higgs: 9000ms total
+  - 4M heap allocs, because of closure cells
+  - calls to closure are slow calls
+  - GC time is still a minority, but large, 255ms
+- TM and V8 < 100ms
+
+[DONE] TODO: try log scale for graph
+- Marc has flag for this
+ (define logarithmic? #t)
+
+[DONE] Meeting 2014-10-10:
+- 6 benchmarks using regexps
   - we do badly at all of these
   - have a logical reason to exclude them
-  - 27 benchmarks left
+  - 26 benchmarks left
 - may want to reverse performance graphs, speedup
   - allows fitting both V8 and TM in same graph easier
   - focuses on how much we leave them behind
@@ -193,51 +266,11 @@ Meeting 2014-10-1X:
 - if we exclude regexp, beat TM on 14 benchmarks to do more than half
   - just 1 more
 Jan Vitek says:
-- a good idea but lack of credibility. 
+- a good idea but lack of credibility.
 - You are being forced to provide more and more evidence
 - expected to compare favorably to commercial systems built by tens of programmers.
 - What has worked for me in the past is to provide drown the reader in data until he or she can’t deny that the proposal actually works.  
 - Maybe add more benchmarks
-
-TODO: catch missing file exception in main.d
-
-TODO: look for arguments usage in the library
-- can try profiling, newArguments uninlined runtime call
-- possible that some slow benchmarks use this a lot
-
-TODO: profile functions by name in stats
-- add code to entry, get a named counter!
-- might provide very valuable info
-
-TODO: string-fasta is quite slow, find out why
-- fastaRandom part is way slower
-- use of for-in loop is the problem
-  - iterating 60K times over a for-in loop
-
-TODO: examine v8-crypto, not that far from TM
-
-FIXME: 3d-raytrace calls ropeToStr 901 times, why?
-
-TODO: flag to disable shape versioning
-- no propagation of shape info
-- what about break, read_shape, capture_shape, capture_tag?
-  - should compile to nothing
-
-TODO: implement inline cache
-- Needed for both papers
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 [DONE] FIXME: throw of TypeError doesn't show error message?
 - add regression test for this
