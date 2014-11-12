@@ -845,12 +845,12 @@ void writeRMInstr(
 Encode an add-like RM instruction with multiple possible encodings
 */
 void writeRMMulti(
-    string mnem, 
-    ubyte opMemReg8, 
-    ubyte opMemRegPref, 
-    ubyte opRegMem8, 
+    string mnem,
+    ubyte opMemReg8,
+    ubyte opMemRegPref,
+    ubyte opRegMem8,
     ubyte opRegMemPref,
-    ubyte opMemImm8, 
+    ubyte opMemImm8,
     ubyte opMemImmSml,
     ubyte opMemImmLrg,
     ubyte opExtImm
@@ -874,11 +874,25 @@ void writeRMMulti(
 
     // Check the size of opnd1
     if (opnd1.isReg)
+    {
         assert (opnd1.reg.size is opndSize, "operand size mismatch");
+    }
     else if (opnd1.isMem)
-        assert (opnd1.mem.size is opndSize, "operand size mismatch for " ~ mnem);
+    {
+        assert (
+            opnd1.mem.size is opndSize,
+            format(
+                "operand size mismatch for %s (%s <= %s)",
+                mnem,
+                opndSize,
+                opnd1.mem.size
+            )
+        );
+    }
     else if (opnd1.isImm)
+    {
         assert (opnd1.imm.immSize <= opndSize, "immediate too large for dst");
+    }
 
     assert (opndSize is 8 || opndSize is 16 || opndSize is 32 || opndSize is 64);
     auto szPref = opndSize is 16;
@@ -938,7 +952,7 @@ void writeRMMulti(
     else
     {
         assert (
-            false, 
+            false,
             "invalid operand combination for " ~ mnem ~ ":\n" ~
             opnd0.toString() ~ "\n" ~
             opnd1.toString()

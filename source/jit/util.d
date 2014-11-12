@@ -47,6 +47,7 @@ import options;
 import ir.ir;
 import runtime.vm;
 import runtime.object;
+import runtime.gc;
 import jit.codeblock;
 import jit.x86;
 import jit.jit;
@@ -174,29 +175,54 @@ X86Opnd memberOpnd(string fName)(X86Reg baseReg)
     const auto elems = split(fName, ".");
 
     size_t fOffset;
+
+    // x.y.z.w
+    static if (elems.length is 4)
+    {
+        // Get the type of y as a string
+        mixin(format(
+            "const e1Type = typeof(%s.%s).stringof;", elems[0], elems[1]
+        ));
+
+        // Get the type of z as a string
+        mixin(format(
+            "const e2Type = typeof(%s.%s).stringof;", e1Type, elems[2]
+        ));
+
+        mixin(format(
+            "fOffset = %s.%s.offsetof + %s.%s.offsetof + %s.%s.offsetof;",
+            elems[0], elems[1],
+            e1Type, elems[2],
+            e2Type, elems[3],
+        ));
+    }
+
+    // x.y.z
     static if (elems.length is 3)
     {
+        // Get the type of y as a string
         mixin(format(
             "const e1Type = typeof(%s.%s).stringof;", elems[0], elems[1]
         ));
 
         mixin(format(
-            "fOffset = %s.%s.offsetof + %s.%s.offsetof;", 
+            "fOffset = %s.%s.offsetof + %s.%s.offsetof;",
             elems[0], elems[1],
             e1Type, elems[2]
         ));
     }
-    else if (elems.length is 2)
+
+    // x.y
+    static if (elems.length is 2)
     {
         mixin(format(
-            "fOffset = %s.%s.offsetof;", 
+            "fOffset = %s.%s.offsetof;",
             elems[0], elems[1]
         ));
     }
-    else
-    {
-        assert (false);
-    }
+
+    // Unsupported depth
+    static assert (elems.length > 0 && elems.length <= 4);
 
     mixin("auto fSize = " ~ fName ~ ".sizeof;");
 

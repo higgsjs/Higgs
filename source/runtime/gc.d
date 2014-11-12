@@ -138,6 +138,11 @@ struct GCRoot
         return pair.word.ptrVal;
     }
 
+    auto nextRoot()
+    {
+        return next;
+    }
+
     private VM vm;
 
     private GCRoot* prev;
@@ -457,6 +462,7 @@ refptr gcForward(VM vm, refptr ptr)
         return null;
 
     //writefln("forwarding object %s (%s)", ptr, vm.inFromSpace(ptr));
+    //writeln("header=", obj_get_header(ptr));
 
     assert (
         vm.inFromSpace(ptr),

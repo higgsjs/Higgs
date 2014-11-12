@@ -2878,7 +2878,6 @@ function $rt_delProp(base, prop)
         // Set its value to undefined
         if ($ir_obj_set_prop(base, prop, $undef))
         {
-
         }
         else
         {
@@ -3055,7 +3054,6 @@ function $rt_getPropEnum(obj)
     }
 
     var curObj = obj;
-    var curShape = $rt_valIsObj(curObj)? $rt_obj_get_shape(curObj):$nullptr;
     var curIdx = 0;
 
     // Check if a property is shadowed by a prototype's
@@ -3082,34 +3080,30 @@ function $rt_getPropEnum(obj)
         while (true)
         {
             // If we are at the end of the prototype chain, stop
-            if (curObj === null)
+            if ($ir_eq_refptr(curObj, null))
                 return true;
 
             // If the current object is an object of some kind
             if ($rt_valIsObj(curObj))
             {
+                // Get the property enumeration table for the shape
                 var objShape = $rt_obj_get_shape(curObj);
+                var enumTbl = $ir_shape_enum_tbl(objShape);
+                var tblLen = $rt_arrtbl_get_cap(enumTbl);
 
-                // For each property shape
-                while ($ir_ne_refptr(curShape, $nullptr))
+                // Until we find the next property
+                while (curIdx < tblLen)
                 {
                     // Get the name for this property
-                    var propName = $ir_shape_prop_name(curShape);
+                    var propName = $ir_make_value(
+                        $rt_arrtbl_get_word(enumTbl, curIdx),
+                        $rt_arrtbl_get_tag(enumTbl, curIdx)
+                    );
 
-                    // Get the attributes for the current shape
-                    var propAttrs = $ir_shape_get_attrs(curShape);
+                    curIdx++;
 
-                    // Move to the parent shape
-                    var propShape = curShape;
-                    curShape = $ir_shape_get_parent(curShape);
-
-                    // If this is not an enumerable property, skip it
-                    if ((propAttrs & $rt_ATTR_ENUMERABLE) == 0)
-                        continue;
-
-                    // If this is not the defining shape for this property, skip it
-                    var defShape = $ir_obj_prop_shape(curObj, propName);
-                    if ($ir_ne_rawptr(defShape, propShape))
+                    // If this property is not enumerable, skip it
+                    if ($ir_eq_refptr(propName, null))
                         continue;
 
                     // If the property is shadowed, skip it
@@ -3123,15 +3117,17 @@ function $rt_getPropEnum(obj)
                 // If the object is an array
                 if ($ir_is_array(curObj))
                 {
-                    if (curIdx < curObj.length)
+                    var arrIdx = curIdx - tblLen;
+
+                    if (arrIdx < curObj.length)
                     {
-                        return curIdx++;
+                        curIdx++;
+                        return arrIdx;
                     }
                 }
 
                 // Move up the prototype chain
                 curObj = $ir_obj_get_proto(curObj);
-                curShape = $rt_valIsObj(curObj)? $rt_obj_get_shape(curObj):$nullptr;
                 curIdx = 0;
                 continue;
             }
@@ -3147,7 +3143,6 @@ function $rt_getPropEnum(obj)
                 {
                     // Move up the prototype chain
                     curObj = $ir_get_str_proto();
-                    curShape = $rt_valIsObj(curObj)? $rt_obj_get_shape(curObj):$nullptr;
                     curIdx = 0;
                     continue;
                 }

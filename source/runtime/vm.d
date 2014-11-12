@@ -757,6 +757,21 @@ class VM
     }
 
     /**
+    Destructor
+    */
+    ~this()
+    {
+        // Unregister all the GC roots to prevent them from
+        // touching the VM object after the it is destroyed
+        for (auto root = firstRoot; root !is null;)
+        {
+            auto next = root.nextRoot;
+            destroy(root);
+            root = next;
+        }
+    }
+
+    /**
     Set the value and type of a stack slot
     */
     void setSlot(StackIdx idx, Word w, Tag t)

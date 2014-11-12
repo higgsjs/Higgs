@@ -206,38 +206,83 @@ TODO: ask Marc for ECOOP repo
 
 TODO: catch missing file exception in main.d
 
+TODO: array-join-dead microbenchmark
+
 TODO: inline for-in code *if necessary*
+- can start by removing closure
+  - still only need one loop?
+  - can call some getNextTbl(tbl, curObj, ...) fn on each iter, inline
+  - then getNextProp
 - goal is to perform decently on fasta benchmark ***
-- Need curObj and curProp
+- Need curObj and curIdx
 - getNextProp and getNextObj
-TODO: eliminate shadowed test for root obj?
+- getNextProp can check if curObj === origObj before calling isShadowed
 
-TODO: eliminate shape_get_parent, shape_prop_name
+TODO: benchmark for-in microbenchmark against other engines
+- previously 100x slower than others
 
-TODO: lazily generate an enumerable property table
+TODO: inline isShadowed, avoid isShadowed on root object
+- No need to call isShadowed on the original object
+- Often, prototypes have no enum props
+  - Hence there are isShadowed calls
+
+TODO: enum tbl gen should return null if there are no enumerable properties?
+- But then can't know if table was generated
+- Produce a table of length 0***
+- Any better than 3800ms?
+
+
+
+
+
+
+
+
+
+[DONE] TODO: add repeated for-in test with shrinkheap to GC tests
+
+[DONE] TODO: test `make test` and ./benchmark.py
+
+[DONE] TODO: eliminate shape_get_parent, shape_prop_name
+
+[DONE] TODO: benchmark for-in microbenchmark against other engines
+- previously 100x slower than others, 9000ms
+- about 2x faster now, 4800ms with --stats
+
+[DONE] FIXME: gc bug with enum tbl
+- Scanning to-space heap
+- A pointer inside an object is already forwarded
+  - It's a pointer in the global object
+  - Points to the empty string
+
+[DONE] FIXME: segfault on VM in init in `make test`
+- GCRoot tries to unregister from the VM when destroyed
+- Order of destruction is unpredictable if GCRoots are not on the stack!
+- Can't really say if GCRoot gets destroyed first or if VM does
+- Touching the VM or any GC root is risky
+- May want some kind of a manual flag, avoid auto-unregistering
+On the other hand, destructor must be called before freeing
+- Might be safe to have the VM unregister all roots itself
+- If the roots were destroyed, they unregistered themselves
+
+[DONE] TODO: modify runtime to use $ir_shape_enum_tbl
+
+[DONE] TODO: getMember with deeper nesting
+
+[DONE] TODO: $ir_shape_enum_tbl instruction
 - Should GCRoot this?
   - Make it an array table with JS strings inside
-Often, prototypes have no enum props
-- Hence there are no shadowed calls
-- No need to call isShadowed on the original object
+- Check if table pointer is null on the shape, if so call host fn, otherwise return
+- Test the instruction with test function that prints keys
+Problem with property table idea...
+- If a property gets deleted *and* hasn't been enumerated yet, it shouldn't be enumerated
+If we just get the table on the shape every iteration, and a property ahead of us
+gets deleted, it's no issue. If a property behind us is deleted, that seems problematic?
+Simply add null slots for deleted properties and do a null check before enumerating
+There should be as many slots as shapes in the trees
 
-Want an instruction shape_enum_tbl
-- Checks if the table pointer is null, if so call host fn, otherwise return
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+[DONE] TODO: blog post, Pushing Higgs to the Limit
+http://www.reddit.com/r/higgsjs/
 
 [DONE] TODO: GCRoots pointing to null should not add themselves to the list, verify
 

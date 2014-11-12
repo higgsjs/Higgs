@@ -329,14 +329,11 @@ Opcode OBJ_SET_ATTRS = { "obj_set_attrs", false, [OpArg.LOCAL, OpArg.LOCAL, OpAr
 /// Get the shape associated with a given property name
 Opcode OBJ_PROP_SHAPE = { "obj_prop_shape", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_obj_prop_shape };
 
-/// Get the parent shape for a given shape
-Opcode SHAPE_GET_PARENT = { "shape_get_parent", true, [OpArg.LOCAL], &gen_shape_get_parent };
-
 /// Get the attributes associated with a given shape
 Opcode SHAPE_GET_ATTRS = { "shape_get_attrs", true, [OpArg.LOCAL], &gen_shape_get_attrs };
 
-/// Get the property name associated with a given shape
-Opcode SHAPE_PROP_NAME = { "shape_prop_name", true, [OpArg.LOCAL], &gen_shape_prop_name, OpInfo.MAY_GC };
+/// Get a table of enumerable property names for objects of this shape
+Opcode SHAPE_ENUM_TBL = { "shape_enum_tbl", true, [OpArg.LOCAL], &gen_shape_enum_tbl, OpInfo.MAY_GC };
 
 /// Set the value of a global property
 Opcode SET_GLOBAL = { "set_global", false, [OpArg.STRING, OpArg.LOCAL], &gen_set_global, OpInfo.MAY_GC | OpInfo.IMPURE };

@@ -1588,6 +1588,10 @@ unittest
     vm = new VM();
     vm.load("tests/core/gc/globalexc.js");
 
+    writefln("gc/for-in");
+    vm = new VM();
+    vm.load("tests/core/gc/for-in.js");
+
     writefln("gc/graph");
     vm = new VM();
     vm.load("tests/core/gc/graph.js");

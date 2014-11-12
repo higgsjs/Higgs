@@ -334,6 +334,9 @@ class ObjShape
     /// Index at which this property is stored
     uint32_t slotIdx;
 
+    /// Table of enumerable properties
+    GCRoot enumTbl;
+
     /// Empty shape constructor
     this(VM vm)
     {
@@ -347,6 +350,8 @@ class ObjShape
         this.attrs = 0;
 
         this.slotIdx = uint32_t.max;
+
+        this.enumTbl = GCRoot(vm, NULL);
     }
 
     /// Property definition constructor
@@ -372,10 +377,13 @@ class ObjShape
         this.attrs = attrs;
 
         this.slotIdx = parent.slotIdx+1;
+
+        this.enumTbl = GCRoot(vm, NULL);
     }
 
     /// Test if this shape has a given attribute
     bool writable() const { return (attrs & ATTR_WRITABLE) != 0; }
+    bool enumerable() const { return (attrs & ATTR_ENUMERABLE) != 0; }
     bool configurable() const { return (attrs & ATTR_CONFIGURABLE) != 0; }
     bool deleted() const { return (attrs & ATTR_DELETED) != 0; }
     bool isGetSet() const { return (attrs & ATTR_GETSET) != 0; }
@@ -498,6 +506,43 @@ class ObjShape
 
         // Root shape reached, property not found
         return null;
+    }
+
+    /**
+    Generate a table of names enumerable properties for objects of this shape
+    */
+    refptr genEnumTbl(VM vm)
+    {
+        assert (enumTbl.ptr is null);
+
+        auto numSlots = this.slotIdx + 1;
+
+        // Allocate the table
+        enumTbl = ValuePair(arrtbl_alloc(vm, numSlots), Tag.REFPTR);
+
+        // For each shape going down the tree, excluding the root
+        for (auto shape = this; shape.parent !is null; shape = shape.parent)
+        {
+            ValuePair namePair;
+
+            // If this property is not enumerable
+            if (!shape.enumerable)
+            {
+                namePair = NULL;
+            }
+            else
+            {
+                namePair.word.ptrVal = getString(vm, shape.propName);
+                namePair.tag = Tag.STRING;
+            }
+
+            arrtbl_set_word(enumTbl.ptr, shape.slotIdx, namePair.word.uint64Val);
+            arrtbl_set_tag(enumTbl.ptr, shape.slotIdx, namePair.tag);
+        }
+
+        assert (vm.inFromSpace(enumTbl.ptr));
+
+        return enumTbl.ptr;
     }
 }
 

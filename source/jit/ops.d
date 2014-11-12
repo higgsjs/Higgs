@@ -4210,51 +4210,16 @@ void gen_obj_prop_shape(
     st.setOutTag(as, instr, Tag.SHAPEPTR);
 }
 
-/// Get the parent shape for a given shape
+/// Get a table of enumerable property names for objects of this shape
 /// Inputs: shape
-void gen_shape_get_parent(
+void gen_shape_enum_tbl(
     BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
 )
 {
-    extern (C) static ObjShape op_shape_get_parent(ObjShape shape)
-    {
-        assert (shape !is null);
-        return shape.parent;
-    }
-
-    // Spill the values live before this instruction
-    st.spillLiveBefore(as, instr);
-
-    auto shapeOpnd = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
-
-    as.saveJITRegs();
-
-    // Call the host function
-    as.mov(cargRegs[0].opnd(64), shapeOpnd);
-    as.ptr(scrRegs[0], &op_shape_get_parent);
-    as.call(scrRegs[0]);
-
-    // Set the output value
-    as.mov(outOpnd, cretReg.opnd);
-    st.setOutTag(as, instr, Tag.SHAPEPTR);
-
-    as.loadJITRegs();
-}
-
-/// Get the property name associated with a given shape
-/// Inputs: shape
-void gen_shape_prop_name(
-    BlockVersion ver,
-    CodeGenState st,
-    IRInstr instr,
-    CodeBlock as
-)
-{
-    extern (C) static refptr op_shape_prop_name(
+    extern (C) static refptr op_shape_enum_tbl(
         VM vm,
         IRInstr curInstr,
         ObjShape shape
@@ -4263,32 +4228,50 @@ void gen_shape_prop_name(
         assert (shape !is null);
 
         vm.setCurInstr(curInstr);
-        auto strObj = getString(vm, shape.propName);
+
+        auto enumTbl = shape.genEnumTbl(vm);
+
         vm.setCurInstr(null);
 
-        return strObj;
+        return enumTbl;
     }
 
-    // Spill the values live before this instruction
-    st.spillLiveBefore(as, instr);
+    auto shapeOpnd = st.getWordOpnd(as, instr, 0, 64);
+    assert (shapeOpnd.isReg);
 
-    auto shapeOpnd = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
+    // Spill the values live after this instruction
+    st.spillLiveAfter(as, instr);
+
     auto outOpnd = st.getOutOpnd(as, instr, 64);
+
+    st.setOutTag(as, instr, Tag.REFPTR);
+
+    // Get the table pointer and check if its null
+    as.getMember!("ObjShape.enumTbl.pair.word")(scrRegs[0], shapeOpnd.reg);
+    as.cmp(scrRegs[0].opnd, X86Opnd(0));
+    as.je(Label.FALLBACK);
+
+    as.mov(outOpnd, scrRegs[0].opnd);
+    as.jmp(Label.DONE);
+
+    // Fallback code
+    as.label(Label.FALLBACK);
 
     as.saveJITRegs();
 
     // Call the host function
+    as.mov(cargRegs[2].opnd(64), shapeOpnd);
     as.mov(cargRegs[0], vmReg);
     as.ptr(cargRegs[1], instr);
-    as.mov(cargRegs[2].opnd(64), shapeOpnd);
-    as.ptr(scrRegs[0], &op_shape_prop_name);
+    as.ptr(scrRegs[0], &op_shape_enum_tbl);
     as.call(scrRegs[0]);
 
     // Set the output value
     as.mov(outOpnd, cretReg.opnd);
-    st.setOutTag(as, instr, Tag.STRING);
 
     as.loadJITRegs();
+
+    as.label(Label.DONE);
 }
 
 /// Get the attributes associated with a given shape

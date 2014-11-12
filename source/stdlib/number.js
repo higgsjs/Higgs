@@ -77,7 +77,8 @@ function Number(value)
 
 //-----------------------------------------------------------------------------
 
-// TODO
+// TODO min and max representable values
+// use int64 and bit patterns casted to float64?
 // 15.7.3.2 Number.MAX_VALUE
 // 15.7.3.3 Number.MIN_VALUE
 
@@ -128,7 +129,7 @@ Number.prototype.valueOf = function ()
 /**
 15.7.4.5 Number.prototype.toFixed (fractionDigits)
 */
-Number.prototype.toFixed = function(fractionDigits)
+Number.prototype.toFixed = function (fractionDigits)
 {
     var m;
     var padding;
