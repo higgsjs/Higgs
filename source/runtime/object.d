@@ -515,10 +515,27 @@ class ObjShape
     {
         assert (enumTbl.ptr is null);
 
-        auto numSlots = this.slotIdx + 1;
+        // Check if there are enumerable properties
+        bool enumProps = false;
+        for (auto shape = this; shape.parent !is null; shape = shape.parent)
+        {
+            if (shape.enumerable)
+            {
+                enumProps = true;
+                break;
+            }
+        }
+
+        // If there are no enumerable properties
+        if (!enumProps)
+        {
+            // Produce an empty property enumeration table
+            enumTbl = ValuePair(arrtbl_alloc(vm, 0), Tag.REFPTR);
+            return enumTbl.ptr;
+        }
 
         // Allocate the table
-        enumTbl = ValuePair(arrtbl_alloc(vm, numSlots), Tag.REFPTR);
+        enumTbl = ValuePair(arrtbl_alloc(vm, this.slotIdx + 1), Tag.REFPTR);
 
         // For each shape going down the tree, excluding the root
         for (auto shape = this; shape.parent !is null; shape = shape.parent)
@@ -541,7 +558,6 @@ class ObjShape
         }
 
         assert (vm.inFromSpace(enumTbl.ptr));
-
         return enumTbl.ptr;
     }
 }

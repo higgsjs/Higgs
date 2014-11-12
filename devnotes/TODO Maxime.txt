@@ -208,7 +208,15 @@ TODO: catch missing file exception in main.d
 
 TODO: array-join-dead microbenchmark
 
-TODO: inline for-in code *if necessary*
+TODO: benchmark for-in microbenchmark against other engines
+- previously 100x slower than others
+
+TODO: inline isShadowed, avoid isShadowed on root object
+- No need to call isShadowed on the original object
+- Often, prototypes have no enum props
+  - Hence there are isShadowed calls
+
+TODO: inline for-in code
 - can start by removing closure
   - still only need one loop?
   - can call some getNextTbl(tbl, curObj, ...) fn on each iter, inline
@@ -218,26 +226,20 @@ TODO: inline for-in code *if necessary*
 - getNextProp and getNextObj
 - getNextProp can check if curObj === origObj before calling isShadowed
 
-TODO: benchmark for-in microbenchmark against other engines
-- previously 100x slower than others
+TODO: design $rt_nextEnumProp, $rt_nextEnumObj, $rt_getEnumTbl(curObj)
 
-TODO: inline isShadowed, avoid isShadowed on root object
-- No need to call isShadowed on the original object
-- Often, prototypes have no enum props
-  - Hence there are isShadowed calls
 
-TODO: enum tbl gen should return null if there are no enumerable properties?
+
+
+
+
+
+
+[DONE] TODO: enum tbl gen should return null if there are no enumerable properties?
 - But then can't know if table was generated
 - Produce a table of length 0***
 - Any better than 3800ms?
-
-
-
-
-
-
-
-
+  - Not much speedup, must be closure overhead
 
 [DONE] TODO: add repeated for-in test with shrinkheap to GC tests
 
