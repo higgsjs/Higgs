@@ -217,7 +217,6 @@ TODO: inline isShadowed, avoid isShadowed on root object
   - Hence there are isShadowed calls
 
 TODO: inline for-in code
-- can start by removing closure
   - still only need one loop?
   - can call some getNextTbl(tbl, curObj, ...) fn on each iter, inline
   - then getNextProp
@@ -226,7 +225,8 @@ TODO: inline for-in code
 - getNextProp and getNextObj
 - getNextProp can check if curObj === origObj before calling isShadowed
 
-TODO: design $rt_nextEnumProp, $rt_nextEnumObj, $rt_getEnumTbl(curObj)
+TODO: design $rt_nextEnumProp(curObj, propIdx), $rt_nextEnumObj(curObj), $rt_getEnumTbl(curObj)
+Write enumProps function in runtime.js, try with arrays, strings
 
 
 
@@ -234,6 +234,17 @@ TODO: design $rt_nextEnumProp, $rt_nextEnumObj, $rt_getEnumTbl(curObj)
 
 
 
+
+
+
+
+
+[DONE] FIXME: Array.prototype.toString is enumerable ... wtf
+h> d = Object.getOwnPropertyDescriptor(Array.prototype, 'toString')
+object
+h> d.enumerable
+true
+- Add a test to stdlib/array
 
 [DONE] TODO: enum tbl gen should return null if there are no enumerable properties?
 - But then can't know if table was generated

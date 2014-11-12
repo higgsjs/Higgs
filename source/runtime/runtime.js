@@ -3057,20 +3057,20 @@ function $rt_getPropEnum(obj)
     var curIdx = 0;
 
     // Check if a property is shadowed by a prototype's
-    function isShadowed(curObj, propName)
+    function isShadowed(obj, thisObj, propName)
     {
-        for (;;)
+        for (var curObj = obj;;)
         {
-            // Move one down the prototype chain
-            curObj = $ir_obj_get_proto(curObj);
-
-            // If we reached the bottom of the chain, stop
-            if ($ir_eq_refptr(curObj, null))
+            // If we reached this object, stop
+            if ($ir_eq_refptr(curObj, thisObj))
                 return false;
 
             // If the property exists on this object, it is shadowed
             if ($rt_hasOwnProp(curObj, propName))
                 return true;
+
+            // Move one down the prototype chain
+            curObj = $ir_obj_get_proto(curObj);
         }
     }
 
@@ -3107,7 +3107,7 @@ function $rt_getPropEnum(obj)
                         continue;
 
                     // If the property is shadowed, skip it
-                    if (isShadowed(curObj, propName))
+                    if (isShadowed(obj, curObj, propName))
                         continue;
 
                     // Return the current key
@@ -3156,5 +3156,158 @@ function $rt_getPropEnum(obj)
     }
 
     return nextProp;
+}
+
+
+
+
+
+
+
+
+function $rt_getEnumTbl(curObj)
+{
+    if ($rt_valIsObj(curObj))
+    {
+        var objShape = $rt_obj_get_shape(curObj);
+        return $ir_shape_enum_tbl(objShape);
+    }
+
+    return null;
+}
+
+/**
+Check if a property is shadowed by another in the prototype chain
+*/
+function $rt_isShadowed(topObj, thisObj, propName)
+{
+    for (var curObj = topObj;;)
+    {
+        // If we reached this object, stop
+        if ($ir_eq_refptr(curObj, thisObj))
+            return false;
+
+        // If the property exists on this object, it is shadowed
+        if ($rt_hasOwnProp(curObj, propName))
+            return true;
+
+        // Move one down the prototype chain
+        curObj = $ir_obj_get_proto(curObj);
+    }
+
+    assert (false);
+}
+
+function $rt_getEnumProp(topObj, curObj, enumTbl, propIdx)
+{
+    // If the current object is an object of some kind
+    if ($rt_valIsObj(curObj))
+    {
+        var tblLen = $rt_arrtbl_get_cap(enumTbl);
+
+        // If we are still within the property enumeration table
+        if (propIdx < tblLen)
+        {
+            // Get the name for this property
+            var propName = $ir_make_value(
+                $rt_arrtbl_get_word(enumTbl, propIdx),
+                $rt_arrtbl_get_tag(enumTbl, propIdx)
+            );
+
+            // If this property is not enumerable, skip it
+            if ($ir_eq_refptr(propName, null))
+                return null;
+
+            // If the property is shadowed, skip it
+            if ($rt_isShadowed(topObj, curObj, propName))
+                return null;
+
+            // Return the current key
+            return propName;
+        }
+
+        // If the object is an array
+        if ($ir_is_array(curObj))
+        {
+            // If this is a valid array index
+            var arrIdx = propIdx - tblLen;
+            if (arrIdx < curObj.length)
+                return arrIdx;
+        }
+
+        // No more properties to enumerate
+        return true;
+    }
+
+    // If the object is a string
+    else if ($ir_is_string(curObj))
+    {
+        // If this is a valid character index
+        if (propIdx < curObj.length)
+            return propIdx;
+
+        // No more properties to enumerate
+        return true;
+    }
+
+    else
+    {
+        // No properties to enumerate
+        return true;
+    }
+}
+
+function $rt_nextEnumObj(curObj)
+{
+    // If the current object is an object of some kind
+    if ($rt_valIsObj(curObj))
+    {
+        // Move up the prototype chain
+        return $ir_obj_get_proto(curObj);
+    }
+
+    // If the object is a string
+    if ($ir_is_string(curObj))
+    {
+        // Move up the prototype chain
+        return $ir_get_str_proto();
+    }
+
+    return null;
+}
+
+
+
+
+function enumProps(obj)
+{
+    var curObj = obj;
+
+    for (;;)
+    {
+        var propIdx = 0;
+        var enumTbl = $rt_getEnumTbl(curObj);
+
+        for (;;)
+        {
+            //print('idx =', propIdx);
+
+            var propName = $rt_getEnumProp(obj, curObj, enumTbl, propIdx);
+            propIdx++;
+
+            if (propName === null)
+                continue;
+
+            if (propName === true)
+                break;
+
+            print(propName);
+        }
+
+        curObj = $rt_nextEnumObj(curObj);
+
+        if (curObj === null)
+            break;
+    }
 }
 

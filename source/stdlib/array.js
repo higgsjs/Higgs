@@ -89,7 +89,6 @@ Array.isArray = function (arg)
     return $ir_is_array(arg);
 };
 
-
 //-----------------------------------------------------------------------------
 
 // Operations on Array objects.
