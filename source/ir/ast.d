@@ -1097,14 +1097,27 @@ void stmtToIR(IRGenCtx ctx, ASTStmt stmt)
             exitBlock
         );
 
+        // Set the loop phi arguments for continue contexts
+        foreach (contCtx; contCtxLst)
+        {
+            // Get the continue branch
+            auto contBranch = contCtx.getLastInstr;
 
-        // TODO:
-        // FIXME: need to iterate through contCtxLst
-        // for ctxs without jumps, need to supply phi args!
-
-
-
-
+            // Set the phi arguments on all loop entry targets
+            // that do not already have phi arguments set
+            for (size_t tIdx = 0; tIdx < IRInstr.MAX_TARGETS; ++tIdx)
+            {
+                if (auto desc = contBranch.getTarget(tIdx))
+                {
+                    if (desc.target == entryBlock &&
+                        desc.getPhiArg(curObjPhi) is null)
+                    {
+                        desc.setPhiArg(curObjPhi, curObjPhi);
+                        desc.setPhiArg(propIdxPhi, propIdxInc);
+                    }
+                }
+            }
+        }
 
         // Merge the continue contexts with the loop entry
         mergeLoopEntry(

@@ -223,29 +223,37 @@ TODO: try benchmarking 1m-for-in against crankshaft
 
 TODO: benchmark for-in microbenchmark against other engines
 
-TODO: make for-in code inlined, including isShadowed
+TODO: make for-in code inlined
 
-TODO: write for-in tests with continue, break, count iterations
-TODO: implement for-in support for continue, set phi operands
+TODO: try continue on last itr with proto
+- add to for-in-continue test
 
-FIXME: for-in delete fails
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: write for-in tests with continue, count iterations
+
+[DONE] TODO: implement for-in support for continue, set phi operands
+
+[DONE] FIXME: for-in delete fails
 Running: ./tests/02-regress/for-in-delete.js...
 Error: assertion failed
 $rt_throwExc(4FD16A) ("runtime/runtime.js"@138:1)
 assert(4FD165) ("runtime/runtime.js"@126:31)
 __tests_02_regress_for_in_delete_js(556CC1) ("./tests/02-regress/for-in-delete.js"@14:1)
-
 Need to get the enum tbl at each iteration, the object shape might change!
-
 Simplifies loop a bit...
-
-
-
-
-
-
-
-
 
 [DONE] FIXME: gc/for-in, not triggering a GC!
 

@@ -348,8 +348,10 @@ class CodeGenState
             // Get the phi argument
             auto arg = branch.getPhiArg(phi);
             assert (
-                arg !is null, 
-                "missing phi argument for:\n" ~
+                arg !is null,
+                "missing phi argument from:\n" ~
+                branch.branch.block.toString ~
+                "\nto phi:\n" ~
                 phi.toString() ~
                 "\nin block:\n" ~
                 phi.block.toString()
