@@ -202,42 +202,69 @@ TODO: flag to disable shape versioning, shape_novers
 - break, read_shape, capture_shape, capture_tag?
   - should compile to nothing
 
-TODO: ask Marc for ECOOP repo
+Meeting 2014-10-1X:
+- log-scale graph
+- created for-in microbenchmark
+  - half of overhead was from inefficient closure handling
+  - half from expensive shape structure traversal
+- optimized for-in
+  - enumerable property table
+- ask Marc for ECOOP repo ****
 
 TODO: catch missing file exception in main.d
 
 TODO: array-join-dead microbenchmark
 
+TODO: blog post on inlining, Inlining is Tricky
+
+TODO: try manual inlining in bitops-bits-in-bite, compare performance
+
+TODO: try benchmarking 1m-for-in against crankshaft
+
 TODO: benchmark for-in microbenchmark against other engines
-- previously 100x slower than others
 
-TODO: inline isShadowed, avoid isShadowed on root object
-- No need to call isShadowed on the original object
-- Often, prototypes have no enum props
-  - Hence there are isShadowed calls
+TODO: make for-in code inlined, including isShadowed
 
-TODO: inline for-in code
-  - still only need one loop?
-  - can call some getNextTbl(tbl, curObj, ...) fn on each iter, inline
-  - then getNextProp
-- goal is to perform decently on fasta benchmark ***
+TODO: write for-in tests with continue, break, count iterations
+TODO: implement for-in support for continue, set phi operands
+
+FIXME: for-in delete fails
+Running: ./tests/02-regress/for-in-delete.js...
+Error: assertion failed
+$rt_throwExc(4FD16A) ("runtime/runtime.js"@138:1)
+assert(4FD165) ("runtime/runtime.js"@126:31)
+__tests_02_regress_for_in_delete_js(556CC1) ("./tests/02-regress/for-in-delete.js"@14:1)
+
+Need to get the enum tbl at each iteration, the object shape might change!
+
+Simplifies loop a bit...
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: gc/for-in, not triggering a GC!
+
+[DONE] TODO: benchmark for-in microbenchmark against other engines
+- previously 100x slower than others, now 100ms, less than 2x slower
+
+[DONE] TODO: optimize type tests in prop enum fns
+
+[DONE] FIXME: infinite loop in for-in
+
+[DONE] TODO: generate IR for for-in code
+- can call some getNextTbl(tbl, curObj, ...) fn on each iter
+- then getNextProp
+- goal is to perform decently on fasta benchmark
 - Need curObj and curIdx
 - getNextProp and getNextObj
-- getNextProp can check if curObj === origObj before calling isShadowed
 
-TODO: design $rt_nextEnumProp(curObj, propIdx), $rt_nextEnumObj(curObj), $rt_getEnumTbl(curObj)
+[DONE] TODO: design $rt_nextEnumProp(curObj, propIdx), $rt_nextEnumObj(curObj), $rt_getEnumTbl(curObj)
 Write enumProps function in runtime.js, try with arrays, strings
-
-
-
-
-
-
-
-
-
-
-
 
 [DONE] FIXME: Array.prototype.toString is enumerable ... wtf
 h> d = Object.getOwnPropertyDescriptor(Array.prototype, 'toString')

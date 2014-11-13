@@ -1,8 +1,6 @@
-o = {a:1, b:2, c:3}
+o = {a:1, b:2, c:3};
 
-n = 0
-
-listed = []
+listed = [];
 
 for (k in o)
 {
@@ -11,5 +9,6 @@ for (k in o)
     listed.push(k);
 }
 
-assert(listed.length === 2 && listed.indexOf('b') === -1);
+assert(listed.length === 2, 'incorrect number of listed properties: ' + listed.length);
+assert(listed.indexOf('b') === -1, 'b property listed');
 

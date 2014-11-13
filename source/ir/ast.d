@@ -955,72 +955,140 @@ void stmtToIR(IRGenCtx ctx, ASTStmt stmt)
     // For-in loop statement
     else if (auto forInStmt = cast(ForInStmt)stmt)
     {
-        // Create the loop test, body and exit blocks
-        auto testBlock = ctx.fun.newBlock("forin_test");
-        auto bodyBlock = ctx.fun.newBlock("forin_body");
-        auto exitBlock = ctx.fun.newBlock("forin_exit");
+        // Create the loop blocks
+        auto entryBlock     = ctx.fun.newBlock("forin_entry");
+        auto propTestBlock  = ctx.fun.newBlock("forin_prop_test");
+        auto nextObjBlock   = ctx.fun.newBlock("forin_next_obj");
+        auto bodyBlock      = ctx.fun.newBlock("forin_body");
+        auto exitBlock      = ctx.fun.newBlock("forin_exit");
+
+        // Create the loop phi nodes
+        auto curObjPhi = entryBlock.addPhi(new PhiNode());
+        auto propIdxPhi = entryBlock.addPhi(new PhiNode());
+
+        //
+        // 1: Loop initialization
+        //
 
         // Evaluate the object expression
-        auto objVal = exprToIR(ctx, forInStmt.inExpr);
+        auto topObj = exprToIR(ctx, forInStmt.inExpr);
 
-        // Get the property enumerator
-        auto enumVal = genRtCall(
-            ctx,
-            "getPropEnum",
-            [objVal],
-            stmt.pos
-        );
+        //
+        // 2: Loop entry, get next property name
+        //
 
-        // Create a context for the loop entry (the loop test)
+        // Create a context for the loop entry
         IRGenCtx[] breakCtxLst = [];
         IRGenCtx[] contCtxLst = [];
-        auto testCtx = createLoopEntry(
+        auto loopEntryCtx = createLoopEntry(
             ctx,
-            testBlock,
+            entryBlock,
             stmt,
             exitBlock,
             &breakCtxLst,
-            testBlock,
+            entryBlock,
             &contCtxLst
         );
 
         // Store a copy of the loop entry phi nodes
-        auto entryLocals = testCtx.localMap.dup;
+        auto entryLocals = loopEntryCtx.localMap.dup;
 
-        // Get the next property
-        auto callInstr = testCtx.addInstr(new IRInstr(&CALL, 2));
-        callInstr.setArg(0, enumVal);
-        callInstr.setArg(1, enumVal);
+        // Set the loop initialization phi args
+        assert (entryBlock.numIncoming is 1);
+        auto entryBranch = entryBlock.getIncoming(0);
+        entryBranch.setPhiArg(curObjPhi, topObj);
+        entryBranch.setPhiArg(propIdxPhi, IRConst.int32Cst(0));
 
-        // Generate the call targets
-        genCallTargets(testCtx, callInstr, stmt.pos);
+        // Get the next enumerable property
+        auto propName = genRtCall(
+            loopEntryCtx,
+            "getEnumProp",
+            [topObj, curObjPhi, propIdxPhi],
+            stmt.pos
+        );
 
-        // If the property is a constant value, exit the loop
-        auto isConst = testCtx.addInstr(new IRInstr(&IS_CONST, callInstr));
-        testCtx.ifTrue(isConst, exitBlock, bodyBlock);
+        // Compute the next property index
+        auto propIdxInc = loopEntryCtx.addInstr(new IRInstr(
+            &ADD_I32,
+            propIdxPhi,
+            IRConst.int32Cst(1)
+        ));
+
+        // If the property is a null pointer, continue to the next property
+        auto isPropRef = loopEntryCtx.addInstr(new IRInstr(&IS_REFPTR, propName));
+        auto ifPropRef = loopEntryCtx.ifTrue(isPropRef, entryBlock, propTestBlock);
+
+        // Set the phi args for the null property name branch
+        contCtxLst ~= loopEntryCtx.subCtx();
+        auto propRefBranch = ifPropRef.getTarget(0);
+        propRefBranch.setPhiArg(curObjPhi, curObjPhi);
+        propRefBranch.setPhiArg(propIdxPhi, propIdxInc);
+
+        //
+        // 3: Test if last property
+        //
+
+        auto propTestCtx = loopEntryCtx.subCtx(propTestBlock);
+
+        // If the property is a null pointer, continue to the next property
+        auto isConst = propTestCtx.addInstr(new IRInstr(&IS_CONST, propName));
+        propTestCtx.ifTrue(isConst, nextObjBlock, bodyBlock);
+
+        //
+        // 4: Get next object
+        //
+
+        auto nextObjCtx = loopEntryCtx.subCtx(nextObjBlock);
+
+        // Get the next object
+        auto nextObj = genRtCall(
+            nextObjCtx,
+            "nextEnumObj",
+            [curObjPhi],
+            stmt.pos
+        );
+
+        // If the next object is null, exit the loop, we are done
+        auto isObjRef = nextObjCtx.addInstr(new IRInstr(&IS_REFPTR, nextObj));
+        auto ifObjNull = nextObjCtx.ifTrue(isObjRef, exitBlock, entryBlock);
+        breakCtxLst ~= nextObjCtx.subCtx();
+
+        // If we have a next object, jump back to the entry block
+        auto nextObjBranch = ifObjNull.getTarget(1);
+        contCtxLst ~= nextObjCtx.subCtx();
+        nextObjBranch.setPhiArg(curObjPhi, nextObj);
+        nextObjBranch.setPhiArg(propIdxPhi, IRConst.int32Cst(0));
+
+        //
+        // 5: Loop body
+        //
 
         // Create the body context
-        auto bodyCtx = testCtx.subCtx(bodyBlock);
+        auto bodyCtx = loopEntryCtx.subCtx(bodyBlock);
 
-        // Assign into the variable expression
+        // Assign the property name into the variable expression
         assgToIR(
             bodyCtx,
             forInStmt.varExpr,
             null,
             delegate IRValue(IRGenCtx ctx)
             {
-                return callInstr;
+                return propName;
             }
         );
 
         // Compile the loop body statement
         stmtToIR(bodyCtx, forInStmt.bodyStmt);
 
-        // Add the test exit to the break context list
-        breakCtxLst ~= testCtx.subCtx();
-
-        // Add the body exit to the continue context list
+        // Jump back to the loop entry
+        auto nextPropJump = bodyCtx.jump(entryBlock);
         contCtxLst ~= bodyCtx.subCtx();
+        nextPropJump.setPhiArg(curObjPhi, curObjPhi);
+        nextPropJump.setPhiArg(propIdxPhi, propIdxInc);
+
+        //
+        // 6: Loop exit
+        //
 
         // Merge the break contexts into the loop exit
         auto loopExitCtx = mergeContexts(
@@ -1029,12 +1097,21 @@ void stmtToIR(IRGenCtx ctx, ASTStmt stmt)
             exitBlock
         );
 
+
+        // TODO:
+        // FIXME: need to iterate through contCtxLst
+        // for ctxs without jumps, need to supply phi args!
+
+
+
+
+
         // Merge the continue contexts with the loop entry
         mergeLoopEntry(
             ctx,
             contCtxLst,
             entryLocals,
-            testBlock
+            entryBlock
         );
 
         // Continue code generation after the loop exit
@@ -2843,9 +2920,9 @@ IRGenCtx createLoopEntry(
     // Register the loop labels, if any
     loopCtx.regLabels(
         loopStmt.labels,
-        breakBlock, 
-        breakCtxLst, 
-        contBlock, 
+        breakBlock,
+        breakCtxLst,
+        contBlock,
         contCtxLst
     );
 

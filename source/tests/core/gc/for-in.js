@@ -2,9 +2,12 @@ function test(o)
 {
     for (k in o)
     {
-
+        if (n % 3 === 0)
+            $ir_gc_collect(0);
     }
 }
+
+var n = 0;
 
 var o = {
     a: 1,
@@ -15,11 +18,7 @@ var o = {
     f: 6
 };
 
-$rt_shrinkHeap(500000);
-
-var gcCount = $ir_get_gc_count();
-
-while ($ir_get_gc_count() < gcCount + 2)
+for (var gcCount = $ir_get_gc_count(); $ir_get_gc_count() < gcCount + 4;)
 {
     test(o);
 }
