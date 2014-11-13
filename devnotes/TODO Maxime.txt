@@ -213,13 +213,16 @@ Meeting 2014-10-1X:
 
 TODO: catch missing file exception in main.d
 
-TODO: array-join-dead microbenchmark
-
 TODO: blog post on inlining, Inlining is Tricky
+
+TODO: blog post, The Fastest For-In Loops
+- post in r/higgsjs
+- post in chat
 
 TODO: try manual inlining in bitops-bits-in-bite, compare performance
 
-TODO: try new 100m for-in microbenchmark, try against crankshaft
+TODO: array-join-dead microbenchmark
+- Other engines are more than 20x faster
 
 
 
@@ -229,6 +232,17 @@ TODO: try new 100m for-in microbenchmark, try against crankshaft
 
 
 
+
+[DONE] TODO: optimize for-in... don't load type tag, do load_string?
+- already do 3 loads, could replace by 2
+
+[DONE] TODO: optimize for-in, prototype slot doesn't need an entry
+
+[DONE] FIXME: 600m is-string tests?
+- var is global.. it's the capture_tag!
+
+[DONE] TODO: try new 100m for-in microbenchmark, try against crankshaft
+- Faster than crankshaft, but not TraceMonkey
 
 [DONE] TODO: run `make test` and benchmark.py
 

@@ -1,6 +1,6 @@
 function test(o)
 {
-    for (var i = 0; i < 1000000; ++i)
+    for (var i = 0; i < 100000000; ++i)
     {
         // Note: k is a global variable
         for (k in o)

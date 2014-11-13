@@ -3079,9 +3079,9 @@ function $rt_getEnumProp(topObj, curObj, propIdx)
         if ($ir_lt_i32(propIdx, tblLen))
         {
             // Get the name for this property
-            var propName = $ir_make_value(
-                $rt_arrtbl_get_word(enumTbl, propIdx),
-                $rt_arrtbl_get_tag(enumTbl, propIdx)
+            var propName = $ir_load_string(
+                enumTbl,
+                $rt_arrtbl_ofs_word(enumTbl, propIdx)
             );
 
             // If this property is not enumerable, skip it

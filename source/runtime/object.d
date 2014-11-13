@@ -515,19 +515,26 @@ class ObjShape
     {
         assert (enumTbl.ptr is null);
 
-        // Check if there are enumerable properties
-        bool enumProps = false;
+        // Number of enumerable properties
+        auto numEnum = 0;
+
+        // Number of potentially enumerable properties
+        auto numMayEnum = 0;
+
+        // For each shape going down the tree, excluding the root
         for (auto shape = this; shape.parent !is null; shape = shape.parent)
         {
+            // If this shape is enumerable
             if (shape.enumerable)
-            {
-                enumProps = true;
-                break;
-            }
+                numEnum++;
+
+            // If this shape could eventually become enumerable
+            if (shape.configurable)
+                numMayEnum++;
         }
 
         // If there are no enumerable properties
-        if (!enumProps)
+        if (numEnum is 0)
         {
             // Produce an empty property enumeration table
             enumTbl = ValuePair(arrtbl_alloc(vm, 0), Tag.REFPTR);
@@ -535,26 +542,37 @@ class ObjShape
         }
 
         // Allocate the table
-        enumTbl = ValuePair(arrtbl_alloc(vm, this.slotIdx + 1), Tag.REFPTR);
+        enumTbl = ValuePair(arrtbl_alloc(vm, numMayEnum), Tag.REFPTR);
+
+        // Current table index
+        auto tblIdx = 0;
 
         // For each shape going down the tree, excluding the root
         for (auto shape = this; shape.parent !is null; shape = shape.parent)
         {
-            ValuePair namePair;
-
-            // If this property is not enumerable
-            if (!shape.enumerable)
+            // If this property is not enumerable and never will be
+            if (!shape.enumerable && !shape.configurable)
             {
-                namePair = NULL;
+                // Do nothing
             }
+
+            // If this property may eventually become enumerable
+            else if (!shape.enumerable && shape.configurable)
+            {
+                // Write a null "hole" in this slot
+                arrtbl_set_word(enumTbl.ptr, tblIdx, NULL.word.uint64Val);
+                arrtbl_set_tag(enumTbl.ptr, tblIdx, NULL.tag);
+                tblIdx++;
+            }
+
+            // Enumerable, named property
             else
             {
-                namePair.word.ptrVal = getString(vm, shape.propName);
-                namePair.tag = Tag.STRING;
+                auto propStr = getString(vm, shape.propName);
+                arrtbl_set_word(enumTbl.ptr, tblIdx, cast(uint64_t)propStr);
+                arrtbl_set_tag(enumTbl.ptr, tblIdx, Tag.STRING);
+                tblIdx++;
             }
-
-            arrtbl_set_word(enumTbl.ptr, shape.slotIdx, namePair.word.uint64Val);
-            arrtbl_set_tag(enumTbl.ptr, shape.slotIdx, namePair.tag);
         }
 
         assert (vm.inFromSpace(enumTbl.ptr));
