@@ -163,6 +163,8 @@ void inlinePass(VM vm, IRFunction caller)
             && !name.startsWith("$rt_setGlobalInl")
             && !name.startsWith("$rt_ropeToStr")
             && !name.startsWith("$rt_isShadowed")
+            && !name.startsWith("$rt_getEnumProp")
+            && !name.startsWith("$rt_nextEnumObj")
         )
             continue;
 

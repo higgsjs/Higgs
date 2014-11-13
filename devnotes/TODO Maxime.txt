@@ -219,28 +219,23 @@ TODO: blog post on inlining, Inlining is Tricky
 
 TODO: try manual inlining in bitops-bits-in-bite, compare performance
 
-TODO: try benchmarking 1m-for-in against crankshaft
+TODO: try new 100m for-in microbenchmark, try against crankshaft
 
-TODO: benchmark for-in microbenchmark against other engines
 
-TODO: make for-in code inlined
 
-TODO: try continue on last itr with proto
+
+
+
+
+
+
+
+[DONE] TODO: run `make test` and benchmark.py
+
+[DONE] TODO: make for-in code inlined
+
+[DONE] TODO: try continue on last itr with proto
 - add to for-in-continue test
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: write for-in tests with continue, count iterations
 
