@@ -41,6 +41,7 @@ import core.memory;
 import std.c.string;
 import std.c.stdlib;
 import std.stdio;
+import std.file;
 import std.algorithm;
 import std.conv;
 import std.string;
@@ -133,6 +134,12 @@ void main(string[] args)
         catch (RunError e)
         {
             writeln(e);
+            exit(-1);
+        }
+
+        catch (FileException e)
+        {
+            writeln(e.msg);
             exit(-1);
         }
 

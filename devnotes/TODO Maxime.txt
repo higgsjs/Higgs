@@ -203,6 +203,7 @@ Meeting 2014-10-1X:
 - optimized array join, about 2x faster
 - string fasta now slow because of random-access property reads
   - unknown/dynamic property name string
+  - could reprocess prop accesses inside of a for-in loop
 - compared bitops-3bits-bits-in-byte with manual inlining
   - more than 3x faster, still 2x slower than TraceMonkey
   - most overhead is from the function call
@@ -222,27 +223,34 @@ TODO: implement inline caches
   - use multiple cmovs?
   - could do cmov + jcc
 
+TODO: look into why phi nodes end up on the stack, easy fix?
+- Affects performance of access-nbody
+
 TODO: blog post, The Fastest For-In Loops
 - post in r/higgsjs
 - post in chat
 - Link to lines of code in fixed revision
 
-TODO: catch missing file exception in main.d
 
-TODO: look at assembler code for access-nbody
+
+
+
+
+
+
+
+
+
+[DONE] TODO: catch missing file exception in main.d
+
+[DONE] TODO: look at assembler code for access-nbody
 benchmarks/nocomptime/access-nbody.js
 NBodySystem.prototype.advance
 - Many float adds and muls
 - How inefficient is the code?
 - sqrt_f64, how efficient is that?
-
-
-
-
-
-
-
-
+- seems fine, but many spills
+- 3 loop phi nodes are on the stack
 
 [DONE] TODO: email author of jsfft
 https://github.com/dntj/jsfft
