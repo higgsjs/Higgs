@@ -518,19 +518,12 @@ class ObjShape
         // Number of enumerable properties
         auto numEnum = 0;
 
-        // Number of potentially enumerable properties
-        auto numMayEnum = 0;
-
         // For each shape going down the tree, excluding the root
         for (auto shape = this; shape.parent !is null; shape = shape.parent)
         {
             // If this shape is enumerable
             if (shape.enumerable)
                 numEnum++;
-
-            // If this shape could eventually become enumerable
-            if (shape.configurable)
-                numMayEnum++;
         }
 
         // If there are no enumerable properties
@@ -542,36 +535,25 @@ class ObjShape
         }
 
         // Allocate the table
-        enumTbl = ValuePair(arrtbl_alloc(vm, numMayEnum), Tag.REFPTR);
-
-        // Current table index
-        auto tblIdx = 0;
+        enumTbl = ValuePair(arrtbl_alloc(vm, this.slotIdx+1), Tag.REFPTR);
 
         // For each shape going down the tree, excluding the root
         for (auto shape = this; shape.parent !is null; shape = shape.parent)
         {
-            // If this property is not enumerable and never will be
-            if (!shape.enumerable && !shape.configurable)
-            {
-                // Do nothing
-            }
-
-            // If this property may eventually become enumerable
-            else if (!shape.enumerable && shape.configurable)
+            // If this property is not enumerable
+            if (!shape.enumerable)
             {
                 // Write a null "hole" in this slot
-                arrtbl_set_word(enumTbl.ptr, tblIdx, NULL.word.uint64Val);
-                arrtbl_set_tag(enumTbl.ptr, tblIdx, NULL.tag);
-                tblIdx++;
+                arrtbl_set_word(enumTbl.ptr, shape.slotIdx, NULL.word.uint64Val);
+                arrtbl_set_tag(enumTbl.ptr, shape.slotIdx, NULL.tag);
             }
 
             // Enumerable, named property
             else
             {
                 auto propStr = getString(vm, shape.propName);
-                arrtbl_set_word(enumTbl.ptr, tblIdx, cast(uint64_t)propStr);
-                arrtbl_set_tag(enumTbl.ptr, tblIdx, Tag.STRING);
-                tblIdx++;
+                arrtbl_set_word(enumTbl.ptr, shape.slotIdx, cast(uint64_t)propStr);
+                arrtbl_set_tag(enumTbl.ptr, shape.slotIdx, Tag.STRING);
             }
         }
 
