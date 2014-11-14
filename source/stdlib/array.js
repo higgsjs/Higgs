@@ -150,20 +150,27 @@ function array_join(separator)
         separator = ",";
     else if (!$ir_is_string(separator))
         separator = $rt_toString(separator);
-    
+
     var outStr = '';
 
-    var len = o.length;
+    var arrLen = o.length;
 
-    for (var i = 0; i < len; ++i)
+    if (arrLen > 0)
     {
+        var elem = o[0];
+
+        if (!$ir_is_const(elem) || !$ir_eq_const(elem, undefined))
+            outStr += elem;
+    }
+
+    for (var i = 1; i < arrLen; ++i)
+    {
+        outStr += separator;
+
         var elem = o[i];
 
-        if (elem !== undefined)
+        if (!$ir_is_const(elem) || !$ir_eq_const(elem, undefined))
             outStr += elem;
-
-        if (i < len - 1)
-            outStr += separator;
     }
 
     return outStr;

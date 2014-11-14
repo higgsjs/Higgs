@@ -154,11 +154,6 @@ TODO: synth, right for new synth, up for new melody
 - log the melody
 TODO: try allowing either tri or sine in osc bank
 
-TODO: email author of jsfft
-https://github.com/dntj/jsfft
-has its own tests
-not quite perfect, multiple files
-
 ------------------------------------------------------------------------------
 
 Computing Frontiers - Jan 16
@@ -190,18 +185,6 @@ TODO: profile functions by name in stats
 - add code to entry, get a named counter!
 - might provide very valuable info
 
-TODO: implement inline caches
-- Needed for both papers
-- Needed for setProp too?
-- Needs to decide branching direction as well
-  - use multiple cmovs?
-
-TODO: flag to disable shape versioning, shape_novers
-- no propagation of shape info
-  - also turn shape_notagspec, shape_nofptrspec
-- break, read_shape, capture_shape, capture_tag?
-  - should compile to nothing
-
 TODO: blog post on inlining, Inlining is Tricky
 - Could also talk about on the fly reg alloc
   - Link to lines of code in fixed revision
@@ -217,29 +200,60 @@ Meeting 2014-10-1X:
   - half from expensive shape structure traversal
 - optimized for-in
   - enumerable property table
-- optimized array join
+- optimized array join, about 2x faster
+- string fasta now slow because of random-access property reads
+  - unknown/dynamic property name string
+- compared bitops-3bits-bits-in-byte with manual inlining
+  - more than 3x faster, still 2x slower than TraceMonkey
+  - most overhead is from the function call
+- Geo avg of time 5.6, vs TM 5.7
 - ask Marc for ECOOP repo ****
 
-TODO: catch missing file exception in main.d
+TODO: flag to disable shape versioning, shape_novers
+- no propagation of shape info
+  - also turn shape_notagspec, shape_nofptrspec
+- break, read_shape, capture_shape, capture_tag?
+  - should compile to nothing
+
+TODO: implement inline caches
+- Needed for both papers
+- Needed for setProp too?
+- Needs to decide branching direction as well ***
+  - use multiple cmovs?
+  - could do cmov + jcc
 
 TODO: blog post, The Fastest For-In Loops
 - post in r/higgsjs
 - post in chat
 - Link to lines of code in fixed revision
 
-TODO: improve Array.join, inline rope concat
+TODO: catch missing file exception in main.d
+
+TODO: look at assembler code for access-nbody
+benchmarks/nocomptime/access-nbody.js
+NBodySystem.prototype.advance
+- Many float adds and muls
+- How inefficient is the code?
+- sqrt_f64, how efficient is that?
+
+
+
+
+
+
+
+
+
+[DONE] TODO: email author of jsfft
+https://github.com/dntj/jsfft
+has its own tests
+not quite perfect, multiple files
+
+[DONE] TODO: improve Array.join, inline rope concat?
 - Check time before and after
+- About 10% speed improvement
 
-TODO: try manual inlining in bitops-bits-in-bite, compare performance
-
-
-
-
-
-
-
-
-
+[DONE] TODO: try manual inlining in bitops-3bits-in-bite, compare performance
 
 [DONE] FIXME: ./tests/00-runtime/es5-cmp.js...
 1,2 <= 1,2 ==> false (expected true)

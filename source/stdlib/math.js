@@ -451,10 +451,11 @@ Returns an implementation-dependent approximation to the square root of x.
 */
 Math.sqrt = function (x)
 {
-    if ($ir_is_int32(x))
-        return $ir_sqrt_f64($ir_i32_to_f64(x));
     if ($ir_is_float64(x))
         return $ir_sqrt_f64(x);
+
+    if ($ir_is_int32(x))
+        return $ir_sqrt_f64($ir_i32_to_f64(x));
 
     return NaN;
 };
