@@ -202,6 +202,14 @@ TODO: flag to disable shape versioning, shape_novers
 - break, read_shape, capture_shape, capture_tag?
   - should compile to nothing
 
+TODO: blog post on inlining, Inlining is Tricky
+- Could also talk about on the fly reg alloc
+  - Link to lines of code in fixed revision
+
+TODO: BBV - Future Directions
+- Check notes
+- Check Baptiste's paper
+
 Meeting 2014-10-1X:
 - log-scale graph
 - created for-in microbenchmark
@@ -209,29 +217,44 @@ Meeting 2014-10-1X:
   - half from expensive shape structure traversal
 - optimized for-in
   - enumerable property table
+- optimized array join
 - ask Marc for ECOOP repo ****
 
 TODO: catch missing file exception in main.d
 
-TODO: blog post on inlining, Inlining is Tricky
-
 TODO: blog post, The Fastest For-In Loops
 - post in r/higgsjs
 - post in chat
+- Link to lines of code in fixed revision
+
+TODO: improve Array.join, inline rope concat
+- Check time before and after
 
 TODO: try manual inlining in bitops-bits-in-bite, compare performance
 
-TODO: array-join-dead microbenchmark
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: ./tests/00-runtime/es5-cmp.js...
+1,2 <= 1,2 ==> false (expected true)
+Error: wrong result for cmp op <=
+h> [1,2] <= [1,2]
+false
+- toPrim produces rope from Array
+
+[DONE] TODO: email Marc shot of latest perf graph
+
+[DONE] TODO: test fasta perf with substring = ''
+- Improves a bit, but still slow!
+
+[DONE] TODO: array-join-dead microbenchmark
 - Other engines are more than 20x faster
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: optimize for-in... don't load type tag, do load_string?
 - already do 3 loads, could replace by 2

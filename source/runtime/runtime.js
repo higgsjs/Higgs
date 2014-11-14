@@ -661,6 +661,9 @@ function $rt_toPrim(v)
         if ($rt_valIsObj(str))
             throw TypeError('toString produced non-primitive value');
 
+        if ($ir_is_rope(str))
+            return $rt_ropeToStr(str);
+
         return str;
     }
 

@@ -148,44 +148,25 @@ function array_join(separator)
 
     if (separator === undefined)
         separator = ",";
-    else
-        separator = String(separator);
+    else if (!$ir_is_string(separator))
+        separator = $rt_toString(separator);
+    
+    var outStr = '';
 
-    var length = 0;
-    var strarray = Array(o.length);
-    for (var i = 0; i < o.length; ++i)
+    var len = o.length;
+
+    for (var i = 0; i < len; ++i)
     {
-        var str;
-        if (o[i] !== undefined)
-            str = String(o[i]);
-        else
-            str = "";
-        length += str.length;
-        strarray[i] = str;
+        var elem = o[i];
+
+        if (elem !== undefined)
+            outStr += elem;
+
+        if (i < len - 1)
+            outStr += separator;
     }
 
-    length += (o.length - 1) * separator.length;
-
-    if (length > 0)
-    {
-        var s = $rt_str_alloc(length);
-
-        for (var i = 0, k = 0; i < strarray.length; ++i)
-        {
-            var str = strarray[i];
-
-            for (var j = 0; j < str.length; ++j, ++k)
-                $rt_str_set_data(s, k, $rt_str_get_data(str, j));
-
-            if (i < strarray.length - 1)
-                for (var j = 0; j < separator.length; ++j, ++k)
-                    $rt_str_set_data(s, k, $rt_str_get_data(separator, j));
-        }
-
-        return $ir_get_str(s);
-    }
-
-    return "";
+    return outStr;
 }
 
 function array_pop()
