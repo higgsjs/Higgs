@@ -4754,15 +4754,19 @@ void gen_load_lib(
         // Library to load (D string)
         auto libname = extractStr(strPtr);
 
-        // Let the user specify just the lib name
+        // Let the user specify just the lib name without the extension
         if (libname.length > 0 && libname.countUntil('/') == -1)
         {
             if (libname.countUntil('.') == -1)
+            {
                 version (linux) libname ~= ".so";
                 version (OSX) libname ~= ".dylib";
+            }
 
             if (libname[0] != 'l' && libname[1] != 'i' && libname[2] != 'b')
+            {
                 libname = "lib" ~ libname;
+            }
         }
 
         // Filename must be either a zero-terminated string or null

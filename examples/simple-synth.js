@@ -127,7 +127,6 @@ function newSound()
         var s = sound.getSample(i, 0);
 
         var x = ((i / sound.numSamples) * window.width) | 0;
-
         var y = (((s + 1) / 2) * window.height) | 0;
 
         window.canvas.drawPoint(x, y);
