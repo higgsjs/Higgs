@@ -256,24 +256,15 @@ TODO: check if Higgs window has fullscreen support?
 - And how do we check display caps
 - Would be nice for Turing Drawings
 
-TODO: --f argument to load just one file?
+
+
+
+
+
+
+[DONE] TODO: --shellscript argument to load just one file
 - In shebang mode, there may be multiple arguments, but only the first
   must be interpreted as a JS file
-- Check the TM cmd line options
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: shebang line support for Higgs
 - parser needs to ignore this line, but in files only

@@ -68,7 +68,13 @@ void main(string[] args)
     string[] hostArgs;
     string[] jsArgs;
 
-    if (argLimit > 0)
+    if (args[1] == "--shellscript")
+    {
+        // Shell script invocation (i.e.: called from a shebang line)
+        hostArgs = args[0..1] ~ args[2..3];
+        jsArgs = args[3..$];
+    }
+    else if (argLimit > 0)
     {
         hostArgs = args[0..argLimit];
         jsArgs = args[++argLimit..$];
