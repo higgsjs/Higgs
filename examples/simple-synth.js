@@ -5,6 +5,7 @@ var draw = require('lib/draw');
 var music = require('lib/music');
 var snd = require('lib/sound');
 var rnd = require('lib/random');
+var ffi = require('lib/ffi');
 
 // ===========================================================================
 
@@ -126,7 +127,6 @@ function newSound()
         var s = sound.getSample(i, 0);
 
         var x = ((i / sound.numSamples) * window.width) | 0;
-
         var y = (((s + 1) / 2) * window.height) | 0;
 
         window.canvas.drawPoint(x, y);
@@ -138,9 +138,18 @@ function newSound()
     print('writing sound to:', tmpName);
     sound.writeWAV(tmpName);
 
-    var r = stdlib.system('aplay ' + tmpName);
-    if (r !== 0)
-        print('install aplay program for sound playback');
+    if (ffi.os === 'OSX')
+    {
+        var r = stdlib.system('play ' + tmpName);
+        if (r !== 0)
+            print('install sox program for sound playback - e.g. "brew install sox"');
+    }
+    else
+    {
+        var r = stdlib.system('aplay ' + tmpName);
+        if (r !== 0)
+            print('install aplay program for sound playback');
+    }
 
     stdlib.system('rm ' + tmpName);
 }
