@@ -4758,7 +4758,8 @@ void gen_load_lib(
         if (libname.length > 0 && libname.countUntil('/') == -1)
         {
             if (libname.countUntil('.') == -1)
-                libname ~= ".so";
+                version (linux) libname ~= ".so";
+                version (OSX) libname ~= ".dylib";
 
             if (libname[0] != 'l' && libname[1] != 'i' && libname[2] != 'b')
                 libname = "lib" ~ libname;
