@@ -189,7 +189,7 @@ TODO: blog post on inlining, Inlining is Tricky
 - Could also talk about on the fly reg alloc
   - Link to lines of code in fixed revision
 
-TODO: BBV - Future Directions
+TODO: BBV - Hindsight & Future Directions
 - Check notes
 - Check Baptiste's paper
 
@@ -201,6 +201,7 @@ Meeting 2014-10-1X:
 - optimized for-in
   - enumerable property table
 - optimized array join, about 2x faster
+- successful blog post, > 20K views
 - string fasta now slow because of random-access property reads
   - unknown/dynamic property name string
   - could reprocess prop accesses inside of a for-in loop
@@ -208,7 +209,7 @@ Meeting 2014-10-1X:
   - more than 3x faster, still 2x slower than TraceMonkey
   - most overhead is from the function call
 - Geo avg of time 5.6, vs TM 5.7
-- ask Marc for ECOOP repo ****
+- Need ECOOP repo ****
 
 TODO: flag to disable shape versioning, shape_novers
 - no propagation of shape info
@@ -216,7 +217,7 @@ TODO: flag to disable shape versioning, shape_novers
 - break, read_shape, capture_shape, capture_tag?
   - should compile to nothing
 
-TODO: implement inline caches
+TODO: implement inline caches *** do it nao!
 - Needed for both papers
 - Needed for setProp too?
 - Needs to decide branching direction as well ***
@@ -226,23 +227,52 @@ TODO: implement inline caches
 TODO: look into why phi nodes end up on the stack, easy fix?
 - Affects performance of access-nbody
 
-TODO: blog post, The Fastest For-In Loops
+TODO: Can we free one scr reg to reduce spills? May help nbody
+- who uses scrRegs[2]?
+
+TODO: read, A Simple Graph-Based Intermediate Representation
+Firm is a LLVM-like library which also implements this idea.
+LLVM's data structure is a control flow graph with instruction lists per basic block,
+Cliff Click's design is a dependence graph where basic blocks as well as instructions are
+just nodes. At first, it feels weird that the edges are "reversed", but it
+really simplifies the implementation.
+http://pp.ipd.kit.edu/firm/
+
+TODO: integrate/bundle jsfft lib, and its tests
+- load function semantics wrt paths?
+
+TODO: check if Higgs window has fullscreen support?
+- And how do we check display caps
+- Would be nice for Turing Drawings
+
+TODO: shebang mode for Higgs
+- parser needs to ignore this line, but in files only
+- if run with shebang line, should parse cmd args differently
+- not ignored when parsing strings
+- add a test
+
+TODO: rewrite o[k] in for-in
+What V8 does: o[k] is rewritten to become access by known offset.
+- Make runtine fn, getPropEnum(base, slotIdx), make it inlined
+- Do we need to worry about the shape? getters and setters...
+  - We only get enumerable props
+  - Don't know if deleted or if getter/setter
+  - Setters can surely be enumerable => yes, by default
+  - Could double the table size, add attribs ***
+
+
+
+
+
+
+[DONE] TODO: upload Air Mozilla talk to youtube, link on blog
+
+[DONE] TODO: blog post, The Fastest For-In Loops
 - post in r/higgsjs
 - post in chat
 - Link to lines of code in fixed revision
 
-TODO: numMayEnum is wrong, remove!
-
-
-
-
-
-
-
-
-
-
-
+[DONE] TODO: numMayEnum is wrong, remove!
 
 [DONE] TODO: catch missing file exception in main.d
 

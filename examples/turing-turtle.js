@@ -260,52 +260,6 @@ Machine.prototype.update = function (numItrs)
     }
 }
 
-// TODO: use toJSON
-/*
-Machine.prototype.toString = function ()
-{
-    var str = this.numStates + ',' + this.numSymbols;
-
-    for (var i = 0; i < this.table.length; ++i)
-        str += ',' + this.table[i];
-
-    return str;
-}
-*/
-
-/*
-Machine.fromString = function (str, mapWidth, mapHeight)
-{
-    console.log(str);
-
-    var nums = str.split(',').map(Number);
-
-    numStates  = nums[0];
-    numSymbols = nums[1];
-
-    console.log('num states: ' + numStates);
-    console.log('num symbols: ' + numSymbols);
-
-    assert (
-        numStates > 0 &&
-        numSymbols > 0,
-        'invalid input string'
-    );
-
-    var prog = new Machine(numStates, numSymbols, mapWidth, mapHeight);
-
-    assert (
-        prog.table.length === nums.length - 2,
-        'invalid transition table length'
-    );
-
-    for (var i = 0; i < prog.table.length; ++i)
-        prog.table[i] = nums[i+2];
-
-    return prog;
-}
-*/
-
 // ===========================================================================
 
 /// Canvas dimensions

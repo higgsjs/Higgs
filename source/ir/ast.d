@@ -999,10 +999,10 @@ void stmtToIR(IRGenCtx ctx, ASTStmt stmt)
         entryBranch.setPhiArg(curObjPhi, topObj);
         entryBranch.setPhiArg(propIdxPhi, IRConst.int32Cst(0));
 
-        // Get the next enumerable property
+        // Get the next enumerable property key
         auto propName = genRtCall(
             loopEntryCtx,
-            "getEnumProp",
+            "getEnumKey",
             [topObj, curObjPhi, propIdxPhi],
             stmt.pos
         );

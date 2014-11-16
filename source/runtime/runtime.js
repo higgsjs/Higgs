@@ -952,30 +952,6 @@ function $rt_add(x, y)
 }
 
 /**
-Specialized add for the (int,int) case (e.g.: index increment)
-*/
-/*function $rt_addInt(x, y)
-{
-    // If x,y are integer
-    if ($ir_is_int32(x) && $ir_is_int32(y))
-    {
-        var r;
-        if (r = $ir_add_i32_ovf(x, y))
-        {
-            return r;
-        }
-        else
-        {
-            // Reconstruct x from r and y
-            // Hence x is not live after the add
-            x = $ir_sub_i32(r, y);
-        }
-    }
-
-    return $rt_add(x, y);
-}*/
-
-/**
 Specialized add for the (int,int) and (float,float) cases
 */
 function $rt_addIntFloat(x, y)
@@ -3066,7 +3042,7 @@ function $rt_isShadowed(topObj, thisObj, propName)
 /**
 Get the current property in an enumeration
 */
-function $rt_getEnumProp(topObj, curObj, propIdx)
+function $rt_getEnumKey(topObj, curObj, propIdx)
 {
     //print('getEnumProp, idx =', propIdx);
 
