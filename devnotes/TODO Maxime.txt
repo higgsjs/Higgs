@@ -238,19 +238,6 @@ just nodes. At first, it feels weird that the edges are "reversed", but it
 really simplifies the implementation.
 http://pp.ipd.kit.edu/firm/
 
-TODO: integrate/bundle jsfft lib, and its tests
-- load function semantics wrt paths?
-
-TODO: check if Higgs window has fullscreen support?
-- And how do we check display caps
-- Would be nice for Turing Drawings
-
-TODO: shebang mode for Higgs
-- parser needs to ignore this line, but in files only
-- if run with shebang line, should parse cmd args differently
-- not ignored when parsing strings
-- add a test
-
 TODO: rewrite o[k] in for-in
 What V8 does: o[k] is rewritten to become access by known offset.
 - Make runtine fn, getPropEnum(base, slotIdx), make it inlined
@@ -260,10 +247,39 @@ What V8 does: o[k] is rewritten to become access by known offset.
   - Setters can surely be enumerable => yes, by default
   - Could double the table size, add attribs ***
 
+TODO: integrate/bundle jsfft lib, and its tests
+- load function semantics wrt paths?
+
+TODO: port Turing Drawings, for fun?
+
+TODO: check if Higgs window has fullscreen support?
+- And how do we check display caps
+- Would be nice for Turing Drawings
+
+TODO: --f argument to load just one file?
+- In shebang mode, there may be multiple arguments, but only the first
+  must be interpreted as a JS file
+- Check the TM cmd line options
 
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: shebang line support for Higgs
+- parser needs to ignore this line, but in files only
+- not ignored when parsing strings
+- add a test
+- just pass -- in the shebang line! aha!
 
 [DONE] TODO: upload Air Mozilla talk to youtube, link on blog
 

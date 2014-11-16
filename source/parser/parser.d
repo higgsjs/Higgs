@@ -146,7 +146,40 @@ Parse a source file
 ASTProgram parseFile(string fileName, bool isRuntime = false)
 {
     string src = readText!(string)(fileName);
-    return parseString(src, fileName, isRuntime);
+
+    // Convert the string to UTF-16
+    wstring wSrc = toUTF16(src);
+
+    auto strStream = StrStream(wSrc, fileName);
+
+    // If there is a shebang line at the beginning of the file
+    if (strStream.match("#!"))
+    {
+        // Consume all characters until the end of line
+        for (;;)
+        {
+            auto ch = strStream.peekCh();
+
+            if (ch == '\r' || ch == '\n')
+            {
+                break;
+            }
+
+            if (ch == '\0')
+            {
+                throw new ParseError(
+                    "end of input in shebang line",
+                    strStream.getPos()
+                );
+            }
+
+            strStream.readCh();
+        }
+    }
+
+    auto input = new TokenStream(strStream);
+
+    return parseProgram(input, isRuntime);
 }
 
 /**
@@ -157,7 +190,7 @@ ASTProgram parseString(string src, string fileName = "", bool isRuntime = false)
     // Convert the string to UTF-16
     wstring wSrc = toUTF16(src);
 
-    auto input = new TokenStream(wSrc, fileName);
+    auto input = new TokenStream(StrStream(wSrc, fileName));
 
     return parseProgram(input, isRuntime);
 }

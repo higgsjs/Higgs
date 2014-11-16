@@ -963,11 +963,11 @@ class TokenStream
     private LexFlags lexFlags;
 
     /**
-    Constructor to tokenize a string
+    Constructor to tokenize a string stream
     */
-    this(wstring str, string file)
+    this(StrStream strStream)
     {
-        this.preStream = StrStream(str, file);
+        this.preStream = strStream;
 
         this.tokenAvail = false;
         this.nlPresent = false;
