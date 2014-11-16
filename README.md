@@ -65,7 +65,7 @@ To execute one or more files, pass them to `higgs`:
 
 `higgs file1.js file2.js`
 
-The `--e` option accepts a string to execute:
+The `--e` option accepts a code string to execute:
 
 `higgs --e "var x = 4; x = x + 5; print(x)"`
 
