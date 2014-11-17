@@ -53,26 +53,26 @@ If any tests fail the program exist abnormally (i.e. exit(1);)
 
     // Don't run tests in tests_dir/core
     // and don't run any files/dirs the user provides as arguments
-	test_environment = [
-		'browser.js',
-		'shell.js',
-		'jsref.js',
-		'template.js',
-		'user.js',
-		'sta.js',
-		'test262-browser.js',
-		'test262-shell.js',
-		'test402-browser.js',
-		'test402-shell.js',
-		'testBuiltInObject.js',
-		'testIntl.js',
-		'js-test-driver-begin.js',
-		'js-test-driver-end.js',
-	]
+    test_environment = [
+        'browser.js',
+        'shell.js',
+        'jsref.js',
+        'template.js',
+        'user.js',
+        'sta.js',
+        'test262-browser.js',
+        'test262-shell.js',
+        'test402-browser.js',
+        'test402-shell.js',
+        'testBuiltInObject.js',
+        'testIntl.js',
+        'js-test-driver-begin.js',
+        'js-test-driver-end.js',
+    ]
     var ignores = Object.create(null)
-	test_environment.forEach(
-		function (x) { ignores[x] = true; }
-	);
+    test_environment.forEach(
+        function (x) { ignores[x] = true; }
+    );
     ignores["core"] = true;
     global.arguments.forEach(
         function(n) { ignores[n] = true; }
@@ -89,8 +89,8 @@ If any tests fail the program exist abnormally (i.e. exit(1);)
     // Space for the exit status of the forked vm
     var child_status = std.malloc(4);
 
-	// included_files is a list of jsref.js, shell.js, browser.js etc.
-	// which the spidermonkey tests expect.
+    // included_files is a list of jsref.js, shell.js, browser.js etc.
+    // which the spidermonkey tests expect.
     function runTest(file, included_files)
     {
         file = current + "/" + file;
@@ -109,7 +109,7 @@ If any tests fail the program exist abnormally (i.e. exit(1);)
             // run the test in this child process
             try
             {
-				included_files.forEach(load)
+                included_files.forEach(load)
                 load(file);
             }
             catch (e)
@@ -156,42 +156,42 @@ If any tests fail the program exist abnormally (i.e. exit(1);)
             {
                 if (!ignores[next_dir]) {
                     runVersion(dir_name + "/" + next_dir);
-				}
+                }
             }
         );
-	}
+    }
 
-	function runVersion(dir_name)
-	{
+    function runVersion(dir_name)
+    {
 
         var dir = fs.dir(dir_name);
 
         // update where we are
         current = dir_name;
-		included_files = []
+        included_files = []
 
         dir.getFileNames().sort().forEach(
             function(file)
             {
                 if (test_environment.indexOf(file) > -1)
-				{
-					included_files.push(dir_name + "/" + file)
-				}
+                {
+                    included_files.push(dir_name + "/" + file)
+                }
             }
         );
-		// run tests in any subdirectories
+        // run tests in any subdirectories
         dir.getDirNames().sort().forEach(
             function(next_dir)
             {
                 if (!ignores[next_dir]) {
                     runSuite(dir_name + "/" + next_dir, included_files);
-				}
+                }
             }
         );
     }
 
-	function runSuite(dir_name, included_files)
-	{
+    function runSuite(dir_name, included_files)
+    {
 
         var dir = fs.dir(dir_name);
 
@@ -202,18 +202,18 @@ If any tests fail the program exist abnormally (i.e. exit(1);)
             function(file)
             {
                 if (test_environment.indexOf(file) > -1)
-				{
-					included_files.push(dir_name + "/" + file)
-				}
+                {
+                    included_files.push(dir_name + "/" + file)
+                }
             }
         );
         dir.getFileNames().sort().forEach(
             function(file)
             {
                 if (!ignores[file] && file.split('.').pop() === "js")
-				{
-					runTest(file, included_files)
-				}
+                {
+                    runTest(file, included_files)
+                }
             }
         );
 
