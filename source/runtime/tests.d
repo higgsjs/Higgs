@@ -1458,7 +1458,8 @@ unittest
 
     vm = new VM();
 
-    vm.assertBool("4294967295.0 === 0xFFFFFFFF", true);
+    vm.assertTrue("4294967295.0 === 0xFFFFFFFF");
+    vm.assertInt("NaN? 1:0", 0);
 
     vm.assertInt("return ~[]", -1);
     vm.assertInt("return ~{}", -1);

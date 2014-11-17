@@ -526,10 +526,6 @@ Math.setRandSeed = function (seed)
         {
             // Convert the value to a long-format string
             seed = $ir_f64_to_str_lng(seed);
-
-            // Strip out trailing zeroes
-            while (seed[seed.length-1] === '0')
-                seed = seed.substr(0, seed.length-1);
         }
 
         // Convert the seed to a string and get its hash value

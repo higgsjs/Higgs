@@ -262,6 +262,12 @@ TODO: check if Higgs window has fullscreen support?
 
 
 
+
+
+
+
+[DONE] FIXME: NaN? 1:0 => 1
+
 [DONE] TODO: --shellscript argument to load just one file
 - In shebang mode, there may be multiple arguments, but only the first
   must be interpreted as a JS file

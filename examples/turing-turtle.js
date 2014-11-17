@@ -5,6 +5,8 @@ by a randonly generated Turing machine.
 
 usage: higgs turing-turtle.js
 
+or:    higgs turing-turtle.js -- <canvas_width> <canvas_height>
+
 @author
 Maxime Chevalier-Boisvert
 */
@@ -263,10 +265,8 @@ Machine.prototype.update = function (numItrs)
 // ===========================================================================
 
 /// Canvas dimensions
-var CANVAS_WIDTH = 512;
-var CANVAS_HEIGHT = 512;
-
-// TODO: TEXT_HEIGHT, break line
+var canvasWidth  = arguments[0]? Math.max(parseInt(arguments[0]), 400):600;
+var canvasHeight = arguments[1]? Math.max(parseInt(arguments[1]), 400):600;
 
 /// Current Turing machine
 var machine;
@@ -276,7 +276,7 @@ var lastPosX;
 var lastPosY;
 
 /// Number of updates per frame
-var speed = 16;
+var speed = 128;
 
 /// Paused flag
 var paused = false;
@@ -289,8 +289,8 @@ function newMachine()
         4,              // Num states
         8,              // Num symbols
         256,            // Tape length
-        CANVAS_WIDTH,
-        CANVAS_HEIGHT
+        canvasWidth,
+        canvasHeight
     );
 
     lastPosX = machine.posX | 0;
@@ -298,7 +298,7 @@ function newMachine()
 }
 
 // Create the drawing window
-var window = draw.Window(50, 50, CANVAS_WIDTH, CANVAS_HEIGHT, 'Turing Turtle');
+var window = draw.Window(50, 50, canvasWidth, canvasHeight, 'Turing Turtle');
 
 window.onKeypress(function(canvas, key)
 {
@@ -358,11 +358,11 @@ window.onRender(function(canvas)
 
     // Clear a black rectangle at the bottom of the display
     canvas.setColor('#000000');
-    canvas.fillRect(0, CANVAS_HEIGHT - 20, CANVAS_WIDTH, 20);
+    canvas.fillRect(0, canvasHeight - 20, canvasWidth, 20);
 
     canvas.setColor('#FFFFFF');
-    canvas.drawText(5, CANVAS_HEIGHT - 5, paused? "PAUSED":(posX + ',' + posY));
-    canvas.drawText(CANVAS_WIDTH - 240, CANVAS_HEIGHT - 5, 'itr count: ' + machine.itrCount);
+    canvas.drawText(5, canvasHeight - 5, paused? "PAUSED":(posX + ',' + posY));
+    canvas.drawText(canvasWidth - 240, canvasHeight - 5, 'itr count: ' + machine.itrCount);
 });
 
 // Set the random seed so we get a different machine on every startup
@@ -376,6 +376,13 @@ window.canvas.clear('#000000');
 
 // Set the font to use
 window.canvas.setFont(undefined, 18);
+
+// Print basic instructions
+window.canvas.setColor('#FFFFFF');
+window.canvas.drawText(20, 30, "Right arrow for new drawing");
+window.canvas.drawText(20, 60, "Left arrow to restart");
+window.canvas.drawText(20, 90, "Up arrow to increase speed");
+window.canvas.drawText(20, 120, "Down arrow to decrease speed");
 
 // Show the drawing window
 window.show();

@@ -682,7 +682,7 @@ function $rt_toBool(v)
         return $ir_ne_i32(v, 0);
 
     if ($ir_is_float64(v))
-        return $ir_ne_f64(v, 0.0);
+        return $ir_ne_f64(v, 0.0) && $ir_eq_f64(v, v);
 
     if ($ir_is_refptr(v) && $ir_eq_refptr(v, null))
         return false;
