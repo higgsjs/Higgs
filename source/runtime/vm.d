@@ -761,6 +761,8 @@ class VM
     */
     ~this()
     {
+        //writeln("vm dtor");
+
         // Unregister all the GC roots to prevent them from
         // touching the VM object after the it is destroyed
         for (auto root = firstRoot; root !is null;)

@@ -203,22 +203,29 @@ TODO: fixup analysis
 - also, no longer need to force run every time
 
 Meeting 2014-10-1X:
-- log-scale graph
-- created for-in microbenchmark
-  - half of overhead was from inefficient closure handling
-  - half from expensive shape structure traversal
+- log-scale graph, what do you think?
 - optimized for-in
   - enumerable property table
-- optimized array join, about 2x faster
-- successful blog post, > 20K views
+  - fastest for-in of all JS engines
+- successful blog post, > 40K views, trending on GitHub, 517 stars
+- optimized Array.prototype.join, about 2x faster
+- more small opts
+  - beating TM on 14/26 benchmarks, more than half
+  - geo avg of Higgs time 5.6, vs TM 5.7
 - string fasta now slow because of random-access property reads
   - unknown/dynamic property name string
   - could reprocess prop accesses inside of a for-in loop
 - compared bitops-3bits-bits-in-byte with manual inlining
   - more than 3x faster, still 2x slower than TraceMonkey
   - most overhead is from the function call
-- Geo avg of time 5.6, vs TM 5.7
+- array performance is another weakness
+  - table fetch, capacity fetch, offset computation
+  - load/store also suboptimal, could use peepholes
+- Good news is there are many things to improve, can surely
+  beat TM very badly within a few months
+- Immediate priority, ECOOP paper, not beating TM
 - Need ECOOP repo ****
+- Mozilla?
 
 TODO: flag to disable shape versioning, shape_novers
 - no propagation of shape info
@@ -246,7 +253,8 @@ TODO: implement inline caches *** do it nao!
   - use multiple cmovs?
   - could do cmov + jcc
 
-TODO: could we beat TM on nsieve-bits if we inlined toBool?
+TODO: check if VM destroyed, CodeBlock destroyed
+- VM and CodeBlock not destroyed during `make test`
 
 
 
@@ -257,6 +265,8 @@ TODO: could we beat TM on nsieve-bits if we inlined toBool?
 
 
 
+[DONE] TODO: could we beat TM on nsieve-bits if we inlined toBool?
+- slight speedup but not quite enough
 
 [DONE] TODO: who calls setProp in crypto-sha1?
 - setPropElem

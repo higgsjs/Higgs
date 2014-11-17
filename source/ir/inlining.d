@@ -127,6 +127,7 @@ void inlinePass(VM vm, IRFunction caller)
 
         if (callee.numBlocks > 4
             && !name.startsWith("$rt_valIsObj")
+            && !name.startsWith("$rt_toBool")
             && !name.startsWith("$rt_minus")
             && !name.startsWith("$rt_addInt")
             && !name.startsWith("$rt_addIntFloat")

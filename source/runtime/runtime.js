@@ -700,17 +700,6 @@ function $rt_toBool(v)
 }
 
 /**
-Specialized version of toBool for constant types
-*/
-function $rt_toBoolConst(v)
-{
-    if ($ir_is_const(v))
-        return $ir_eq_const(v, true);
-
-    return $rt_toBool(v);
-}
-
-/**
 Attempt to convert a value to a number. If this fails, return NaN
 */
 function $rt_toNumber(v)
