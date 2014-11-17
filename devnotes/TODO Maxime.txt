@@ -252,10 +252,6 @@ TODO: integrate/bundle jsfft lib, and its tests
 
 TODO: port Turing Drawings, for fun?
 
-TODO: check if Higgs window has fullscreen support?
-- And how do we check display caps
-- Would be nice for Turing Drawings
-
 
 
 
