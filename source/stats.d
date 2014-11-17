@@ -99,11 +99,25 @@ ulong numCallSlow = 0;
 /// Number of calls performed using apply
 ulong numCallApply = 0;
 
+/// Number of non-primitive calls by function name
+private ulong*[string] numCalls;
+
 /// Number of primitive calls by primitive name
 private ulong*[string] numPrimCalls;
 
 /// Number of type tests executed by test kind
 private ulong*[string] numTypeTests;
+
+/// Get a pointer to the counter variable associated with a function
+ulong* getCallCtr(string funName)
+{
+    // If there is no counter for this primitive, allocate one
+    if (funName !in numCalls)
+        numCalls[funName] = new ulong;
+
+    // Return the counter for this function
+    return numCalls[funName];
+}
 
 /// Get a pointer to the counter variable associated with a primitive
 ulong* getPrimCallCtr(string primName)
@@ -231,6 +245,26 @@ static this()
 /// Static module destructor, log the accumulated stats
 static ~this()
 {
+    /// Print named counts sorted in decreasing order
+    void sortedCounts(ulong*[string] counts, string countKind)
+    {
+        alias CountPair = Tuple!(string, "name", ulong, "cnt");
+        CountPair[] countPairs;
+
+        foreach (name, pCtr; counts)
+            countPairs ~= CountPair(name, *pCtr);
+        countPairs.sort!"a.cnt > b.cnt";
+
+        ulong total = 0;
+        foreach (pair; countPairs)
+        {
+            writefln("%s: %s", pair.name, pair.cnt);
+            total += pair.cnt;
+        }
+
+        writefln("total %s: %s", countKind, total);
+    }
+
     if (opts.stats || opts.perf_stats)
     {
         writeln();
@@ -261,33 +295,11 @@ static ~this()
         writefln("num call slow: %s", numCallSlow);
         writefln("num call apply: %s", numCallApply);
 
-        alias PrimCallCnt = Tuple!(string, "name", ulong, "cnt");
-        PrimCallCnt[] primCallCnts;
-        foreach (name, pCtr; numPrimCalls)
-            primCallCnts ~= PrimCallCnt(name, *pCtr);
-        primCallCnts.sort!"a.cnt > b.cnt";
+        //sortedCounts(numCalls, "calls");
 
-        ulong totalPrimCalls = 0;
-        foreach (pair; primCallCnts)
-        {
-            writefln("%s: %s", pair.name, pair.cnt);
-            totalPrimCalls += pair.cnt;
-        }
-        writefln("total prim calls: %s", totalPrimCalls);
+        sortedCounts(numPrimCalls, "prim calls");
 
-        alias TypeTestCnt = Tuple!(string, "test", ulong, "cnt");
-        TypeTestCnt[] typeTestCnts;
-        foreach (test, pCtr; numTypeTests)
-            typeTestCnts ~= TypeTestCnt(test, *pCtr);
-        typeTestCnts.sort!"a.cnt > b.cnt";
-
-        ulong totalTypeTests = 0;
-        foreach (pair; typeTestCnts)
-        {
-            writefln("%s: %s", pair.test, pair.cnt);
-            totalTypeTests += pair.cnt;
-        }
-        writefln("total type tests: %s", totalTypeTests);
+        sortedCounts(numTypeTests, "type tests");
 
         for (size_t numVers = 1; numVers <= min(opts.maxvers, 10); numVers++)
         {

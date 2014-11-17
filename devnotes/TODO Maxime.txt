@@ -154,6 +154,23 @@ TODO: synth, right for new synth, up for new melody
 - log the melody
 TODO: try allowing either tri or sine in osc bank
 
+TODO: port Turing Drawings, for fun?
+
+TODO: integrate/bundle jsfft lib, and its tests
+- load function semantics wrt paths?
+
+TODO: Can we free one scr reg to reduce spills? May help nbody
+- who uses scrRegs[2]?
+
+TODO: rewrite o[k] in for-in
+What V8 does: o[k] is rewritten to become access by known offset.
+- Make runtine fn, getPropEnum(base, slotIdx), make it inlined
+- Do we need to worry about the shape? getters and setters...
+  - We only get enumerable props
+  - Don't know if deleted or if getter/setter
+  - Setters can surely be enumerable => yes, by default
+  - Could double the table size, add attribs ***
+
 ------------------------------------------------------------------------------
 
 Computing Frontiers - Jan 16
@@ -178,20 +195,12 @@ TODO: blog post, Higgs' Fancy New Object System => get started
 - post to r/compilers, r/higgsjs
 - Typed shapes + BBV a bit of a gamble
 
-TODO: fixup analysis
-- no longer need to force run every time
-
-TODO: profile functions by name in stats
-- add code to entry, get a named counter!
-- might provide very valuable info
-
-TODO: blog post on inlining, Inlining is Tricky
-- Could also talk about on the fly reg alloc
-  - Link to lines of code in fixed revision
-
 TODO: BBV - Hindsight & Future Directions
 - Check notes
 - Check Baptiste's paper
+
+TODO: fixup analysis
+- also, no longer need to force run every time
 
 Meeting 2014-10-1X:
 - log-scale graph
@@ -217,18 +226,8 @@ TODO: flag to disable shape versioning, shape_novers
 - break, read_shape, capture_shape, capture_tag?
   - should compile to nothing
 
-TODO: implement inline caches *** do it nao!
-- Needed for both papers
-- Needed for setProp too?
-- Needs to decide branching direction as well ***
-  - use multiple cmovs?
-  - could do cmov + jcc
-
 TODO: look into why phi nodes end up on the stack, easy fix?
 - Affects performance of access-nbody
-
-TODO: Can we free one scr reg to reduce spills? May help nbody
-- who uses scrRegs[2]?
 
 TODO: read, A Simple Graph-Based Intermediate Representation
 Firm is a LLVM-like library which also implements this idea.
@@ -238,19 +237,16 @@ just nodes. At first, it feels weird that the edges are "reversed", but it
 really simplifies the implementation.
 http://pp.ipd.kit.edu/firm/
 
-TODO: rewrite o[k] in for-in
-What V8 does: o[k] is rewritten to become access by known offset.
-- Make runtine fn, getPropEnum(base, slotIdx), make it inlined
-- Do we need to worry about the shape? getters and setters...
-  - We only get enumerable props
-  - Don't know if deleted or if getter/setter
-  - Setters can surely be enumerable => yes, by default
-  - Could double the table size, add attribs ***
+NOTE: for ECOOP, immediate motivation is no longer to beat TM
 
-TODO: integrate/bundle jsfft lib, and its tests
-- load function semantics wrt paths?
+TODO: implement inline caches *** do it nao!
+- Needed for both papers
+- Needed for setProp too?
+- Needs to decide branching direction as well ***
+  - use multiple cmovs?
+  - could do cmov + jcc
 
-TODO: port Turing Drawings, for fun?
+TODO: could we beat TM on nsieve-bits if we inlined toBool?
 
 
 
@@ -261,6 +257,16 @@ TODO: port Turing Drawings, for fun?
 
 
 
+
+[DONE] TODO: who calls setProp in crypto-sha1?
+- setPropElem
+
+[DONE] TODO: crypto-sha1, who calls toNumber, toInt32?
+- bitwise or with undefined value
+
+[DONE] TODO: profile functions by name in stats
+- add code to entry, get a named counter!
+- might provide very valuable info
 
 [DONE] FIXME: NaN? 1:0 => 1
 

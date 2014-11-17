@@ -2330,6 +2330,14 @@ void compile(VM vm, IRInstr curInstr)
                 as.printStr(block.getName ~ ":");
             }
 
+            /*
+            if (opts.stats && block is block.fun.entryBlock && !block.fun.isUnit)
+            {
+                auto nameStr = to!string(block.fun.getName);
+                as.incStatCnt(stats.getCallCtr(nameStr), scrRegs[0]);
+            }
+            */
+
             // For each instruction of the block
             for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
             {

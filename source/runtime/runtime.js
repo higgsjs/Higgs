@@ -1290,10 +1290,19 @@ function $rt_and(x, y)
 
 function $rt_or(x, y)
 {
-    // If both values are integer
-    if ($ir_is_int32(x) && $ir_is_int32(y))
+    // If x is integer
+    if ($ir_is_int32(x))
     {
-        return $ir_or_i32(x, y);
+        // If y is integer
+        if ($ir_is_int32(y))
+            return $ir_or_i32(x, y);
+    }
+
+    // If x is undefined
+    if ($ir_is_const(x) && $ir_eq_const(x, $undef))
+    {
+        if ($ir_is_int32(y))
+            return y;
     }
 
     // Convert the operands to integers
@@ -2570,7 +2579,7 @@ function $rt_setArrElem(arr, index, val)
     // Get the array table
     var tbl = $rt_getArrTbl(arr);
 
-    // If the index is outside the current size of the array
+    // If the index is past the current length
     if ($ir_ge_i32(index, len))
     {
         // Compute the new length
@@ -2648,9 +2657,6 @@ Set a property on a value using a value as a key
 */
 function $rt_setProp(base, prop, val)
 {
-    //print(prop);
-    //print('\n');
-
     // If the base is an object or closure
     if ($ir_is_object(base) || $ir_is_closure(base))
     {
@@ -2773,19 +2779,21 @@ function $rt_setPropElem(base, prop, val)
     if ($ir_is_array(base))
     {
         // If the property is a non-negative integer
-        // and is within the array bounds
-        if ($ir_is_int32(prop) &&
-            $ir_ge_i32(prop, 0) &&
-            $ir_lt_i32(prop, $rt_getArrLen(base)))
+        if ($ir_is_int32(prop) && $ir_ge_i32(prop, 0))
         {
-            // Get a reference to the array table
-            var tbl = $rt_getArrTbl(base);
+            // If the property is within the array bounds
+            if ($ir_lt_i32(prop, $rt_getArrLen(base)))
+            {
+                // Get a reference to the array table
+                var tbl = $rt_getArrTbl(base);
 
-            // Set the element in the array
-            $rt_arrtbl_set_word(tbl, prop, $ir_get_word(val));
-            $rt_arrtbl_set_tag(tbl, prop, $ir_get_tag(val));
+                // Set the element in the array
+                $rt_arrtbl_set_word(tbl, prop, $ir_get_word(val));
+                $rt_arrtbl_set_tag(tbl, prop, $ir_get_tag(val));
+                return;
+            }
 
-            return;
+            return $rt_setArrElem(base, prop, val);
         }
     }
 
