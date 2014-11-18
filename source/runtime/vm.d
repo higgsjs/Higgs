@@ -586,14 +586,16 @@ class VM
         wStack = cast(Word*)GC.malloc(
             Word.sizeof * STACK_SIZE,
             GC.BlkAttr.NO_SCAN |
-            GC.BlkAttr.NO_INTERIOR
+            GC.BlkAttr.NO_INTERIOR |
+            GC.BlkAttr.NO_MOVE
         );
 
         // Allocate the tag stack
         tStack = cast(Tag*)GC.malloc(
             Tag.sizeof * STACK_SIZE,
             GC.BlkAttr.NO_SCAN |
-            GC.BlkAttr.NO_INTERIOR
+            GC.BlkAttr.NO_INTERIOR |
+            GC.BlkAttr.NO_MOVE
         );
 
         // Initialize the stack limit pointers
@@ -630,14 +632,16 @@ class VM
         wLinkTable = cast(Word*)GC.malloc(
             Word.sizeof * linkTblSize,
             GC.BlkAttr.NO_SCAN |
-            GC.BlkAttr.NO_INTERIOR
+            GC.BlkAttr.NO_INTERIOR |
+            GC.BlkAttr.NO_MOVE
         );
 
         /// Link table types
         tLinkTable = cast(Tag*)GC.malloc(
             Tag.sizeof * linkTblSize,
             GC.BlkAttr.NO_SCAN |
-            GC.BlkAttr.NO_INTERIOR
+            GC.BlkAttr.NO_INTERIOR |
+            GC.BlkAttr.NO_MOVE
         );
 
         // Initialize the link table
