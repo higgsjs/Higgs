@@ -632,7 +632,7 @@ void writeREX(
 /**
 Write an opcode byte with an embedded register operand
 */
-void writeOpcode(CodeBlock cb, ubyte opcode, X86Reg rOpnd)
+@nogc void writeOpcode(CodeBlock cb, ubyte opcode, X86Reg rOpnd)
 {
     // Write the reg field into the opcode byte
     uint8_t opByte = opcode | (rOpnd.regNo & 7);
@@ -643,8 +643,8 @@ void writeOpcode(CodeBlock cb, ubyte opcode, X86Reg rOpnd)
 Encode a single operand RM instruction
 */
 void writeRMInstr(
-    char rmOpnd, 
-    ubyte opExt, 
+    char rmOpnd,
+    ubyte opExt,
     opcode...)
 (CodeBlock cb, bool szPref, bool rexW, X86Opnd opnd0, X86Opnd opnd1)
 {

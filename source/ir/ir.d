@@ -161,6 +161,12 @@ class IRFunction : IdObject
         }
     }
 
+    /// Destructor
+    ~this()
+    {
+        //writeln("destroying fun");
+    }
+
     /// Test if this is a unit-level function
     bool isUnit() const
     {

@@ -3341,13 +3341,10 @@ void gen_obj_init_shape(
 
         obj_set_shape(objPtr, cast(rawptr)shape);
 
-
         assert (
             vm.wUpperLimit > vm.wStack,
             "invalid wStack after init shape"
         );
-
-
     }
 
     auto vm = ver.state.fun.vm;
@@ -5002,7 +4999,10 @@ void gen_call_ffi(
 
     // The number of args actually passed
     auto argCount = cast(uint32_t)instr.numArgs - 2;
-    assert(argTypes.length == argCount, "Incorrect arg count in call_ffi.");
+    assert(
+        argTypes.length == argCount,
+        "incorrect arg count in call_ffi"
+    );
 
     // Spill the values live before this instruction
     st.spillValues(
@@ -5041,7 +5041,7 @@ void gen_call_ffi(
         {
             auto argSize = sizeMap[argTypes[idx]];
             auto argOpnd = st.getWordOpnd(
-                as, 
+                as,
                 instr,
                 idx + 2,
                 argSize,
@@ -5092,6 +5092,11 @@ void gen_call_ffi(
         false,
         false
     );
+
+    debug
+    {
+        as.checkStackAlign("stack unaligned before FFI call");
+    }
 
     // call the function
     as.call(scrRegs[0].opnd);

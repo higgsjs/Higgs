@@ -93,6 +93,68 @@ TODO: gather stats about the percentage of functions which are long-running
 - dump text and sort
   - fn, num calls, num itrs
 
+TODO: make $ runtime/stdlib variables read-only, non-enumerable, non-configurable
+
+TODO: const globals
+const name1 = value1 [, name2 = value2 [, name3 = value3 [, ... [, nameN = valueN]]]];
+- Same structure as var decl
+- In D8, these are enumerable
+- Use it for Turing Turtle
+- Look at current parser code, vars code, ast-to-ir code first ***
+
+TODO: look at eval notes again
+
+When fine-tuning the S9 garbage collector (which also is a constant-space mark-and-sweep collector),
+maintaining 50% of free space turned out to be the sweet spot. Whenever less than
+50% of free space are available after a collection, the heap grows.
+=> grow on next GC
+
+TODO: liveness analysis flipped...?
+- TODO: start by implementing system to measure total liveness analysis time
+  - test on 3d-raytrace, other big benchmarks which don't GC, find slowest
+- Current pathological cases, live sets grow very big everywhere
+  - Many many large sets, independently allocated
+- Idea:
+  - For some values, big live intervals
+  - Most values, vast majority, tiny live intervals
+  - For a given value, store the places where it's live in a set
+- Use custom set data structure to store live interval
+  - small embedded list
+  - associative array, initially empty
+  - For most values, small embedded list will work
+- Values that are never live don't even have a live set
+
+TODO: constant prop in ValType?
+- Don't have to propagate all
+- Would be useful to prop shapes without using a register
+- Propagate booleans
+- Simplify shape_is_null and such
+
+class AstNode: public ZoneObject
+class InstructionOperand : public ZoneObject
+typedef ZoneVector<InstructionOperand*> InstructionOperandVector;
+// The Zone supports very fast allocation of small chunks of
+// memory. The chunks cannot be deallocated individually, but instead
+// the Zone supports deallocating all chunks in one fast
+// operation. The Zone is used to hold temporary data structures like
+// the abstract syntax tree, which is deallocated after compilation.
+std.conv:
+T emplace(T, Args...)(void[] chunk, auto ref Args args) if (is(T == class));
+// AST nodes are allocated in a separate zone, which allows faster
+// allocation and constant-time deallocation of the entire syntax
+// tree.
+- Free list approach: fast reallocation, but still need to allocate many
+  objects. D GC will still prove extremely slow.
+- Seems we really should allocate our own large memory blocks
+  - Must call addRange on the memory range
+  - Free list: maybe use a vector, no need to inherit from PoolObject?
+http://wiki.dlang.org/Memory_Management#Explicit_Class_Instance_Allocation
+- Use @nogc attribute
+
+TODO: try to implement inline array for instr args, phi args
+
+
+
 
 
 

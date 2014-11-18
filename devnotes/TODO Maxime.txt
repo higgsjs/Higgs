@@ -26,57 +26,6 @@ List of possible contributions:
 
 ------------------------------------------------------------------------------
 
-TODO: make $ runtime/stdlib variables read-only, non-enumerable, non-configurable
-
-TODO: const globals
-const name1 = value1 [, name2 = value2 [, name3 = value3 [, ... [, nameN = valueN]]]];
-- Same structure as var decl
-- In D8, these are enumerable
-- Use it for Turing Turtle
-- Look at current parser code, vars code, ast-to-ir code first ***
-
-TODO: look at eval notes again
-
-TODO: constant prop in ValType?
-- Don't have to propagate all
-- Would be useful to prop shapes without using a register
-- Propagate booleans
-- Simplify shape_is_null and such
-
-TODO: blog post, the future of compilation
-- Logical reasoning, supercompilation
-- JIT compilers, continuous of compilation
-- Lazyness is crucial
-- Definite place for controlled code duplication
-
-TODO: post dconf talk on r/coding
-- Do this when you have time to chat!
-
-When fine-tuning the S9 garbage collector (which also is a constant-space mark-and-sweep collector),
-maintaining 50% of free space turned out to be the sweet spot. Whenever less than
-50% of free space are available after a collection, the heap grows.
-=> grow on next GC
-
-TODO: liveness analysis flipped...?
-- TODO: start by implementing system to measure total liveness analysis time
-  - test on 3d-raytrace, other big benchmarks which don't GC, find slowest
-- Current pathological cases, live sets grow very big everywhere
-  - Many many large sets, independently allocated
-- Idea:
-  - For some values, big live intervals
-  - Most values, vast majority, tiny live intervals
-  - For a given value, store the places where it's live in a set
-- Use custom set data structure to store live interval
-  - small embedded list
-  - associative array, initially empty
-  - For most values, small embedded list will work
-- Values that are never live don't even have a live set
-
-FIXME: infinite loop in regexp?
-s2 = 'QBZPbageby_cynprubyqre'; re2 = /^\s*|\s*$/g; s2.replace(re2, '');
-
-------------------------------------------------------------------------------
-
 TODO: thread global obj as hidden fn argument?
 
 TODO: think about interprocedural BBV
@@ -114,32 +63,6 @@ Version explosion:
 - If problem, can have smarter versioning scheme
   - Limit per-value polymorphism, refuse versions or return a compromise
 
-TODO: blog post, the lazy compiler
-- log current ideas in writing
-
-class AstNode: public ZoneObject
-class InstructionOperand : public ZoneObject
-typedef ZoneVector<InstructionOperand*> InstructionOperandVector;
-// The Zone supports very fast allocation of small chunks of
-// memory. The chunks cannot be deallocated individually, but instead
-// the Zone supports deallocating all chunks in one fast
-// operation. The Zone is used to hold temporary data structures like
-// the abstract syntax tree, which is deallocated after compilation.
-std.conv:
-T emplace(T, Args...)(void[] chunk, auto ref Args args) if (is(T == class));
-// AST nodes are allocated in a separate zone, which allows faster
-// allocation and constant-time deallocation of the entire syntax
-// tree.
-- Free list approach: fast reallocation, but still need to allocate many
-  objects. D GC will still prove extremely slow.
-- Seems we really should allocate our own large memory blocks
-  - Must call addRange on the memory range
-  - Free list: maybe use a vector, no need to inherit from PoolObject?
-http://wiki.dlang.org/Memory_Management#Explicit_Class_Instance_Allocation
-- Use @nogc attribute
-
-TODO: try to implement inline array for instr args, phi args
-
 TODO: getter and setter syntax
 - needed for hash map benchmark
 - Easy to recognize the grammar, but need to modify the AST
@@ -154,13 +77,23 @@ TODO: synth, right for new synth, up for new melody
 - log the melody
 TODO: try allowing either tri or sine in osc bank
 
-TODO: port Turing Drawings, for fun?
-
-TODO: integrate/bundle jsfft lib, and its tests
-- load function semantics wrt paths?
-
 TODO: Can we free one scr reg to reduce spills? May help nbody
 - who uses scrRegs[2]?
+
+TODO: blog post, Higgs' Fancy New Object System => get started
+- use knightmare image for featured image
+- quick sketching program, online?
+- post to r/compilers, r/higgsjs
+- Typed shapes + BBV a bit of a gamble
+
+TODO: blog post, the future of compilation
+- Logical reasoning, supercompilation
+- JIT compilers, continuous of compilation
+- Lazyness is crucial
+- Definite place for controlled code duplication
+TODO: BBV - Hindsight & Future Directions
+- Check notes
+- Check Baptiste's paper
 
 TODO: rewrite o[k] in for-in
 What V8 does: o[k] is rewritten to become access by known offset.
@@ -188,16 +121,6 @@ compare to something less favorable first"
 caches, or use shape dispatch in select locations
 - Jan Vitek: "What has worked for me in the past is to provide drown the reader
 in data until he or she can’t deny that the proposal actually works"
-
-TODO: blog post, Higgs' Fancy New Object System => get started
-- use knightmare image for featured image
-- quick sketching program, online?
-- post to r/compilers, r/higgsjs
-- Typed shapes + BBV a bit of a gamble
-
-TODO: BBV - Hindsight & Future Directions
-- Check notes
-- Check Baptiste's paper
 
 TODO: fixup analysis
 - also, no longer need to force run every time
@@ -233,9 +156,6 @@ TODO: flag to disable shape versioning, shape_novers
 - break, read_shape, capture_shape, capture_tag?
   - should compile to nothing
 
-TODO: look into why phi nodes end up on the stack, easy fix?
-- Affects performance of access-nbody
-
 TODO: read, A Simple Graph-Based Intermediate Representation
 Firm is a LLVM-like library which also implements this idea.
 LLVM's data structure is a control flow graph with instruction lists per basic block,
@@ -253,17 +173,30 @@ TODO: implement inline caches *** do it nao!
   - use multiple cmovs?
   - could do cmov + jcc
 
-TODO: check if VM destroyed, CodeBlock destroyed
+TODO: look into why phi nodes end up on the stack, easy fix?
+- Affects performance of access-nbody
+
+TODO: open issue for memory leak
+- mention idea for solving
+
+TODO: try calling destroy(vm) explicitly, see if code blocks and functions freed
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: port Turing Drawings, for fun
+
+[DONE] TODO: check if VM destroyed, CodeBlock destroyed
 - VM and CodeBlock not destroyed during `make test`
-
-
-
-
-
-
-
-
-
+- Do IRFunctions get destroyed outside of our GC? No
+- May want to open an issue on GitHub and post on dlang.org
+http://forum.dlang.org/thread/madbgekdvopdxgwtkocp@forum.dlang.org
 
 [DONE] TODO: could we beat TM on nsieve-bits if we inlined toBool?
 - slight speedup but not quite enough

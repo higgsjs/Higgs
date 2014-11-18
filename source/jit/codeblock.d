@@ -261,7 +261,7 @@ class CodeBlock
     /**
     Write a byte at the current position
     */
-    void writeByte(ubyte val)
+    @nogc void writeByte(ubyte val)
     {
         assert (
             this.memBlock,
