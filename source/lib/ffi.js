@@ -1937,6 +1937,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
     c.cfun('malloc', '*,i32');
     c.cfun('realloc', '*,*,i32');
     c.cfun('free', 'void,*');
+    c.cfun('strlen', 'i32,*');
 
     /**
     TYPE UTILTIY FUNCTIONS

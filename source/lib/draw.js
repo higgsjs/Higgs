@@ -543,7 +543,7 @@ lib/draw - provides basic drawing API using xlib
 
     var TextItem = Xlib.XTextItem();
 
-    CanvasProto.drawText = function(x, y, text)
+    CanvasProto.drawText = function (x, y, text)
     {
         // TODO: wchars
         var text_c = ffi.cstr(text);
@@ -557,6 +557,23 @@ lib/draw - provides basic drawing API using xlib
         c.free(text_c);
     };
 
+    /**
+    Draw an image object (see lib/image) onto the canvas
+    */
+    CanvasProto.drawImage = function (x, y, img)
+    {
+        // TODO: use Pixmap objects to make this faster
+
+        for (var imgY = 0; imgY < img.height; ++imgY)
+        {
+            for (var imgX = 0; imgX < img.width; ++imgX)
+            {
+                var pix = img.getPixel(imgX, imgY);
+                this.setColor(pix.r, pix.g, pix.b);
+                this.drawPoint(x + imgX, y + imgY);
+            }
+        }
+    }
 
     /**
     EXPORTS
