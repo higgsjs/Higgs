@@ -57,7 +57,6 @@ version (FFIdev)
 // Dummy functions used for FFI tests
 version (TestFFI)
 {
-
     // Used to test the low-level FFI ops
     extern (C)
     {
@@ -140,7 +139,6 @@ version (TestFFI)
             return HelloWorld.ptr;
         }
 
-
         // issue #102
         alias __uint64_t = ulong;
         alias __uint32_t = uint;
@@ -164,7 +162,6 @@ version (TestFFI)
             d_type: 5,
             d_name: "foo"
         };
-
     }
 }
 

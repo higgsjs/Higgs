@@ -2282,7 +2282,10 @@ function $rt_getProp(base, prop)
             throw TypeError("undefined base in property read");
     }
 
-    throw TypeError("invalid base in property read");
+    if ($ir_is_string(prop))
+        throw TypeError('invalid base in read of property "' + prop + '"');
+    else
+        throw TypeError("invalid base in property read");
 }
 
 /**

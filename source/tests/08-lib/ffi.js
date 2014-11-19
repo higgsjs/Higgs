@@ -35,9 +35,10 @@
 *
 *****************************************************************************/
 
+var test = require('lib/test');
+var console = require('lib/console');
 var ffi = require('lib/ffi');
 var c = ffi.c;
-var console = require('lib/console');
 
 // JS <=> C string conversion
 assert(ffi.string(ffi.cstr('foo')) == 'foo');
@@ -58,10 +59,21 @@ c.cdef("\
        Customer TestCustomer;\
 ");
 
-var Bob = c.TestCustomer;
-assertEq(Bob.name.toString(), "Bob");
-assertEq(Bob.get_num(), 6);
-assertEq(Bob.get_balance(), 2.22);
+var bob = c.TestCustomer;
+assertEq(bob.name.toString(), "Bob");
+assertEq(bob.get_num(), 6);
+assertEq(bob.get_balance(), 2.22);
+
+// Accessing the CustomerStruct CType
+var custType = c.ctypes['struct CustomerStruct'];
+assertTrue(custType.size > 0);
+
+// Allocating a new struct (with malloc)
+var sarah = custType.wrapper_fun();
+assertNotEq(sarah.ptr, undefined);
+assertFalse(ffi.isNullPtr(sarah.ptr));
+sarah.set_num(777);
+assertEq(sarah.get_num(), 777);
 
 // Test union wrappers
 

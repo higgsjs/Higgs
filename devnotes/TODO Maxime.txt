@@ -128,15 +128,35 @@ in data until he or she can’t deny that the proposal actually works"
 TODO: grid sequencer, keyboard movement to select current square
 - pentatonic scale a different color but other notes available
 
-TODO: progress update blog post
-- Reddit, HN, Russian coverage, over 50000 blog hits, pgw.com
-- Slightly more speed
-- Shebang line
-- Options parser coming
-- Turing Drawings port, screenshots, cool wheel shot from turing turtle too
-
 TODO: fixup analysis
 - also, no longer need to force run every time
+
+TODO: flag to disable shape versioning, shape_novers
+- no propagation of shape info
+  - also turn shape_notagspec, shape_nofptrspec
+- break, read_shape, capture_shape, capture_tag?
+  - should compile to nothing
+
+TODO: read, A Simple Graph-Based Intermediate Representation
+Firm is a LLVM-like library which also implements this idea.
+LLVM's data structure is a control flow graph with instruction lists per basic block,
+Cliff Click's design is a dependence graph where basic blocks as well as instructions are
+just nodes. At first, it feels weird that the edges are "reversed", but it
+really simplifies the implementation.
+http://pp.ipd.kit.edu/firm/
+
+TODO: look into freeing vmReg
+- where is it used?
+TODO: can we load directly from moffs64?
+
+TODO: progress update blog post
+- Reddit, HN, Russian coverage, over 50000 blog hits, > 550 github stars
+  - pointersgonewild.com to celebrate
+- Slightly more speed
+- Shebang line, options parser coming
+- Turing Drawings port, screenshots, cool wheel shot from turing turtle too
+Digging through the FFI, added more docs
+https://github.com/maximecb/Higgs/wiki/FFI-Library
 
 Meeting 2014-10-1X:
 - log-scale graph, what do you think?
@@ -164,24 +184,6 @@ Meeting 2014-10-1X:
 - Need ECOOP repo ****
 - Mozilla?
 
-TODO: flag to disable shape versioning, shape_novers
-- no propagation of shape info
-  - also turn shape_notagspec, shape_nofptrspec
-- break, read_shape, capture_shape, capture_tag?
-  - should compile to nothing
-
-TODO: read, A Simple Graph-Based Intermediate Representation
-Firm is a LLVM-like library which also implements this idea.
-LLVM's data structure is a control flow graph with instruction lists per basic block,
-Cliff Click's design is a dependence graph where basic blocks as well as instructions are
-just nodes. At first, it feels weird that the edges are "reversed", but it
-really simplifies the implementation.
-http://pp.ipd.kit.edu/firm/
-
-TODO: look into freeing vmReg
-- where is it used?
-TODO: can we load directly from moffs64?
-
 TODO: begin unthreading VM object from jit/ops function calls
 
 TODO: look into organization for Higgs
@@ -193,10 +195,6 @@ TODO: implement inline caches *** do it nao!
 - Needs to decide branching direction as well ***
   - use multiple cmovs?
   - could do cmov + jcc
-
-FIXME: D8 does print string brackets in console
-- add a quoteStrs param to valuePair.toString
-- check array usage
 
 TODO: destroying VM should destroy all shapes
 
@@ -211,6 +209,16 @@ TODO: destroying VM should destroy all shapes
 
 
 
+
+
+
+
+
+
+
+
+[DONE] TODO: add test to FFI tests, allocating a struct, getting its pointer and size
+- use CustomerStruct
 
 [DONE] TODO: close memory leak issue if fixed, check mem usage now
 
