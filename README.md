@@ -11,6 +11,7 @@ A JIT compiler for JavaScript targetting x86-64 platforms.
 - POSIX compliant OS (Linux, Unix, MacOS X)
 - Python 2.7 (if regenerating object layouts)
 - x86 64-bit CPU
+- 2.5 Gb memory
 - GNU make
 - GNU time
 
