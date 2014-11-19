@@ -4217,7 +4217,6 @@ void gen_shape_enum_tbl(
 )
 {
     extern (C) static refptr op_shape_enum_tbl(
-        VM vm,
         IRInstr curInstr,
         ObjShape shape
     )
@@ -4226,7 +4225,7 @@ void gen_shape_enum_tbl(
 
         vm.setCurInstr(curInstr);
 
-        auto enumTbl = shape.genEnumTbl(vm);
+        auto enumTbl = shape.genEnumTbl();
 
         vm.setCurInstr(null);
 
@@ -4257,9 +4256,8 @@ void gen_shape_enum_tbl(
     as.saveJITRegs();
 
     // Call the host function
-    as.mov(cargRegs[2].opnd(64), shapeOpnd);
-    as.mov(cargRegs[0], vmReg);
-    as.ptr(cargRegs[1], instr);
+    as.mov(cargRegs[1].opnd(64), shapeOpnd);
+    as.ptr(cargRegs[0], instr);
     as.ptr(scrRegs[0], &op_shape_enum_tbl);
     as.call(scrRegs[0]);
 

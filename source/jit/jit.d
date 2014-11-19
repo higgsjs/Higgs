@@ -377,7 +377,7 @@ class CodeGenState
                 // If the argument is in a register which is about to become free
                 if (argOpnd.isReg && liveInfo.liveAfterPhi(dstArg, phi.block) is false)
                 {
-                    // Try to use the phi register for the ph inode
+                    // Try to use the arg register for the phi node
                     phiReg = argOpnd.reg;
                 }
             }

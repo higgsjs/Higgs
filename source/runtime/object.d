@@ -381,6 +381,11 @@ class ObjShape
         this.enumTbl = GCRoot(vm, NULL);
     }
 
+    ~this()
+    {
+        //writeln("destroying shape");
+    }
+
     /// Test if this shape has a given attribute
     bool writable() const { return (attrs & ATTR_WRITABLE) != 0; }
     bool enumerable() const { return (attrs & ATTR_ENUMERABLE) != 0; }
@@ -511,7 +516,7 @@ class ObjShape
     /**
     Generate a table of names enumerable properties for objects of this shape
     */
-    refptr genEnumTbl(VM vm)
+    refptr genEnumTbl()
     {
         assert (enumTbl.ptr is null);
 

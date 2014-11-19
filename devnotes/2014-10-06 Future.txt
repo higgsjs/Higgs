@@ -1,5 +1,10 @@
+TODO: Blog post, "In Hindsight: How I'd do it Even Better"
+Slowly but surely nearing the end of my PhD. Many ideas I won't have time
+to explore.
+
 Negative info should be propagated using bit sets. This would allow having a
 type test, is_object() for all objects at once, and still gain type information.
+May also be able to have multiple kinds of typed arrays and an is_array() test.
 
 Some amount of constant propagation should be built into versioning. Useful
 for many simple cases. Booleans come to mind. Constant shapes.
@@ -20,3 +25,6 @@ Incremental inlining at the IR level
   - Except for parameters, these get a reserved slot?
 - If more stack slots are needed, could resize stack frame
   - Remap slots and invalidate all compiled blocks for the function
+
+Should use the C stack, match call and return instructions
+- CPUs are optimized for this

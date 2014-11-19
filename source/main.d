@@ -52,9 +52,6 @@ import util.os;
 import repl;
 import options;
 
-/// Global VM instance
-VM vm;
-
 /**
 Program entry point
 */
@@ -99,8 +96,8 @@ void main(string[] args)
     sa.sa_flags = SA_SIGINFO;
     sigaction(SIGSEGV, &sa, null);
 
-    // Create VM instance
-    vm = new VM(!opts.noruntime, !opts.nostdlib);
+    // Initialize the VM instance
+    VM.init(!opts.noruntime, !opts.nostdlib);
 
     // Construct the JS arguments array
     if (!opts.noruntime)

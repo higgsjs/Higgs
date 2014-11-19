@@ -171,7 +171,7 @@ bool inToSpace(VM vm, refptr ptr)
 /**
 Check that a pointer points to a valid chunk of memory
 */
-bool ptrValid(refptr ptr)
+bool ptrValid(void* ptr)
 {
     // Query the D GC regarding this pointer
     return GC.query(ptr) != GC.BlkInfo.init;

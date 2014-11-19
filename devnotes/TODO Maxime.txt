@@ -109,6 +109,8 @@ What V8 does: o[k] is rewritten to become access by known offset.
 Computing Frontiers - Jan 16
 - Mention that approach is novel, alternative compiler architecture
 - More lazyness, future JITs
+- Submit no matter what
+- Invite Baptiste to review
 
 ECOOP - Dec 21
 - Jan Vitek is on organizing committee
@@ -121,6 +123,17 @@ compare to something less favorable first"
 caches, or use shape dispatch in select locations
 - Jan Vitek: "What has worked for me in the past is to provide drown the reader
 in data until he or she can’t deny that the proposal actually works"
+- Invite Baptiste to review
+
+TODO: grid sequencer, keyboard movement to select current square
+- pentatonic scale a different color but other notes available
+
+TODO: progress update blog post
+- Reddit, HN, Russian coverage, over 50000 blog hits, pgw.com
+- Slightly more speed
+- Shebang line
+- Options parser coming
+- Turing Drawings port, screenshots, cool wheel shot from turing turtle too
 
 TODO: fixup analysis
 - also, no longer need to force run every time
@@ -130,6 +143,7 @@ Meeting 2014-10-1X:
 - optimized for-in
   - enumerable property table
   - fastest for-in of all JS engines
+- fixed memory leak issue
 - successful blog post, > 40K views, trending on GitHub, 517 stars
 - optimized Array.prototype.join, about 2x faster
 - more small opts
@@ -146,7 +160,7 @@ Meeting 2014-10-1X:
   - load/store also suboptimal, could use peepholes
 - Good news is there are many things to improve, can surely
   beat TM very badly within a few months
-- Immediate priority, ECOOP paper, not beating TM
+- Immediate priority, ECOOP paper, not beating TM ***
 - Need ECOOP repo ****
 - Mozilla?
 
@@ -164,7 +178,11 @@ just nodes. At first, it feels weird that the edges are "reversed", but it
 really simplifies the implementation.
 http://pp.ipd.kit.edu/firm/
 
-NOTE: for ECOOP, immediate motivation is no longer to beat TM
+TODO: look into freeing vmReg
+- where is it used?
+
+TODO: look into organization for Higgs
+github/higgsjs?
 
 TODO: implement inline caches *** do it nao!
 - Needed for both papers
@@ -173,22 +191,44 @@ TODO: implement inline caches *** do it nao!
   - use multiple cmovs?
   - could do cmov + jcc
 
-TODO: look into why phi nodes end up on the stack, easy fix?
-- Affects performance of access-nbody
+TODO: begin unthreading VM object from jit/ops function calls
 
-TODO: open issue for memory leak
+TODO: close memory leak issue if fixed, check mem usage now
+
+TODO: destroying VM should destroy all shapes
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: function to init global vm object
+- Make VM ctor private
+- re-calling initVM will destroy old VM instance
+- 5% memory usage now
+
+[DONE] TODO: add PBM loading to `make test`
+- exercises readLine
+
+[DONE] TODO: draw-image example in its own folder
+- For now, hack quick Window.drawImage call with drawPoint
+CanvasProto.drawImage(x, y, image)
+- Add TODO notes
+
+[DONE] TODO: Image.loadPBM()
+Portable Bit Map - (binary monochrome images)
+- do this on master
+- see D code
+
+[DONE] TODO: try calling destroy(vm) explicitly, see if code blocks and functions freed
+- executable memory is freed but shapes are not
+
+[DONE] TODO: open issue for memory leak
 - mention idea for solving
-
-TODO: try calling destroy(vm) explicitly, see if code blocks and functions freed
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: port Turing Drawings, for fun
 

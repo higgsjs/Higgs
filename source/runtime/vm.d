@@ -441,6 +441,9 @@ immutable size_t EXEC_HEAP_STUB_FRAC = 8;
 /// Initial subroutine heap size, 64K bytes
 immutable size_t SUBS_HEAP_INIT_SIZE = 2 ^^ 16;
 
+/// Global VM instance
+VM vm = null;
+
 /**
 Virtual Machine (VM) instance
 */
@@ -573,208 +576,303 @@ class VM
     Word* regSave;
 
     /**
-    Constructor, initializes the VM state
+    Initialize or reinitialize the global VM object
     */
-    this(bool loadRuntime = true, bool loadStdLib = true)
+    static void init(bool loadRuntime = true, bool loadStdLib = true)
     {
         assert (
             !(loadStdLib && !loadRuntime),
             "cannot load stdlib without loading runtime"
         );
 
-        // Allocate the word stack
-        wStack = cast(Word*)GC.malloc(
-            Word.sizeof * STACK_SIZE,
-            GC.BlkAttr.NO_SCAN |
-            GC.BlkAttr.NO_INTERIOR |
-            GC.BlkAttr.NO_MOVE
-        );
-
-        // Allocate the tag stack
-        tStack = cast(Tag*)GC.malloc(
-            Tag.sizeof * STACK_SIZE,
-            GC.BlkAttr.NO_SCAN |
-            GC.BlkAttr.NO_INTERIOR |
-            GC.BlkAttr.NO_MOVE
-        );
-
-        // Initialize the stack limit pointers
-        wUpperLimit = wStack + STACK_SIZE;
-        tUpperLimit = tStack + STACK_SIZE;
-
-        // Initialize the stack pointers just past the end of the stack
-        wsp = wUpperLimit;
-        tsp = tUpperLimit;
-
-        // Allocate two blocks of immovable memory
-        // for the from-space and to-space heaps
-        heapStart = allocHeapBlock(this, heapSize);
-        toStart = allocHeapBlock(this, heapSize);
-
-        // Initialize the from-space heap to zero
-        memset(heapStart, 0, heapSize);
-
-        // Initialize the allocation and limit pointers
-        allocPtr = heapStart;
-        heapLimit = heapStart + heapSize;
-        toAlloc = toStart;
-        toLimit = toStart + heapSize;
-
-        /// Link table size
-        linkTblSize = LINK_TBL_INIT_SIZE;
-
-        /// Free link table entries
-        linkTblFree = new LinkIdx[linkTblSize];
-        for (uint32 i = 0; i < linkTblSize; ++i)
-            linkTblFree[i] = i;
-
-        /// Link table words
-        wLinkTable = cast(Word*)GC.malloc(
-            Word.sizeof * linkTblSize,
-            GC.BlkAttr.NO_SCAN |
-            GC.BlkAttr.NO_INTERIOR |
-            GC.BlkAttr.NO_MOVE
-        );
-
-        /// Link table types
-        tLinkTable = cast(Tag*)GC.malloc(
-            Tag.sizeof * linkTblSize,
-            GC.BlkAttr.NO_SCAN |
-            GC.BlkAttr.NO_INTERIOR |
-            GC.BlkAttr.NO_MOVE
-        );
-
-        // Initialize the link table
-        for (size_t i = 0; i < linkTblSize; ++i)
+        // If a VM object was already created
+        if (vm !is null)
         {
-            wLinkTable[i].int32Val = 0;
-            tLinkTable[i] = Tag.INT32;
+            // Explicitly free the VM object and its resources
+            VM.free();
         }
 
-        // Allocate and initialize the string table
-        strTbl = strtbl_alloc(this, STR_TBL_INIT_SIZE);
+        // Allocate the global VM object
+        vm = new VM();
 
-        // Allocate the empty object shape
-        emptyShape = new ObjShape(this);
-
-        // Initialize the initial array shape
-        arrayShape = emptyShape.defProp(
-            this,
-            "__proto__",
-            ValType(Tag.OBJECT),
-            0,
-            null
-        ).defProp(
-            this,
-            "__arrTbl__",
-            ValType(Tag.REFPTR),
-            0,
-            null
-        ).defProp(
-            this,
-            "__arrLen__",
-            ValType(Tag.INT32),
-            0,
-            null
-        );
-
-        // Allocate the object prototype object
-        objProto = newObj(
-            this,
-            NULL
-        );
-
-        // Allocate the array prototype object
-        arrProto = newObj(
-            this,
-            objProto
-        );
-
-        // Allocate the string prototype object
-        strProto = newObj(
-            this,
-            objProto
-        );
-
-        // Allocate the function prototype object
-        funProto = newObj(
-            this,
-            objProto
-        );
-
-        // Allocate the global object
-        globalObj = newObj(
-            this,
-            objProto,
-            GLOBAL_OBJ_INIT_SIZE
-        );
-
-        // Allocate the executable heap
-        execHeap = new CodeBlock(EXEC_HEAP_INIT_SIZE, opts.genasm);
-
-        // Compute the stub space start position
-        stubStartPos = execHeap.getSize - (execHeap.getSize / EXEC_HEAP_STUB_FRAC);
-        stubWritePos = stubStartPos;
-
-        // Allocate the subroutine heap
-        subsHeap = new CodeBlock(SUBS_HEAP_INIT_SIZE, opts.genasm);
-
-        // Allocate the register save space
-        regSave = cast(Word*)GC.malloc(
-            Word.sizeof * allocRegs.length,
-            GC.BlkAttr.NO_SCAN |
-            GC.BlkAttr.NO_INTERIOR
-        );
-
-        // Define the object-related constants
-        defObjConsts(this);
-
-        // If the runtime library should be loaded
-        if (loadRuntime)
+        with (vm)
         {
-            // Load the layout code
-            load("runtime/layout.js", true);
+            // Allocate the word stack
+            wStack = cast(Word*)GC.malloc(
+                Word.sizeof * STACK_SIZE,
+                GC.BlkAttr.NO_SCAN |
+                GC.BlkAttr.NO_INTERIOR |
+                GC.BlkAttr.NO_MOVE
+            );
 
-            // Load the runtime library
-            load("runtime/runtime.js", true);
-        }
+            // Allocate the tag stack
+            tStack = cast(Tag*)GC.malloc(
+                Tag.sizeof * STACK_SIZE,
+                GC.BlkAttr.NO_SCAN |
+                GC.BlkAttr.NO_INTERIOR |
+                GC.BlkAttr.NO_MOVE
+            );
 
-        // If the standard library should be loaded
-        if (loadStdLib)
-        {
-            load("stdlib/object.js");
-            load("stdlib/error.js");
-            load("stdlib/function.js");
-            load("stdlib/math.js");
-            load("stdlib/string.js");
-            load("stdlib/array.js");
-            load("stdlib/number.js");
-            load("stdlib/boolean.js");
-            load("stdlib/date.js");
-            load("stdlib/json.js");
-            load("stdlib/regexp.js");
-            load("stdlib/map.js");
-            load("stdlib/set.js");
-            load("stdlib/global.js");
-            load("stdlib/commonjs.js");
+            // Initialize the stack limit pointers
+            wUpperLimit = wStack + STACK_SIZE;
+            tUpperLimit = tStack + STACK_SIZE;
+
+            // Initialize the stack pointers just past the end of the stack
+            wsp = wUpperLimit;
+            tsp = tUpperLimit;
+
+            // Allocate two blocks of immovable memory
+            // for the from-space and to-space heaps
+            heapStart = allocHeapBlock(vm, heapSize);
+            toStart = allocHeapBlock(vm, heapSize);
+
+            // Initialize the from-space heap to zero
+            memset(heapStart, 0, heapSize);
+
+            // Initialize the allocation and limit pointers
+            allocPtr = heapStart;
+            heapLimit = heapStart + heapSize;
+            toAlloc = toStart;
+            toLimit = toStart + heapSize;
+
+            /// Link table size
+            linkTblSize = LINK_TBL_INIT_SIZE;
+
+            /// Free link table entries
+            linkTblFree = new LinkIdx[linkTblSize];
+            for (uint32 i = 0; i < linkTblSize; ++i)
+                linkTblFree[i] = i;
+
+            /// Link table words
+            wLinkTable = cast(Word*)GC.malloc(
+                Word.sizeof * linkTblSize,
+                GC.BlkAttr.NO_SCAN |
+                GC.BlkAttr.NO_INTERIOR |
+                GC.BlkAttr.NO_MOVE
+            );
+
+            /// Link table types
+            tLinkTable = cast(Tag*)GC.malloc(
+                Tag.sizeof * linkTblSize,
+                GC.BlkAttr.NO_SCAN |
+                GC.BlkAttr.NO_INTERIOR |
+                GC.BlkAttr.NO_MOVE
+            );
+
+            // Initialize the link table
+            for (size_t i = 0; i < linkTblSize; ++i)
+            {
+                wLinkTable[i].int32Val = 0;
+                tLinkTable[i] = Tag.INT32;
+            }
+
+            // Allocate and initialize the string table
+            strTbl = strtbl_alloc(vm, STR_TBL_INIT_SIZE);
+
+            // Allocate the empty object shape
+            emptyShape = new ObjShape(vm);
+
+            // Initialize the initial array shape
+            arrayShape = emptyShape.defProp(
+                vm,
+                "__proto__",
+                ValType(Tag.OBJECT),
+                0,
+                null
+            ).defProp(
+                vm,
+                "__arrTbl__",
+                ValType(Tag.REFPTR),
+                0,
+                null
+            ).defProp(
+                vm,
+                "__arrLen__",
+                ValType(Tag.INT32),
+                0,
+                null
+            );
+
+            // Allocate the object prototype object
+            objProto = newObj(
+                vm,
+                NULL
+            );
+
+            // Allocate the array prototype object
+            arrProto = newObj(
+                vm,
+                objProto
+            );
+
+            // Allocate the string prototype object
+            strProto = newObj(
+                vm,
+                objProto
+            );
+
+            // Allocate the function prototype object
+            funProto = newObj(
+                vm,
+                objProto
+            );
+
+            // Allocate the global object
+            globalObj = newObj(
+                vm,
+                objProto,
+                GLOBAL_OBJ_INIT_SIZE
+            );
+
+            // Allocate the executable heap
+            execHeap = new CodeBlock(EXEC_HEAP_INIT_SIZE, opts.genasm);
+
+            // Compute the stub space start position
+            stubStartPos = execHeap.getSize - (execHeap.getSize / EXEC_HEAP_STUB_FRAC);
+            stubWritePos = stubStartPos;
+
+            // Allocate the subroutine heap
+            subsHeap = new CodeBlock(SUBS_HEAP_INIT_SIZE, opts.genasm);
+
+            // Allocate the register save space
+            regSave = cast(Word*)GC.malloc(
+                Word.sizeof * allocRegs.length,
+                GC.BlkAttr.NO_SCAN |
+                GC.BlkAttr.NO_INTERIOR
+            );
+
+            // Define the object-related constants
+            defObjConsts(vm);
+
+            // If the runtime library should be loaded
+            if (loadRuntime)
+            {
+                // Load the layout code
+                load("runtime/layout.js", true);
+
+                // Load the runtime library
+                load("runtime/runtime.js", true);
+            }
+
+            // If the standard library should be loaded
+            if (loadStdLib)
+            {
+                load("stdlib/object.js");
+                load("stdlib/error.js");
+                load("stdlib/function.js");
+                load("stdlib/math.js");
+                load("stdlib/string.js");
+                load("stdlib/array.js");
+                load("stdlib/number.js");
+                load("stdlib/boolean.js");
+                load("stdlib/date.js");
+                load("stdlib/json.js");
+                load("stdlib/regexp.js");
+                load("stdlib/map.js");
+                load("stdlib/set.js");
+                load("stdlib/global.js");
+                load("stdlib/commonjs.js");
+            }
         }
     }
 
     /**
-    Destructor
+    Free the global VM object and its allocated resources
+    Note: we intentionally do not rely on the VM destructor
+    because D does not guarantee destructor call order
     */
-    ~this()
+    static void free()
     {
-        //writeln("vm dtor");
-
-        // Unregister all the GC roots to prevent them from
-        // touching the VM object after the it is destroyed
-        for (auto root = firstRoot; root !is null;)
+        with (vm)
         {
-            auto next = root.nextRoot;
-            destroy(root);
-            root = next;
+            // Free the stacks
+            GC.free(wStack);
+            GC.free(tStack);
+
+            // Free the heap blocks
+            GC.free(heapStart);
+            GC.free(toStart);
+
+            // Free the IRFunction references
+            foreach (ptr, fun; funRefs)
+                destroy(fun);
+
+
+            //writeln("destroying shapes");
+
+
+            /*
+            //Want to free the children shapes first, then the parents
+
+
+            // Free the shape objects
+            ObjShape[] stack;
+            stack.reserve(32768);
+            stack.assumeSafeAppend() ~= emptyShape;
+            while (stack.length > 0)
+            {
+                // Pop the top of the stack
+                auto shape = stack.back();
+                stack.length--;
+
+                foreach (typeMap; shape.propDefs)
+                    foreach (shapeList; typeMap)
+                        foreach (subShape; shapeList)
+                            stack.assumeSafeAppend() ~= subShape;
+
+                destroy(shape);
+            }
+            destroy(stack);
+            */
+
+            //writeln("destroyed shapes");
+
+
+
+
+
+
+            // Destroy the executable heaps
+            destroy(execHeap);
+            destroy(subsHeap);
+
+
+
+            // TODO:
+            // Check that all GC roots were freed
+            //assert (firstRoot is null);
+
+
+
+            // Unregister all the GC roots to prevent them from
+            // touching the VM object after the it is destroyed
+            /*for (auto root = firstRoot; root !is null;)
+            {
+                auto next = root.nextRoot;
+                destroy(root);
+                root = next;
+            }*/
         }
+
+        // Destroy the VM object itself
+        destroy(vm);
+
+        // Nullify the global VM object pointer
+        vm = null;
+    }
+
+    /**
+    Do not call the VM constructor directly
+    */
+    private this()
+    {
+    }
+
+    /**
+    Do not call the VM destructor directly
+    */
+    private ~this()
+    {
     }
 
     /**

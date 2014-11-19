@@ -172,7 +172,7 @@ unittest
 {
     writefln("FFI");
 
-    auto vm = new VM();
+    VM.init();
     vm.load("tests/core/ffi/ffi.js");
 }
 
