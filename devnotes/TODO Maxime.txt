@@ -180,6 +180,9 @@ http://pp.ipd.kit.edu/firm/
 
 TODO: look into freeing vmReg
 - where is it used?
+TODO: can we load directly from moffs64?
+
+TODO: begin unthreading VM object from jit/ops function calls
 
 TODO: look into organization for Higgs
 github/higgsjs?
@@ -191,9 +194,9 @@ TODO: implement inline caches *** do it nao!
   - use multiple cmovs?
   - could do cmov + jcc
 
-TODO: begin unthreading VM object from jit/ops function calls
-
-TODO: close memory leak issue if fixed, check mem usage now
+FIXME: D8 does print string brackets in console
+- add a quoteStrs param to valuePair.toString
+- check array usage
 
 TODO: destroying VM should destroy all shapes
 
@@ -205,6 +208,11 @@ TODO: destroying VM should destroy all shapes
 
 
 
+
+
+
+
+[DONE] TODO: close memory leak issue if fixed, check mem usage now
 
 [DONE] TODO: function to init global vm object
 - Make VM ctor private

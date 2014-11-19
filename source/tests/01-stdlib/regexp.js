@@ -40,10 +40,7 @@
  * _________________________________________________________________________
  */
 
-function check_equal_matches (
-    a,
-    b
-)
+function check_equal_matches(a, b)
 {
     if (b instanceof Array)
     {
@@ -69,7 +66,7 @@ function check_equal_matches (
     return true;
 }
 
-function test_char_match ()
+function test_char_match()
 {
     assert (check_equal_matches(new RegExp("a").exec("a"), ["a"]))
 
@@ -82,7 +79,7 @@ function test_char_match ()
     assert (check_equal_matches((/\x41/g).exec("A"), ["A"]))
 }
 
-function test_char_class_match ()
+function test_char_class_match()
 {
     if (!check_equal_matches(new RegExp("[^a]").exec("b"), ["b"]))
         return 1;
@@ -100,14 +97,19 @@ function test_char_class_match ()
         return 7;
     if (!check_equal_matches(new RegExp("\\D+").exec("foobar42foo"), ["foobar"]))
         return 8;
-    if (!check_equal_matches(new RegExp("\\s+").exec("foobar  42foo"), ["  "]))
-        return 9;
-    if (!check_equal_matches(new RegExp("\\S+").exec("foobar  42foo"), ["foobar"]))
-        return 10;
+
+    assert (check_equal_matches(new RegExp("\\s+").exec("foobar  42foo"), ["  "]))
+    assert (check_equal_matches(new RegExp("\\S+").exec("foobar  42foo"), ["foobar"]))
+    assert (check_equal_matches(new RegExp("[\\s+]").exec(" "), [" "]))
+
+    // FIXME: fails
+    //assert (check_equal_matches(new RegExp("[\\S+]").exec("a"), ["a"]))
+
     if (!check_equal_matches(new RegExp("\\w+").exec("foobar  42foo"), ["foobar"]))
         return 11;
     if (!check_equal_matches(new RegExp("\\W+").exec("foobar  ?+=/42foo"), ["  ?+=/"]))
         return 12;
+
     return 0;
 }
 
@@ -289,7 +291,7 @@ function test ()
     r = test_hyphen_character();
     if (r !== 0)
         return 900 + r;
-    
+
     test_constructor();
 
     r = test_char_class_in_char_class();
