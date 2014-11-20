@@ -1110,6 +1110,40 @@ void stmtToIR(IRGenCtx ctx, ASTStmt stmt)
 
         // Continue code generation after the loop exit
         ctx.merge(loopExitCtx);
+
+        // For each use of the property name (for-in key)
+        for (auto use = propName.getFirstUse; use !is null; use = use.next)
+        {
+            auto instr = cast(IRInstr)use.owner;
+
+            // If the use is a simple property read using the key
+            if (instr is null)
+                continue;
+            if (instr.opcode !is &CALL_PRIM)
+                continue;
+            if (getArgStrCst(instr, 0) != "$rt_getPropElem")
+                continue;
+            if (instr.getArg(2) !is propName)
+                continue;
+            if (instr.getTarget(1) !is null)
+                continue;
+
+            // Replace the call with getPropEnum, a property read
+            // optimized for for-in statements
+            auto callInstr = instr.block.addInstr(new IRInstr(&CALL_PRIM, 4));
+            callInstr.setArg(0, new IRString("$rt_getPropEnum"));
+            callInstr.setArg(1, instr.getArg(1));
+            callInstr.setArg(2, instr.getArg(2));
+            callInstr.setArg(3, propIdxPhi);
+
+            auto desc = instr.getTarget(0);
+            auto newDesc = callInstr.setTarget(0, desc.target);
+            foreach (arg; desc.args)
+                newDesc.setPhiArg(cast(PhiNode)arg.owner, arg.value);
+
+            instr.replUses(callInstr);
+            instr.block.delInstr(instr);
+        }
     }
 
     // Switch statement

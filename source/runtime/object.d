@@ -540,26 +540,35 @@ class ObjShape
         }
 
         // Allocate the table
-        enumTbl = ValuePair(arrtbl_alloc(vm, this.slotIdx+1), Tag.REFPTR);
+        auto numEntries = 2 * (this.slotIdx + 1);
+        enumTbl = ValuePair(arrtbl_alloc(vm, numEntries), Tag.REFPTR);
 
         // For each shape going down the tree, excluding the root
         for (auto shape = this; shape.parent !is null; shape = shape.parent)
         {
-            // If this property is not enumerable
-            if (!shape.enumerable)
+            ValuePair name = NULL;
+            ValuePair attr = ValuePair(0);
+
+            // If this property is enumerable
+            if (shape.enumerable)
             {
-                // Write a null "hole" in this slot
-                arrtbl_set_word(enumTbl.ptr, shape.slotIdx, NULL.word.uint64Val);
-                arrtbl_set_tag(enumTbl.ptr, shape.slotIdx, NULL.tag);
+                // Get a JS string for the property name
+                name.word.ptrVal = getString(vm, shape.propName);
+                name.tag = Tag.STRING;
+
+                // Get the property attributes
+                attr.word.uint64Val = shape.attrs;
             }
 
-            // Enumerable, named property
-            else
-            {
-                auto propStr = getString(vm, shape.propName);
-                arrtbl_set_word(enumTbl.ptr, shape.slotIdx, cast(uint64_t)propStr);
-                arrtbl_set_tag(enumTbl.ptr, shape.slotIdx, Tag.STRING);
-            }
+            // Write the property name
+            auto nameIdx = 2 * shape.slotIdx;
+            arrtbl_set_word(enumTbl.ptr, nameIdx, name.word.uint64Val);
+            arrtbl_set_tag (enumTbl.ptr, nameIdx, name.tag);
+
+            // Write the property attributes
+            auto attrIdx = nameIdx + 1;
+            arrtbl_set_word(enumTbl.ptr, attrIdx, attr.word.uint64Val);
+            arrtbl_set_tag (enumTbl.ptr, attrIdx, attr.tag);
         }
 
         assert (vm.inFromSpace(enumTbl.ptr));

@@ -95,15 +95,6 @@ TODO: BBV - Hindsight & Future Directions
 - Check notes
 - Check Baptiste's paper
 
-TODO: rewrite o[k] in for-in
-What V8 does: o[k] is rewritten to become access by known offset.
-- Make runtine fn, getPropEnum(base, slotIdx), make it inlined
-- Do we need to worry about the shape? getters and setters...
-  - We only get enumerable props
-  - Don't know if deleted or if getter/setter
-  - Setters can surely be enumerable => yes, by default
-  - Could double the table size, add attribs ***
-
 ------------------------------------------------------------------------------
 
 Computing Frontiers - Jan 16
@@ -164,6 +155,7 @@ Meeting 2014-10-1X:
 - optimized for-in
   - enumerable property table
   - fastest for-in of all JS engines
+- optimized getProp inside of for-in
 - fixed memory leak issue
 - successful blog post, > 40K views, trending on GitHub, 517 stars
 - optimized Array.prototype.join, about 2x faster
@@ -183,7 +175,10 @@ Meeting 2014-10-1X:
   beat TM very badly within a few months
 - Immediate priority, ECOOP paper, not beating TM ***
 - Need ECOOP repo ****
-- Mozilla?
+- Compilation time table
+- Should really remove eager graphs!!!
+  - Page limit
+  - Not good results, reviewers have poor reading comprehension sometimes
 
 TODO: begin unthreading VM object from jit/ops function calls
 
@@ -194,7 +189,6 @@ TODO: implement inline caches *** do it nao!
   - use multiple cmovs?
   - could do cmov + jcc
 
-TODO: compilation time table for paper
 
 
 
@@ -202,10 +196,29 @@ TODO: compilation time table for paper
 
 
 
+[DONE] TODO: write runtime fn, getPropEnum(base, shape, slotIdx)
+- make it inlined
+- enumerable or are setters should fall back to getPropElem
+If it's an object, and the property is a string
+Get the shape, get the table, check the attributes :)
 
+[DONE] TODO: rewrite o[k] in for-in
+- Iterate through uses, look for getPropElem
 
+[DONE] FIXME: issue with extended table and arrays
+./higgs --e "a = [0]; a.x = 0; for (k in a) print(k)"
 
+[DONE] TODO: double enumTbl size, add property attribs
 
+[DONE] TODO: get current fasta performance, nocomptime
+make release; ./higgs --perf_stats benchmarks/nocomptime/string-fasta.js
+15ms at best
+code size (bytes): 218761
+num get prop host: 23899483
+
+[DONE] TODO: write for-in-sum test with one non-enum prop
+
+[DONE] TODO: compilation time graph for paper
 
 [DONE] TODO: eliminate strVal in ir/ast.d
 

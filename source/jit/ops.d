@@ -2905,7 +2905,7 @@ void gen_gc_collect(
     CodeBlock as
 )
 {
-    extern (C) void op_gc_collect(VM vm, IRInstr curInstr, uint32_t heapSize)
+    extern (C) void op_gc_collect(IRInstr curInstr, uint32_t heapSize)
     {
         vm.setCurInstr(curInstr);
 
@@ -2931,9 +2931,8 @@ void gen_gc_collect(
     as.saveJITRegs();
 
     // Call the host function
-    as.mov(cargRegs[0], vmReg);
-    as.ptr(cargRegs[1], instr);
-    as.mov(cargRegs[2].opnd(32), heapSizeOpnd);
+    as.ptr(cargRegs[0], instr);
+    as.mov(cargRegs[1].opnd(32), heapSizeOpnd);
     as.ptr(scrRegs[0], &op_gc_collect);
     as.call(scrRegs[0]);
 
@@ -2947,7 +2946,7 @@ void gen_get_str(
     CodeBlock as
 )
 {
-    extern (C) refptr getStr(VM vm, IRInstr curInstr, refptr strPtr)
+    extern (C) refptr getStr(IRInstr curInstr, refptr strPtr)
     {
         vm.setCurInstr(curInstr);
 
@@ -2975,9 +2974,8 @@ void gen_get_str(
     as.saveJITRegs();
 
     // Call the fallback implementation
-    as.mov(cargRegs[0], vmReg);
-    as.ptr(cargRegs[1], instr);
-    as.mov(cargRegs[2].opnd, opnd0);
+    as.ptr(cargRegs[0], instr);
+    as.mov(cargRegs[1].opnd, opnd0);
     as.ptr(scrRegs[0], &getStr);
     as.call(scrRegs[0]);
 
@@ -3249,7 +3247,7 @@ void gen_obj_init_shape(
     CodeBlock as
 )
 {
-    extern (C) void op_obj_init_shape(VM vm, refptr objPtr, Tag protoTag)
+    extern (C) void op_obj_init_shape(refptr objPtr, Tag protoTag)
     {
         // Get the initial object shape
         auto shape = vm.emptyShape.defProp(
@@ -3305,9 +3303,8 @@ void gen_obj_init_shape(
 
         // Call the host function
         // Note: we move objOpnd first to avoid corruption
-        as.mov(cargRegs[1].opnd(64), objOpnd);
-        as.mov(cargRegs[0].opnd(64), vmReg.opnd);
-        as.mov(cargRegs[2].opnd(8), tagOpnd);
+        as.mov(cargRegs[0].opnd(64), objOpnd);
+        as.mov(cargRegs[1].opnd(8), tagOpnd);
         as.ptr(scrRegs[0], &op_obj_init_shape);
         as.call(scrRegs[0]);
 
@@ -3964,7 +3961,7 @@ void gen_obj_def_const(
     CodeBlock as
 )
 {
-    extern (C) static void op_shape_def_const(VM vm, IRInstr instr)
+    extern (C) static void op_shape_def_const(IRInstr instr)
     {
         auto objPair = vm.getArgVal(instr, 0);
         auto strPtr = vm.getArgStr(instr, 1);
@@ -3994,8 +3991,7 @@ void gen_obj_def_const(
     as.saveJITRegs();
 
     // Call the host function
-    as.mov(cargRegs[0].opnd(64), vmReg.opnd(64));
-    as.ptr(cargRegs[1], instr);
+    as.ptr(cargRegs[0], instr);
     as.ptr(scrRegs[0], &op_shape_def_const);
     as.call(scrRegs[0]);
 

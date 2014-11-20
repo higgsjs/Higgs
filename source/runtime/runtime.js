@@ -3037,13 +3037,19 @@ function $rt_getEnumKey(topObj, curObj, propIdx)
         var enumTbl = $ir_shape_enum_tbl(objShape);
         var tblLen = $rt_arrtbl_get_cap(enumTbl);
 
+        // Compute the enum table index for the property name
+        var nameIdx = $ir_lsft_i32(propIdx, 1);
+
         // If we are still within the property enumeration table
-        if ($ir_lt_i32(propIdx, tblLen))
+        if ($ir_lt_i32(nameIdx, tblLen))
         {
             // Get the name for this property
             var propName = $ir_load_string(
                 enumTbl,
-                $rt_arrtbl_ofs_word(enumTbl, propIdx)
+                $rt_arrtbl_ofs_word(
+                    enumTbl,
+                    nameIdx
+                )
             );
 
             // If this property is not enumerable, skip it
@@ -3062,7 +3068,7 @@ function $rt_getEnumKey(topObj, curObj, propIdx)
         if ($ir_is_array(curObj))
         {
             // If this is a valid array index
-            var arrIdx = propIdx - tblLen;
+            var arrIdx = propIdx - $ir_rsft_i32(tblLen, 1);
             if ($ir_lt_i32(arrIdx, curObj.length))
                 return arrIdx;
         }
@@ -3111,5 +3117,43 @@ function $rt_nextEnumObj(curObj)
     }
 
     return null;
+}
+
+/**
+Get the value of a property during an enumeration
+*/
+function $rt_getPropEnum(curObj, propName, propIdx)
+{
+    // If this is an object
+    if ($ir_is_object(curObj) && $ir_lt_i32(propIdx, $rt_obj_get_cap(curObj)))
+    {
+        var objShape = $rt_obj_get_shape(curObj);
+        var enumTbl = $ir_shape_enum_tbl(objShape);
+        var tblLen = $rt_arrtbl_get_cap(enumTbl);
+
+        // Compute the enum table index for the property attributes
+        var attrIdx = $ir_add_i32($ir_lsft_i32(propIdx, 1), 1);
+
+        // Get the name attributes this property
+        var attrs = $ir_load_i32(
+            enumTbl,
+            $rt_arrtbl_ofs_word(
+                enumTbl,
+                attrIdx
+            )
+        );
+
+        // If the property is enumerable and not a getter-setter
+        if ((attrs & $rt_ATTR_ENUMERABLE) && !(attrs & $rt_ATTR_GETSET))
+        {
+            // Read the property at the property index directly
+            var word = $rt_obj_get_word(curObj, propIdx);
+            var type = $rt_obj_get_tag(curObj, propIdx);
+            return $ir_make_value(word, type);
+        }
+    }
+
+    // Fall back to the array element read
+    return $rt_getPropElem(curObj, propName);
 }
 

@@ -166,6 +166,7 @@ void inlinePass(VM vm, IRFunction caller)
             && !name.startsWith("$rt_isShadowed")
             && !name.startsWith("$rt_getEnumKey")
             && !name.startsWith("$rt_nextEnumObj")
+            && !name.startsWith("$rt_getPropEnum")
         )
             continue;
 
