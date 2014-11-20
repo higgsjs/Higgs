@@ -47,6 +47,7 @@ import std.stdint;
 import std.typecons;
 import std.path;
 import std.file;
+import std.algorithm;
 import options;
 import stats;
 import util.misc;
@@ -793,65 +794,26 @@ class VM
             GC.free(heapStart);
             GC.free(toStart);
 
-            // Free the IRFunction references
-            foreach (ptr, fun; funRefs)
-                destroy(fun);
-
-
-            //writeln("destroying shapes");
-
-
-            /*
-            //Want to free the children shapes first, then the parents
-
-
-            // Free the shape objects
-            ObjShape[] stack;
-            stack.reserve(32768);
-            stack.assumeSafeAppend() ~= emptyShape;
-            while (stack.length > 0)
-            {
-                // Pop the top of the stack
-                auto shape = stack.back();
-                stack.length--;
-
-                foreach (typeMap; shape.propDefs)
-                    foreach (shapeList; typeMap)
-                        foreach (subShape; shapeList)
-                            stack.assumeSafeAppend() ~= subShape;
-
-                destroy(shape);
-            }
-            destroy(stack);
-            */
-
-            //writeln("destroyed shapes");
-
-
-
-
-
+            // Destroy the root shapes
+            destroy(arrayShape);
+            destroy(emptyShape);
 
             // Destroy the executable heaps
             destroy(execHeap);
             destroy(subsHeap);
 
-
-
-            // TODO:
-            // Check that all GC roots were freed
-            //assert (firstRoot is null);
-
-
+            // Free the IRFunction references
+            foreach (ptr, fun; funRefs)
+                destroy(fun);
 
             // Unregister all the GC roots to prevent them from
             // touching the VM object after the it is destroyed
-            /*for (auto root = firstRoot; root !is null;)
+            for (auto root = firstRoot; root !is null;)
             {
                 auto next = root.nextRoot;
                 destroy(root);
                 root = next;
-            }*/
+            }
         }
 
         // Destroy the VM object itself

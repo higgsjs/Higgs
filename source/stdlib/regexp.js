@@ -602,16 +602,21 @@ RegExpParser.prototype.parseAtomEscape = function ()
         switch (this.current())
         {
             case 100: // 'd'
-            case 68: // 'D'
             // Decimal digits class.
-            cc = new RegExpCharacterClass(this.current() === 100);
+            cc = new RegExpCharacterClass(true);
             this.advance();
             cc.classAtoms.push(new RegExpClassAtom(new RegExpPatternCharacter(48), new RegExpPatternCharacter(57)));
             return cc;
 
-            case 115: // 's'
-            case 83: // 'S'
-            cc = new RegExpCharacterClass(this.current() === 115);
+            case 68: // 'D' (anything but digits)
+            cc = new RegExpCharacterClass(true);
+            this.advance();
+            cc.classAtoms.push(new RegExpClassAtom(new RegExpPatternCharacter(1), new RegExpPatternCharacter(47)));
+            cc.classAtoms.push(new RegExpClassAtom(new RegExpPatternCharacter(58), new RegExpPatternCharacter(0xFFFF)));
+            return cc;
+
+            case 115: // 's' (whitespace)
+            cc = new RegExpCharacterClass(true);
             this.advance();
             // Whitespace characters.
             cc.classAtoms.push(new RegExpClassAtom(new RegExpPatternCharacter(9)));
@@ -627,14 +632,33 @@ RegExpParser.prototype.parseAtomEscape = function ()
             cc.classAtoms.push(new RegExpClassAtom(new RegExpPatternCharacter(8233)));
             return cc;
 
-            case 119: // 'w'
-            case 87: // 'W'
-            cc = new RegExpCharacterClass(this.current() === 119);
+            case 83: // 'S' (anything but whitespace)
+            cc = new RegExpCharacterClass(true);
+            this.advance();
+            cc.classAtoms.push(new RegExpClassAtom(new RegExpPatternCharacter(1), new RegExpPatternCharacter(8)));
+            cc.classAtoms.push(new RegExpClassAtom(new RegExpPatternCharacter(14), new RegExpPatternCharacter(31)));
+            cc.classAtoms.push(new RegExpClassAtom(new RegExpPatternCharacter(33), new RegExpPatternCharacter(159)));
+            cc.classAtoms.push(new RegExpClassAtom(new RegExpPatternCharacter(161), new RegExpPatternCharacter(8231)));
+            cc.classAtoms.push(new RegExpClassAtom(new RegExpPatternCharacter(8234), new RegExpPatternCharacter(0xFFFF)));
+            return cc;
+
+            case 119: // 'w' [A-Za-z0-9_]
+            cc = new RegExpCharacterClass(true);
             this.advance();
             cc.classAtoms.push(new RegExpClassAtom(new RegExpPatternCharacter(65), new RegExpPatternCharacter(90)));
             cc.classAtoms.push(new RegExpClassAtom(new RegExpPatternCharacter(97), new RegExpPatternCharacter(122)));
             cc.classAtoms.push(new RegExpClassAtom(new RegExpPatternCharacter(48), new RegExpPatternCharacter(57)));
             cc.classAtoms.push(new RegExpClassAtom(new RegExpPatternCharacter(95)));
+            return cc;
+
+            case 87: // 'W' [^A-Za-z0-9_]
+            cc = new RegExpCharacterClass(true);
+            this.advance();
+            cc.classAtoms.push(new RegExpClassAtom(new RegExpPatternCharacter(1), new RegExpPatternCharacter(47)));
+            cc.classAtoms.push(new RegExpClassAtom(new RegExpPatternCharacter(58), new RegExpPatternCharacter(64)));
+            cc.classAtoms.push(new RegExpClassAtom(new RegExpPatternCharacter(91), new RegExpPatternCharacter(94)));
+            cc.classAtoms.push(new RegExpClassAtom(new RegExpPatternCharacter(96)));
+            cc.classAtoms.push(new RegExpClassAtom(new RegExpPatternCharacter(123), new RegExpPatternCharacter(0xFFFF)));
             return cc;
 
             case 99: // 'c'

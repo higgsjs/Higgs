@@ -151,6 +151,7 @@ TODO: can we load directly from moffs64?
 
 TODO: progress update blog post
 - Reddit, HN, Russian coverage, over 50000 blog hits, > 550 github stars
+  http://www.linux.org.ru/news/opensource/11037106
   - pointersgonewild.com to celebrate
 - Slightly more speed
 - Shebang line, options parser coming
@@ -186,9 +187,6 @@ Meeting 2014-10-1X:
 
 TODO: begin unthreading VM object from jit/ops function calls
 
-TODO: look into organization for Higgs
-github/higgsjs?
-
 TODO: implement inline caches *** do it nao!
 - Needed for both papers
 - Needed for setProp too?
@@ -196,7 +194,11 @@ TODO: implement inline caches *** do it nao!
   - use multiple cmovs?
   - could do cmov + jcc
 
-TODO: destroying VM should destroy all shapes
+TODO: compilation time table for paper
+
+TODO: is the link table used only for regexes? if so, use a hash table
+- regex engine is ridiculously slow to begin with
+- might save time on avoiding re-parsing on multiple uses
 
 
 
@@ -208,14 +210,11 @@ TODO: destroying VM should destroy all shapes
 
 
 
+[DONE] TODO: look into organization for Higgs
+github/higgsjs?
 
-
-
-
-
-
-
-
+[DONE] TODO: destroying VM should destroy all shapes
+- Can't reliably destroy all, but will destroy root shapes
 
 [DONE] TODO: add test to FFI tests, allocating a struct, getting its pointer and size
 - use CustomerStruct

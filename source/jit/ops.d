@@ -4311,7 +4311,7 @@ void gen_set_global(
     CodeBlock as
 )
 {
-    extern (C) static void op_set_global(VM vm, IRInstr instr)
+    extern (C) static void op_set_global(IRInstr instr)
     {
         // Property string (D string)
         auto strArg = cast(IRString)instr.getArg(0);
@@ -4343,8 +4343,7 @@ void gen_set_global(
     as.saveJITRegs();
 
     // Call the host function
-    as.mov(cargRegs[0].opnd(64), vmReg.opnd(64));
-    as.ptr(cargRegs[1], instr);
+    as.ptr(cargRegs[0], instr);
     as.ptr(scrRegs[0], &op_set_global);
     as.call(scrRegs[0]);
 
@@ -4359,7 +4358,6 @@ void gen_new_clos(
 )
 {
     extern (C) static refptr op_new_clos(
-        VM vm,
         IRInstr curInstr,
         IRFunction fun
     )
@@ -4428,9 +4426,8 @@ void gen_new_clos(
 
     as.saveJITRegs();
 
-    as.mov(cargRegs[0], vmReg);
-    as.ptr(cargRegs[1], instr);
-    as.ptr(cargRegs[2], funArg.fun);
+    as.ptr(cargRegs[0], instr);
+    as.ptr(cargRegs[1], funArg.fun);
     as.ptr(scrRegs[0], &op_new_clos);
     as.call(scrRegs[0]);
 
@@ -4529,8 +4526,7 @@ void gen_get_ast_str(
 )
 {
     extern (C) static refptr op_get_ast_str(
-        VM vm, 
-        IRInstr curInstr, 
+        IRInstr curInstr,
         refptr closPtr
     )
     {
@@ -4564,9 +4560,8 @@ void gen_get_ast_str(
 
     as.saveJITRegs();
 
-    as.mov(cargRegs[0], vmReg);
-    as.ptr(cargRegs[1], instr);
-    as.mov(cargRegs[2].opnd, opnd0);
+    as.ptr(cargRegs[0], instr);
+    as.mov(cargRegs[1].opnd, opnd0);
     as.ptr(scrRegs[0], &op_get_ast_str);
     as.call(scrRegs[0].opnd);
 
@@ -4585,7 +4580,6 @@ void gen_get_ir_str(
 )
 {
     extern (C) static refptr op_get_ir_str(
-        VM vm, 
         IRInstr curInstr,
         refptr closPtr
     )
@@ -4633,9 +4627,8 @@ void gen_get_ir_str(
 
     as.saveJITRegs();
 
-    as.mov(cargRegs[0], vmReg);
-    as.ptr(cargRegs[1], instr);
-    as.mov(cargRegs[2].opnd, opnd0);
+    as.ptr(cargRegs[0], instr);
+    as.mov(cargRegs[1].opnd, opnd0);
     as.ptr(scrRegs[0], &op_get_ir_str);
     as.call(scrRegs[0].opnd);
 

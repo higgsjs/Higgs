@@ -93,22 +93,31 @@ function test_char_class_match()
         return 5;
     if (!check_equal_matches(new RegExp("[ab]").exec("c"), null))
         return 6;
-    if (!check_equal_matches(new RegExp("\\d+").exec("foobar42foo"), ["42"]))
-        return 7;
-    if (!check_equal_matches(new RegExp("\\D+").exec("foobar42foo"), ["foobar"]))
-        return 8;
 
+    // \d (digits) and \D (non-digits)
+    assert (check_equal_matches(/\d+/.exec('foobar42foo'), ['42']))
+    assert (check_equal_matches(/\d+/.exec(':'), null))
+    assert (check_equal_matches(/\D+/.exec('foobar42foo'), ['foobar']))
+    assert (check_equal_matches(/\D+/.exec('/'), ['/']))
+    assert (check_equal_matches(/\D+/.exec(':'), [':']))
+    assert (check_equal_matches(/[^\d]+/.exec('foobar42foo'), ['foobar']))
+    assert (check_equal_matches(/[^\D]+/.exec('foobar42foo'), ['42']))
+
+    // \s (whitespace) and \S (non-whitespace)
     assert (check_equal_matches(new RegExp("\\s+").exec("foobar  42foo"), ["  "]))
     assert (check_equal_matches(new RegExp("\\S+").exec("foobar  42foo"), ["foobar"]))
     assert (check_equal_matches(new RegExp("[\\s+]").exec(" "), [" "]))
+    assert (check_equal_matches(new RegExp("[\\S+]").exec("a"), ["a"]))
+    assert (check_equal_matches(/[\s]/.exec('a'), null))
+    assert (check_equal_matches(/[\S]/.exec(' '), null))
+    assert (check_equal_matches(/[\S]/.exec('a'), ['a']))
+    assert (check_equal_matches(/[\s\S]/.exec('a'), ['a']))
+    assert (check_equal_matches(/[\s\S]/.exec(' '), [' ']))
 
-    // FIXME: fails
-    //assert (check_equal_matches(new RegExp("[\\S+]").exec("a"), ["a"]))
-
-    if (!check_equal_matches(new RegExp("\\w+").exec("foobar  42foo"), ["foobar"]))
-        return 11;
-    if (!check_equal_matches(new RegExp("\\W+").exec("foobar  ?+=/42foo"), ["  ?+=/"]))
-        return 12;
+    // \w is [A-Za-z0-9_] and \W is [^A-Za-z0-9_]
+    assert (check_equal_matches(/[\w]+/.exec('abc_$'), ['abc_']))
+    assert (check_equal_matches(/\w+/.exec('foobar  42foo'), ['foobar']))
+    assert (check_equal_matches(/\W+/.exec('foobar  !?+=/42foo'), ['  !?+=/']))
 
     return 0;
 }
