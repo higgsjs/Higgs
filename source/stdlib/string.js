@@ -426,16 +426,20 @@ function string_match(regexp)
         var result = [];
         var match;
         var previousMatch;
-            
+
         while (true)
         {
             match = re.exec(this);
 
-            // Stop if no match left OR if we matched an empty string twice in a row (15.10.2.5 NOTE4).
-            if (match === null || (previousMatch != undefined && match[0] === "" && previousMatch[0] === ""))
+            // Stop if no match left
+            if (match === null)
                 break;
-            
-            result.push(match[0]);            
+
+            // Stop if we matched an empty string twice in a row (15.10.2.5 NOTE4)
+            if (previousMatch && match[0].length === 0 && previousMatch[0].length === 0)
+                break;
+
+            result.push(match[0]);
             previousMatch = match;
         }
 
@@ -465,13 +469,15 @@ function string_replace(searchValue, replaceValue)
 
             return this.substring(0, pos).concat(
                 new String(ret).toString(),
-                this.substring(pos + $rt_str_get_len(searchValue)));
+                this.substring(pos + $rt_str_get_len(searchValue))
+            );
         }
         else
         {
             return this.substring(0, pos).concat(
                 replaceValue.toString(),
-                this.substring(pos + $rt_str_get_len(searchValue)));
+                this.substring(pos + $rt_str_get_len(searchValue))
+            );
         }
     }
     else if (searchValue instanceof $rt_RegExp)
@@ -479,24 +485,31 @@ function string_replace(searchValue, replaceValue)
         // Save regexp state
         var globalFlagSave = searchValue.global;
         var lastIndexSave = searchValue.lastIndex;
-        var previousMatch;
-        var match;
 
         // Set the regexp global to get matches' index
         searchValue.global = true;
         searchValue.lastIndex = 0;
 
-        // Will hold new string parts.
+        // Current and previous regexp matches
+        var previousMatch;
+        var match;
+
+        // Will hold new string parts
         var nsparts = [];
         var nslen = 0;
         var i = 0;
 
-        do {
+        do
+        {
             // Execute regexp
             match = searchValue.exec(this);
 
-            // Stop if no match left OR if we matched an empty string twice in a row (15.10.2.5 NOTE4).
-            if (match === null || (previousMatch != undefined && match[0] === "" && previousMatch[0] === ""))
+            // Stop if no match left
+            if (match === null)
+                break;
+
+            // Stop if we matched an empty string twice in a row (15.10.2.5 NOTE4)
+            if (previousMatch && match[0].length === 0 && previousMatch[0].length === 0)
                 break;
 
             // Get the last match index
@@ -507,7 +520,7 @@ function string_replace(searchValue, replaceValue)
                 if (i < matchIndex)
                     nsparts.push(this.substring(i, matchIndex));
 
-                // Compose the arguments array with the match array.
+                // Compose the arguments array with the match array
                 match.push(matchIndex);
                 match.push(this.toString());
 
@@ -520,7 +533,7 @@ function string_replace(searchValue, replaceValue)
                 var rvparts = [];
                 var j = 0, k = 0;
 
-                // Get the string representation of the object.
+                // Get the string representation of the object
                 replaceValue = replaceValue.toString();
 
                 for (; j < replaceValue.length; ++j)
@@ -566,7 +579,7 @@ function string_replace(searchValue, replaceValue)
                             }
                             n += c - 48;
 
-                            // Push submatch if index is valid, or the raw string if not.
+                            // Push submatch if index is valid, or the raw string if not
                             if (n < match.length)
                                 rvparts.push(match[n]);
                             else
@@ -576,6 +589,7 @@ function string_replace(searchValue, replaceValue)
                         {
                             rvparts.push("$");
                         }
+
                         k = j + 1;
                     }
                 }
@@ -608,6 +622,7 @@ function string_replace(searchValue, replaceValue)
             i = searchValue.lastIndex;
 
             previousMatch = match;
+
         } while (globalFlagSave);
 
         if (i < this.length)

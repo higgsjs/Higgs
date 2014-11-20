@@ -272,6 +272,8 @@ function test_replace()
     assert ('foobar foobar'.replace(/\bf/g, "$'") === 'oobar foobaroobar oobaroobar')
 
     assert ('f'.replace(/a/g, "b") === 'f')
+
+    assert ('QBZPbageby_'.replace(/^\s*|\s*$/g, '') === 'QBZPbageby_');
 }
 
 function test_split()

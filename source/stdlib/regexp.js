@@ -2729,6 +2729,6 @@ Runtime function to get a regular expresson object
 */
 function $rt_getRegExp(pattern, flags)
 {
-    return new RegExp(pattern, flags);
+    return new $rt_RegExp(pattern, flags);
 }
 
