@@ -425,9 +425,19 @@ function string_match(regexp)
     {
         var result = [];
         var match;
+        var previousMatch;
+            
+        while (true)
+        {
+            match = re.exec(this);
 
-        while ((match = re.exec(this)) !== null)
-            result.push(match[0]);
+            // Stop if no match left OR if we matched an empty string twice in a row (15.10.2.5 NOTE4).
+            if (match === null || (previousMatch != undefined && match[0] === "" && previousMatch[0] === ""))
+                break;
+            
+            result.push(match[0]);            
+            previousMatch = match;
+        }
 
         if (result.length === 0)
             return null;
@@ -469,6 +479,7 @@ function string_replace(searchValue, replaceValue)
         // Save regexp state
         var globalFlagSave = searchValue.global;
         var lastIndexSave = searchValue.lastIndex;
+        var previousMatch;
         var match;
 
         // Set the regexp global to get matches' index
@@ -484,8 +495,8 @@ function string_replace(searchValue, replaceValue)
             // Execute regexp
             match = searchValue.exec(this);
 
-            // Stop if no match left
-            if (match === null)
+            // Stop if no match left OR if we matched an empty string twice in a row (15.10.2.5 NOTE4).
+            if (match === null || (previousMatch != undefined && match[0] === "" && previousMatch[0] === ""))
                 break;
 
             // Get the last match index
@@ -595,6 +606,8 @@ function string_replace(searchValue, replaceValue)
             }
 
             i = searchValue.lastIndex;
+
+            previousMatch = match;
         } while (globalFlagSave);
 
         if (i < this.length)
