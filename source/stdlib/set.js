@@ -152,7 +152,7 @@ Set.prototype.add = function (key)
 Remove an item from the map
 */
 Set.prototype.delete = function (key)
-{    
+{
     var index = (this.hashFn(key) % this.array.length);
 
     // Until a free cell is found

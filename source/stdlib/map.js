@@ -45,19 +45,24 @@ Default hash function implementation
 */
 Map.defHashFn = function (val)
 {
+    if ($ir_is_string(val))
+    {
+        return $rt_str_get_hash(val);
+    }
+
     if ($ir_is_int32(val))
     {
         return val;
     }
 
+    if ($ir_is_rope(val))
+    {
+        return $rt_str_get_hash($rt_ropeToStr(val));
+    }
+
     if ($ir_is_float64(val))
     {
         return val | 0;
-    }
-
-    if ($ir_is_string(val))
-    {
-        return $rt_str_get_hash(val);
     }
 
     if ($ir_is_const(val))
@@ -79,7 +84,7 @@ Map.defHashFn = function (val)
 
     if (val.__hashCode__ === undefined)
     {
-        val.__hashCode__ = defHashFn.nextObjSerial++;
+        val.__hashCode__ = Map.defHashFn.nextObjSerial++;
     }
 
     return val.__hashCode__;

@@ -328,18 +328,6 @@ void gcCollect(VM vm, size_t heapSize = 0)
     // Visit the stack roots
     visitStackRoots(vm);
 
-    //writeln("visiting link table");
-
-    // Visit the link table cells
-    for (size_t i = 0; i < vm.linkTblSize; ++i)
-    {
-        vm.wLinkTable[i] = gcForward(
-            vm,
-            vm.wLinkTable[i],
-            vm.tLinkTable[i]
-        );
-    }
-
     //writeln("visiting GC root objects");
 
     // Visit the root objects
@@ -914,16 +902,6 @@ void collectFun(VM vm, IRFunction fun)
             for (size_t argIdx = 0; argIdx < instr.numArgs; ++argIdx)
             {
                 auto arg = instr.getArg(argIdx);
-
-                // If this is a link table entry, free it
-                if (auto linkArg = cast(IRLinkIdx)arg)
-                {
-                    if (linkArg.hasOneUse && linkArg.linkIdx != NULL_LINK)
-                    {
-                        //writefln("freeing link table entry %s", arg.linkIdx);
-                        vm.freeLink(linkArg.linkIdx);
-                    }
-                }
 
                 // Remove this argument reference
                 instr.remArg(argIdx);

@@ -498,18 +498,6 @@ class VM
     /// Garbage collection count
     size_t gcCount = 0;
 
-    /// Link table words
-    Word* wLinkTable;
-
-    /// Link table tags
-    Tag* tLinkTable;
-
-    /// Link table size
-    uint32 linkTblSize;
-
-    /// Free link table entries
-    uint32[] linkTblFree;
-
     /// String table reference
     refptr strTbl;
 
@@ -636,37 +624,6 @@ class VM
             toAlloc = toStart;
             toLimit = toStart + heapSize;
 
-            /// Link table size
-            linkTblSize = LINK_TBL_INIT_SIZE;
-
-            /// Free link table entries
-            linkTblFree = new LinkIdx[linkTblSize];
-            for (uint32 i = 0; i < linkTblSize; ++i)
-                linkTblFree[i] = i;
-
-            /// Link table words
-            wLinkTable = cast(Word*)GC.malloc(
-                Word.sizeof * linkTblSize,
-                GC.BlkAttr.NO_SCAN |
-                GC.BlkAttr.NO_INTERIOR |
-                GC.BlkAttr.NO_MOVE
-            );
-
-            /// Link table types
-            tLinkTable = cast(Tag*)GC.malloc(
-                Tag.sizeof * linkTblSize,
-                GC.BlkAttr.NO_SCAN |
-                GC.BlkAttr.NO_INTERIOR |
-                GC.BlkAttr.NO_MOVE
-            );
-
-            // Initialize the link table
-            for (size_t i = 0; i < linkTblSize; ++i)
-            {
-                wLinkTable[i].int32Val = 0;
-                tLinkTable[i] = Tag.INT32;
-            }
-
             // Allocate and initialize the string table
             strTbl = strtbl_alloc(vm, STR_TBL_INIT_SIZE);
 
@@ -767,10 +724,10 @@ class VM
                 load("stdlib/number.js");
                 load("stdlib/boolean.js");
                 load("stdlib/date.js");
-                load("stdlib/json.js");
-                load("stdlib/regexp.js");
                 load("stdlib/map.js");
                 load("stdlib/set.js");
+                load("stdlib/json.js");
+                load("stdlib/regexp.js");
                 load("stdlib/global.js");
                 load("stdlib/commonjs.js");
             }
@@ -984,91 +941,6 @@ class VM
     size_t stackSize()
     {
         return wUpperLimit - wsp;
-    }
-
-    /**
-    Allocate a link table entry
-    */
-    LinkIdx allocLink()
-    {
-        if (linkTblFree.length == 0)
-        {
-            assert (false, "no free link entries");
-        }
-
-        auto idx = linkTblFree.back;
-        linkTblFree.popBack();
-
-        return idx;
-    }
-
-    /**
-    Free a link table entry
-    */
-    void freeLink(LinkIdx idx)
-    {
-        assert (
-            idx <= linkTblSize,
-            "invalid link index"
-        );
-
-        // Remove any heap reference
-        wLinkTable[idx].uint32Val = 0;
-        tLinkTable[idx] = Tag.INT32;
-
-        linkTblFree ~= idx;
-    }
-
-    /**
-    Get the word associated with a link value
-    */
-    Word getLinkWord(LinkIdx idx)
-    {
-        assert (
-            idx <= linkTblSize,
-            "invalid link index"
-        );
-
-        return wLinkTable[idx];
-    }
-
-    /**
-    Get the type associated with a link value
-    */
-    Tag getLinkType(LinkIdx idx)
-    {
-        assert (
-            idx <= linkTblSize,
-            "invalid link index"
-        );
-
-        return tLinkTable[idx];
-    }
-
-    /**
-    Set the word associated with a link value
-    */
-    void setLinkWord(LinkIdx idx, Word word)
-    {
-        assert (
-            idx <= linkTblSize,
-            "invalid link index"
-        );
-
-        wLinkTable[idx] = word;
-    }
-
-    /**
-    Set the type associated with a link value
-    */
-    void setLinkType(LinkIdx idx, Tag tag)
-    {
-        assert (
-            idx <= linkTblSize,
-            "invalid link index"
-        );
-
-        tLinkTable[idx] = tag;
     }
 
     /**

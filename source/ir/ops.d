@@ -283,16 +283,6 @@ Opcode GC_COLLECT = { "gc_collect", false, [OpArg.LOCAL], &gen_gc_collect, OpInf
 /// try to find the string in the string table
 Opcode GET_STR = { "get_str", true, [OpArg.LOCAL], &gen_get_str, OpInfo.MAY_GC };
 
-// TODO: rename to STATIC_LINK
-/// Create a link table entry associated with this instruction
-Opcode MAKE_LINK = { "make_link", true, [OpArg.LINK], &gen_make_link };
-
-/// Set the value of a link table entry
-Opcode SET_LINK = { "set_link", false, [OpArg.LOCAL, OpArg.LOCAL], &gen_set_link, OpInfo.IMPURE };
-
-/// Get the value of a link table entry
-Opcode GET_LINK = { "get_link", true, [OpArg.LOCAL], &gen_get_link };
-
 /// Dummy branch instruction to stop compilation and resumes execution
 Opcode BREAK = { "break", false, [], &gen_break, OpInfo.BRANCH };
 

@@ -2041,23 +2041,6 @@ function $rt_newArr(length)
 }
 
 /**
-Get/allocate a regular expresson object
-*/
-function $rt_getRegexp(link, pattern, flags)
-{
-    var rePtr = $ir_get_link(link);
-
-    if (rePtr === null)
-    {
-        rePtr = new $rt_RegExp(pattern, flags);
-
-        $ir_set_link(link, rePtr);
-    }
-
-    return rePtr;
-}
-
-/**
 Shrink the heap for GC testing purposes
 */
 function $rt_shrinkHeap(freeSpace)

@@ -364,19 +364,6 @@ class TypeProp
                 return TypeSet(Tag.STRING);
             }
 
-            // Make link
-            if (op is &MAKE_LINK)
-            {
-                return TypeSet(Tag.INT32);
-            }
-
-            // Get link value
-            if (op is &GET_LINK)
-            {
-                // Unknown type, value could have any type
-                return ANY;
-            }
-
             // Get interpreter objects
             if (op is &GET_GLOBAL_OBJ ||
                 op is &GET_OBJ_PROTO ||

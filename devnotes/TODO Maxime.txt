@@ -196,19 +196,22 @@ TODO: implement inline caches *** do it nao!
 
 TODO: compilation time table for paper
 
-TODO: is the link table used only for regexes? if so, use a hash table
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: eliminate strVal in ir/ast.d
+
+[DONE] TODO: is the link table used only for regexes? if so, use a hash table
 - regex engine is ridiculously slow to begin with
 - might save time on avoiding re-parsing on multiple uses
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: look into organization for Higgs
 github/higgsjs?

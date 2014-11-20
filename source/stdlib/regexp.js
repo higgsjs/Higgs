@@ -879,7 +879,7 @@ RegExpParser.prototype.parseDecimalDigit = function ()
 }
 
 /**
-    Generate level string for pretty print.
+    Generate level string for pretty print
 */
 function genLevel (
     level
@@ -894,14 +894,30 @@ function genLevel (
     return s;
 }
 
+/**
+Cache of patterns and flags to parsed regular expressions
+*/
+var reCache = new Map();
 
 function RegExp (
     pattern,
     flags
 )
 {
-    if (pattern instanceof RegExp) return pattern;
-    if (!(this instanceof RegExp)) return new RegExp(pattern, flags);
+    // Try to find a cached regexp object for these arguments
+    var flagsMap = reCache.get(pattern);
+    if (flagsMap !== undefined)
+    {
+        var cached = flagsMap.get(flags);
+        if (cached !== undefined)
+            return cached;
+    }
+
+    if (pattern instanceof RegExp)
+        return pattern;
+
+    if (!(this instanceof RegExp))
+        return new RegExp(pattern, flags);
 
     this.source = (pattern === undefined ? "" : pattern);
     this.global = false;
@@ -909,7 +925,7 @@ function RegExp (
     this.multiline = false;
     this.lastIndex = 0;
 
-    // Extract flags.
+    // Extract flags
     if (flags !== undefined)
     {
         for (var i = 0; i < flags.length; ++i)
@@ -929,20 +945,30 @@ function RegExp (
         }
     }
 
-    // Parse pattern and compile it to an automata.
+    // Parse pattern and compile it to an automata
     var ast = new RegExpParser().parse(pattern);
 
     var prop = {
-      value: astToAutomata(ast, this.global, this.ignoreCase, this.multiline),
-      writable: false,
-      configurable: false,
-      enumerable: false
+        value: astToAutomata(ast, this.global, this.ignoreCase, this.multiline),
+        writable: false,
+        configurable: false,
+        enumerable: false
     };
+
     Object.defineProperty(this, "_automata", prop);
+
+    // Cache the parsed regular expression object
+    var flagsMap = reCache.get(pattern);
+    if (flagsMap === undefined)
+    {
+        flagsMap = new Map();
+        reCache.set(pattern, flagsMap);
+    }
+    flagsMap.set(flags, this);
 }
 
 /**
-    Execution context.
+    Execution context
 */
 function RegExpContext (
     input,
@@ -957,7 +983,7 @@ function RegExpContext (
 }
 
 /**
-    Advance one character in the input.
+    Advance one character in the input
 */
 RegExpContext.prototype.consume = function ()
 {
@@ -2687,11 +2713,22 @@ RegExp.prototype.test = function (
     return null;
 }
 
-/// Private name for the RegExp class
-this.$rt_RegExp = RegExp;
-
 /// Export the RegExp constructor
 this.RegExp = RegExp;
 
 })();
+
+/**
+Private name for the RegExp class
+The global RegExp name may be redefined
+*/
+$ir_obj_def_const(this, '$rt_RegExp', RegExp, false);
+
+/*
+Runtime function to get a regular expresson object
+*/
+function $rt_getRegExp(pattern, flags)
+{
+    return new RegExp(pattern, flags);
+}
 

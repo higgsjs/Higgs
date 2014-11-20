@@ -336,25 +336,6 @@ class IRGenCtx
         ift.setTarget(1, falseBlock);
         return ift;
     }
-
-    /**
-    Create a location-dependent link value
-    */
-    IRInstr makeLink()
-    {
-        return addInstr(new IRInstr(
-            &MAKE_LINK,
-            new IRLinkIdx()
-        ));
-    }
-
-    /**
-    Obtain a constant string value
-    */
-    IRValue strVal(wstring str)
-    {
-        return new IRString(str);
-    }
 }
 
 /**
@@ -452,7 +433,7 @@ IRFunction astToIR(
         bodyCtx.localMap[ast.argObjIdent] = argObjVal;
 
         // Set the "callee" property
-        auto calleeStr = bodyCtx.strVal("callee");
+        auto calleeStr = new IRString("callee");
         auto setInstr = genRtCall(
             bodyCtx,
             "setPropFieldNoCheck",
@@ -1784,7 +1765,7 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
                 objVal = ctx.fun.globalVal;
 
                 if (auto identExpr = cast(IdentExpr)unExpr.expr)
-                    propVal = ctx.strVal(identExpr.name);
+                    propVal = new IRString(identExpr.name);
                 else
                     propVal = exprToIR(ctx, unExpr.expr);
             }
@@ -2177,18 +2158,17 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
 
     else if (auto stringExpr = cast(StringExpr)expr)
     {
-        return ctx.strVal(stringExpr.val);
+        return new IRString(stringExpr.val);
     }
 
     else if (auto regexpExpr = cast(RegexpExpr)expr)
     {
-        auto linkInstr = ctx.makeLink();
-        auto strInstr = ctx.strVal(regexpExpr.pattern);
-        auto flagsInstr = ctx.strVal(regexpExpr.flags);
+        auto reStr = new IRString(regexpExpr.pattern);
+        auto flagsStr = new IRString(regexpExpr.flags);
         auto reInstr = genRtCall(
             ctx,
-            "getRegexp",
-            [linkInstr, strInstr, flagsInstr],
+            "getRegExp",
+            [reStr, flagsStr],
             expr.pos
         );
 
@@ -2334,7 +2314,7 @@ IRValue refToIR(
             return genRtCall(
                 ctx,
                 "getGlobalInl",
-                [ctx.strVal(identExpr.name)],
+                [new IRString(identExpr.name)],
                 identExpr.pos
             );
         }
@@ -2342,7 +2322,7 @@ IRValue refToIR(
         {
             // Use getProp to get the global value
             // This won't throw an exception if the global doesn't exist
-            auto propStr = ctx.strVal(identExpr.name);
+            auto propStr = new IRString(identExpr.name);
             return genRtCall(
                 ctx,
                 "getProp",
@@ -2469,7 +2449,7 @@ IRValue assgToIR(
             genRtCall(
                 ctx,
                 "setGlobalInl",
-                [ctx.strVal(identExpr.name), rhsVal],
+                [new IRString(identExpr.name), rhsVal],
                 lhsExpr.pos
             );
         }
