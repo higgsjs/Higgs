@@ -46,6 +46,9 @@ make install BIN_DIR=/my/bin/dir LIB_DIR=/my/lib/dir
 
 NOTE: you may need to run `make install` with `sudo`.
 
+`make install-dev`
+is essentially the same thing as `make install`, but instead of copying the `runtime`, `stdlib` and `lib` in the `LIB_DIR` folder, it creates a symbolic link to the ones in your git folder.
+
 *Cleanup:*
 
 `make clean`
