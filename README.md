@@ -1,7 +1,7 @@
 Higgs
 =====
 
-[![Build Status](https://travis-ci.org/maximecb/Higgs.png?branch=master)](https://travis-ci.org/maximecb/Higgs)
+[![Build Status](https://travis-ci.org/higgsjs/Higgs.png?branch=master)](https://travis-ci.org/higgsjs/Higgs)
 
 A JIT compiler for JavaScript targetting x86-64 platforms.
 
@@ -56,7 +56,7 @@ will remove any binaries in the source directory.
 `make test`
 generates a binary `test-higgs` and tests its proper functioning.
 
-For further info, see the `makefile`.
+For further info, see the [makefile](https://github.com/higgsjs/Higgs/blob/master/source/makefile).
 
 **Usage:**
 
