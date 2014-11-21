@@ -1,13 +1,13 @@
 Higgs
 =====
 
-[![Build Status](https://travis-ci.org/maximecb/Higgs.png?branch=master)](https://travis-ci.org/maximecb/Higgs)
+[![Build Status](https://travis-ci.org/higgsjs/Higgs.png?branch=master)](https://travis-ci.org/higgsjs/Higgs)
 
 A JIT compiler for JavaScript targetting x86-64 platforms.
 
 **Requirements:**
 
-- D compiler ([DMD](http://dlang.org/dmd-linux.html) recommended)
+- D compiler ([DMD](http://dlang.org/download.html) recommended)
 - POSIX compliant OS (Linux, Unix, MacOS X)
 - Python 2.7 (if regenerating object layouts)
 - x86 64-bit CPU
@@ -19,7 +19,7 @@ A JIT compiler for JavaScript targetting x86-64 platforms.
 
 *Get the source:*
 
-`git clone https://github.com/maximecb/Higgs.git && cd Higgs/source`
+`git clone https://github.com/higgsjs/Higgs.git && cd Higgs/source`
 
 *Compile a binary:*
 
@@ -37,14 +37,14 @@ generates a binary `higgs` in the source directoy.
 
 *Install (optional):*
 
-`make install`
-generates a release binary using the `release` target, then copies the `higgs` binary to `/usr/bin` and the runtime files to `/etc/higgs`. The installation directories for
-the binary and runtime files may be changed with `BIN_DIR` and `LIB_DIR` respectively:
+`sudo make install`
+generates a release binary using the `release` target, then copies the `higgs` binary to `/usr/bin` and the runtime files to `/etc/higgs`. The installation directories for the binary and runtime files may be changed with `BIN_DIR` and `LIB_DIR` respectively:
 ```sh
 make install BIN_DIR=/my/bin/dir LIB_DIR=/my/lib/dir
 ```
 
-NOTE: you may need to run `make install` with `sudo`.
+`sudo make install-dev`
+is essentially the same as `make install`, but instead of copying the higgs binary and runtime files to your install directories, it creates symbolic links to your source folder.
 
 *Cleanup:*
 
@@ -56,7 +56,7 @@ will remove any binaries in the source directory.
 `make test`
 generates a binary `test-higgs` and tests its proper functioning.
 
-For further info, see the `makefile`.
+For further info, see the [makefile](https://github.com/higgsjs/Higgs/blob/master/source/makefile).
 
 **Usage:**
 
@@ -94,7 +94,7 @@ More
 
 Documentation for Higgs and included libraries can be found in the [Higgs Wiki](https://github.com/higgsjs/Higgs/wiki).
 
-You can follow the development of Higgs on [Maxime's blog](http://pointersgonewild.wordpress.com/category/higgs/).
+You can follow the development of Higgs on [Maxime's blog](http://pointersgonewild.com/category/higgs/).
 
 Come chat with us in [\#higgsjs](http://webchat.freenode.net/?channels=higgsjs) on [Freenode](http://freenode.net/).
 

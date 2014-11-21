@@ -104,3 +104,10 @@ install: release
 	cp -R ./lib/* $(LIB_DIR)/lib
 	cp $(BIN_NAME) $(BIN_DIR)
 
+install-dev: release
+	@if [ ! -d $(LIB_DIR) ] ; then echo "mkdir $(LIB_DIR)" ; mkdir $(LIB_DIR) ; fi
+	ln -s -f "$(CURDIR)/runtime/" $(LIB_DIR)
+	ln -s -f "$(CURDIR)/stdlib/" $(LIB_DIR)
+	ln -s -f "$(CURDIR)/lib/" $(LIB_DIR)
+	ln -s -f "$(CURDIR)/$(BIN_NAME)" $(BIN_DIR)
+
