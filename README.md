@@ -37,17 +37,14 @@ generates a binary `higgs` in the source directoy.
 
 *Install (optional):*
 
-`make install`
-generates a release binary using the `release` target, then copies the `higgs` binary to `/usr/bin` and the runtime files to `/etc/higgs`. The installation directories for
-the binary and runtime files may be changed with `BIN_DIR` and `LIB_DIR` respectively:
+`sudo make install`
+generates a release binary using the `release` target, then copies the `higgs` binary to `/usr/bin` and the runtime files to `/etc/higgs`. The installation directories for the binary and runtime files may be changed with `BIN_DIR` and `LIB_DIR` respectively:
 ```sh
 make install BIN_DIR=/my/bin/dir LIB_DIR=/my/lib/dir
 ```
 
-NOTE: you may need to run `make install` with `sudo`.
-
-`make install-dev`
-is essentially the same thing as `make install`, but instead of copying the `runtime`, `stdlib` and `lib` in the `LIB_DIR` folder, it creates a symbolic link to the ones in your git folder.
+`sudo make install-dev`
+is essentially the same as `make install`, but instead of copying the higgs binary and runtime files to your install directories, it creates symbolic links to your source folder.
 
 *Cleanup:*
 
