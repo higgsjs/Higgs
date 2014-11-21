@@ -1585,8 +1585,6 @@ void genCallBranch(
     bool mayThrow
 )
 {
-    auto vm = st.fun.vm;
-
     // Map the return value to its stack location
     st.mapToStack(instr);
 
@@ -1703,8 +1701,6 @@ void gen_call_prim(
     CodeBlock as
 )
 {
-    auto vm = st.fun.vm;
-
     // Function name string (D string)
     auto strArg = cast(IRString)instr.getArg(0);
     assert (strArg !is null);
@@ -3041,8 +3037,6 @@ void gen_capture_tag(
 {
     assert (instr.getTarget(0).args.length is 0);
 
-    auto vm = st.fun.vm;
-
     // Get the argument value
     auto argVal = instr.getArg(0);
 
@@ -3125,8 +3119,6 @@ void gen_capture_shape(
 )
 {
     assert (instr.getTarget(0).args.length is 0);
-
-    auto vm = ver.block.fun.vm;
 
     // Get the object and shape argument values
     auto objVal = cast(IRDstValue)instr.getArg(0);
@@ -3266,8 +3258,6 @@ void gen_obj_init_shape(
         );
     }
 
-    auto vm = ver.state.fun.vm;
-
     // Get the object operand
     auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
     assert (objOpnd.isReg);
@@ -3324,8 +3314,6 @@ void gen_arr_init_shape(
     CodeBlock as
 )
 {
-    auto vm = ver.state.fun.vm;
-
     // Get the object operand
     auto opnd0 = st.getWordOpnd(as, instr, 0, 64);
     assert (opnd0.isReg);
@@ -3353,8 +3341,6 @@ void gen_obj_set_prop(
     {
         // Increment the host set prop stat
         ++stats.numSetPropHost;
-
-        auto vm = instr.block.fun.vm;
 
         vm.setCurInstr(instr);
 
@@ -3979,8 +3965,6 @@ void gen_obj_def_const(
             isEnum
         );
     }
-
-    auto vm = st.fun.vm;
 
     // Get the object argument
     auto objDst = cast(IRDstValue)instr.getArg(0);
@@ -4887,8 +4871,6 @@ void gen_call_ffi(
     CodeBlock as
 )
 {
-    auto vm = st.fun.vm;
-
     // Get the function signature
     auto sigStr = cast(IRString)instr.getArg(1);
     assert (sigStr !is null, "null sigStr in call_ffi.");

@@ -93,7 +93,9 @@ TODO: blog post, the future of compilation
 - Definite place for controlled code duplication
 TODO: BBV - Hindsight & Future Directions
 - Check notes
-- Check Baptiste's paper
+
+TODO: grid sequencer, keyboard movement to select current square
+- pentatonic scale a different color but other notes available
 
 ------------------------------------------------------------------------------
 
@@ -115,9 +117,6 @@ caches, or use shape dispatch in select locations
 - Jan Vitek: "What has worked for me in the past is to provide drown the reader
 in data until he or she can’t deny that the proposal actually works"
 - Invite Baptiste to review
-
-TODO: grid sequencer, keyboard movement to select current square
-- pentatonic scale a different color but other notes available
 
 TODO: fixup analysis
 - also, no longer need to force run every time
@@ -150,21 +149,63 @@ TODO: progress update blog post
 Digging through the FFI, added more docs
 https://github.com/maximecb/Higgs/wiki/FFI-Library
 
-Meeting 2014-10-1X:
-- log-scale graph, what do you think?
+TODO: Higgs is a Typed Architecture
+- Presentation, argument, angry guy, red face
+  - Photo
+- Link to repr classic paper
+- Drawing
+- Optimization
+- Links to source
+- Reg alloc and future
+
+TODO: read OOPSLA acceptance advice pdf (see queue)
+TODO: read how to write papers
+- add notes to ECOOP doc
+
+TODO: implement inline caches
+- Needed for both papers
+- Needed for setProp too?
+- Needs to decide branching direction as well
+  - could do cmov + jcc
+
+TODO: read http://cs.stanford.edu/people/widom/paper-writing.html
+
+TODO: ECOOP, setup template, populate repo
+
+TODO: remove VM from runtime/object.d calls
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: begin unthreading VM object from jit/ops function calls
+
+[DONE] TODO: abstract & photo for Laurie, reply all
+
+[DONE] TODO: Boston, Marc is willing to finance, look at dates Jan Vitek said
+
+[DONE] TODO: explore gmail mailing lists, calendar notifications
+- inform Marc
+
+[DONE] TODO: blog, technical reports separate
+
+[DONE] Meeting 2014-10-20:
 - optimized for-in
   - enumerable property table
   - fastest for-in of all JS engines
 - optimized getProp inside of for-in
 - fixed memory leak issue
-- successful blog post, > 40K views, trending on GitHub, 517 stars
+- successful blog post, > 50K views, trending on GitHub, 550 stars
 - optimized Array.prototype.join, about 2x faster
 - more small opts
   - beating TM on 14/26 benchmarks, more than half
-  - geo avg of Higgs time 5.6, vs TM 5.7
-- string fasta now slow because of random-access property reads
-  - unknown/dynamic property name string
-  - could reprocess prop accesses inside of a for-in loop
+  - geo avg of Higgs time 5.1, vs TM 5.4
 - compared bitops-3bits-bits-in-byte with manual inlining
   - more than 3x faster, still 2x slower than TraceMonkey
   - most overhead is from the function call
@@ -174,27 +215,15 @@ Meeting 2014-10-1X:
 - Good news is there are many things to improve, can surely
   beat TM very badly within a few months
 - Immediate priority, ECOOP paper, not beating TM ***
-- Need ECOOP repo ****
-- Compilation time table
-- Should really remove eager graphs!!!
-  - Page limit
-  - Not good results, reviewers have poor reading comprehension sometimes
-
-TODO: begin unthreading VM object from jit/ops function calls
-
-TODO: implement inline caches *** do it nao!
-- Needed for both papers
-- Needed for setProp too?
-- Needs to decide branching direction as well ***
-  - use multiple cmovs?
-  - could do cmov + jcc
-
-
-
-
-
-
-
+  - Need ECOOP repo ****
+  - log-scale graph, what do you think?
+  - Compilation time table
+  - Should really remove eager graphs!!!
+    - Page limit
+    - Not good results, reviewers have poor reading comprehension sometimes
+- Marc says: do inline caches next
+- Marc says: log scale is good
+  - Remove non-log graph
 
 [DONE] TODO: write runtime fn, getPropEnum(base, shape, slotIdx)
 - make it inlined
