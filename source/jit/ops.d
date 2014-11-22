@@ -3986,7 +3986,7 @@ void gen_obj_def_const(
 }
 
 /// Sets the attributes for a property
-/// Inputs: obj, propName, attrBits
+/// Inputs: obj, defShape, attrBits
 void gen_obj_set_attrs(
     BlockVersion ver,
     CodeGenState st,
@@ -3997,16 +3997,14 @@ void gen_obj_set_attrs(
     extern (C) static void op_shape_set_attrs(VM vm, IRInstr instr)
     {
         auto objPair = vm.getArgVal(instr, 0);
-        auto strPtr = vm.getArgStr(instr, 1);
+        auto defShape = vm.getArgVal(instr, 1);
         auto attrBits = vm.getArgUint32(instr, 2);
-
-        auto propStr = extractWStr(strPtr);
 
         // Attempt to set the property attributes
         setPropAttrs(
             vm,
             objPair,
-            propStr,
+            defShape.word.shapeVal,
             cast(uint8_t)attrBits
         );
     }

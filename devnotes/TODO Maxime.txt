@@ -105,18 +105,9 @@ Computing Frontiers - Jan 16
 - Submit no matter what
 - Invite Baptiste to review
 
+------------------------------------------------------------------------------
+
 ECOOP - Dec 21
-- Jan Vitek is on organizing committee
-- Look into the conf more
-- Highly polymorphic objects: only the object shapes flowing into that code matter
-"Can change people's perception of your proposal without changing your proposal,
-compare to something less favorable first"
-- Comparison with inline cache
-- Not strictly a replacement for inline caches, can use both, fall back on inline
-caches, or use shape dispatch in select locations
-- Jan Vitek: "What has worked for me in the past is to provide drown the reader
-in data until he or she can’t deny that the proposal actually works"
-- Invite Baptiste to review
 
 TODO: fixup analysis
 - also, no longer need to force run every time
@@ -165,11 +156,14 @@ TODO: progress update blog post
   - ALSA audio output bindings
   - Socket bindings
 
-TODO: read OOPSLA acceptance advice pdf (see queue)
-TODO: read how to write papers
-- add notes to ECOOP doc
+TODO: remove VM from all runtime/object.d calls
 
-TODO: remove VM from runtime/object.d calls
+TODO: try using read_shape, known shape for get_enum_tbl
+- can we finally beat V8 baseline on string-fasta?
+
+TODO: ECOOP, setup template, populate repo
+
+--------------
 
 TODO: implement inline caches
 - Needed for both papers
@@ -179,38 +173,39 @@ TODO: implement inline caches
   - but need to read the property
   - probably, want to mov destReg, 0, cmov if getter
 
-TODO: try using read_shape, known shape for get_enum_tbl
-- can we finally beat V8 baseline on string-fasta?
-
-TODO: ECOOP, setup template, populate repo
-
 TODO: add test for preventExtension
+- test: can't add new prop
+- test: deleting prop shouldn't make obj re-extensible
+- test: setting attrs shouldn't make obj re-extensile
+- test: defineProperty should throw a TypeError if not extensible
+
+TODO: modify setProp to not add a new property when not extensible
 
 TODO: Object.preventExtension()
 - Unset extensible attr on top-level shape
 - If setProp of new prop, does nothing
 
-TODO: add shape EXTENSIBLE attr, set by default
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: segfault in `make test` with new obj_set_attrs
+
+[DONE] TODO: modify obj_shape_set_attrs to use defShape instead of prop name
+- possibly can just pass the shape to set attrs on, may already be looked up!
+
+[DONE] TODO: add shape EXTENSIBLE attr, set by default
 - Means properties may be added
 - Test that system not broken
 
-TODO: modify obj_shape_set_attrs to use defShape instead of prop name
-- possibly can just pass the shape to set attrs on, may already be looked up!
-
-TODO: read http://cs.stanford.edu/people/widom/paper-writing.html
+[DONE] TODO: read http://cs.stanford.edu/people/widom/paper-writing.html
 - add notes to ECOOP notes
-
-
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: remove VM from GCRoot
 

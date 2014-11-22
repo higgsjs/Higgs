@@ -2831,11 +2831,8 @@ function $rt_delProp(base, prop)
     if (!$ir_is_string(prop))
         throw TypeError('non-string property name');
 
-    // Find the defining shape for the property
-    var defShape = $ir_obj_prop_shape(base, prop);
-
     // If the property exists
-    if ($ir_ne_rawptr(defShape, $nullptr))
+    if ($rt_objHasProp(base, prop))
     {
         // Set its value to undefined
         if ($ir_obj_set_prop(base, prop, $undef))
@@ -2846,8 +2843,17 @@ function $rt_delProp(base, prop)
             // For accessors, do nothing
         }
 
+        // Find the defining shape for the property
+        var defShape = $ir_obj_prop_shape(base, prop);
+
         // Set the property attributes to deleted
-        $ir_obj_set_attrs(base, prop, $rt_ATTR_DELETED | $rt_ATTR_CONFIGURABLE);
+        $ir_obj_set_attrs(
+            base,
+            defShape,
+            $rt_ATTR_DELETED |
+            $rt_ATTR_CONFIGURABLE |
+            $rt_ATTR_EXTENSIBLE
+        );
     }
 
     return true;

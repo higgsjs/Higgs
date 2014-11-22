@@ -86,14 +86,16 @@ alias PropAttr = uint8_t;
 const PropAttr ATTR_CONFIGURABLE    = 1 << 0;
 const PropAttr ATTR_WRITABLE        = 1 << 1;
 const PropAttr ATTR_ENUMERABLE      = 1 << 2;
-const PropAttr ATTR_DELETED         = 1 << 3;
-const PropAttr ATTR_GETSET          = 1 << 4;
+const PropAttr ATTR_EXTENSIBLE      = 1 << 3;
+const PropAttr ATTR_DELETED         = 1 << 4;
+const PropAttr ATTR_GETSET          = 1 << 5;
 
 /// Default property attributes
 const PropAttr ATTR_DEFAULT = (
-    ATTR_CONFIGURABLE |
-    ATTR_WRITABLE |
-    ATTR_ENUMERABLE
+    ATTR_CONFIGURABLE   |
+    ATTR_WRITABLE       |
+    ATTR_ENUMERABLE     |
+    ATTR_EXTENSIBLE
 );
 
 /**
@@ -113,6 +115,7 @@ void defObjConsts(VM vm)
     vm.defRTConst!(ATTR_CONFIGURABLE);
     vm.defRTConst!(ATTR_WRITABLE);
     vm.defRTConst!(ATTR_ENUMERABLE);
+    vm.defRTConst!(ATTR_EXTENSIBLE);
     vm.defRTConst!(ATTR_DELETED);
     vm.defRTConst!(ATTR_GETSET);
     vm.defRTConst!(ATTR_DEFAULT);
@@ -447,7 +450,10 @@ class ObjShape
         // after the original definition shape
         ObjShape[] shapes;
         for (auto shape = this; shape !is defShape; shape = shape.parent)
+        {
+            assert (shape !is null);
             shapes ~= shape;
+        }
 
         // Define the property with the same parent
         // as the original shape
@@ -894,7 +900,7 @@ Set the attributes for a given property
 bool setPropAttrs(
     VM vm,
     ValuePair obj,
-    wstring propStr,
+    ObjShape defShape,
     PropAttr attrs
 )
 {
@@ -902,14 +908,7 @@ bool setPropAttrs(
     auto objShape = cast(ObjShape)obj_get_shape(obj.word.ptrVal);
     assert (objShape !is null);
 
-    // Find the shape defining this property (if it exists)
-    auto defShape = objShape.getDefShape(propStr);
-
-    // If the property doesn't exist, do nothing
-    if (defShape is null)
-    {
-        return false;
-    }
+    assert (defShape !is null);
 
     // If the property is not configurable, do nothing
     if (!defShape.configurable)
@@ -920,7 +919,7 @@ bool setPropAttrs(
     // Redefine the property
     auto newShape = objShape.defProp(
         vm,
-        propStr,
+        defShape.propName,
         defShape.type,
         attrs,
         defShape
