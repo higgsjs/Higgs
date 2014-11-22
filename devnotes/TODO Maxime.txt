@@ -153,7 +153,7 @@ TODO: progress update blog post
   http://www.linux.org.ru/news/opensource/11037106
   - pointersgonewild.com to celebrate
 - Invited talk at McGill, Northeastern University
-- New things
+- New in Higgs
   - Slightly more speed
   - Shebang line, options parser coming
   - Turing Drawings port, screenshots, cool wheel shot from turing turtle too
@@ -179,19 +179,30 @@ TODO: implement inline caches
   - but need to read the property
   - probably, want to mov destReg, 0, cmov if getter
 
-TODO: read http://cs.stanford.edu/people/widom/paper-writing.html
+TODO: try using read_shape, known shape for get_enum_tbl
+- can we finally beat V8 baseline on string-fasta?
 
 TODO: ECOOP, setup template, populate repo
 
 TODO: add test for preventExtension
 
-TODO: Object.preventExtension
+TODO: Object.preventExtension()
 - Unset extensible attr on top-level shape
 - If setProp of new prop, does nothing
 
 TODO: add shape EXTENSIBLE attr, set by default
 - Means properties may be added
 - Test that system not broken
+
+TODO: modify obj_shape_set_attrs to use defShape instead of prop name
+- possibly can just pass the shape to set attrs on, may already be looked up!
+
+TODO: read http://cs.stanford.edu/people/widom/paper-writing.html
+- add notes to ECOOP notes
+
+
+
+
 
 
 

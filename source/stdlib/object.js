@@ -222,8 +222,11 @@ Object.defineProperty = function (obj, prop, attribs)
         obj[prop] = undefined;
     }
 
-    // Extract the current property attributes
+    // Get the defining shape for the property
     var defShape = $ir_obj_prop_shape(obj, prop);
+    assert ($ir_ne_rawptr(defShape, $nullptr));
+
+    // Extract the current property attributes
     var oldAttrs = $ir_ne_rawptr(defShape, $nullptr)? $ir_shape_get_attrs(defShape):$rt_ATTR_DEFAULT;
     var oldWR = !!(oldAttrs & $rt_ATTR_WRITABLE);
     var oldEN = !!(oldAttrs & $rt_ATTR_ENUMERABLE);

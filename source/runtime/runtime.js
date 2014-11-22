@@ -3135,16 +3135,11 @@ function $rt_getPropEnum(curObj, propName, propIdx)
         var attrIdx = $ir_add_i32($ir_lsft_i32(propIdx, 1), 1);
 
         // Get the name attributes this property
-        var attrs = $ir_load_i32(
-            enumTbl,
-            $rt_arrtbl_ofs_word(
-                enumTbl,
-                attrIdx
-            )
-        );
+        var attrs = $rt_arrtbl_get_word(enumTbl, attrIdx);
 
         // If the property is enumerable and not a getter-setter
-        if ((attrs & $rt_ATTR_ENUMERABLE) && !(attrs & $rt_ATTR_GETSET))
+        if ($ir_ne_i32(0, $ir_and_i32(attrs, $rt_ATTR_ENUMERABLE)) &&
+            $ir_eq_i32(0, $ir_and_i32(attrs, $rt_ATTR_GETSET)))
         {
             // Read the property at the property index directly
             var word = $rt_obj_get_word(curObj, propIdx);
