@@ -58,23 +58,27 @@ GC root object
 */
 struct GCRoot
 {
-    this(VM vm, ValuePair pair)
-    {
-        this.vm = vm;
+    // Warning: do not assign directly
+    ValuePair pair;
 
+    private GCRoot* prev;
+    private GCRoot* next;
+
+    this(ValuePair pair)
+    {
         // Use the assignment operator
         this = pair;
     }
 
-    this(VM vm, Word w, Tag t)
+    this(Word w, Tag t)
     {
-        this(vm, ValuePair(w, t));
+        this(ValuePair(w, t));
     }
 
-    this(VM vm, refptr p, Tag t)
+    this(refptr p, Tag t)
     {
         assert (isHeapPtr(t));
-        this(vm, Word.ptrv(p), t);
+        this(Word.ptrv(p), t);
     }
 
     @disable this();
@@ -89,7 +93,7 @@ struct GCRoot
         if (prev)
             prev.next = next;
         else
-            this.vm.firstRoot = next;
+            vm.firstRoot = next;
 
         if (next)
             next.prev = prev;
@@ -142,14 +146,6 @@ struct GCRoot
     {
         return next;
     }
-
-    private VM vm;
-
-    private GCRoot* prev;
-    private GCRoot* next;
-
-    // Warning: do not assign directly
-    ValuePair pair;
 }
 
 /**

@@ -652,35 +652,19 @@ class VM
             );
 
             // Allocate the object prototype object
-            objProto = newObj(
-                vm,
-                NULL
-            );
+            objProto = newObj(NULL);
 
             // Allocate the array prototype object
-            arrProto = newObj(
-                vm,
-                objProto
-            );
+            arrProto = newObj(objProto);
 
             // Allocate the string prototype object
-            strProto = newObj(
-                vm,
-                objProto
-            );
+            strProto = newObj(objProto);
 
             // Allocate the function prototype object
-            funProto = newObj(
-                vm,
-                objProto
-            );
+            funProto = newObj(objProto);
 
             // Allocate the global object
-            globalObj = newObj(
-                vm,
-                objProto,
-                GLOBAL_OBJ_INIT_SIZE
-            );
+            globalObj = newObj(objProto, GLOBAL_OBJ_INIT_SIZE);
 
             // Allocate the executable heap
             execHeap = new CodeBlock(EXEC_HEAP_INIT_SIZE, opts.genasm);
@@ -1320,11 +1304,7 @@ extern (C) CodePtr throwExc(
     auto curHandler = throwHandler;
 
     // Get a GC root for the exception object
-    auto exc = GCRoot(
-        vm,
-        excWord,
-        excTag
-    );
+    auto exc = GCRoot(excWord, excTag);
 
     // If the exception value is an object,
     // add trace information to the object
@@ -1346,7 +1326,6 @@ extern (C) CodePtr throwExc(
 
             auto pos = curInstr.srcPos? curInstr.srcPos:fun.ast.pos;
             auto str = GCRoot(
-                vm,
                 getString(
                     vm,
                     to!wstring(
@@ -1479,13 +1458,11 @@ extern (C) CodePtr throwError(
     vm.setCurInstr(throwInstr);
 
     auto errStr = GCRoot(
-        vm,
         getString(vm, to!wstring(errMsg)),
         Tag.STRING
     );
 
     auto errCtor = GCRoot(
-        vm,
         getProp(
             vm,
             vm.globalObj,
@@ -1497,7 +1474,6 @@ extern (C) CodePtr throwError(
     if (errCtor.tag is Tag.CLOSURE)
     {
         auto errProto = GCRoot(
-            vm,
             getProp(
                 vm,
                 errCtor.pair,
@@ -1509,13 +1485,7 @@ extern (C) CodePtr throwError(
         if (errProto.tag is Tag.OBJECT)
         {
             // Create the error object
-            auto excObj = GCRoot(
-                vm,
-                newObj(
-                    vm,
-                    errProto.pair
-                )
-            );
+            auto excObj = GCRoot(newObj(errProto.pair));
 
             // Set the error "message" property
             setProp(

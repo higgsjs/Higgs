@@ -2350,7 +2350,7 @@ void gen_load_file(
 
             // Create a GC root for the function to prevent it from
             // being collected if the GC runs during its own compilation
-            auto funPtr = GCRoot(vm, Word.funv(fun), Tag.FUNPTR);
+            auto funPtr = GCRoot(Word.funv(fun), Tag.FUNPTR);
 
             // Create a version instance object for the unit function entry
             auto entryInst = getBlockVersion(
@@ -2483,7 +2483,7 @@ void gen_eval_str(
 
             // Create a GC root for the function to prevent it from
             // being collected if the GC runs during its own compilation
-            auto funPtr = GCRoot(vm, Word.funv(fun), Tag.FUNPTR);
+            auto funPtr = GCRoot(Word.funv(fun), Tag.FUNPTR);
 
             // Create a version instance object for the unit function entry
             auto entryInst = getBlockVersion(
@@ -4143,7 +4143,7 @@ void gen_shape_enum_tbl(
 
     st.setOutTag(as, instr, Tag.REFPTR);
 
-    // Get the table pointer and check if its null
+    // Get the table pointer and check if null
     as.getMember!("ObjShape.enumTbl.pair.word")(scrRegs[0], shapeOpnd.reg);
     as.cmp(scrRegs[0].opnd, X86Opnd(0));
     as.je(Label.FALLBACK);
@@ -4274,7 +4274,6 @@ void gen_new_clos(
 
         // Allocate the closure object
         auto closPtr = GCRoot(
-            vm,
             newClos(
                 vm,
                 vm.funProto,
@@ -4284,13 +4283,7 @@ void gen_new_clos(
         );
 
         // Allocate the prototype object
-        auto objPtr = GCRoot(
-            vm,
-            newObj(
-                vm,
-                vm.objProto
-            )
-        );
+        auto objPtr = GCRoot(newObj(vm.objProto));
 
         // Set the "prototype" property on the closure object
         setProp(

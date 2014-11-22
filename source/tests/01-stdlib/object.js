@@ -234,7 +234,7 @@ function test_defineProperties()
     var o = {};
 
     var o1 = Object.defineProperties(
-        o, 
+        o,
         {
             p1: { value: 1 },
             p2: { value: 2 }
@@ -256,28 +256,59 @@ function test_defineProperties()
 function test_seal()
 {
     // Test that the method exists
-    if (!Object.seal)
-        return 1;
+    assert (typeof Object.seal === 'function')
 
-    return 0;
+    var o = { p1: 1 };
+    Object.seal(o);
+
+    assert (o.hasOwnProperty('p1'))
+    assert (o.propertyIsEnumerable('p1'));
+    assert (o.p1 === 1);
+
+    var desc = Object.getOwnPropertyDescriptor(o, 'p1');
+    assert (desc.writable === true);
+    assert (desc.configurable === false);
+
+    // TODO: test extension prevented
 }
 
 function test_freeze()
 {
     // Test that the method exists
-    if (!Object.freeze)
-        return 1;
+    assert (typeof Object.freeze === 'function')
 
-    return 0;
+    var o = { p1: 1 };
+    Object.freeze(o);
+
+    assert (o.hasOwnProperty('p1'))
+    assert (o.propertyIsEnumerable('p1'));
+    assert (o.p1 === 1);
+
+    var desc = Object.getOwnPropertyDescriptor(o, 'p1');
+    assert (desc.writable === false);
+    assert (desc.configurable === false);
+
+    // TODO: test extension prevented
 }
 
 function test_preventExtensions()
 {
     // Test that the method exists
-    if (!Object.preventExtensions)
-        return 1;
+    assert (typeof Object.preventExtensions === 'function')
 
-    return 0;
+    var o = { p1: 1 };
+    Object.preventExtensions(o);
+
+    // TODO
+
+
+
+
+
+
+
+
+
 }
 
 function test_isSealed()
@@ -450,17 +481,11 @@ function test()
     if (r != 0)
         return 700 + r;
 
-    var r = test_seal();
-    if (r != 0)
-        return 800 + r;
+    test_seal();
 
-    var r = test_freeze();
-    if (r != 0)
-        return 900 + r;
+    test_freeze();
 
-    var r = test_preventExtensions();
-    if (r != 0)
-        return 1000 + r;
+    test_preventExtensions();
 
     var r = test_isSealed();
     if (r != 0)

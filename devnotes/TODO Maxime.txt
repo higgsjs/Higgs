@@ -139,16 +139,6 @@ TODO: look into freeing vmReg
 - where is it used?
 TODO: can we load directly from moffs64?
 
-TODO: progress update blog post
-- Reddit, HN, Russian coverage, over 50000 blog hits, > 550 github stars
-  http://www.linux.org.ru/news/opensource/11037106
-  - pointersgonewild.com to celebrate
-- Slightly more speed
-- Shebang line, options parser coming
-- Turing Drawings port, screenshots, cool wheel shot from turing turtle too
-Digging through the FFI, added more docs
-https://github.com/maximecb/Higgs/wiki/FFI-Library
-
 TODO: Higgs is a Typed Architecture
 - Presentation, argument, angry guy, red face
   - Photo
@@ -158,21 +148,50 @@ TODO: Higgs is a Typed Architecture
 - Links to source
 - Reg alloc and future
 
+TODO: progress update blog post
+- Reddit, HN, Russian coverage, over 50000 blog hits, > 550 github stars
+  http://www.linux.org.ru/news/opensource/11037106
+  - pointersgonewild.com to celebrate
+- Invited talk at McGill, Northeastern University
+- New things
+  - Slightly more speed
+  - Shebang line, options parser coming
+  - Turing Drawings port, screenshots, cool wheel shot from turing turtle too
+  - Digging through the FFI, added more docs
+    https://github.com/maximecb/Higgs/wiki/FFI-Library
+- In the works
+  - Arrow functions
+  - Options parser
+  - ALSA audio output bindings
+  - Socket bindings
+
 TODO: read OOPSLA acceptance advice pdf (see queue)
 TODO: read how to write papers
 - add notes to ECOOP doc
+
+TODO: remove VM from runtime/object.d calls
 
 TODO: implement inline caches
 - Needed for both papers
 - Needed for setProp too?
 - Needs to decide branching direction as well
   - could do cmov + jcc
+  - but need to read the property
+  - probably, want to mov destReg, 0, cmov if getter
 
 TODO: read http://cs.stanford.edu/people/widom/paper-writing.html
 
 TODO: ECOOP, setup template, populate repo
 
-TODO: remove VM from runtime/object.d calls
+TODO: add test for preventExtension
+
+TODO: Object.preventExtension
+- Unset extensible attr on top-level shape
+- If setProp of new prop, does nothing
+
+TODO: add shape EXTENSIBLE attr, set by default
+- Means properties may be added
+- Test that system not broken
 
 
 
@@ -182,7 +201,15 @@ TODO: remove VM from runtime/object.d calls
 
 
 
+[DONE] TODO: remove VM from GCRoot
 
+[DONE] TODO: Object.freeze
+- sets all props not configurable, not writable
+- calls preventExtensions
+
+[DONE] TODO: Object.seal
+- sets all properties not configurable
+- calls preventExtensions
 
 [DONE] TODO: begin unthreading VM object from jit/ops function calls
 

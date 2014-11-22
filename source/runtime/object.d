@@ -351,7 +351,7 @@ class ObjShape
 
         this.slotIdx = uint32_t.max;
 
-        this.enumTbl = GCRoot(vm, NULL);
+        this.enumTbl = GCRoot(NULL);
     }
 
     /// Property definition constructor
@@ -378,7 +378,7 @@ class ObjShape
 
         this.slotIdx = parent.slotIdx+1;
 
-        this.enumTbl = GCRoot(vm, NULL);
+        this.enumTbl = GCRoot(NULL);
     }
 
     ~this()
@@ -577,7 +577,6 @@ class ObjShape
 }
 
 ValuePair newObj(
-    VM vm,
     ValuePair proto,
     uint32_t initCap = OBJ_MIN_CAP
 )
@@ -585,7 +584,7 @@ ValuePair newObj(
     assert (initCap >= OBJ_MIN_CAP);
 
     // Create a root for the prototype object
-    auto protoObj = GCRoot(vm, proto);
+    auto protoObj = GCRoot(proto);
 
     // Allocate the object
     auto objPtr = obj_alloc(vm, initCap);
@@ -606,7 +605,7 @@ ValuePair newClos(
 )
 {
     // Create a root for the prototype object
-    auto protoObj = GCRoot(vm, proto);
+    auto protoObj = GCRoot(proto);
 
     // Register this function in the function reference set
     vm.funRefs[cast(void*)fun] = fun;
@@ -737,8 +736,8 @@ void setProp(
         }
     }
 
-    auto obj = GCRoot(vm, objPair);
-    auto val = GCRoot(vm, valPair);
+    auto obj = GCRoot(objPair);
+    auto val = GCRoot(valPair);
 
     assert (
         valPair.tag < 16,
@@ -823,7 +822,7 @@ void setProp(
     else 
     {
         // Get the extension table pointer
-        auto extTbl = GCRoot(vm, obj_get_next(obj.ptr), Tag.OBJECT);
+        auto extTbl = GCRoot(obj_get_next(obj.ptr), Tag.OBJECT);
 
         // If the extension table isn't yet allocated
         if (extTbl.ptr is null)

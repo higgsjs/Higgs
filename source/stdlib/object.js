@@ -278,38 +278,86 @@ Object.defineProperties = function (O, Properties)
 
 /**
 15.2.3.8 Object.seal ( O )
-FIXME: noop function for now
 */
-Object.seal = function (O)
+Object.seal = function (obj)
 {
-    if ($rt_valIsObj(O) === false)
+    if ($rt_valIsObj(obj) === false)
         throw TypeError('invalid object in seal');
 
-    return O;
+    var keys = Object.keys(obj);
+
+    // For each property of the object
+    for (var i = 0; i < keys.length; ++i)
+    {
+        var key = keys[i];
+
+        var desc = Object.getOwnPropertyDescriptor(obj, key);
+
+        Object.defineProperty(
+            obj,
+            key,
+            {
+                configurable: false,
+                writable: desc.writable,
+                enumerable: desc.enumerable
+            }
+        );
+    }
+
+    Object.preventExtensions(obj);
+
+    return obj;
 };
 
 /**
 15.2.3.9 Object.freeze ( O )
-FIXME: noop function for now
 */
-Object.freeze = function (O)
+Object.freeze = function (obj)
 {
-    if ($rt_valIsObj(O) === false)
+    if ($rt_valIsObj(obj) === false)
         throw TypeError('invalid object in freeze');
 
-    return O;
+    var keys = Object.keys(obj);
+
+    // For each property of the object
+    for (var i = 0; i < keys.length; ++i)
+    {
+        var key = keys[i];
+
+        var desc = Object.getOwnPropertyDescriptor(obj, key);
+
+        Object.defineProperty(
+            obj,
+            key,
+            {
+                configurable: false,
+                writable: false,
+                enumerable: desc.enumerable
+            }
+        );
+    }
+
+    Object.preventExtensions(obj);
+
+    return obj;
 };
 
 /**
 15.2.3.10 Object.preventExtensions ( O )
-FIXME: noop function for now
 */
-Object.preventExtensions = function (O)
+Object.preventExtensions = function (obj)
 {
-    if ($rt_valIsObj(O) === false)
+    if ($rt_valIsObj(obj) === false)
         throw TypeError('invalid object in preventExtensions');
 
-    return O;
+    // TODO
+
+
+
+
+
+
+    return obj;
 };
 
 /**
@@ -321,7 +369,7 @@ Object.isSealed = function (O)
     if ($rt_valIsObj(O) === false)
         throw TypeError('invalid object in isSealed');
 
-    return false; 
+    return false;
 };
 
 /**
