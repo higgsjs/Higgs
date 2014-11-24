@@ -100,14 +100,13 @@ const PropAttr ATTR_DEFAULT = (
 
 // Enumerable constant attributes
 const PropAttr ATTR_CONST_ENUM = (
-    ATTR_DEFAULT &
-    ~ATTR_WRITABLE
+    ATTR_ENUMERABLE     |
+    ATTR_EXTENSIBLE
 );
 
 // Non-enumerable constant attributes
 const PropAttr ATTR_CONST_NOT_ENUM = (
-    ATTR_CONST_ENUM &
-    ~ATTR_ENUMERABLE
+    ATTR_EXTENSIBLE
 );
 
 /**

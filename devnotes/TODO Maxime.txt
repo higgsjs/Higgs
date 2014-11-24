@@ -150,6 +150,7 @@ TODO: progress update blog post
   - Turing Drawings port, screenshots, cool wheel shot from turing turtle too
   - Digging through the FFI, added more docs
     https://github.com/maximecb/Higgs/wiki/FFI-Library
+  - Object.seal, Object.freeze, Object.preventExtensions
 - In the works
   - Arrow functions
   - Options parser
@@ -182,6 +183,8 @@ Meeting 2014-10-2X:
 - Started to prepare talk for McGill & Boston
 - Booked plane ticket
 
+TODO: setup paper template for ECOOP
+
 TODO: implement inline caches
 - Needed for both papers
 - Needed for setProp too?
@@ -190,19 +193,20 @@ TODO: implement inline caches
   - but need to read the property
   - probably, want to mov destReg, 0, cmov if getter
 
-FIXME: benchmark performance issue?
+
+
+
+
+
+
+
+[DONE] FIXME: benchmark performance issue?
 - chrome taking a lot of CPU
 - if perf issue, must have to do with set_prop
-
-
-
-
-
-
-
-
-
-
+- something is broken
+  - million get prop host on 3d-raytrace
+  - ARRTBL_SLOT_OFS
+- constant attributes are wrong
 
 [DONE] TODO: complete tests for preventExtensions
 
