@@ -160,16 +160,6 @@ TODO: remove VM from all runtime/object.d calls
 
 TODO: ECOOP, setup template, populate repo
 
---------------
-
-TODO: implement inline caches
-- Needed for both papers
-- Needed for setProp too?
-- Needs to decide branching direction as well
-  - could do cmov + jcc
-  - but need to read the property
-  - probably, want to mov destReg, 0, cmov if getter
-
 TODO: try using read_shape, known shape for get_enum_tbl
 - can we finally beat V8 baseline on string-fasta?
 
@@ -184,16 +174,26 @@ Could try for a wireframe world, XFillPolygon + XDrawLine
 - blockworld
 - store coords into big flag vector for speed
 
-FIXME: version limit hit in defineProperty
-- could also avoid calling, set attrs directly
+--------------
+
+Meeting 2014-10-2X:
+- Completed missing ES5 object model functions
+  - seal, freeze, preventExtensions
+- Started to prepare talk for McGill & Boston
+- Booked plane ticket
+
+TODO: implement inline caches
+- Needed for both papers
+- Needed for setProp too?
+- Needs to decide branching direction as well
+  - could do cmov + jcc
+  - but need to read the property
+  - probably, want to mov destReg, 0, cmov if getter
 
 FIXME: benchmark performance issue?
 - chrome taking a lot of CPU
 - if perf issue, must have to do with set_prop
 
-TODO: complete tests for preventExtensions
-
-TODO: modify host setProp to not add a new property when not extensible
 
 
 
@@ -204,8 +204,17 @@ TODO: modify host setProp to not add a new property when not extensible
 
 
 
+[DONE] TODO: complete tests for preventExtensions
 
+[DONE] FIXME: version limit hit in defineProperty
+- could also avoid calling, set attrs directly
 
+[DONE] FIXME: deleting last prop makes object re-extensible
+- last prop marked as deleted
+  - but existing shape still found through lookup?
+- probably removing the non-extensible attribute?
+
+[DONE] TODO: modify host setProp to not add a new property when not extensible
 
 [DONE] TODO: test isExtensible
 

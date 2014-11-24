@@ -364,7 +364,7 @@ class ObjShape
 
         this.propName = null;
         this.type = ValType();
-        this.attrs = 0;
+        this.attrs = ATTR_EXTENSIBLE;
 
         this.slotIdx = uint32_t.max;
 
@@ -380,9 +380,6 @@ class ObjShape
         PropAttr attrs
     )
     {
-        // A property cannot have no attributes
-        assert (attrs !is 0);
-
         // Ensure that this is not a temporary string
         auto strData = cast(rawptr)propName.ptr;
         assert (!inFromSpace(vm, strData) || !inToSpace(vm, strData));
@@ -729,7 +726,7 @@ ValuePair getProp(VM vm, ValuePair obj, wstring propStr)
     );
 }
 
-void setProp(
+bool setProp(
     VM vm,
     ValuePair objPair,
     wstring propStr,
@@ -785,6 +782,13 @@ void setProp(
     // If the property is not already defined
     if (defShape is null)
     {
+        // If the object is not extensible, do nothing
+        if (!objShape.extensible)
+        {
+            //writeln("rejecting write for ", propStr);
+            return false;
+        }
+
         // Create a new shape for the property
         defShape = objShape.defProp(
             vm,
@@ -803,7 +807,7 @@ void setProp(
         if (!defShape.writable)
         {
             //writeln("redefining constant: ", propStr);
-            return;
+            return false;
         }
 
         // If the value type doesn't match the shape type
@@ -878,6 +882,9 @@ void setProp(
         // Set the value and its type in the extension table
         setSlotPair(extTbl.ptr, slotIdx, val.pair);
     }
+
+    // Write successful
+    return true;
 }
 
 /**
@@ -932,9 +939,6 @@ bool setPropAttrs(
     assert (objShape !is null);
 
     assert (defShape !is null);
-
-    // A property cannot have no attributes
-    assert (attrs !is 0);
 
     // Redefine the property
     auto newShape = objShape.defProp(

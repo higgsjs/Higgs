@@ -308,79 +308,63 @@ function test_preventExtensions()
     assert (!o.hasOwnProperty('p4'));
     assert (o.p3 === 3);
 
-
-
-    // TODO:
     // Extension prevented with dynamic key
+    o['p' + 4] = 4;
+    assert (!o.hasOwnProperty('p4'));
+    assert (o.p3 === 3);
 
-
-
-
-
-
-
-
-    // TODO
     // Deleting last property, can't re-add it
+    delete o.p3;
+    assert (!o.hasOwnProperty('p3'));
+    assert (o.p3 === undefined);
 
-
-
-
-
-    // TODO
     // Deleting last prop shouldn't make obj re-extensible
+    o.p5 = 5;
+    assert (!o.hasOwnProperty('p5'));
+    o.p4 = 4;
+    assert (!o.hasOwnProperty('p4'));
+    o.p3 = 3;
+    assert (!o.hasOwnProperty('p3'));
 
+    var o = { p1:1, p2:2, p3:3 };
+    Object.preventExtensions(o);
 
-
-
-
-    // TODO
     // Setting some attr on last prop shouldn't make obj re-extensile
+    Object.defineProperty(o, 'p3', { enumerable:false });
+    assert (o.p3 === 3);
+    o.p4 = 4;
+    assert (!o.hasOwnProperty('p4'));
 
-
-
-
-
-    // TODO
     // Deleting a property in the middle of obj, can't re-add prop
+    delete o.p2;
+    assert (!o.hasOwnProperty('p2'));
+    o.p2 = 2;
+    assert (!o.hasOwnProperty('p2'));
 
+    var o = { p1:1, p2:2, p3:3 };
+    Object.preventExtensions(o);
 
-
-
-
-    // TODO
     // Using defineProperty to add a new property
     // should throw a TypeError if not extensible
-
-
-
-
-
-
-
-
-
-
-
-
+    assertThrows(function () {
+        Object.defineProperty(o, 'p4', { value: 9 });
+    });
 }
 
 function test_isSealed()
 {
     // Test that the method exists
-    if (!Object.isSealed)
-        return 1;
+    assert (typeof Object.isSealed === 'function')
 
-    return 0;
+    // TODO
 }
 
 function test_isFrozen()
 {
     // Test that the method exists
-    if (!Object.isFrozen)
-        return 1;
+    assert (typeof Object.isFrozen === 'function')
 
-    return 0;
+    // TODO
 }
 
 function test_isExtensible()
@@ -544,13 +528,9 @@ function test()
 
     test_preventExtensions();
 
-    var r = test_isSealed();
-    if (r != 0)
-        return 1100 + r;
+    test_isSealed();
 
-    var r = test_isFrozen();
-    if (r != 0)
-        return 1200 + r;
+    test_isFrozen();
 
     test_isExtensible();
 

@@ -2858,13 +2858,14 @@ function $rt_delProp(base, prop)
     // Note: shape changes once the property is set to undefined
     var defShape = $ir_obj_prop_shape(base, prop);
 
-    // Set the property attributes to deleted
+    // Set the property attributes to deleted and
+    // preserve the current extensible status
     $ir_obj_set_attrs(
         base,
         defShape,
         $rt_ATTR_DELETED |
         $rt_ATTR_CONFIGURABLE |
-        $rt_ATTR_EXTENSIBLE
+        (attrs & $rt_ATTR_EXTENSIBLE)
     );
 
     return true;
