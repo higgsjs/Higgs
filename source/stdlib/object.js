@@ -237,6 +237,7 @@ Object.defineProperty = function (obj, prop, attribs)
     var newEN = attribs.hasOwnProperty('enumerable')? !!attribs.enumerable:false;
     var newCF = attribs.hasOwnProperty('configurable')? !!attribs.configurable:false;
     var newAttrs = (
+        $rt_ATTR_EXTENSIBLE |
         (newWR? $rt_ATTR_WRITABLE:0) |
         (newEN? $rt_ATTR_ENUMERABLE:0) |
         (newCF? $rt_ATTR_CONFIGURABLE:0) |
@@ -281,6 +282,8 @@ Object.defineProperties = function (O, Properties)
 
 /**
 15.2.3.8 Object.seal ( O )
+Makes all properties non-configurable and
+makes the object non-extensible
 */
 Object.seal = function (obj)
 {
@@ -353,50 +356,62 @@ Object.preventExtensions = function (obj)
     if ($rt_valIsObj(obj) === false)
         throw TypeError('invalid object in preventExtensions');
 
-    // TODO
+    // Get the object shape
+    var objShape = $rt_obj_get_shape(obj);
 
+    // Remove the extensible attribute
+    var attrs = $ir_shape_get_attrs(objShape);
+    var newAttrs = attrs & ~$rt_ATTR_EXTENSIBLE;
 
-
-
-
+    // Set the new property attributes
+    $ir_obj_set_attrs(obj, objShape, newAttrs);
 
     return obj;
 };
 
 /**
 15.2.3.11 Object.isSealed ( O )
-FIXME: noop function for now
 */
 Object.isSealed = function (O)
 {
     if ($rt_valIsObj(O) === false)
         throw TypeError('invalid object in isSealed');
 
+    if (Object.isExtensble(obj))
+        return false;
+
+    // TODO: test each property
+
     return false;
 };
 
 /**
 15.2.3.12 Object.isFrozen ( O )
-FIXME: for now, all objects are extensible
 */
 Object.isFrozen = function (O)
 {
     if ($rt_valIsObj(O) === false)
         throw TypeError('invalid object in isFrozen');
 
+    if (Object.isExtensble(obj))
+        return false;
+
+    // TODO: test each property
+
     return false;
 };
 
 /**
 15.2.3.13 Object.isExtensible ( O )
-FIXME: for now, all objects are extensible
 */
-Object.isExtensible = function (O)
+Object.isExtensible = function (obj)
 {
     if ($rt_valIsObj(O) === false)
         throw TypeError('invalid object in isExtensible');
 
-    return true;
+    var objShape = $rt_obj_get_shape(obj);
+    var attrs = $ir_shape_get_attrs(objShape);
+    return (attrs & $rt_ATTR_EXTENSIBLE)? true:false;
 };
 
 /**

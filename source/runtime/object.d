@@ -98,6 +98,18 @@ const PropAttr ATTR_DEFAULT = (
     ATTR_EXTENSIBLE
 );
 
+// Enumerable constant attributes
+const PropAttr ATTR_CONST_ENUM = (
+    ATTR_DEFAULT &
+    ~ATTR_WRITABLE
+);
+
+// Non-enumerable constant attributes
+const PropAttr ATTR_CONST_NOT_ENUM = (
+    ATTR_CONST_ENUM &
+    ~ATTR_ENUMERABLE
+);
+
 /**
 Define object-related runtime constants in a VM instance
 */
@@ -119,6 +131,8 @@ void defObjConsts(VM vm)
     vm.defRTConst!(ATTR_DELETED);
     vm.defRTConst!(ATTR_GETSET);
     vm.defRTConst!(ATTR_DEFAULT);
+    vm.defRTConst!(ATTR_CONST_ENUM);
+    vm.defRTConst!(ATTR_CONST_NOT_ENUM);
 }
 
 /**
@@ -366,6 +380,9 @@ class ObjShape
         PropAttr attrs
     )
     {
+        // A property cannot have no attributes
+        assert (attrs !is 0);
+
         // Ensure that this is not a temporary string
         auto strData = cast(rawptr)propName.ptr;
         assert (!inFromSpace(vm, strData) || !inToSpace(vm, strData));
@@ -391,8 +408,9 @@ class ObjShape
 
     /// Test if this shape has a given attribute
     bool writable() const { return (attrs & ATTR_WRITABLE) != 0; }
-    bool enumerable() const { return (attrs & ATTR_ENUMERABLE) != 0; }
     bool configurable() const { return (attrs & ATTR_CONFIGURABLE) != 0; }
+    bool enumerable() const { return (attrs & ATTR_ENUMERABLE) != 0; }
+    bool extensible() const { return (attrs & ATTR_EXTENSIBLE) != 0; }
     bool deleted() const { return (attrs & ATTR_DELETED) != 0; }
     bool isGetSet() const { return (attrs & ATTR_GETSET) != 0; }
 
@@ -719,6 +737,9 @@ void setProp(
     PropAttr defAttrs = ATTR_DEFAULT
 )
 {
+    // A property cannot have no attributes
+    assert (defAttrs !is 0);
+
     static ValuePair allocExtTbl(VM vm, refptr obj, uint32_t extCap)
     {
         // Get the object layout type
@@ -888,7 +909,9 @@ bool defConst(
         objPair,
         propStr,
         valPair,
-        enumerable? ATTR_ENUMERABLE:0
+        enumerable?
+        ATTR_CONST_ENUM:
+        ATTR_CONST_NOT_ENUM
     );
 
     return true;
@@ -910,11 +933,8 @@ bool setPropAttrs(
 
     assert (defShape !is null);
 
-    // If the property is not configurable, do nothing
-    if (!defShape.configurable)
-    {
-        return false;
-    }
+    // A property cannot have no attributes
+    assert (attrs !is 0);
 
     // Redefine the property
     auto newShape = objShape.defProp(

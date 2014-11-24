@@ -190,7 +190,7 @@ function test_defineProperty()
     assert ('x' in obj);
     assert (obj.x === undefined);
 
-    // Cannot delete unconfigurable properties
+    // Cannot delete non-configurable properties
     var obj = Object.defineProperty({}, 'p', { value:5 });
     delete obj.p;
     assert (obj.p === 5);
@@ -269,7 +269,9 @@ function test_seal()
     assert (desc.writable === true);
     assert (desc.configurable === false);
 
-    // TODO: test extension prevented
+    // Extension should be prevented
+    o.p2 = 1;
+    assert (!o.hasOwnProperty('p2'));
 }
 
 function test_freeze()
@@ -288,7 +290,9 @@ function test_freeze()
     assert (desc.writable === false);
     assert (desc.configurable === false);
 
-    // TODO: test extension prevented
+    // Extension should be prevented
+    o.p2 = 1;
+    assert (!o.hasOwnProperty('p2'));
 }
 
 function test_preventExtensions()
@@ -296,10 +300,60 @@ function test_preventExtensions()
     // Test that the method exists
     assert (typeof Object.preventExtensions === 'function')
 
-    var o = { p1: 1 };
+    var o = { p1:1, p2:2, p3:3 };
     Object.preventExtensions(o);
 
+    // Extension prevented
+    o.p4 = 4;
+    assert (!o.hasOwnProperty('p4'));
+    assert (o.p3 === 3);
+
+
+
+    // TODO:
+    // Extension prevented with dynamic key
+
+
+
+
+
+
+
+
     // TODO
+    // Deleting last property, can't re-add it
+
+
+
+
+
+    // TODO
+    // Deleting last prop shouldn't make obj re-extensible
+
+
+
+
+
+    // TODO
+    // Setting some attr on last prop shouldn't make obj re-extensile
+
+
+
+
+
+    // TODO
+    // Deleting a property in the middle of obj, can't re-add prop
+
+
+
+
+
+    // TODO
+    // Using defineProperty to add a new property
+    // should throw a TypeError if not extensible
+
+
+
 
 
 

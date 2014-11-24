@@ -3246,7 +3246,7 @@ void gen_obj_init_shape(
             vm,
             "__proto__",
             ValType(protoTag),
-            0,
+            ATTR_CONST_NOT_ENUM,
             null
         );
 
@@ -3273,7 +3273,7 @@ void gen_obj_init_shape(
             vm,
             "__proto__",
             ValType(cast(Tag)tagOpnd.imm.imm),
-            0,
+            ATTR_CONST_NOT_ENUM,
             null
         );
 
@@ -3471,6 +3471,11 @@ void gen_obj_set_prop(
     // If the defining shape was not found
     if (defShape is null)
     {
+        // If the object is not extensible, jump to the
+        // true branch without adding the new property
+        if (!objShape.extensible)
+            return gen_jump(ver, st, instr, as);
+
         // Create a new shape for the property
         defShape = objShape.defProp(
             st.fun.vm,
@@ -3480,14 +3485,6 @@ void gen_obj_set_prop(
             null
         );
     }
-
-    // If the property has accessors, jump to the false branch
-    if (defShape.isGetSet)
-        return gen_jump_false(ver, st, instr, as);
-
-    // If the shape is not writable, do nothing, jump to the true branch
-    if (!defShape.writable)
-        return gen_jump(ver, st, instr, as);
 
     // Get the property slot index
     auto slotIdx = defShape.slotIdx;
@@ -3499,6 +3496,14 @@ void gen_obj_set_prop(
         obj_get_cap(st.fun.vm.globalObj.word.ptrVal):
         OBJ_MIN_CAP
     );
+
+    // If the property has accessors, jump to the false branch
+    if (defShape.isGetSet)
+        return gen_jump_false(ver, st, instr, as);
+
+    // If the shape is not writable, do nothing, jump to the true branch
+    if (!defShape.writable)
+        return gen_jump(ver, st, instr, as);
 
     // If the property exists on the object and is writable
     if (slotIdx <= objShape.slotIdx)
@@ -3997,15 +4002,15 @@ void gen_obj_set_attrs(
     extern (C) static void op_shape_set_attrs(VM vm, IRInstr instr)
     {
         auto objPair = vm.getArgVal(instr, 0);
-        auto defShape = vm.getArgVal(instr, 1);
-        auto attrBits = vm.getArgUint32(instr, 2);
+        auto defShape = vm.getArgVal(instr, 1).word.shapeVal;
+        auto newAttrs = vm.getArgUint32(instr, 2);
 
         // Attempt to set the property attributes
         setPropAttrs(
             vm,
             objPair,
-            defShape.word.shapeVal,
-            cast(uint8_t)attrBits
+            defShape,
+            cast(uint8_t)newAttrs
         );
     }
 

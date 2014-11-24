@@ -635,19 +635,19 @@ class VM
                 vm,
                 "__proto__",
                 ValType(Tag.OBJECT),
-                0,
+                ATTR_CONST_NOT_ENUM,
                 null
             ).defProp(
                 vm,
                 "__arrTbl__",
                 ValType(Tag.REFPTR),
-                0,
+                ATTR_CONST_NOT_ENUM,
                 null
             ).defProp(
                 vm,
                 "__arrLen__",
                 ValType(Tag.INT32),
-                0,
+                ATTR_CONST_NOT_ENUM,
                 null
             );
 

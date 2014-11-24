@@ -2831,30 +2831,41 @@ function $rt_delProp(base, prop)
     if (!$ir_is_string(prop))
         throw TypeError('non-string property name');
 
-    // If the property exists
-    if ($rt_objHasProp(base, prop))
+    // Get the defining shape for the property
+    var defShape = $ir_obj_prop_shape(base, prop);
+
+    // If the property doesn't exist, stop
+    if ($ir_eq_rawptr(defShape, $nullptr))
+        return true;
+
+    // Get the attributes for the shape
+    var attrs = $ir_shape_get_attrs(defShape);
+
+    // If the property is not configurable, stop
+    if (!(attrs & $rt_ATTR_CONFIGURABLE))
+        return false;
+
+    // Set the property value to undefined
+    if ($ir_obj_set_prop(base, prop, $undef))
     {
-        // Set its value to undefined
-        if ($ir_obj_set_prop(base, prop, $undef))
-        {
-        }
-        else
-        {
-            // For accessors, do nothing
-        }
-
-        // Find the defining shape for the property
-        var defShape = $ir_obj_prop_shape(base, prop);
-
-        // Set the property attributes to deleted
-        $ir_obj_set_attrs(
-            base,
-            defShape,
-            $rt_ATTR_DELETED |
-            $rt_ATTR_CONFIGURABLE |
-            $rt_ATTR_EXTENSIBLE
-        );
     }
+    else
+    {
+        // For accessors, do nothing
+    }
+
+    // Find the defining shape for the property
+    // Note: shape changes once the property is set to undefined
+    var defShape = $ir_obj_prop_shape(base, prop);
+
+    // Set the property attributes to deleted
+    $ir_obj_set_attrs(
+        base,
+        defShape,
+        $rt_ATTR_DELETED |
+        $rt_ATTR_CONFIGURABLE |
+        $rt_ATTR_EXTENSIBLE
+    );
 
     return true;
 }
@@ -2863,7 +2874,7 @@ function $rt_delProp(base, prop)
 Implementation of the "instanceof" operator
 */
 function $rt_instanceof(obj, ctor)
-{ 
+{
     if (!$ir_is_closure(ctor))
         throw TypeError('constructor must be function');
 

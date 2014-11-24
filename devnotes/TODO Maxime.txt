@@ -158,9 +158,6 @@ TODO: progress update blog post
 
 TODO: remove VM from all runtime/object.d calls
 
-TODO: try using read_shape, known shape for get_enum_tbl
-- can we finally beat V8 baseline on string-fasta?
-
 TODO: ECOOP, setup template, populate repo
 
 --------------
@@ -173,27 +170,66 @@ TODO: implement inline caches
   - but need to read the property
   - probably, want to mov destReg, 0, cmov if getter
 
-TODO: add test for preventExtension
-- test: can't add new prop
-- test: deleting prop shouldn't make obj re-extensible
-- test: setting attrs shouldn't make obj re-extensile
-- test: defineProperty should throw a TypeError if not extensible
+TODO: try using read_shape, known shape for get_enum_tbl
+- can we finally beat V8 baseline on string-fasta?
 
-TODO: modify setProp to not add a new property when not extensible
+Minecraft-like with green grid blocks? :)
+- Can procedurally gen very simple maps
+In X11, int XFillPolygon()
+Could try for a wireframe world, XFillPolygon + XDrawLine
+- Polygons don't cross
+  - Need to be z-sorted
+  - visibility checks for speed
+- A bit more dogfooding
+- blockworld
+- store coords into big flag vector for speed
 
-TODO: Object.preventExtension()
+FIXME: version limit hit in defineProperty
+- could also avoid calling, set attrs directly
+
+FIXME: benchmark performance issue?
+- chrome taking a lot of CPU
+- if perf issue, must have to do with set_prop
+
+TODO: test isExtensible
+
+TODO: complete tests for preventExtensions
+
+TODO: modify host setProp to not add a new property when not extensible
+
+TODO: run `make test` and ./benchmark.py
+- if passing, commit
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: if configurable is false, you can still set the non-extensible attribute
+- should do checking in jit/ops
+
+[DONE] FIXME: Higgs still won't init
+- error in setProp
+
+[DONE] FIXME: does defineProperty set extensible?
+- no it did not
+
+[DONE] FIXME: Higgs won't init with fast set prop limit
+- We may not have set extensible attr when it was needed
+- May be the work of def const
+  - last prop is indeed a constant
+
+[DONE] TODO: test the preventExtensions behaviors in d8
+
+[DONE] TODO: Object.preventExtension()
 - Unset extensible attr on top-level shape
 - If setProp of new prop, does nothing
-
-
-
-
-
-
-
-
-
-
 
 [DONE] FIXME: segfault in `make test` with new obj_set_attrs
 
