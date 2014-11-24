@@ -406,7 +406,7 @@ Object.isFrozen = function (O)
 */
 Object.isExtensible = function (obj)
 {
-    if ($rt_valIsObj(O) === false)
+    if ($rt_valIsObj(obj) === false)
         throw TypeError('invalid object in isExtensible');
 
     var objShape = $rt_obj_get_shape(obj);

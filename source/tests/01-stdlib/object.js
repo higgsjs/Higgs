@@ -386,10 +386,13 @@ function test_isFrozen()
 function test_isExtensible()
 {
     // Test that the method exists
-    if (!Object.isExtensible)
-        return 1;
+    assert (typeof Object.isExtensible === 'function');
 
-    return 0;
+    var o1 = {};
+    assert (Object.isExtensible(o1));
+
+    var o2 = Object.preventExtensions({});
+    assert (!Object.isExtensible(o2));
 }
 
 function test_keys()
@@ -549,9 +552,7 @@ function test()
     if (r != 0)
         return 1200 + r;
 
-    var r = test_isExtensible();
-    if (r != 0)
-        return 1300 + r;
+    test_isExtensible();
 
     test_keys();
 

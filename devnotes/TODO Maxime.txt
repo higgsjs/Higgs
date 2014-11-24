@@ -191,25 +191,26 @@ FIXME: benchmark performance issue?
 - chrome taking a lot of CPU
 - if perf issue, must have to do with set_prop
 
-TODO: test isExtensible
-
 TODO: complete tests for preventExtensions
 
 TODO: modify host setProp to not add a new property when not extensible
 
-TODO: run `make test` and ./benchmark.py
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: test isExtensible
+
+[DONE] TODO: run `make test` and ./benchmark.py
 - if passing, commit
-
-
-
-
-
-
-
-
-
-
-
 
 [DONE] FIXME: if configurable is false, you can still set the non-extensible attribute
 - should do checking in jit/ops
