@@ -281,9 +281,12 @@ var speed = 128;
 /// Paused flag
 var paused = false;
 
+/// Background color, black by default
+var bgColor = '#000000'
+
 function newMachine()
 {
-    window.canvas.clear('#000000');
+    window.canvas.clear(bgColor);
 
     machine = new Machine(
         4,              // Num states
@@ -302,17 +305,7 @@ var window = draw.Window(50, 50, canvasWidth, canvasHeight, 'Turing Turtle');
 
 window.onKeypress(function(canvas, key)
 {
-    if (key === 'Right')
-    {
-        newMachine();
-        print('new machine');
-    }
-    else if (key === 'Left')
-    {
-        window.canvas.clear('#000000');
-        machine.reset();
-    }
-    else if (key === 'Up')
+    if (key === 'Up')
     {
         if (speed < 8192)
             speed <<= 1;
@@ -327,6 +320,25 @@ window.onKeypress(function(canvas, key)
     else if (key === 'space')
     {
         paused = !paused;
+    }
+    else if (key === 'Right')
+    {
+        newMachine();
+        print('new machine');
+    }
+    else if (key === 'Left')
+    {
+        window.canvas.clear(bgColor);
+        machine.reset();
+    }
+    else if (key === 'b')
+    {
+        // Toggle between a white and black background color
+        bgColor = (bgColor === '#000000')? '#FFFFFF':'#000000';
+
+        // Reset the machine
+        window.canvas.clear(bgColor);
+        machine.reset();
     }
 });
 
@@ -379,10 +391,10 @@ window.canvas.setFont(undefined, 18);
 
 // Print basic instructions
 window.canvas.setColor('#FFFFFF');
-window.canvas.drawText(20, 30, "Right arrow for new drawing");
-window.canvas.drawText(20, 60, "Left arrow to restart");
-window.canvas.drawText(20, 90, "Up arrow to increase speed");
-window.canvas.drawText(20, 120, "Down arrow to decrease speed");
+window.canvas.drawText(20,  30, "Up arrow to increase speed");
+window.canvas.drawText(20,  60, "Down arrow to decrease speed");
+window.canvas.drawText(20,  90, "Right arrow for new drawing");
+window.canvas.drawText(20, 120, "Left arrow to restart");
 
 // Show the drawing window
 window.show();
