@@ -558,8 +558,8 @@ class VM
     /// Generic branch target stubs
     BranchStub[] branchStubs;
 
-    /// Shape lookup fallback subroutine
-    CodePtr defShapeSub;
+    /// Get property fallback subroutine
+    CodePtr getPropSub;
 
     /// Space to save registers when calling into hosted code
     Word* regSave;

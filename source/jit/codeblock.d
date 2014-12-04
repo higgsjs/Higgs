@@ -74,6 +74,8 @@ enum Label : size_t
     JOIN,
     SKIP,
     VALID,
+    MATCH,
+    READ,
     THROW,
     FALLBACK,
     BAILOUT,
@@ -81,7 +83,8 @@ enum Label : size_t
     FUN2,
     BRANCH_TARGET0,
     BRANCH_TARGET1,
-    AFTER_DATA
+    AFTER_DATA,
+    AFTER_CACHE,
 }
 
 /// Code pointer type definition

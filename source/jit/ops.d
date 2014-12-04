@@ -3774,6 +3774,218 @@ void gen_obj_get_prop(
         );
     }
 
+    static const uint NUM_CACHE_ENTRIES = 4;
+    static const uint CACHE_ENTRY_SIZE = 8 + 4;
+
+    extern (C) static void updateCache(
+        IRInstr instr,
+        ObjShape objShape,
+        ubyte* cachePtr
+    )
+    {
+        // Extract the property name, if known
+        auto propName = instr.getArgStrCst(1);
+        assert (propName !is null);
+
+        // Find the shape defining this property (if it exists)
+        assert (objShape !is null);
+        auto defShape = objShape.getDefShape(propName);
+        auto slotIdx = defShape.slotIdx;
+
+
+
+
+        // TODO: rewrite entries....
+        // But, what do we rewrite from?
+
+        // In theory, can shift current code?
+
+
+
+        //writeln("returning");
+    }
+
+    static CodePtr getFallbackSub()
+    {
+        if (vm.getPropSub)
+            return vm.getPropSub;
+
+        auto as = vm.subsHeap;
+        vm.getPropSub = as.getAddress(as.getWritePos);
+
+        // Save the JIT and alloc registers
+        as.saveJITRegs();
+        foreach (reg; allocRegs)
+            as.push(reg);
+        if (allocRegs.length % 2 != 0)
+            as.push(allocRegs[0]);
+
+        // Set the argument registers
+        as.mov(cargRegs[0], scrRegs[2]);
+        as.mov(cargRegs[1], scrRegs[0]);
+        as.mov(cargRegs[2], scrRegs[1]);
+
+        // Call the host fallback code
+        as.ptr(scrRegs[0], &updateCache);
+        as.call(scrRegs[0].opnd);
+
+        // Restore the scratch, JIT and alloc registers
+        if (allocRegs.length % 2 != 0)
+            as.pop(allocRegs[0]);
+        foreach_reverse (reg; allocRegs)
+            as.pop(reg);
+        as.loadJITRegs();
+
+        // Return to the point of call
+        as.ret();
+
+        // Link the labels in this subroutine
+        as.linkLabels();
+        return vm.getPropSub;
+    }
+
+    static void gen_cache_path(
+        BlockVersion ver,
+        CodeGenState st,
+        IRInstr instr,
+        CodeBlock as
+    )
+    {
+        // Get the object operand
+        auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
+        assert (objOpnd.isReg);
+
+        // Get the output operand
+        auto outOpnd = st.getOutOpnd(as, instr, 64);
+
+        // Free an extra temporary register
+        auto scrReg3 = st.freeReg(as, instr);
+
+        // Get the object shape
+        as.getField(scrRegs[0], objOpnd.reg, obj_ofs_shape(null));
+
+        // Try or retry a cache lookup
+        as.label(Label.RETRY);
+
+        // Load the current address (inline cache address)
+        as.lea(scrRegs[1], X86Mem(8, RIP, 5));
+
+        // For each cache entry
+        for (uint i = 0; i < NUM_CACHE_ENTRIES; ++i)
+        {
+            // Note: if we get a match, we still need the object,
+            // but not its shape or the inline cache address
+            //
+            // mov r2, shape
+            // cmp objShape, r2
+            // cmove idxReg, slotIdx
+            // cmove actReg, action
+            // je MATCH
+            as.mov(scrRegs[2].opnd, X86Opnd(0xFFFFFFFFFFFFFF));
+            as.cmp(scrRegs[0].opnd, scrRegs[2].opnd);
+            as.cmove(scrRegs[0], X86Opnd(0xFFFFFFFF));
+            as.cmove(scrRegs[1], X86Opnd(0xFF));
+            as.je(Label.MATCH);
+        }
+
+        // Call the fallback sub to update the inline cache
+        // r0 = shape ptr
+        // r1 = cache ptr
+        // r2 = instr
+        auto updateCacheSub = getFallbackSub();
+        as.ptr(scrRegs[2], instr);
+        as.ptr(scrReg3, updateCacheSub);
+        as.call(scrReg3);
+
+        // The inline cache is updated, retry the lookup
+        as.jmp(Label.RETRY);
+
+        // Inline cache match
+        // r0 = slotIdx
+        // r1 = action
+        as.label(Label.MATCH);
+
+        // Compare the action register with 2 (missing property)
+        as.cmp(scrRegs[1].opnd, X86Opnd(2));
+        as.jne(Label.READ);
+
+        // Set the output type tag to const (undefined)
+        as.mov(scrRegs[1].opnd(8), X86Opnd(Tag.CONST));
+        st.setOutTag(as, instr, scrRegs[1].reg(8));
+
+        as.jmp(Label.DONE);
+
+        // Property read
+        as.label(Label.READ);
+
+        // Get the object capacity into r2
+        as.getField(scrRegs[2].reg(32), objOpnd.reg, obj_ofs_cap(null));
+
+        // Move the object operand into r3
+        as.mov(scrReg3.opnd, objOpnd);
+
+        // If the slot index is within capacity, skip the ext table code
+        as.cmp(scrRegs[2].opnd, scrRegs[0].opnd);
+        as.jg(Label.SKIP);
+
+        // Get the ext table pointer into r3
+        as.getField(scrReg3, scrReg3, obj_ofs_next(null));
+
+        // Get the ext table capacity into r2
+        as.getField(scrRegs[2].reg(32), scrReg3, obj_ofs_cap(null));
+
+        as.label(Label.SKIP);
+
+        // Load the word value
+        auto wordMem = X86Opnd(64, scrReg3, OBJ_WORD_OFS, 8, scrRegs[0]);
+        as.mov(outOpnd, wordMem);
+
+        // Load the type value
+        as.add(scrReg3.opnd, scrRegs[0].opnd);
+        auto typeMem = X86Opnd(8, scrReg3, OBJ_WORD_OFS, 8, scrRegs[2]);
+        as.mov(scrRegs[1].opnd(8), typeMem);
+        st.setOutTag(as, instr, scrRegs[1].reg(8));
+
+        // Compare the action register with 0 (true branch)
+        as.cmp(scrRegs[1].opnd, X86Opnd(0));
+
+        as.label(Label.DONE);
+
+        auto branchT = getBranchEdge(instr.getTarget(0), st, false);
+        auto branchF = getBranchEdge(instr.getTarget(1), st, false);
+
+        // Generate the branch code
+        ver.genBranch(
+            as,
+            branchT,
+            branchF,
+            delegate void(
+                CodeBlock as,
+                VM vm,
+                BlockVersion block,
+                CodeFragment target0,
+                CodeFragment target1,
+                BranchShape shape
+            )
+            {
+                final switch (shape)
+                {
+                    case BranchShape.NEXT0:
+                    jne32Ref(as, vm, block, target1, 1);
+                    break;
+
+                    case BranchShape.NEXT1:
+                    je32Ref(as, vm, block, target0, 0);
+                    break;
+
+                    case BranchShape.DEFAULT:
+                    je32Ref(as, vm, block, target0, 0);
+                    jmp32Ref(as, vm, block, target1, 1);
+                }
+            }
+        );
+    }
+
     // Increment the number of get prop operations
     as.incStatCnt(&stats.numGetProp, scrRegs[1]);
 
@@ -3804,7 +4016,6 @@ void gen_obj_get_prop(
         auto outOpnd = st.getOutOpnd(as, instr, 64);
 
         // Set the output type tag to const (undefined)
-        //as.mov(outOpnd, X86Opnd(UNDEF.word.int8Val));
         st.setOutTag(as, instr, Tag.CONST);
 
         // Jump to the false branch
