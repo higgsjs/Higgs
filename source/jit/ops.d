@@ -612,13 +612,10 @@ void HostFPOp(alias cFPFun, size_t arity = 1)(
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
 
-    as.saveJITRegs();
-
     // Call the host function
+    // Note: we do not save the JIT regs because they are callee-saved
     as.ptr(scrRegs[0], &cFPFun);
     as.call(scrRegs[0]);
-
-    as.loadJITRegs();
 
     // Store the output value into the output operand
     as.movq(outOpnd, X86Opnd(XMM0));
@@ -3265,6 +3262,28 @@ void gen_obj_init_shape(
     // Get the type operand for the prototype argument
     auto tagOpnd = st.getTagOpnd(as, instr, 1);
 
+    // If property tag specialization is disabled
+    if (opts.shape_notagspec)
+    {
+        // Get the initial object shape
+        auto shape = vm.emptyShape.defProp(
+            vm,
+            "__proto__",
+            ValType(),
+            ATTR_CONST_NOT_ENUM,
+            null
+        );
+
+        // Set the object shape
+        as.ptr(scrRegs[0], shape);
+        as.setField(objOpnd.reg, obj_ofs_shape(null), scrRegs[0]);
+
+        // Propagate the object shape
+        st.setShape(cast(IRDstValue)instr.getArg(0), shape);
+
+        return;
+    }
+
     // If the prototype tag is a constant
     if (tagOpnd.isImm)
     {
@@ -3283,26 +3302,26 @@ void gen_obj_init_shape(
 
         // Propagate the object shape
         st.setShape(cast(IRDstValue)instr.getArg(0), shape);
+
+        return;
     }
-    else
-    {
-        // Spill the values live before this instruction
-        st.spillLiveBefore(as, instr);
 
-        as.saveJITRegs();
+    // Spill the values live before this instruction
+    st.spillLiveBefore(as, instr);
 
-        // Call the host function
-        // Note: we move objOpnd first to avoid corruption
-        as.mov(cargRegs[0].opnd(64), objOpnd);
-        as.mov(cargRegs[1].opnd(8), tagOpnd);
-        as.ptr(scrRegs[0], &op_obj_init_shape);
-        as.call(scrRegs[0]);
+    as.saveJITRegs();
 
-        as.loadJITRegs();
+    // Call the host function
+    // Note: we move objOpnd first to avoid corruption
+    as.mov(cargRegs[0].opnd(64), objOpnd);
+    as.mov(cargRegs[1].opnd(8), tagOpnd);
+    as.ptr(scrRegs[0], &op_obj_init_shape);
+    as.call(scrRegs[0]);
 
-        // Clear any known shape for this object
-        st.clearShape(cast(IRDstValue)instr.getArg(0));
-    }
+    as.loadJITRegs();
+
+    // Clear any known shape for this object
+    st.clearShape(cast(IRDstValue)instr.getArg(0));
 }
 
 /// Initializes an array to the initial shape

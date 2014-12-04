@@ -138,6 +138,12 @@ https://github.com/higgsjs/Higgs/blob/dls2014/source/jit/ops.d#L3497
   - For undef, set the action reg to some special value
     - Three possible actions
 
+TODO: try using read_shape, known shape for get_enum_tbl
+- can we finally beat V8 baseline on string-fasta?
+- need a different mode for when shapes not propagated?
+TODO: can we load directly from moffs64?
+TODO: remove VM from all runtime/object.d calls
+
 ------------------------------------------------------------------------------
 
 Computing Frontiers - Jan 16
@@ -150,13 +156,18 @@ ECOOP - Dec 21
 - Invite Erick to review
 - Disable shape prop? Can't
 
-TODO: try using read_shape, known shape for get_enum_tbl
-- can we finally beat V8 baseline on string-fasta?
-- need a different mode for when shapes not propagated?
+TODO: FP machine
+- x and y inputs, in [-1, 1]
+- function to compute an output from input coordinates
+- iterative computation
+- table of operators for each input
 
-TODO: can we load directly from moffs64?
-
-TODO: remove VM from all runtime/object.d calls
+Meeting:
+- sine function, almost as fast as TM, way faster than V8
+  - slowness of 3d-morph is from lack of inlining
+- binary-trees, 2x the type checks without typed shapes
+- binary-trees, initialized objects slower without typed shapes
+  - easily fixed, 3x faster
 
 TODO: re set-up results gathering for paper
 - nocomptime for perf
@@ -166,7 +177,33 @@ TODO: re set-up results gathering for paper
 TODO: fixup analysis
 - also, no longer need to force run every time?
 
-Meeting 2014-11-0X:
+TODO: inline caches... analysis has no choice?
+- store data table at end of block
+
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: access-binary-trees does slow shape init with no typed shapes
+./higgs --trace_instrs --stats --shape_notagspec --shape_nofptrspec benchmarks/sunspider/access-binary-trees.js
+
+[DONE] TODO: look into binary-trees, why so slow? (with shapes disabled)
+- half the type tests with shapes!
+
+[DONE] TODO: sin, try implementing with sine function
+- Add tests?
+- sin microbenchmark
+- Already almost as fast as TraceMonkey
+
+[DONE] Meeting 2014-11-0X:
 - Completed missing ES5 object model functions
   - seal, freeze, preventExtensions
 - Started to prepare talk for McGill & Boston
@@ -178,27 +215,6 @@ Meeting 2014-11-0X:
 - Other possibility: do interprocedural BBV first
   - should improve typed shape results significantly
   - make Higgs much more competitive
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 ------------------------------------------------------------------------------
 
