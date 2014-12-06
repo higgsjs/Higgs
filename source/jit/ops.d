@@ -3794,7 +3794,7 @@ void gen_obj_get_prop(
     }
 
     static const uint NUM_CACHE_ENTRIES = 4;
-    static const uint CACHE_ENTRY_SIZE = 8 + 4;
+    static const uint CACHE_ENTRY_SIZE = 8 + 4 + 1;
 
     extern (C) static void updateCache(
         IRInstr instr,
@@ -3809,17 +3809,31 @@ void gen_obj_get_prop(
         // Find the shape defining this property (if it exists)
         assert (objShape !is null);
         auto defShape = objShape.getDefShape(propName);
-        auto slotIdx = defShape.slotIdx;
+        auto slotIdx = defShape? defShape.slotIdx:0xFFFFFFFF;
 
+        // Determine the action index
+        int32_t actIdx;
+        if (!defShape)
+            actIdx = 2;
+        else if (defShape.isGetSet)
+            actIdx = 1;
+        else
+            actIdx = 0;
 
+        // Shift the current cache entries down
+        for (uint i = NUM_CACHE_ENTRIES - 1; i > 0; --i)
+        {
+            memcpy(
+                cachePtr + CACHE_ENTRY_SIZE * i,
+                cachePtr + CACHE_ENTRY_SIZE * (i-1),
+                CACHE_ENTRY_SIZE
+            );
+        }
 
-
-        // TODO: rewrite entries....
-        // But, what do we rewrite from?
-
-        // In theory, can shift current code?
-
-
+        // Write a new cache entry
+        *(cast(ObjShape*)(cachePtr +  0)) = objShape;
+        *(cast(uint32_t*)(cachePtr +  8)) = slotIdx;
+        *(cast(uint32_t*)(cachePtr + 12)) = actIdx;
 
         //writeln("returning");
     }
@@ -3889,21 +3903,31 @@ void gen_obj_get_prop(
         // Load the current address (inline cache address)
         as.lea(scrRegs[1], X86Mem(8, RIP, 5));
 
+        // Inline cache entries
+        // [mapIdx (pointer) | slotIdx (uint32_t) | actIdx (uint8_t) ]+
+        as.jmp(Label.AFTER_DATA);
+        for (uint i = 0; i < NUM_CACHE_ENTRIES; ++i)
+        {
+            as.writeInt(0xFFFFFFFFFFFFFFFF, 64);
+            as.writeInt(0x00000000, 32);
+            as.writeInt(0x00, 8);
+        }
+        as.label(Label.AFTER_DATA);
+
         // For each cache entry
         for (uint i = 0; i < NUM_CACHE_ENTRIES; ++i)
         {
-            // Note: if we get a match, we still need the object,
-            // but not its shape or the inline cache address
-            //
-            // mov r2, shape
-            // cmp objShape, r2
-            // cmove idxReg, slotIdx
-            // cmove actReg, action
-            // je MATCH
-            as.mov(scrRegs[2].opnd, X86Opnd(0xFFFFFFFFFFFFFF));
-            as.cmp(scrRegs[0].opnd, scrRegs[2].opnd);
-            as.cmove(scrRegs[0], X86Opnd(0xFFFFFFFF));
-            as.cmove(scrRegs[1], X86Opnd(0xFF));
+            auto shapeOpnd  = X86Opnd(64, scrRegs[1], CACHE_ENTRY_SIZE * i + 0);
+            auto slotIdxOpnd = X86Opnd(32, scrRegs[1], CACHE_ENTRY_SIZE * i + 8);
+            auto actIdxOpnd = X86Opnd(8, scrRegs[1], CACHE_ENTRY_SIZE * i + 12);
+
+            as.cmp(shapeOpnd, scrRegs[0].opnd(64));
+
+            // If it's a match, get the slot and action index
+            as.cmove(scrRegs[0], slotIdxOpnd);
+            as.cmove(scrRegs[1], actIdxOpnd);
+
+            // If this is a cache hit, we are done, stop
             as.je(Label.MATCH);
         }
 

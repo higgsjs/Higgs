@@ -168,17 +168,23 @@ Meeting:
 - binary-trees, 2x the type checks without typed shapes
 - binary-trees, initialized objects slower without typed shapes
   - easily fixed, 3x faster
+  - performance on benchmarks noticeably improved overall
 
 TODO: re set-up results gathering for paper
 - nocomptime for perf
 - normal run for type tests, comp time
 - explain how comp time is measured
 
+TODO: mode to disable shape dispatch, always use inline caches
+- --shape_novers?
+- should also disable shape tags and fptr spec then
+
 TODO: fixup analysis
 - also, no longer need to force run every time?
 
-TODO: inline caches... analysis has no choice?
-- store data table at end of block
+TODO: set_prop inline cache. analysis needs it
+
+TODO: enable use of get_prop inline caches, test
 
 
 
@@ -191,6 +197,8 @@ TODO: inline caches... analysis has no choice?
 
 
 
+[DONE] TODO: get_prop inline cache. analysis needs it
+- use data table
 
 [DONE] FIXME: access-binary-trees does slow shape init with no typed shapes
 ./higgs --trace_instrs --stats --shape_notagspec --shape_nofptrspec benchmarks/sunspider/access-binary-trees.js
