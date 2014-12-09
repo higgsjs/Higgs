@@ -179,12 +179,14 @@ TODO: mode to disable shape dispatch, always use inline caches
 - --shape_novers?
 - should also disable shape tags and fptr spec then
 
+TODO: test higgs with type analysis, maxvers=0
+
 TODO: fixup analysis
 - also, no longer need to force run every time?
 
 TODO: set_prop inline cache. analysis needs it
 
-TODO: enable use of get_prop inline caches, test
+TODO: test get_prop inline cache with benchmark.py
 
 
 
@@ -196,6 +198,13 @@ TODO: enable use of get_prop inline caches, test
 
 
 
+
+[DONE] FIXME: higgs fails to init, segfault
+./higgs --trace_instrs
+- inits with --nostdlib
+- objShape ptr invalid in updateCache
+
+[DONE] TODO: enable use of get_prop inline caches
 
 [DONE] TODO: get_prop inline cache. analysis needs it
 - use data table

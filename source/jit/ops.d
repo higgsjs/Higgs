@@ -3802,13 +3802,19 @@ void gen_obj_get_prop(
         ubyte* cachePtr
     )
     {
+        //writeln("entering updateCache");
+
         // Extract the property name, if known
         auto propName = instr.getArgStrCst(1);
         assert (propName !is null);
 
         // Find the shape defining this property (if it exists)
         assert (objShape !is null);
+        //writeln("objShape=", cast(void*)objShape);
+        //writeln("objShape.slotIdx=", objShape.slotIdx);
+        //writeln("getting def shape");
         auto defShape = objShape.getDefShape(propName);
+        //writeln("getting slot idx");
         auto slotIdx = defShape? defShape.slotIdx:0xFFFFFFFF;
 
         // Determine the action index
@@ -3819,6 +3825,8 @@ void gen_obj_get_prop(
             actIdx = 1;
         else
             actIdx = 0;
+
+        //writeln("shifting entries");
 
         // Shift the current cache entries down
         for (uint i = NUM_CACHE_ENTRIES - 1; i > 0; --i)
@@ -3835,7 +3843,7 @@ void gen_obj_get_prop(
         *(cast(uint32_t*)(cachePtr +  8)) = slotIdx;
         *(cast(uint32_t*)(cachePtr + 12)) = actIdx;
 
-        //writeln("returning");
+        //writeln("leaving updateCache");
     }
 
     static CodePtr getFallbackSub()
@@ -3894,11 +3902,11 @@ void gen_obj_get_prop(
         // Free an extra temporary register
         auto scrReg3 = st.freeReg(as, instr);
 
-        // Get the object shape
-        as.getField(scrRegs[0], objOpnd.reg, obj_ofs_shape(null));
-
         // Try or retry a cache lookup
         as.label(Label.RETRY);
+
+        // Get the object shape
+        as.getField(scrRegs[0], objOpnd.reg, obj_ofs_shape(null));
 
         // Load the current address (inline cache address)
         as.lea(scrRegs[1], X86Mem(8, RIP, 5));
@@ -4038,13 +4046,13 @@ void gen_obj_get_prop(
     // Extract the property name, if known
     auto propName = instr.getArgStrCst(1);
 
-    // If the object shape is unknown, use the slow path
-    if (!st.shapeKnown(objVal))
-        return gen_slow_path(ver, st, instr, as);
-
     // If the property name is unknown, use the slow path
     if (propName is null)
         return gen_slow_path(ver, st, instr, as);
+
+    // If the object shape is unknown, use the inline cache
+    if (!st.shapeKnown(objVal))
+        return gen_cache_path(ver, st, instr, as);
 
     // Get the object and defining shapes
     auto objShape = st.getShape(objVal);
