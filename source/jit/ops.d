@@ -3794,7 +3794,7 @@ void gen_obj_get_prop(
     }
 
     static const uint NUM_CACHE_ENTRIES = 4;
-    static const uint CACHE_ENTRY_SIZE = 8 + 4 + 1;
+    static const uint CACHE_ENTRY_SIZE = 8 + 4 + 2;
 
     extern (C) static void updateCache(
         IRInstr instr,
@@ -3816,9 +3816,10 @@ void gen_obj_get_prop(
         auto defShape = objShape.getDefShape(propName);
         //writeln("getting slot idx");
         auto slotIdx = defShape? defShape.slotIdx:0xFFFFFFFF;
+        assert (!defShape || !defShape.deleted);
 
         // Determine the action index
-        int32_t actIdx;
+        int16_t actIdx;
         if (!defShape)
             actIdx = 2;
         else if (defShape.isGetSet)
@@ -3841,7 +3842,7 @@ void gen_obj_get_prop(
         // Write a new cache entry
         *(cast(ObjShape*)(cachePtr +  0)) = objShape;
         *(cast(uint32_t*)(cachePtr +  8)) = slotIdx;
-        *(cast(uint32_t*)(cachePtr + 12)) = actIdx;
+        *(cast(uint16_t*)(cachePtr + 12)) = actIdx;
 
         //writeln("leaving updateCache");
     }
@@ -3918,22 +3919,22 @@ void gen_obj_get_prop(
         {
             as.writeInt(0xFFFFFFFFFFFFFFFF, 64);
             as.writeInt(0x00000000, 32);
-            as.writeInt(0x00, 8);
+            as.writeInt(0x0000, 16);
         }
         as.label(Label.AFTER_DATA);
 
         // For each cache entry
         for (uint i = 0; i < NUM_CACHE_ENTRIES; ++i)
         {
-            auto shapeOpnd  = X86Opnd(64, scrRegs[1], CACHE_ENTRY_SIZE * i + 0);
-            auto slotIdxOpnd = X86Opnd(32, scrRegs[1], CACHE_ENTRY_SIZE * i + 8);
-            auto actIdxOpnd = X86Opnd(8, scrRegs[1], CACHE_ENTRY_SIZE * i + 12);
+            auto shapeOpnd   = X86Opnd(64, scrRegs[1], CACHE_ENTRY_SIZE * i +  0);
+            auto slotIdxOpnd = X86Opnd(32, scrRegs[1], CACHE_ENTRY_SIZE * i +  8);
+            auto actIdxOpnd  = X86Opnd(16, scrRegs[1], CACHE_ENTRY_SIZE * i + 12);
 
             as.cmp(shapeOpnd, scrRegs[0].opnd(64));
 
             // If it's a match, get the slot and action index
-            as.cmove(scrRegs[0], slotIdxOpnd);
-            as.cmove(scrRegs[1], actIdxOpnd);
+            as.cmove(scrRegs[2].reg(32), slotIdxOpnd);
+            as.cmove(scrReg3.reg(16), actIdxOpnd);
 
             // If this is a cache hit, we are done, stop
             as.je(Label.MATCH);
@@ -3952,55 +3953,55 @@ void gen_obj_get_prop(
         as.jmp(Label.RETRY);
 
         // Inline cache match
-        // r0 = slotIdx
-        // r1 = action
+        // r2 = slotIdx
+        // r3 = action
         as.label(Label.MATCH);
 
         // Compare the action register with 2 (missing property)
-        as.cmp(scrRegs[1].opnd, X86Opnd(2));
+        as.cmp(scrReg3.opnd(16), X86Opnd(2));
         as.jne(Label.READ);
 
         // Set the output type tag to const (undefined)
-        as.mov(scrRegs[1].opnd(8), X86Opnd(Tag.CONST));
-        st.setOutTag(as, instr, scrRegs[1].reg(8));
+        as.mov(scrRegs[0].opnd(8), X86Opnd(Tag.CONST));
+        st.setOutTag(as, instr, scrRegs[0].reg(8));
 
         as.jmp(Label.DONE);
 
         // Property read
         as.label(Label.READ);
 
-        // Get the object capacity into r2
-        as.getField(scrRegs[2].reg(32), objOpnd.reg, obj_ofs_cap(null));
+        // Get the object capacity into r0
+        as.getField(scrRegs[0].reg(32), objOpnd.reg, obj_ofs_cap(null));
 
-        // Move the object operand into r3
-        as.mov(scrReg3.opnd, objOpnd);
+        // Move the object operand into r1
+        as.mov(scrRegs[1].opnd, objOpnd);
 
         // If the slot index is within capacity, skip the ext table code
-        as.cmp(scrRegs[2].opnd, scrRegs[0].opnd);
+        as.cmp(scrRegs[0].opnd, scrRegs[2].opnd);
         as.jg(Label.SKIP);
 
-        // Get the ext table pointer into r3
-        as.getField(scrReg3, scrReg3, obj_ofs_next(null));
+        // Get the ext table pointer into r1
+        as.getField(scrRegs[1].reg, scrRegs[1], obj_ofs_next(null));
 
-        // Get the ext table capacity into r2
-        as.getField(scrRegs[2].reg(32), scrReg3, obj_ofs_cap(null));
+        // Get the ext table capacity into r0
+        as.getField(scrRegs[0].reg(32), scrRegs[1], obj_ofs_cap(null));
 
         as.label(Label.SKIP);
 
         // Load the word value
-        auto wordMem = X86Opnd(64, scrReg3, OBJ_WORD_OFS, 8, scrRegs[0]);
+        auto wordMem = X86Opnd(64, scrRegs[1], OBJ_WORD_OFS, 8, scrRegs[2]);
         as.mov(outOpnd, wordMem);
 
         // Load the type value
-        as.add(scrReg3.opnd, scrRegs[0].opnd);
-        auto typeMem = X86Opnd(8, scrReg3, OBJ_WORD_OFS, 8, scrRegs[2]);
-        as.mov(scrRegs[1].opnd(8), typeMem);
-        st.setOutTag(as, instr, scrRegs[1].reg(8));
-
-        // Compare the action register with 0 (true branch)
-        as.cmp(scrRegs[1].opnd, X86Opnd(0));
+        as.add(scrRegs[1].opnd, scrRegs[2].opnd);
+        auto typeMem = X86Opnd(8, scrRegs[1], OBJ_WORD_OFS, 8, scrRegs[0]);
+        as.mov(scrRegs[0].opnd(8), typeMem);
+        st.setOutTag(as, instr, scrRegs[0].reg(8));
 
         as.label(Label.DONE);
+
+        // Compare the action register with 0 (true branch)
+        as.cmp(scrReg3.opnd(16), X86Opnd(0));
 
         auto branchT = getBranchEdge(instr.getTarget(0), st, false);
         auto branchF = getBranchEdge(instr.getTarget(1), st, false);

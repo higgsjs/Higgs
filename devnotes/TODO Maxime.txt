@@ -144,6 +144,12 @@ TODO: try using read_shape, known shape for get_enum_tbl
 TODO: can we load directly from moffs64?
 TODO: remove VM from all runtime/object.d calls
 
+TODO: FP machine
+- x and y inputs, in [-1, 1]
+- function to compute an output from input coordinates
+- iterative computation
+- table of operators for each input
+
 ------------------------------------------------------------------------------
 
 Computing Frontiers - Jan 16
@@ -156,12 +162,6 @@ ECOOP - Dec 21
 - Invite Erick to review
 - Disable shape prop? Can't
 
-TODO: FP machine
-- x and y inputs, in [-1, 1]
-- function to compute an output from input coordinates
-- iterative computation
-- table of operators for each input
-
 Meeting:
 - sine function, almost as fast as TM, way faster than V8
   - slowness of 3d-morph is from lack of inlining
@@ -169,24 +169,38 @@ Meeting:
 - binary-trees, initialized objects slower without typed shapes
   - easily fixed, 3x faster
   - performance on benchmarks noticeably improved overall
+- resized graphs
+- DYLA: should publish typed shapes work, even if early
+  - Worried that Moz or Truffle people might scoop us
 
 TODO: re set-up results gathering for paper
 - nocomptime for perf
 - normal run for type tests, comp time
 - explain how comp time is measured
 
-TODO: mode to disable shape dispatch, always use inline caches
-- --shape_novers?
-- should also disable shape tags and fptr spec then
-
 TODO: test higgs with type analysis, maxvers=0
 
 TODO: fixup analysis
 - also, no longer need to force run every time?
 
+TODO: mode to disable shape dispatch, always use inline caches
+- --shape_novers?
+- should also disable shape tags and fptr spec then
+
 TODO: set_prop inline cache. analysis needs it
 
-TODO: test get_prop inline cache with benchmark.py
+TODO: short blog post
+- ds now, worthwhile!
+- Slides, organized ideas, better examples,
+  - explain codegen
+  - recent work
+- Advice for ECOOP from Jan Vitek
+- Jan Vitek, Matthias creator of Racket, Olin Shivers
+- Actors, dependent types, compiler verification
+- PRL, very dynamic team at Northeastern
+- Rainy day, no cabs, almost missed flight home,
+  shared uber ride with dean (CSIT?)
+- Only regret: did not get to try clam chowder
 
 
 
@@ -198,6 +212,14 @@ TODO: test get_prop inline cache with benchmark.py
 
 
 
+
+
+
+[DONE] TODO: test get_prop inline cache with benchmark.py
+
+[DONE] FIXME: Assert fail (jit/ops.d@5033): get_sym: invalid lib rawptr value
+make; ./higgs test-runner.js
+- several errors in asm code
 
 [DONE] FIXME: higgs fails to init, segfault
 ./higgs --trace_instrs

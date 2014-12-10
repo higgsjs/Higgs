@@ -1111,6 +1111,8 @@ void writeCmov(
     cb.writeASM(mnem, dst, src);
 
     assert (src.isReg || src.isMem);
+    assert (dst.size >= 16, "invalid dst reg size in cmov");
+
     auto szPref = dst.size is 16;
     auto rexW = dst.size is 64;
 
