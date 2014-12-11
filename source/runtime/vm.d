@@ -561,6 +561,9 @@ class VM
     /// Get property fallback subroutine
     CodePtr getPropSub;
 
+    /// Set property fallback subroutine
+    CodePtr setPropSub;
+
     /// Space to save registers when calling into hosted code
     Word* regSave;
 

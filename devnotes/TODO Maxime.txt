@@ -178,18 +178,49 @@ TODO: re set-up results gathering for paper
 - normal run for type tests, comp time
 - explain how comp time is measured
 
-TODO: test higgs with type analysis, maxvers=0
+TODO: test higgs with type analysis, maxvers=0 and analysis
 
 TODO: fixup analysis
 - also, no longer need to force run every time?
 
-TODO: mode to disable shape dispatch, always use inline caches
-- --shape_novers?
-- should also disable shape tags and fptr spec then
+TODO: inform Marc of status
+- send sumVals function
+
+TODO: test higgs with type analysis, maxvers=0
+
+TODO: remove actIdx from set_prop cache code?
 
 TODO: set_prop inline cache. analysis needs it
+- does updateCache need the prop val to create the shape?
+- can avoid cache if shape tag versioning is disabled
+  - only use set_prop cache if shape_novers
 
-TODO: short blog post
+
+
+
+
+
+
+
+[DONE] TODO: with --shape_novers, disable shape capture codegen
+- disable capture_tag, capture_shape, read_shape (grep for it)
+- test performance
+- code size (bytes): 513785 (capture_tag disabled)
+- code size (bytes): 473918 (capture_shape disabled)
+- code size (bytes): 463485 (all disabled)
+
+[DONE] TODO: with --shape_novers, should prevent shapes from entering ValTypes
+- modify ValState
+- add assertions
+- works, 1.3M type tests as opposed to 675K
+- poor performance, need set_prop cache!
+- code size (bytes): 515782 (novers)
+
+[DONE] TODO: mode to disable shape dispatch, always use inline caches
+- --shape_novers
+- also disable shape tags and fptr spec then
+
+[DONE] TODO: short blog post
 - ds now, worthwhile!
 - Slides, organized ideas, better examples,
   - explain codegen
@@ -198,22 +229,6 @@ TODO: short blog post
 - Jan Vitek, Matthias creator of Racket, Olin Shivers
 - Actors, dependent types, compiler verification
 - PRL, very dynamic team at Northeastern
-- Rainy day, no cabs, almost missed flight home,
-  shared uber ride with dean (CSIT?)
-- Only regret: did not get to try clam chowder
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: test get_prop inline cache with benchmark.py
 

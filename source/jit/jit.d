@@ -155,7 +155,12 @@ struct ValState
     bool tagKnown() const { return type.tagKnown; }
     Tag tag() const { assert (tagKnown); return type.tag; }
     bool shapeKnown() const { return type.shapeKnown; }
-    ObjShape shape() const { return cast(ObjShape)type.shape; }
+
+    ObjShape shape() const 
+    { 
+        assert (!opts.shape_novers || !type.shapeKnown);
+        return cast(ObjShape)type.shape;
+    }
 
     /// Get a word operand for this value
     X86Opnd getWordOpnd(size_t numBits, StackIdx stackIdx = StackIdx.max) const
@@ -200,10 +205,14 @@ struct ValState
     {
         assert (!isConst);
 
+        if (opts.shape_novers)
+            return cast(ValState)this;
+
         ValState val = cast(ValState)this;
         val.type.shape = shape;
         val.type.shapeKnown = true;
         val.type.fptrKnown = false;
+
         return val;
     }
 
@@ -214,6 +223,14 @@ struct ValState
 
         ValState val = cast(ValState)this;
         val.type = cast(ValType)type;
+
+        if (opts.shape_novers)
+        {
+            val.type.shape = null;
+            val.type.shapeKnown = false;
+            val.type.fptrKnown = false;
+        }
+
         return val;
     }
 

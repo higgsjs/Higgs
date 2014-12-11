@@ -307,6 +307,20 @@ void optIR(IRFunction fun)
                     continue INSTR_LOOP;
                 }
 
+                // If this is a shape capture instruction
+                // and shape versioning is disabled
+                if (op == &CAPTURE_SHAPE && opts.shape_novers ||
+                    op == &CAPTURE_TAG && opts.shape_notagspec)
+                {
+                    auto desc = instr.getTarget(1);
+                    auto jumpInstr = block.addInstr(new IRInstr(&JUMP));
+                    auto newDesc = jumpInstr.setTarget(0, desc.target);
+                    foreach (arg; desc.args)
+                        newDesc.setPhiArg(cast(PhiNode)arg.owner, arg.value);
+                    delInstr(instr);
+                    continue INSTR_LOOP;
+                }
+
                 // Constant folding on is_int32
                 if (op == &IS_INT32)
                 {
