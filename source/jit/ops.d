@@ -3453,7 +3453,7 @@ void gen_obj_set_prop(
     }
 
     static const uint NUM_CACHE_ENTRIES = 4;
-    static const uint CACHE_ENTRY_SIZE = 8 + 4 + 2;
+    static const uint CACHE_ENTRY_SIZE = 8 + 4 + 8;
 
     extern (C) static void updateCache(
         IRInstr instr,
@@ -3461,33 +3461,63 @@ void gen_obj_set_prop(
         ubyte* cachePtr
     )
     {
-        //writeln("entering updateCache");
+        writeln("entering updateCache");
 
         // Extract the property name, if known
         auto propName = instr.getArgStrCst(1);
         assert (propName !is null);
 
-        /*
-        // Find the shape defining this property (if it exists)
-        assert (objShape !is null);
-        //writeln("objShape=", cast(void*)objShape);
-        //writeln("objShape.slotIdx=", objShape.slotIdx);
-        //writeln("getting def shape");
-        auto defShape = objShape.getDefShape(propName);
-        //writeln("getting slot idx");
-        auto slotIdx = defShape? defShape.slotIdx:0xFFFFFFFF;
-        assert (!defShape || !defShape.deleted);
+        uint32_t slotIdx;
 
-        // Determine the action index
-        int16_t actIdx;
-        if (!defShape)
-            actIdx = 2;
-        else if (defShape.isGetSet)
-            actIdx = 1;
+        ObjShape newShape = objShape;
+
+        // If the object is not extensible
+        if (!objShape.extensible)
+        {
+            // Jump to the true branch without adding the property
+            slotIdx = -1;
+        }
         else
-            actIdx = 0;
+        {
+            // Try a lookup for an existing property
+            assert (objShape !is null);
+            //writeln("objShape=", cast(void*)objShape);
+            //writeln("objShape.slotIdx=", objShape.slotIdx);
+            //writeln("getting def shape");
+            auto defShape = objShape.getDefShape(propName);
 
-        //writeln("shifting entries");
+            // If the defining shape was not found
+            if (defShape is null)
+            {
+                // Create a new shape for the property
+                defShape = objShape.defProp(
+                    vm,
+                    propName,
+                    ValType(),
+                    ATTR_DEFAULT,
+                    null
+                );
+
+                newShape = defShape;
+            }
+            else if (!defShape.writable)
+            {
+                // Jump to the true branch without writing the property
+                slotIdx = -1;
+            }
+            else if (defShape.isGetSet)
+            {
+                // Jump to the false branch
+                slotIdx = -2;
+            }
+            else
+            {
+                // Get the property slot index
+                slotIdx = defShape.slotIdx;
+            }
+        }
+
+        writeln("shifting entries");
 
         // Shift the current cache entries down
         for (uint i = NUM_CACHE_ENTRIES - 1; i > 0; --i)
@@ -3502,49 +3532,9 @@ void gen_obj_set_prop(
         // Write a new cache entry
         *(cast(ObjShape*)(cachePtr +  0)) = objShape;
         *(cast(uint32_t*)(cachePtr +  8)) = slotIdx;
-        *(cast(uint16_t*)(cachePtr + 12)) = actIdx;
-        */
+        *(cast(ObjShape*)(cachePtr + 12)) = newShape;
 
-        //writeln("leaving updateCache");
-    }
-
-    static CodePtr getFallbackSub()
-    {
-        if (vm.setPropSub)
-            return vm.setPropSub;
-
-        auto as = vm.subsHeap;
-        vm.setPropSub = as.getAddress(as.getWritePos);
-
-        // Save the JIT and alloc registers
-        as.saveJITRegs();
-        foreach (reg; allocRegs)
-            as.push(reg);
-        if (allocRegs.length % 2 != 0)
-            as.push(allocRegs[0]);
-
-        // Set the argument registers
-        as.mov(cargRegs[0], scrRegs[2]);
-        as.mov(cargRegs[1], scrRegs[0]);
-        as.mov(cargRegs[2], scrRegs[1]);
-
-        // Call the host fallback code
-        as.ptr(scrRegs[0], &updateCache);
-        as.call(scrRegs[0].opnd);
-
-        // Restore the scratch, JIT and alloc registers
-        if (allocRegs.length % 2 != 0)
-            as.pop(allocRegs[0]);
-        foreach_reverse (reg; allocRegs)
-            as.pop(reg);
-        as.loadJITRegs();
-
-        // Return to the point of call
-        as.ret();
-
-        // Link the labels in this subroutine
-        as.linkLabels();
-        return vm.setPropSub;
+        writeln("leaving updateCache");
     }
 
     static void gen_cache_path(
@@ -3554,13 +3544,13 @@ void gen_obj_set_prop(
         CodeBlock as
     )
     {
-        // Get the object operand
         auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
         assert (objOpnd.isReg);
 
-        // TODO: get value opnd, value type?
+        // Spill the values live before this instruction
+        st.spillLiveBefore(as, instr);
 
-        // Free an extra temporary register
+        // Get extra temporary registers
         auto scrReg3 = st.freeReg(as, instr);
 
         // Try or retry a cache lookup
@@ -3572,30 +3562,31 @@ void gen_obj_set_prop(
         // Load the current address (inline cache address)
         as.lea(scrRegs[1], X86Mem(8, RIP, 5));
 
-        /*
         // Inline cache entries
-        // [mapIdx (pointer) | slotIdx (uint32_t) | actIdx (uint8_t) ]+
+        // [objShape (pointer) | slotIdx (uint32_t) | newShape (pointer) ]+
         as.jmp(Label.AFTER_DATA);
         for (uint i = 0; i < NUM_CACHE_ENTRIES; ++i)
         {
             as.writeInt(0xFFFFFFFFFFFFFFFF, 64);
             as.writeInt(0x00000000, 32);
-            as.writeInt(0x0000, 16);
+            as.writeInt(0xFFFFFFFFFFFFFFFF, 64);
         }
         as.label(Label.AFTER_DATA);
 
         // For each cache entry
         for (uint i = 0; i < NUM_CACHE_ENTRIES; ++i)
         {
-            auto shapeOpnd   = X86Opnd(64, scrRegs[1], CACHE_ENTRY_SIZE * i +  0);
-            auto slotIdxOpnd = X86Opnd(32, scrRegs[1], CACHE_ENTRY_SIZE * i +  8);
-            auto actIdxOpnd  = X86Opnd(16, scrRegs[1], CACHE_ENTRY_SIZE * i + 12);
+            auto objShapeOpnd = X86Opnd(64, scrRegs[1], CACHE_ENTRY_SIZE * i +  0);
+            auto slotIdxOpnd  = X86Opnd(32, scrRegs[1], CACHE_ENTRY_SIZE * i +  8);
+            auto newShapeOpnd = X86Opnd(64, scrRegs[1], CACHE_ENTRY_SIZE * i + 12);
 
-            as.cmp(shapeOpnd, scrRegs[0].opnd(64));
+            as.cmp(objShapeOpnd, scrRegs[0].opnd(64));
 
             // If it's a match, get the slot and action index
             as.cmove(scrRegs[2].reg(32), slotIdxOpnd);
-            as.cmove(scrReg3.reg(16), actIdxOpnd);
+
+            // If it's a match, get the slot and action index
+            as.cmove(scrReg3, newShapeOpnd);
 
             // If this is a cache hit, we are done, stop
             as.je(Label.MATCH);
@@ -3605,31 +3596,27 @@ void gen_obj_set_prop(
         // r0 = shape ptr
         // r1 = cache ptr
         // r2 = instr
-        auto updateCacheSub = getFallbackSub();
-        as.ptr(scrRegs[2], instr);
-        as.ptr(scrReg3, updateCacheSub);
-        as.call(scrReg3);
+        as.mov(cargRegs[0], scrRegs[2]);
+        as.mov(cargRegs[1], scrRegs[0]);
+        as.mov(cargRegs[2], scrRegs[1]);
+        as.ptr(scrReg3, &updateCache);
+        as.call(scrReg3.opnd);
 
         // The inline cache is updated, retry the lookup
         as.jmp(Label.RETRY);
 
         // Inline cache match
-        // r2 = slotIdx
-        // r3 = action
         as.label(Label.MATCH);
 
-        // Compare the action register with 2 (missing property)
-        as.cmp(scrReg3.opnd(16), X86Opnd(2));
-        as.jne(Label.READ);
+        // Check if this is a non-writable property or a setter
+        as.cmp(scrRegs[2].opnd(32), X86Opnd(0));
+        as.jl(Label.DONE);
 
-        // Set the output type tag to const (undefined)
-        as.mov(scrRegs[0].opnd(8), X86Opnd(Tag.CONST));
-        st.setOutTag(as, instr, scrRegs[0].reg(8));
-
-        as.jmp(Label.DONE);
-
-        // Property read
-        as.label(Label.READ);
+        // Register mapping:
+        // r0 = capacity
+        // r1 = object
+        // r2 = slotIdx
+        // r3 = newShape
 
         // Get the object capacity into r0
         as.getField(scrRegs[0].reg(32), objOpnd.reg, obj_ofs_cap(null));
@@ -3649,21 +3636,55 @@ void gen_obj_set_prop(
 
         as.label(Label.SKIP);
 
-        // Load the word value
-        auto wordMem = X86Opnd(64, scrRegs[1], OBJ_WORD_OFS, 8, scrRegs[2]);
-        as.mov(outOpnd, wordMem);
+        // Register mapping:
+        // r0 = capacity
+        // r1 = object
+        // r2 = slotIdx
 
-        // Load the type value
+        // If the slot index is within capacity, skip the host write call
+        as.cmp(scrRegs[0].opnd, scrRegs[2].opnd);
+        as.jg(Label.WRITE);
+
+        // Call the host set prop function
+        as.saveJITRegs();
+        as.push(scrRegs[2]);
+        as.push(scrRegs[2]);
+        as.ptr(cargRegs[0], instr);
+        as.ptr(scrRegs[0], &op_shape_set_prop);
+        as.call(scrRegs[0]);
+        as.pop(scrRegs[2]);
+        as.pop(scrRegs[2]);
+        as.loadJITRegs();
+
+        as.jmp(Label.DONE);
+
+        as.label(Label.WRITE);
+
+        // Update the object shape
+        as.setField(objOpnd.reg, obj_ofs_shape(null), scrReg3);
+
+        // Register mapping:
+        // r0 = capacity
+        // r1 = object
+        // r2 = slotIdx
+        // r3 = value
+
+        auto valOpnd = st.getWordOpnd(as, instr, 2, 64, scrReg3.opnd, true);
+        auto tagOpnd = st.getTagOpnd(as, instr, 2, X86Opnd.NONE, true);
+
+        // Write the word value
+        auto wordMem = X86Opnd(64, scrRegs[1], OBJ_WORD_OFS, 8, scrRegs[2]);
+        as.mov(wordMem, valOpnd);
+
+        // Write the type value
         as.add(scrRegs[1].opnd, scrRegs[2].opnd);
         auto typeMem = X86Opnd(8, scrRegs[1], OBJ_WORD_OFS, 8, scrRegs[0]);
-        as.mov(scrRegs[0].opnd(8), typeMem);
-        st.setOutTag(as, instr, scrRegs[0].reg(8));
+        as.genMove(typeMem, tagOpnd, scrRegs[0].opnd(8));
 
         as.label(Label.DONE);
-        */
 
-        // Compare the action register with 0 (true branch)
-        as.cmp(scrReg3.opnd(16), X86Opnd(0));
+        // Check if this is a non-writable property (-1) or a setter (-2)
+        as.cmp(scrRegs[2].opnd(32), X86Opnd(0));
 
         auto branchT = getBranchEdge(instr.getTarget(0), st, false);
         auto branchF = getBranchEdge(instr.getTarget(1), st, false);
@@ -3685,15 +3706,15 @@ void gen_obj_set_prop(
                 final switch (shape)
                 {
                     case BranchShape.NEXT0:
-                    jne32Ref(as, vm, block, target1, 1);
+                    jl32Ref(as, vm, block, target1, 1);
                     break;
 
                     case BranchShape.NEXT1:
-                    je32Ref(as, vm, block, target0, 0);
+                    jge32Ref(as, vm, block, target0, 0);
                     break;
 
                     case BranchShape.DEFAULT:
-                    je32Ref(as, vm, block, target0, 0);
+                    jge32Ref(as, vm, block, target0, 0);
                     jmp32Ref(as, vm, block, target1, 1);
                 }
             }
@@ -3710,13 +3731,20 @@ void gen_obj_set_prop(
     // Extract the property name, if known
     auto propName = instr.getArgStrCst(1);
 
-    // If the object shape is unknown, use the slow path
-    if (!st.shapeKnown(objVal))
-        return gen_slow_path(ver, st, instr, as);
-
     // If the property name is unknown, use the slow path
     if (propName is null)
         return gen_slow_path(ver, st, instr, as);
+
+    // If the object shape is unknown
+    if (!st.shapeKnown(objVal))
+    {
+        // If shape versioning is disabled, use an inline cache
+        if (opts.shape_novers)
+            return gen_cache_path(ver, st, instr, as);
+
+        // Use the slow path
+        return gen_slow_path(ver, st, instr, as);
+    }
 
     // Get the type for the property value
     auto valType = st.getType(propVal).propType;

@@ -157,6 +157,16 @@ Computing Frontiers - Jan 16
 - More lazyness, future JITs
 - Submit no matter what
 
+DYLA - typed shapes paper
+- can often know at compile time if obj needs to be extended or not
+  - simplifies spill/GC/bailout issue
+  - show control-flow diagram of work needing to be done for read and write
+- can often know at compile time if obj shape needs to be updated or not
+
+TODO: remove vm field of IRFunction
+
+------------------------------------------------------------------------------
+
 ECOOP - Dec 21
 - Invite Baptiste to review
 - Invite Erick to review
@@ -166,12 +176,13 @@ Meeting:
 - sine function, almost as fast as TM, way faster than V8
   - slowness of 3d-morph is from lack of inlining
 - binary-trees, 2x the type checks without typed shapes
-- binary-trees, initialized objects slower without typed shapes
-  - easily fixed, 3x faster
-  - performance on benchmarks noticeably improved overall
 - resized graphs
 - DYLA: should publish typed shapes work, even if early
-  - Worried that Moz or Truffle people might scoop us
+  - Moz or Truffle people might scoop us
+
+TODO: inline cache, may be able to further optimize global prop access
+- statically resolve prop idx, avoid capacity checks
+- bitwise-and is all global accesses
 
 TODO: re set-up results gathering for paper
 - nocomptime for perf
@@ -188,19 +199,45 @@ TODO: inform Marc of status
 
 TODO: test higgs with type analysis, maxvers=0
 
-TODO: remove actIdx from set_prop cache code?
+Test Higgs init
 
-TODO: set_prop inline cache. analysis needs it
+Commit
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: enable set_prop cache, but only when shape_novers is set
+
+[DONE] TODO: make sure set_prop updates the object shape when needed
+- need the shape to do this, not just the slot idx
+- for now, just add extra scr reg
+
+[DONE] TODO: set_prop inline cache. analysis needs it
 - does updateCache need the prop val to create the shape?
 - can avoid cache if shape tag versioning is disabled
   - only use set_prop cache if shape_novers
-
-
-
-
-
-
-
+- May need to extend obj...
+  - no choice but to call slow path?
+  - GC, spilling?
+- Give this problem more thought
+- Lookup shape, get slot idx
+- Could make it mismatch if obj cap insufficient?
+- Can check if property is new by comparing obj shape slot idx vs idx
+- Idea: compare shape, then slotIdx <= max(obj shape idx, cap) for match
+  - don't retry lookup
+  - do write in updateCache
+  - updateCache does soft spills
+- Can actually compare obj cap in more sophisticated manner?
+  - For simplicity, do match normally
+  - Then check cap, and if mismatch, jump back to updateCache?
+  - or just have two calls***
+- Don't forget to update the object shape if needed
 
 [DONE] TODO: with --shape_novers, disable shape capture codegen
 - disable capture_tag, capture_shape, read_shape (grep for it)

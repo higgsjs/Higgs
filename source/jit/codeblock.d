@@ -76,6 +76,7 @@ enum Label : size_t
     VALID,
     MATCH,
     READ,
+    WRITE,
     THROW,
     FALLBACK,
     BAILOUT,
