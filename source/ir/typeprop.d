@@ -135,6 +135,9 @@ class TypeProp
         assert (argIdx < argTypes.length);
         auto typeVal = argTypes[argIdx];
 
+        if (typeVal == UNINF)
+            writeln(instr.block.fun);
+
         assert (
             typeVal != UNINF,
             format(
@@ -168,7 +171,7 @@ class TypeProp
             "analysis running while execution time measured"
         );
 
-        //writeln("running type prop on: ", fun.getName);
+        writeln("running type prop on: ", fun.getName);
 
         // List of CFG edges to be processed
         BranchEdge[] cfgWorkList;
@@ -197,12 +200,6 @@ class TypeProp
 
             // Get the constant value pair for this IR value
             auto cstVal = val.cstValue();
-
-            if (cstVal == TRUE)
-                return TypeSet(true);
-            if (cstVal == FALSE)
-                return TypeSet(false);
-
             return TypeSet(cstVal.tag);
         }
 
@@ -270,6 +267,8 @@ class TypeProp
             if (cast(FunParam)phi)
                 return ANY;
 
+            //writeln("evaluating phi: ", phi);
+
             TypeSet curType = UNINF;
 
             // For each incoming branch
@@ -286,7 +285,11 @@ class TypeProp
 
                 // If any arg is still unevaluated, the current value is unevaluated
                 if (argType == UNINF)
+                {
+                    //writeln("arg val: ", argVal);
+                    //writeln("uninf from:\n", edge.branch.block);
                     return UNINF;
+                }
 
                 // Merge the argument type with the current type
                 curType = curType.merge(argType);
@@ -299,6 +302,8 @@ class TypeProp
         /// Evaluate an instruction
         auto evalInstr(IRInstr instr, TypeMap typeMap)
         {
+            //writeln(instr);
+
             auto op = instr.opcode;
 
             // Get the type for argument 0
@@ -364,11 +369,12 @@ class TypeProp
                 return TypeSet(Tag.STRING);
             }
 
-            // Get interpreter objects
+            // Get root VM objects
             if (op is &GET_GLOBAL_OBJ ||
                 op is &GET_OBJ_PROTO ||
                 op is &GET_ARR_PROTO ||
-                op is &GET_FUN_PROTO)
+                op is &GET_FUN_PROTO ||
+                op is &GET_STR_PROTO )
             {
                 return TypeSet(Tag.OBJECT);
             }
@@ -425,6 +431,12 @@ class TypeProp
                 return TypeSet(Tag.FLOAT64);
             }
 
+            // Pointer arithmetic
+            if (op is &ADD_PTR_I32)
+            {
+                return arg0Type;
+            }
+
             // int to float
             if (op is &I32_TO_F64)
             {
@@ -471,6 +483,12 @@ class TypeProp
                 return TypeSet(Tag.REFPTR);
             }
 
+            // Load string
+            if (op is &LOAD_STRING)
+            {
+                return TypeSet(Tag.STRING);
+            }
+
             // Load funptr
             if (op is &LOAD_FUNPTR)
             {
@@ -499,6 +517,12 @@ class TypeProp
             if (op is &ALLOC_STRING)
             {
                 return TypeSet(Tag.STRING);
+            }
+
+            // Heap alloc rope
+            if (op is &ALLOC_ROPE)
+            {
+                return TypeSet(Tag.ROPE);
             }
 
             // Heap alloc object
@@ -531,6 +555,52 @@ class TypeProp
                 return TypeSet(Tag.FLOAT64);
             }
 
+            // Get shape attributes
+            if (op is &SHAPE_GET_ATTRS)
+            {
+                return TypeSet(Tag.INT32);
+            }
+
+            if (op is &SHAPE_ENUM_TBL)
+            {
+                return TypeSet(Tag.REFPTR);
+            }
+
+            // Get property shape
+            if (op is &OBJ_PROP_SHAPE)
+            {
+                return TypeSet(Tag.SHAPEPTR);
+            }
+
+            if (op is &OBJ_GET_PROTO)
+            {
+                return ANY;
+            }
+
+            if (op is &OBJ_GET_PROP)
+            {
+                queueSucc(instr.getTarget(0), typeMap, instr, ANY);
+                queueSucc(instr.getTarget(1), typeMap, instr, ANY);
+
+                return ANY;
+            }
+
+            if (op is &OBJ_SET_PROP)
+            {
+                queueSucc(instr.getTarget(0), typeMap, instr, ANY);
+                queueSucc(instr.getTarget(1), typeMap, instr, ANY);
+
+                return ANY;
+            }
+
+            if (op is &BREAK)
+            {
+                queueSucc(instr.getTarget(0), typeMap, instr, ANY);
+                queueSucc(instr.getTarget(1), typeMap, instr, ANY);
+
+                return ANY;
+            }
+
             // Comparison operations
             if (
                 op is &EQ_I8 ||
@@ -552,7 +622,6 @@ class TypeProp
                 op is &NE_REFPTR ||
                 op is &EQ_RAWPTR ||
                 op is &NE_RAWPTR
-
             )
             {
                 // If our only use is an immediately following if_true
@@ -616,6 +685,12 @@ class TypeProp
                 return IsTypeOp!(Tag.STRING)();
             }
 
+            // is_string
+            if (op is &IS_ROPE)
+            {
+                return IsTypeOp!(Tag.ROPE)();
+            }
+
             // is_rawptr
             if (op is &IS_RAWPTR)
             {
@@ -660,6 +735,8 @@ class TypeProp
             // Operations producing no output
             if (op.output is false)
             {
+                //writeln(instr);
+
                 // Return the unknown type
                 return ANY;
             }
@@ -746,7 +823,7 @@ class TypeProp
             visitBlock(block);
         }
 
-        //writeln("type prop done");
+        writeln("type prop done");
     }
 }
 

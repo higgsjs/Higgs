@@ -196,20 +196,26 @@ TODO: inline cache, may be able to further optimize global prop access
 - bitwise-and is all global accesses
 - could reduce num cache entries to 1
 
+TODO: obj_init_shape, arr_init_shape should set type tag for arg
+TODO: review type analysis code
+
+TODO: investigate richards benchmark awful slowness
+- increase min obj size?
+
 TODO: re set-up results gathering for paper
 - nocomptime for perf
 - normal run for type tests, comp time
 - explain how comp time is measured
 
-TODO: test higgs with type analysis, maxvers=0 and analysis
+TODO: test higgs with type analysis, maxvers=0,1,5 and analysis
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=0 --typeprop"
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=1"
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=5"
+TODO: analysis
 
-TODO: fixup analysis
-- also, no longer need to force run every time?
+TODO: test that specialization happens with analysis
 
-TODO: inform Marc of status
-- send sumVals function
-
-TODO: test higgs with type maxvers=0,1,5
+TODO: test analysis on benchmark.py
 
 commit
 
@@ -219,7 +225,28 @@ commit
 
 
 
+[DONE] TODO: get higgs init working with analysis
+make; ./higgs --maxvers=0 --typeprop
 
+[DONE] FIXME: Assertion failed (ir/typeprop.d@138): type uninf for:
+$0 = is_const $39 in:
+Object_defineProperty(355C)
+- Phi result is uninf
+  - All the args are constants
+- issue from "false" type set
+
+[DONE] TODO: inform Marc of status
+- send sumVals function
+- inline caches pour get_prop et set_prop implementes
+- benchmarks fonctionnent tous avec maxvers=0,1,5,inf
+
+[DONE] TODO: test perf against V8, TM
+- not as awful as expected, except for richards
+
+[DONE] TODO: test higgs with type maxvers=0,1,5
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=0"
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=1"
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=5"
 
 [DONE] TODO: test benchmark.py
 ./benchmark.py --vm_cmd="./higgs --stats --shape_novers"
