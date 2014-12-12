@@ -162,6 +162,10 @@ DYLA - typed shapes paper
   - simplifies spill/GC/bailout issue
   - show control-flow diagram of work needing to be done for read and write
 - can often know at compile time if obj shape needs to be updated or not
+- our system allows a unified model, global object is a regular object
+- implement the inline cache self_hosted
+  - much easier to debug and optimize, generate compact code
+  - use source-level "ifdef", $ir_get_opt("shape_novers")
 
 TODO: remove vm field of IRFunction
 
@@ -179,10 +183,18 @@ Meeting:
 - resized graphs
 - DYLA: should publish typed shapes work, even if early
   - Moz or Truffle people might scoop us
+- Idea: for complete system, whole-program analysis is complicated
+  - could emulate "perfect analysis" through profiling
+  - eliminate all type tests that always go the same way
+  - use instr ids? must remove stochastic behavior
+
+TODO: alloc cache data separately?
+- may want to create paper branch
 
 TODO: inline cache, may be able to further optimize global prop access
 - statically resolve prop idx, avoid capacity checks
 - bitwise-and is all global accesses
+- could reduce num cache entries to 1
 
 TODO: re set-up results gathering for paper
 - nocomptime for perf
@@ -197,11 +209,9 @@ TODO: fixup analysis
 TODO: inform Marc of status
 - send sumVals function
 
-TODO: test higgs with type analysis, maxvers=0
+TODO: test higgs with type maxvers=0,1,5
 
-Test Higgs init
-
-Commit
+commit
 
 
 
@@ -211,6 +221,19 @@ Commit
 
 
 
+[DONE] TODO: test benchmark.py
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers"
+
+[DONE] FIXME: deltablue fails with set_prop cache only
+- Seg faults on a get prop, invalid obj ptr
+- A set_prop somewhere is causing it
+- Making it so the host set prop is always called doesn't help?
+- getWordOpnd for value allows value to get corrupted
+
+[DONE] FIXME: set_prop, call to non-function, incorrect write?
+
+[DONE] FIXME: set_prop "Object" fails
+- slotIdx 0 seems wrong
 
 [DONE] TODO: enable set_prop cache, but only when shape_novers is set
 

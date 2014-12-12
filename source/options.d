@@ -74,6 +74,7 @@ struct Options
     /// Maximum number of specialized versions to compile per basic block
     uint maxvers = 20;
 
+    /*
     /// Disable shape versioning and dispatch
     bool shape_novers = false;
 
@@ -82,6 +83,19 @@ struct Options
 
     /// Disable function pointer specialization in shapes
     bool shape_nofptrspec = false;
+    */
+
+    bool shape_novers = true;
+    bool shape_notagspec = true;
+    bool shape_nofptrspec = true;
+
+
+
+
+
+
+
+
 
     /// Disable peephole optimizations
     bool nopeephole = false;

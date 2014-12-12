@@ -3367,20 +3367,21 @@ void gen_obj_set_prop(
         auto strPtr = vm.getArgStr(instr, 1);
         auto valPair = vm.getArgVal(instr, 2);
 
-        auto propStr = extractWStr(strPtr);
+        auto propName = extractWStr(strPtr);
+        //writeln("propName=", propName);
 
         // Get the shape of the object
         auto objShape = cast(ObjShape)obj_get_shape(objPair.word.ptrVal);
         assert (objShape !is null);
 
         // Find the shape defining this property (if it exists)
-        auto defShape = objShape.getDefShape(propStr);
+        auto defShape = objShape.getDefShape(propName);
 
         // Set the property value
         setProp(
             vm,
             objPair,
-            propStr,
+            propName,
             valPair
         );
 
@@ -3461,14 +3462,18 @@ void gen_obj_set_prop(
         ubyte* cachePtr
     )
     {
-        writeln("entering updateCache");
+        //writeln("entering updateCache");
+
+        //writeln("objShape=", cast(void*)objShape);
+        //writeln("objShape.slotIdx=", objShape.slotIdx);
 
         // Extract the property name, if known
         auto propName = instr.getArgStrCst(1);
         assert (propName !is null);
 
-        uint32_t slotIdx;
+        //writeln("propName=", propName);
 
+        uint32_t slotIdx;
         ObjShape newShape = objShape;
 
         // If the object is not extensible
@@ -3481,9 +3486,6 @@ void gen_obj_set_prop(
         {
             // Try a lookup for an existing property
             assert (objShape !is null);
-            //writeln("objShape=", cast(void*)objShape);
-            //writeln("objShape.slotIdx=", objShape.slotIdx);
-            //writeln("getting def shape");
             auto defShape = objShape.getDefShape(propName);
 
             // If the defining shape was not found
@@ -3498,6 +3500,7 @@ void gen_obj_set_prop(
                     null
                 );
 
+                slotIdx = defShape.slotIdx;
                 newShape = defShape;
             }
             else if (!defShape.writable)
@@ -3517,7 +3520,7 @@ void gen_obj_set_prop(
             }
         }
 
-        writeln("shifting entries");
+        //writeln("slotIdx=", slotIdx);
 
         // Shift the current cache entries down
         for (uint i = NUM_CACHE_ENTRIES - 1; i > 0; --i)
@@ -3534,7 +3537,7 @@ void gen_obj_set_prop(
         *(cast(uint32_t*)(cachePtr +  8)) = slotIdx;
         *(cast(ObjShape*)(cachePtr + 12)) = newShape;
 
-        writeln("leaving updateCache");
+        //writeln("leaving updateCache");
     }
 
     static void gen_cache_path(
@@ -3580,12 +3583,10 @@ void gen_obj_set_prop(
             auto slotIdxOpnd  = X86Opnd(32, scrRegs[1], CACHE_ENTRY_SIZE * i +  8);
             auto newShapeOpnd = X86Opnd(64, scrRegs[1], CACHE_ENTRY_SIZE * i + 12);
 
-            as.cmp(objShapeOpnd, scrRegs[0].opnd(64));
+            as.cmp(objShapeOpnd, scrRegs[0].opnd);
 
-            // If it's a match, get the slot and action index
+            // If it's a match, get the slot new shape
             as.cmove(scrRegs[2].reg(32), slotIdxOpnd);
-
-            // If it's a match, get the slot and action index
             as.cmove(scrReg3, newShapeOpnd);
 
             // If this is a cache hit, we are done, stop
@@ -3595,12 +3596,15 @@ void gen_obj_set_prop(
         // Call the fallback sub to update the inline cache
         // r0 = shape ptr
         // r1 = cache ptr
-        // r2 = instr
-        as.mov(cargRegs[0], scrRegs[2]);
+        as.push(objOpnd.reg);
+        as.push(objOpnd.reg);
+        as.ptr(cargRegs[0], instr);
         as.mov(cargRegs[1], scrRegs[0]);
         as.mov(cargRegs[2], scrRegs[1]);
-        as.ptr(scrReg3, &updateCache);
-        as.call(scrReg3.opnd);
+        as.ptr(scrRegs[0], &updateCache);
+        as.call(scrRegs[0].opnd);
+        as.pop(objOpnd.reg);
+        as.pop(objOpnd.reg);
 
         // The inline cache is updated, retry the lookup
         as.jmp(Label.RETRY);
@@ -3618,31 +3622,16 @@ void gen_obj_set_prop(
         // r2 = slotIdx
         // r3 = newShape
 
-        // Get the object capacity into r0
-        as.getField(scrRegs[0].reg(32), objOpnd.reg, obj_ofs_cap(null));
-
+        // FIXME: remove this
+        // - need to modify add of obj + slotIdx
         // Move the object operand into r1
         as.mov(scrRegs[1].opnd, objOpnd);
 
-        // If the slot index is within capacity, skip the ext table code
-        as.cmp(scrRegs[0].opnd, scrRegs[2].opnd);
-        as.jg(Label.SKIP);
-
-        // Get the ext table pointer into r1
-        as.getField(scrRegs[1].reg, scrRegs[1], obj_ofs_next(null));
-
-        // Get the ext table capacity into r0
-        as.getField(scrRegs[0].reg(32), scrRegs[1], obj_ofs_cap(null));
-
-        as.label(Label.SKIP);
-
-        // Register mapping:
-        // r0 = capacity
-        // r1 = object
-        // r2 = slotIdx
+        // Get the object capacity into r0
+        as.getField(scrRegs[0].reg(32), objOpnd.reg, obj_ofs_cap(null));
 
         // If the slot index is within capacity, skip the host write call
-        as.cmp(scrRegs[0].opnd, scrRegs[2].opnd);
+        as.cmp(scrRegs[0].opnd(32), scrRegs[2].opnd(32));
         as.jg(Label.WRITE);
 
         // Call the host set prop function
@@ -3669,7 +3658,7 @@ void gen_obj_set_prop(
         // r2 = slotIdx
         // r3 = value
 
-        auto valOpnd = st.getWordOpnd(as, instr, 2, 64, scrReg3.opnd, true);
+        auto valOpnd = st.getWordOpnd(as, instr, 2, 64, scrReg3.opnd, true, false);
         auto tagOpnd = st.getTagOpnd(as, instr, 2, X86Opnd.NONE, true);
 
         // Write the word value
@@ -3679,7 +3668,7 @@ void gen_obj_set_prop(
         // Write the type value
         as.add(scrRegs[1].opnd, scrRegs[2].opnd);
         auto typeMem = X86Opnd(8, scrRegs[1], OBJ_WORD_OFS, 8, scrRegs[0]);
-        as.genMove(typeMem, tagOpnd, scrRegs[0].opnd(8));
+        as.genMove(typeMem, tagOpnd, scrReg3.opnd(8));
 
         as.label(Label.DONE);
 
@@ -4199,6 +4188,9 @@ void gen_obj_get_prop(
         }
         as.label(Label.AFTER_DATA);
 
+        // Zero out upper half of slot idx reg
+        as.mov(scrRegs[2].opnd, X86Opnd(0));
+
         // For each cache entry
         for (uint i = 0; i < NUM_CACHE_ENTRIES; ++i)
         {
@@ -4260,6 +4252,7 @@ void gen_obj_get_prop(
         as.getField(scrRegs[1].reg, scrRegs[1], obj_ofs_next(null));
 
         // Get the ext table capacity into r0
+        as.mov(scrRegs[0].opnd, X86Opnd(0));
         as.getField(scrRegs[0].reg(32), scrRegs[1], obj_ofs_cap(null));
 
         as.label(Label.SKIP);
