@@ -166,6 +166,8 @@ DYLA - typed shapes paper
 - implement the inline cache self_hosted
   - much easier to debug and optimize, generate compact code
   - use source-level "ifdef", $ir_get_opt("shape_novers")
+- for global object, can determine prop idx, lower bound on global obj
+  size at compilation time
 
 TODO: remove vm field of IRFunction
 
@@ -188,8 +190,10 @@ Meeting:
   - eliminate all type tests that always go the same way
   - use instr ids? must remove stochastic behavior
 
-TODO: alloc cache data separately?
-- may want to create github branch for paper code
+TODO: return optimization?
+- generate the bailout path (inexact argument count) out of line
+  - do this at the ast-to-ir level, two return instructions
+  - return_fast vs return
 
 TODO: obj_init_shape, arr_init_shape should set type tag for arg
 - check if this improves results at all
@@ -197,30 +201,37 @@ TODO: obj_init_shape, arr_init_shape should set type tag for arg
 3.71M type tests with analysis
 
 Meeting:
+- Results gathering is all working
+- Optimized inline caches for global prop access, reduced code size
+- Asthetic fixes on paper
 - Remove maxvers=1 bar?
   - People sometimes confused because maxvers=1 has worse results than baseline
   - Graphs would be more readable
   - Interesting data point vs making our case, convincing people
 
-TODO: improve set_prop inline cache for global object
-
 TODO: review type analysis code
 
-TODO: re-test benchmarking configurations
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: improve set_prop inline cache for global object
+code size (bytes): 545471
+
+[DONE] TODO: cmov, does it always zero out the upper part?
+
+[DONE] TODO: re-test benchmarking configurations
 ./benchmark.py --vm_cmd="./higgs --stats --shape_novers"
 ./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=0"
 ./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=1"
 ./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=5"
 ./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=0 --typeprop"
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: improve get_prop inline cache for global object
 - statically resolve prop idx, avoid capacity checks

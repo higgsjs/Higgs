@@ -698,7 +698,6 @@ void LoadOp(size_t memSize, bool signed, Tag tag)(
     // The offset operand may be a register or an immediate
     auto opnd1 = st.getWordOpnd(as, instr, 1, 32, scrRegs[1].opnd(32), true);
 
-    //auto outOpnd = st.getOutOpnd(as, instr, 64);
     auto outOpnd = st.getOutOpnd(as, instr, (memSize < 64)? 32:64);
 
     // Create the memory operand
@@ -3454,6 +3453,7 @@ void gen_obj_set_prop(
     }
 
     static const uint NUM_CACHE_ENTRIES = 4;
+    static const uint NUM_GLOBAL_CACHE_ENTRIES = 2;
     static const uint CACHE_ENTRY_SIZE = 8 + 4 + 8;
 
     extern (C) static void updateCache(
@@ -3462,6 +3462,12 @@ void gen_obj_set_prop(
         ubyte* cachePtr
     )
     {
+        auto numEntries = (
+            (instr.getArg(0) is instr.block.fun.globalVal)?
+            NUM_CACHE_ENTRIES:
+            NUM_GLOBAL_CACHE_ENTRIES
+        );
+
         //writeln("entering updateCache");
 
         //writeln("objShape=", cast(void*)objShape);
@@ -3523,7 +3529,7 @@ void gen_obj_set_prop(
         //writeln("slotIdx=", slotIdx);
 
         // Shift the current cache entries down
-        for (uint i = NUM_CACHE_ENTRIES - 1; i > 0; --i)
+        for (uint i = numEntries - 1; i > 0; --i)
         {
             memcpy(
                 cachePtr + CACHE_ENTRY_SIZE * i,
@@ -3547,6 +3553,31 @@ void gen_obj_set_prop(
         CodeBlock as
     )
     {
+        auto numEntries = (
+            (instr.getArg(0) is instr.block.fun.globalVal)?
+            NUM_CACHE_ENTRIES:
+            NUM_GLOBAL_CACHE_ENTRIES
+        );
+
+        bool withinCap = false;
+
+        // If the this is a global property read
+        if (instr.getArg(0) is st.fun.globalVal)
+        {
+            auto propName = instr.getArgStrCst(1);
+            assert (propName !is null);
+
+            auto globalObj = st.fun.vm.globalObj.word.ptrVal;
+            auto objShape = cast(ObjShape)obj_get_shape(globalObj);
+            auto defShape = objShape.getDefShape(propName);
+
+            if (defShape !is null)
+            {
+                auto objCap = obj_get_cap(globalObj);
+                withinCap = defShape.slotIdx < objCap;
+            }
+        }
+
         auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
         assert (objOpnd.isReg);
 
@@ -3568,7 +3599,7 @@ void gen_obj_set_prop(
         // Inline cache entries
         // [objShape (pointer) | slotIdx (uint32_t) | newShape (pointer) ]+
         as.jmp(Label.AFTER_DATA);
-        for (uint i = 0; i < NUM_CACHE_ENTRIES; ++i)
+        for (uint i = 0; i < numEntries; ++i)
         {
             as.writeInt(0xFFFFFFFFFFFFFFFF, 64);
             as.writeInt(0x00000000, 32);
@@ -3577,10 +3608,10 @@ void gen_obj_set_prop(
         as.label(Label.AFTER_DATA);
 
         // Zero out upper half of slot idx reg
-        as.mov(scrRegs[2].opnd, X86Opnd(0));
+        //as.mov(scrRegs[2].opnd, X86Opnd(0));
 
         // For each cache entry
-        for (uint i = 0; i < NUM_CACHE_ENTRIES; ++i)
+        for (uint i = 0; i < numEntries; ++i)
         {
             auto objShapeOpnd = X86Opnd(64, scrRegs[1], CACHE_ENTRY_SIZE * i +  0);
             auto slotIdxOpnd  = X86Opnd(32, scrRegs[1], CACHE_ENTRY_SIZE * i +  8);
@@ -3625,33 +3656,36 @@ void gen_obj_set_prop(
         // r2 = slotIdx
         // r3 = newShape
 
-        // FIXME: remove this
-        // - need to modify add of obj + slotIdx
-        // Move the object operand into r1
-        as.mov(scrRegs[1].opnd, objOpnd);
-
         // Get the object capacity into r0
-        as.mov(scrRegs[0].opnd, X86Opnd(0));
+        //as.mov(scrRegs[0].opnd, X86Opnd(0));
         as.getField(scrRegs[0].reg(32), objOpnd.reg, obj_ofs_cap(null));
 
-        // If the slot index is within capacity, skip the host write call
-        as.cmp(scrRegs[0].opnd(32), scrRegs[2].opnd(32));
-        as.jg(Label.WRITE);
+        // If we don't know that the property is within capacity
+        if (!withinCap)
+        {
+            // Move the object operand into r1
+            as.mov(scrRegs[1].opnd, objOpnd);
+            objOpnd = scrRegs[1].opnd;
 
-        // Call the host set prop function
-        as.saveJITRegs();
-        as.push(scrRegs[2]);
-        as.push(scrRegs[2]);
-        as.ptr(cargRegs[0], instr);
-        as.ptr(scrRegs[0], &op_shape_set_prop);
-        as.call(scrRegs[0]);
-        as.pop(scrRegs[2]);
-        as.pop(scrRegs[2]);
-        as.loadJITRegs();
+            // If the slot index is within capacity, skip the host write call
+            as.cmp(scrRegs[0].opnd(32), scrRegs[2].opnd(32));
+            as.jg(Label.WRITE);
 
-        as.jmp(Label.DONE);
+            // Call the host set prop function
+            as.saveJITRegs();
+            as.push(scrRegs[2]);
+            as.push(scrRegs[2]);
+            as.ptr(cargRegs[0], instr);
+            as.ptr(scrRegs[0], &op_shape_set_prop);
+            as.call(scrRegs[0]);
+            as.pop(scrRegs[2]);
+            as.pop(scrRegs[2]);
+            as.loadJITRegs();
 
-        as.label(Label.WRITE);
+            as.jmp(Label.DONE);
+
+            as.label(Label.WRITE);
+        }
 
         // Update the object shape
         as.setField(objOpnd.reg, obj_ofs_shape(null), scrReg3);
@@ -3666,12 +3700,12 @@ void gen_obj_set_prop(
         auto tagOpnd = st.getTagOpnd(as, instr, 2, X86Opnd.NONE, true);
 
         // Write the word value
-        auto wordMem = X86Opnd(64, scrRegs[1], OBJ_WORD_OFS, 8, scrRegs[2]);
+        auto wordMem = X86Opnd(64, objOpnd.reg, OBJ_WORD_OFS, 8, scrRegs[2]);
         as.mov(wordMem, valOpnd);
 
         // Write the type value
-        as.add(scrRegs[1].opnd, scrRegs[2].opnd);
-        auto typeMem = X86Opnd(8, scrRegs[1], OBJ_WORD_OFS, 8, scrRegs[0]);
+        as.add(scrRegs[2].opnd, objOpnd);
+        auto typeMem = X86Opnd(8, scrRegs[2], OBJ_WORD_OFS, 8, scrRegs[0]);
         as.genMove(typeMem, tagOpnd, scrReg3.opnd(8));
 
         as.label(Label.DONE);
@@ -4225,7 +4259,7 @@ void gen_obj_get_prop(
         as.label(Label.AFTER_DATA);
 
         // Zero out upper half of slot idx reg
-        as.mov(scrRegs[2].opnd, X86Opnd(0));
+        //as.mov(scrRegs[2].opnd, X86Opnd(0));
 
         // For each cache entry
         for (uint i = 0; i < numEntries; ++i)
@@ -4275,7 +4309,7 @@ void gen_obj_get_prop(
         as.label(Label.READ);
 
         // Get the object capacity into r0
-        as.mov(scrRegs[0].opnd, X86Opnd(0));
+        //as.mov(scrRegs[0].opnd, X86Opnd(0));
         as.getField(scrRegs[0].reg(32), objOpnd.reg, obj_ofs_cap(null));
 
         // If we don't know that the property is within capacity
