@@ -191,33 +191,49 @@ Meeting:
 TODO: alloc cache data separately?
 - may want to create github branch for paper code
 
-TODO: inline cache, may be able to further optimize global prop access
-- statically resolve prop idx, avoid capacity checks
-- bitwise-and is all global accesses
-- could reduce num cache entries to 1
-
 TODO: obj_init_shape, arr_init_shape should set type tag for arg
+- check if this improves results at all
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=0 --typeprop"
+3.71M type tests with analysis
+
+Meeting:
+- Remove maxvers=1 bar?
+  - People sometimes confused because maxvers=1 has worse results than baseline
+  - Graphs would be more readable
+  - Interesting data point vs making our case, convincing people
+
+TODO: improve set_prop inline cache for global object
+
 TODO: review type analysis code
 
-TODO: inform Marc of status
+TODO: re-test benchmarking configurations
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers"
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=0"
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=1"
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=5"
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=0 --typeprop"
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: improve get_prop inline cache for global object
+- statically resolve prop idx, avoid capacity checks
+- bitwise-and is all global accesses
+code size before (bytes): 612224
+code size after (bytes): 606382
+
+[DONE] TODO: inform Marc of status
 - type analysis working, but pathologically slow in earley-boyer (10 mins)
 - fixed bug causing slow performance in richards benchmark
-
-TODO: re set-up results gathering for paper
-- nocomptime for perf
-- normal run for type tests, comp time
-- explain how comp time is measured
-
-
-
-
-
-
-
-
-
-
-
+- paper stats gathering
+- BBV flag no longer working, use old graph?
+- speedups up to ~50%
 
 [DONE] TODO: investigate richards benchmark awful slowness
 - scrReg3 could be objOpnd, now fixed

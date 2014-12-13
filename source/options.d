@@ -142,7 +142,7 @@ void parseCmdArgs(ref string[] args)
         "nostdlib"          , &opts.nostdlib,
 
         "typeprop"          , &opts.typeprop,
-        "eager_bbv"         , &opts.bbv_eager,
+        "bbv_eager"         , &opts.bbv_eager,
         "maxvers"           , &opts.maxvers,
         "shape_novers"      , &opts.shape_novers,
         "shape_notagspec"   , &opts.shape_notagspec,
