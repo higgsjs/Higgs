@@ -3550,11 +3550,11 @@ void gen_obj_set_prop(
         auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
         assert (objOpnd.isReg);
 
-        // Spill the values live before this instruction
-        st.spillLiveBefore(as, instr);
-
         // Get extra temporary registers
         auto scrReg3 = st.freeReg(as, instr);
+
+        // Spill the values live before this instruction
+        st.spillLiveBefore(as, instr);
 
         // Try or retry a cache lookup
         as.label(Label.RETRY);

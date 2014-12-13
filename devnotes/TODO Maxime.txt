@@ -201,14 +201,13 @@ TODO: review type analysis code
 
 TODO: inform Marc of status
 - type analysis working, but pathologically slow in earley-boyer (10 mins)
+- fixed bug causing slow performance in richards benchmark
 
 TODO: re set-up results gathering for paper
 - nocomptime for perf
 - normal run for type tests, comp time
 - explain how comp time is measured
 
-TODO: investigate richards benchmark awful slowness
-- increase min obj size?
 
 
 
@@ -219,6 +218,9 @@ TODO: investigate richards benchmark awful slowness
 
 
 
+
+[DONE] TODO: investigate richards benchmark awful slowness
+- scrReg3 could be objOpnd, now fixed
 
 [DONE] TODO: test analysis on benchmark.py
 ./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=0 --typeprop"
