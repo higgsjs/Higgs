@@ -189,7 +189,7 @@ Meeting:
   - use instr ids? must remove stochastic behavior
 
 TODO: alloc cache data separately?
-- may want to create paper branch
+- may want to create github branch for paper code
 
 TODO: inline cache, may be able to further optimize global prop access
 - statically resolve prop idx, avoid capacity checks
@@ -199,31 +199,31 @@ TODO: inline cache, may be able to further optimize global prop access
 TODO: obj_init_shape, arr_init_shape should set type tag for arg
 TODO: review type analysis code
 
-TODO: investigate richards benchmark awful slowness
-- increase min obj size?
+TODO: inform Marc of status
+- type analysis working, but pathologically slow in earley-boyer (10 mins)
 
 TODO: re set-up results gathering for paper
 - nocomptime for perf
 - normal run for type tests, comp time
 - explain how comp time is measured
 
-TODO: test higgs with type analysis, maxvers=0,1,5 and analysis
+TODO: investigate richards benchmark awful slowness
+- increase min obj size?
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: test analysis on benchmark.py
 ./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=0 --typeprop"
-./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=1"
-./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=5"
-TODO: analysis
-
-TODO: test that specialization happens with analysis
-
-TODO: test analysis on benchmark.py
-
-commit
-
-
-
-
-
-
+3.71M type tests with analysis
+4.4M tests without
 
 [DONE] TODO: get higgs init working with analysis
 make; ./higgs --maxvers=0 --typeprop

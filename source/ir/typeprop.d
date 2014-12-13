@@ -171,7 +171,7 @@ class TypeProp
             "analysis running while execution time measured"
         );
 
-        writeln("running type prop on: ", fun.getName);
+        //writeln("running type prop on ", fun.getName);
 
         // List of CFG edges to be processed
         BranchEdge[] cfgWorkList;
@@ -823,7 +823,7 @@ class TypeProp
             visitBlock(block);
         }
 
-        writeln("type prop done");
+        //writeln("type prop done");
     }
 }
 
