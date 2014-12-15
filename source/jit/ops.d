@@ -3477,7 +3477,7 @@ void gen_obj_set_prop(
             NUM_GLOBAL_CACHE_ENTRIES
         );
 
-        //writeln("entering updateCache");
+        //writeln("entering setProp updateCache");
 
         //writeln("objShape=", cast(void*)objShape);
         //writeln("objShape.slotIdx=", objShape.slotIdx);
@@ -3592,6 +3592,7 @@ void gen_obj_set_prop(
 
         // Get extra temporary registers
         auto scrReg3 = st.freeReg(as, instr);
+        assert (scrReg3.reg != objOpnd.reg);
 
         // Spill the values live before this instruction
         st.spillLiveBefore(as, instr);
@@ -3666,19 +3667,21 @@ void gen_obj_set_prop(
         // r3 = newShape
 
         // Get the object capacity into r0
-        //as.mov(scrRegs[0].opnd, X86Opnd(0));
+        as.mov(scrRegs[0].opnd, X86Opnd(0));
         as.getField(scrRegs[0].reg(32), objOpnd.reg, obj_ofs_cap(null));
+
+        // Move the object operand into r1
+        as.mov(scrRegs[1].opnd, objOpnd);
+        objOpnd = scrRegs[1].opnd;
 
         // If we don't know that the property is within capacity
         if (!withinCap)
         {
-            // Move the object operand into r1
-            as.mov(scrRegs[1].opnd, objOpnd);
-            objOpnd = scrRegs[1].opnd;
-
             // If the slot index is within capacity, skip the host write call
             as.cmp(scrRegs[0].opnd(32), scrRegs[2].opnd(32));
             as.jg(Label.WRITE);
+
+            //as.printStr(to!string(instr.getArgStrCst(1)));
 
             // Call the host set prop function
             as.saveJITRegs();
@@ -3713,8 +3716,8 @@ void gen_obj_set_prop(
         as.mov(wordMem, valOpnd);
 
         // Write the type value
-        as.add(scrRegs[2].opnd, objOpnd);
-        auto typeMem = X86Opnd(8, scrRegs[2], OBJ_WORD_OFS, 8, scrRegs[0]);
+        as.add(objOpnd, scrRegs[2].opnd);
+        auto typeMem = X86Opnd(8, objOpnd.reg, OBJ_WORD_OFS, 8, scrRegs[0]);
         as.genMove(typeMem, tagOpnd, scrReg3.opnd(8));
 
         as.label(Label.DONE);
@@ -4121,7 +4124,7 @@ void gen_obj_get_prop(
             NUM_GLOBAL_CACHE_ENTRIES
         );
 
-        //writeln("entering updateCache");
+        //writeln("entering getProp updateCache");
 
         // Extract the property name
         auto propName = instr.getArgStrCst(1);

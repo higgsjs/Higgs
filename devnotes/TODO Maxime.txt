@@ -222,10 +222,13 @@ commit
 
 
 
-
-
-
-
+[DONE] FIXME: performance bug with bitwise-and, others
+- it's not updateCache
+- seems like a register issue
+- num set prop host randomly goes through the roof
+  - both i and bitwiseAndValue
+- exact machine code matters, heisenbug
+- corrupting slot idx....
 
 [DONE] TODO: re-test benchmarking configurations
 ./benchmark.py --vm_cmd="./higgs --stats --shape_novers"
