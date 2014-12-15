@@ -312,16 +312,25 @@ void RMMOp(string op, size_t numBits, Tag tag)(
     // If this is an add operation
     static if (op == "add")
     {
-        // If we are adding 1 to a submaximal argument,
-        // there can be no overflow
+        // If we are adding something to 1
         auto arg1Cst = cast(IRConst)instr.getArg(1);
-        if (arg0Type.subMax && arg1Cst &&
-            arg1Cst.isInt32 && arg1Cst.int32Val == 1)
+        if (arg1Cst && arg1Cst.isInt32 && arg1Cst.int32Val == 1)
         {
-            //writeln(instr.block.fun.getName);
+            // If the type analysis shows that there can be no overflow
+            if (opts.typeprop && st.fun.typeInfo.argNotIntMax(instr, 0))
+            {
+                // Jump directly to the successor block
+                //writeln("TI ovf elim: ", instr.block.fun.getName);
+                return gen_jump(ver, st, instr, as);
+            }
 
-            // Jump directly to the successor block
-            return gen_jump(ver, st, instr, as);
+            // If there can be no overflow
+            if (arg0Type.subMax)
+            {
+                // Jump directly to the successor block
+                //writeln(instr.block.fun.getName);
+                return gen_jump(ver, st, instr, as);
+            }
         }
     }
 

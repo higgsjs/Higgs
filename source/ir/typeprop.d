@@ -56,6 +56,9 @@ enum TestResult
     UNKNOWN
 }
 
+/// Flag to indicate that a value could be the maximum integer value
+const int FLAG_INT32_MAX = 0;
+
 /**
 Type analysis results for a given function
 */
@@ -64,58 +67,83 @@ class TypeProp
     /// Type representation, propagated by the analysis
     private struct TypeSet
     {
-        uint32_t bits;
+        uint16_t tagBits;
+        bool maybeMax;
 
-        this(uint32_t bits) { this.bits = bits; }
-        this(Tag t) { bits = 1 << cast(int)t; }
+        this(uint16_t tagBits, bool maybeMax)
+        {
+            this.tagBits = tagBits;
+            this.maybeMax = maybeMax;
+        }
+
+        this(Tag t, bool maybeMax)
+        {
+            this.tagBits = cast(int16_t)(1 << cast(int)t);
+            this.maybeMax = maybeMax;
+        }
+
+        this(Tag t)
+        {
+            this.tagBits = cast(int16_t)(1 << cast(int)t);
+            this.maybeMax = (t is Tag.INT32)? true:false;
+        }
 
         /// Check that the type set contains only a given type
         bool isType(Tag t) const
         {
-            auto bit = 1 << cast(int)t;
-            return (this.bits == bit);
+            auto bit = cast(int16_t)(1 << cast(int)t);
+            return (this.tagBits == bit);
         }
 
         /// Check that the type set does not contain a given type
         bool isNotType(Tag t) const
         {
-            auto bit = 1 << cast(int)t;
-            return (this.bits & bit) == 0;
+            auto bit = cast(int16_t)(1 << cast(int)t);
+            return (this.tagBits & bit) == 0;
         }
 
         /// Check that the type set contains a given type (and maybe others)
         bool maybeIsType(Tag t) const
         {
-            auto bit = 1 << cast(int)t;
-            return (this.bits & bit) != 0;
+            auto bit = cast(int16_t)(1 << cast(int)t);
+            return (this.tagBits & bit) != 0;
         }
 
         /// Check that the type set contains other types than a given type
         bool maybeNotType(Tag t) const
         {
-            auto bit = 1 << cast(int)t;
-            return (this.bits & ~bit) != 0;
+            auto bit = cast(int16_t)(1 << cast(int)t);
+            return (this.tagBits & ~bit) != 0;
+        }
+
+        /// Check that this is not the maximum integer value
+        bool isNotIntMax() const
+        {
+            return this.maybeMax? false:true;;
         }
 
         /// Compute the merge (union) with another type value
         TypeSet merge(const TypeSet that) const
         {
-            return TypeSet(this.bits | that.bits);
+            return TypeSet(
+                this.tagBits | that.tagBits,
+                this.maybeMax | that.maybeMax
+            );
         }
 
         /// Remove a type from this type set
         TypeSet subtract(Tag t) const
         {
-            auto bit = 1 << cast(int)t;
-            return TypeSet(this.bits & ~bit);
+            auto bit = cast(int16_t)(1 << cast(int)t);
+            return TypeSet(this.tagBits & ~bit, this.maybeMax);
         }
     }
 
     /// Uninferred type value (top)
-    private static const UNINF = TypeSet(0);
+    private static const UNINF = TypeSet(0, false);
 
     /// Unknown (any type) value (bottom)
-    private static const ANY = TypeSet(0xFFFFFFFF);
+    private static const ANY = TypeSet(0xFFFF, true);
 
     /// Map of IR values to type values
     private alias TypeMap = TypeSet[IRDstValue];
@@ -129,8 +157,6 @@ class TypeProp
     /// Perform an "is_type" type check for an argument of a given instruction
     public TestResult argIsType(IRInstr instr, size_t argIdx, Tag tag)
     {
-        //writeln(instr);
-
         auto argTypes = instrArgTypes[instr];
         assert (argIdx < argTypes.length);
         auto typeVal = argTypes[argIdx];
@@ -147,9 +173,6 @@ class TypeProp
             )
         );
 
-        //writeln("ANY: ", typeVal == ANY);
-        //writeln("UNINF: ", typeVal == UNINF);
-
         if (typeVal.isType(tag))
             return TestResult.TRUE;
 
@@ -157,6 +180,19 @@ class TypeProp
             return TestResult.FALSE;
 
         return TestResult.UNKNOWN;
+    }
+
+    /// Check that an argument can't be the max integer value
+    /// Used for overflow check elimination
+    public bool argNotIntMax(IRInstr instr, size_t argIdx)
+    {
+        //writeln(instr);
+
+        auto argTypes = instrArgTypes[instr];
+        assert (argIdx < argTypes.length);
+        auto typeVal = argTypes[argIdx];
+
+        return typeVal.isNotIntMax;
     }
 
     /**
@@ -320,7 +356,7 @@ class TypeProp
                     auto ifInstr = instr.next;
 
                     auto propVal = cast(IRDstValue)arg0;
-                    auto trueType = TypeSet(tag);
+                    auto trueType = TypeSet(tag, arg0Type.maybeMax);
                     auto falseType = arg0Type.subtract(tag);
 
                     // If the argument could be the type we're testing
@@ -369,6 +405,12 @@ class TypeProp
                 return TypeSet(Tag.STRING);
             }
 
+            // Get IR string
+            if (op is &GET_IR_STR)
+            {
+                return TypeSet(Tag.STRING);
+            }
+
             // Get root VM objects
             if (op is &GET_GLOBAL_OBJ ||
                 op is &GET_OBJ_PROTO ||
@@ -395,6 +437,24 @@ class TypeProp
                 op is &URSFT_I32)
             {
                 return TypeSet(Tag.INT32);
+            }
+
+            // int32 add with overflow
+            if (op is &ADD_I32_OVF)
+            {
+                // If this is an add with 1
+                auto arg1Cst = cast(IRConst)instr.getArg(1);
+                if (arg1Cst && arg1Cst.isInt32 && arg1Cst.int32Val == 1)
+                {
+                    // If argument 0 is not the max int value
+                    if (arg0Type.isNotIntMax)
+                    {
+                        // Queue the true branch only (no overflow possible)
+                        auto intType = TypeSet(Tag.INT32);
+                        queueSucc(instr.getTarget(0), typeMap, instr, intType);
+                        return intType;
+                    }
+                }
             }
 
             // int32 arithmetic with overflow
@@ -601,11 +661,34 @@ class TypeProp
                 return ANY;
             }
 
+            // Less-than comparison operation
+            if (op is &LT_I32)
+            {
+                // If our only use is an immediately following if_true
+                if (ifUseNext(instr) is true)
+                {
+                    auto ifInstr = instr.next;
+
+                    if (auto arg0Dst = cast(IRDstValue)arg0)
+                    {
+                        // Queue both branch edges
+                        // Mark the argument type on the true branch as not max
+                        auto tType = TypeSet(Tag.INT32, 0);
+                        auto fType = TypeSet(Tag.INT32);
+                        queueSucc(ifInstr.getTarget(0), typeMap, arg0Dst, tType);
+                        queueSucc(ifInstr.getTarget(1), typeMap, arg0Dst, fType);
+
+                        // Constant, boolean type
+                        return TypeSet(Tag.CONST);
+                    }
+                }
+            }
+
             // Comparison operations
             if (
                 op is &EQ_I8 ||
-                op is &LT_I32 ||
                 op is &LE_I32 ||
+                op is &LT_I32 ||
                 op is &GT_I32 ||
                 op is &GE_I32 ||
                 op is &EQ_I32 ||

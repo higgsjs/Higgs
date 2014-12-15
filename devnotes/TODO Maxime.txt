@@ -178,38 +178,41 @@ ECOOP - Dec 21
 - Invite Erick to review
 - Disable shape prop? Can't
 
-Meeting:
-- sine function, almost as fast as TM, way faster than V8
-  - slowness of 3d-morph is from lack of inlining
-- binary-trees, 2x the type checks without typed shapes
-- resized graphs
-- DYLA: should publish typed shapes work, even if early
-  - Moz or Truffle people might scoop us
-- Idea: for complete system, whole-program analysis is complicated
-  - could emulate "perfect analysis" through profiling
-  - eliminate all type tests that always go the same way
-  - use instr ids? must remove stochastic behavior
-
 TODO: return optimization?
 - generate the bailout path (inexact argument count) out of line
   - do this at the ast-to-ir level, two return instructions
   - return_fast vs return
 
-TODO: obj_init_shape, arr_init_shape should set type tag for arg
-- check if this improves results at all
-./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=0 --typeprop"
-3.71M type tests with analysis
-
 Meeting:
 - Results gathering is all working
 - Optimized inline caches for global prop access, reduced code size
 - Asthetic fixes on paper
+- Speedups with updated Higgs, nocomptime much more impressive than before
+  - up to 83%, 28% on average
+- Modified analysis to support ovf check elimination
+  - More comparable to Higgs
+  - Makes analysis less incompetent, better comparison point
+  - Analysis still not very successful, i < n case, n could be float,
+    i not guaranteed to be less than int_max then
+  - Possible criticism: your analysis sucks, need a better one
+  - Show what analysis can do for sumVals example, show machine code
+- Ret opt next, for example? May improve speed slightly
 - Remove maxvers=1 bar?
   - People sometimes confused because maxvers=1 has worse results than baseline
   - Graphs would be more readable
   - Interesting data point vs making our case, convincing people
+- DYLA: should publish typed shapes work, even if early
+  - Moz or Truffle people might scoop us
+- Idea: for complete system, whole-program analysis is complicated
+  - could emulate "perfect analysis" through profiling
+  - eliminate all type tests and ovf checks that always go the same way
+  - use instr instances, hash map, mark collection period programmatically?
+    - doesn't quite work, need to recompile code
+    - also want fresh run
 
-TODO: review type analysis code
+If you need a break, fix bibliography, other minor fixes
+
+commit
 
 
 
@@ -220,6 +223,50 @@ TODO: review type analysis code
 
 
 
+
+
+
+
+[DONE] TODO: re-test benchmarking configurations
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers"
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=0"
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=1"
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=5"
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=0 --typeprop"
+
+[DONE] TODO: verify that analysis still produces ~ 3.75M type tests or less
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=0 --typeprop"
+~3.63M
+
+[DONE] FIXME: loop big incr still 4B tests?
+
+[DONE] FIXME: no ovf checks eliminated?
+- True marked as not max
+- Doesn't flow to add_ovf?
+
+[DONE] TODO: verify that analysis still produces ~ 3.75M type tests or less
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=0 --typeprop"
+
+[DONE] TODO: enable ovf elim based on type prop
+
+[DONE] TODO: check OVF elim with analysis results on loop-big-incr
+./higgs --stats --shape_novers --maxvers=0 --typeprop benchmarks/micro/loop-big-incr.js
+
+[DONE] TODO: make add ovf with 1 not queue both branches in analysis
+
+[DONE] FIXME: argIsType should ignore max int flag for Tag.INT32
+
+[DONE] TODO: Try to implement ovf elim in analysis?
+- use extra tag/bit to say that it could be max int value?
+  - works with union
+- function to test for max, mayBeMaxInt
+
+[DONE] TODO: examine TI results for loop with increment
+./higgs --stats --shape_novers --maxvers=0 --typeprop benchmarks/micro/loop-big-incr.js
+- 4B type tests
+- lack of ovf elimination prevents proper working
+
+[DONE] TODO: review type analysis code
 
 [DONE] TODO: improve set_prop inline cache for global object
 code size (bytes): 545471
