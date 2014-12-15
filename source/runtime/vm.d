@@ -1147,7 +1147,15 @@ class VM
     {
         //writeln("load(", fileName, ")");
         auto file = getLoadPath(fileName);
+
+        // Start recording compilation time
+        stats.compTimeStart();
+
         auto ast = parseFile(file, isRuntime);
+
+        // Stop recording compilation time
+        stats.compTimeStop();
+
         return exec(ast);
     }
 
