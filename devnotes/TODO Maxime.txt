@@ -24,6 +24,13 @@ List of possible contributions:
 - Incremental inlining vs classical inlining
 - Typed shapes and basic block versioning
 
+Idea: for thesis, complete system, whole-program analysis is complicated
+- could emulate "perfect analysis" through profiling
+- eliminate all type tests and ovf checks that always go the same way
+- use instr instances, hash map, mark collection period programmatically?
+  - doesn't quite work, need to recompile code
+  - also want fresh run
+
 ------------------------------------------------------------------------------
 
 TODO: thread global obj as hidden fn argument?
@@ -128,16 +135,6 @@ TODO: progress update blog post
   - ALSA audio output bindings
   - Socket bindings
 
-TODO: implement inline caches on get prop, needed for both papers
-https://github.com/higgsjs/Higgs/blob/dls2014/source/jit/ops.d#L3497
-- Needs to decide branching direction as well
-  - cmp shapeOpnd, objShape
-  - cmov prop idx, cmov for jump false
-  - need to actually read the property, complex logic
-  - probably, want to mov destReg, 0, cmov if jump to false
-  - For undef, set the action reg to some special value
-    - Three possible actions
-
 TODO: try using read_shape, known shape for get_enum_tbl
 - can we finally beat V8 baseline on string-fasta?
 - need a different mode for when shapes not propagated?
@@ -184,8 +181,6 @@ TODO: return optimization?
   - return_fast vs return
 - Marc says: wait until later, focus on completing paper
 
-If you need a break, fix bibliography, other minor fixes
-
 TODO: re-test benchmarking configurations
 ./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=0"
 ./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=1"
@@ -193,7 +188,8 @@ TODO: re-test benchmarking configurations
 ./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=100"
 ./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=0 --typeprop"
 
-TODO: look into richards slowness, tweak parameters, cache sizes?
+TODO: test typeprop on V8, look at comp time
+./higgs --maxvers=0 --typeprop benchmarks/v8bench/base.js benchmarks/v8bench/earley-boyer.js benchmarks/v8bench/drv-earley-boyer.js
 
 
 
@@ -205,6 +201,12 @@ TODO: look into richards slowness, tweak parameters, cache sizes?
 
 
 
+
+
+
+
+[DONE] TODO: look into richards slowness, tweak parameters, cache sizes?
+- not enough get prop cache entries for globals
 
 [DONE] FIXME: need to include analysis time in comp time
 
@@ -228,7 +230,7 @@ TODO: look into richards slowness, tweak parameters, cache sizes?
   - Interesting data point vs making our case, convincing people
 - DYLA: should publish typed shapes work, even if early
   - Moz or Truffle people might scoop us
-- Idea: for complete system, whole-program analysis is complicated
+- Idea: for thesis, complete system, whole-program analysis is complicated
   - could emulate "perfect analysis" through profiling
   - eliminate all type tests and ovf checks that always go the same way
   - use instr instances, hash map, mark collection period programmatically?

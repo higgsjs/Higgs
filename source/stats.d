@@ -78,11 +78,17 @@ ulong numSetProp = 0;
 /// Number of host property writes
 ulong numSetPropHost = 0;
 
+/// Number of cache updates on property writes
+ulong numSetPropCacheUpd = 0;
+
 /// Number of property reads
 ulong numGetProp = 0;
 
 /// Number of host property reads
 ulong numGetPropHost = 0;
+
+/// Number of cache updates on property reads
+ulong numGetPropCacheUpd = 0;
 
 /// Number of shape changes due to type
 ulong numShapeFlips = 0;
@@ -286,8 +292,10 @@ static ~this()
         writefln("num shape tests: %s", numShapeTests);
         writefln("num set prop: %s", numSetProp);
         writefln("num set prop host: %s", numSetPropHost);
+        writefln("num set prop cache upd: %s", numSetPropCacheUpd);
         writefln("num get prop: %s", numGetProp);
         writefln("num get prop host: %s", numGetPropHost);
+        writefln("num get prop cache upd: %s", numGetPropCacheUpd);
         writefln("num shape flips: %s", numShapeFlips);
         writefln("num heap allocs: %s", numHeapAllocs);
 

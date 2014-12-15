@@ -3462,7 +3462,6 @@ void gen_obj_set_prop(
     }
 
     static const uint NUM_CACHE_ENTRIES = 4;
-    static const uint NUM_GLOBAL_CACHE_ENTRIES = 2;
     static const uint CACHE_ENTRY_SIZE = 8 + 4 + 8;
 
     extern (C) static void updateCache(
@@ -3471,11 +3470,8 @@ void gen_obj_set_prop(
         ubyte* cachePtr
     )
     {
-        auto numEntries = (
-            (instr.getArg(0) is instr.block.fun.globalVal)?
-            NUM_CACHE_ENTRIES:
-            NUM_GLOBAL_CACHE_ENTRIES
-        );
+        // Increment the cache update stat
+        ++stats.numSetPropCacheUpd;
 
         //writeln("entering setProp updateCache");
 
@@ -3538,7 +3534,7 @@ void gen_obj_set_prop(
         //writeln("slotIdx=", slotIdx);
 
         // Shift the current cache entries down
-        for (uint i = numEntries - 1; i > 0; --i)
+        for (uint i = NUM_CACHE_ENTRIES - 1; i > 0; --i)
         {
             memcpy(
                 cachePtr + CACHE_ENTRY_SIZE * i,
@@ -3562,12 +3558,6 @@ void gen_obj_set_prop(
         CodeBlock as
     )
     {
-        auto numEntries = (
-            (instr.getArg(0) is instr.block.fun.globalVal)?
-            NUM_CACHE_ENTRIES:
-            NUM_GLOBAL_CACHE_ENTRIES
-        );
-
         bool withinCap = false;
 
         // If the this is a global property read
@@ -3609,7 +3599,7 @@ void gen_obj_set_prop(
         // Inline cache entries
         // [objShape (pointer) | slotIdx (uint32_t) | newShape (pointer) ]+
         as.jmp(Label.AFTER_DATA);
-        for (uint i = 0; i < numEntries; ++i)
+        for (uint i = 0; i < NUM_CACHE_ENTRIES; ++i)
         {
             as.writeInt(0xFFFFFFFFFFFFFFFF, 64);
             as.writeInt(0x00000000, 32);
@@ -3621,7 +3611,7 @@ void gen_obj_set_prop(
         //as.mov(scrRegs[2].opnd, X86Opnd(0));
 
         // For each cache entry
-        for (uint i = 0; i < numEntries; ++i)
+        for (uint i = 0; i < NUM_CACHE_ENTRIES; ++i)
         {
             auto objShapeOpnd = X86Opnd(64, scrRegs[1], CACHE_ENTRY_SIZE * i +  0);
             auto slotIdxOpnd  = X86Opnd(32, scrRegs[1], CACHE_ENTRY_SIZE * i +  8);
@@ -4109,7 +4099,6 @@ void gen_obj_get_prop(
     }
 
     static const uint NUM_CACHE_ENTRIES = 4;
-    static const uint NUM_GLOBAL_CACHE_ENTRIES = 2;
     static const uint CACHE_ENTRY_SIZE = 8 + 4 + 2;
 
     extern (C) static void updateCache(
@@ -4118,11 +4107,8 @@ void gen_obj_get_prop(
         ubyte* cachePtr
     )
     {
-        auto numEntries = (
-            (instr.getArg(0) is instr.block.fun.globalVal)?
-            NUM_CACHE_ENTRIES:
-            NUM_GLOBAL_CACHE_ENTRIES
-        );
+        // Increment the cache update stat
+        ++stats.numGetPropCacheUpd;
 
         //writeln("entering getProp updateCache");
 
@@ -4152,7 +4138,7 @@ void gen_obj_get_prop(
         //writeln("shifting entries");
 
         // Shift the current cache entries down
-        for (uint i = numEntries - 1; i > 0; --i)
+        for (uint i = NUM_CACHE_ENTRIES - 1; i > 0; --i)
         {
             memcpy(
                 cachePtr + CACHE_ENTRY_SIZE * i,
@@ -4234,12 +4220,6 @@ void gen_obj_get_prop(
             }
         }
 
-        auto numEntries = (
-            (instr.getArg(0) is instr.block.fun.globalVal)?
-            NUM_CACHE_ENTRIES:
-            NUM_GLOBAL_CACHE_ENTRIES
-        );
-
         // Get the object operand
         auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
         assert (objOpnd.isReg);
@@ -4262,7 +4242,7 @@ void gen_obj_get_prop(
         // Inline cache entries
         // [mapIdx (pointer) | slotIdx (uint32_t) | actIdx (uint8_t) ]+
         as.jmp(Label.AFTER_DATA);
-        for (uint i = 0; i < numEntries; ++i)
+        for (uint i = 0; i < NUM_CACHE_ENTRIES; ++i)
         {
             as.writeInt(0xFFFFFFFFFFFFFFFF, 64);
             as.writeInt(0x00000000, 32);
@@ -4274,7 +4254,7 @@ void gen_obj_get_prop(
         //as.mov(scrRegs[2].opnd, X86Opnd(0));
 
         // For each cache entry
-        for (uint i = 0; i < numEntries; ++i)
+        for (uint i = 0; i < NUM_CACHE_ENTRIES; ++i)
         {
             auto shapeOpnd   = X86Opnd(64, scrRegs[1], CACHE_ENTRY_SIZE * i +  0);
             auto slotIdxOpnd = X86Opnd(32, scrRegs[1], CACHE_ENTRY_SIZE * i +  8);
