@@ -1116,15 +1116,6 @@ class VM
     }
 
     /**
-    Execute a unit-level function
-    */
-    ValuePair exec(FunExpr fun)
-    {
-        auto ir = astToIR(this, fun, null);
-        return exec(ir);
-    }
-
-    /**
     Get the path for a load command based on a (potentially relative) path
     */
     string getLoadPath(string fileName)
@@ -1152,11 +1143,12 @@ class VM
         stats.compTimeStart();
 
         auto ast = parseFile(file, isRuntime);
+        auto ir = astToIR(this, ast, null);
 
         // Stop recording compilation time
         stats.compTimeStop();
 
-        return exec(ast);
+        return exec(ir);
     }
 
     /**
@@ -1167,9 +1159,9 @@ class VM
         //writefln("input: %s", input);
 
         auto ast = parseString(input, fileName);
-        auto result = exec(ast);
+        auto ir = astToIR(this, ast, null);
 
-        return result;
+        return exec(ir);
     }
 
     /// Stack frame visit function

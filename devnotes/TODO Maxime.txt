@@ -189,7 +189,7 @@ TODO: re-test benchmarking configurations
 ./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=0 --typeprop"
 
 TODO: test typeprop on V8, look at comp time
-./higgs --maxvers=0 --typeprop benchmarks/v8bench/base.js benchmarks/v8bench/earley-boyer.js benchmarks/v8bench/drv-earley-boyer.js
+./higgs --stats --maxvers=0 --typeprop benchmarks/v8bench/base.js benchmarks/v8bench/earley-boyer.js benchmarks/v8bench/drv-earley-boyer.js
 
 
 

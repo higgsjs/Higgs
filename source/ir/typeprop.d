@@ -906,7 +906,7 @@ class TypeProp
             visitBlock(block);
         }
 
-        //writeln("type prop done");
+        //writeln("  type prop done");
     }
 }
 
