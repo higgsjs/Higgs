@@ -89,8 +89,8 @@ struct Options
     bool shape_notagspec = true;
     bool shape_nofptrspec = true;
 
-
-
+    /// Disable overflow check elimination
+    bool noovfelim = true;
 
 
 
@@ -147,6 +147,7 @@ void parseCmdArgs(ref string[] args)
         "shape_novers"      , &opts.shape_novers,
         "shape_notagspec"   , &opts.shape_notagspec,
         "shape_nofptrspec"  , &opts.shape_nofptrspec,
+        "noovfelim"         , &opts.noovfelim,
         "nopeephole"        , &opts.nopeephole,
         "noinline"          , &opts.noinline,
         "dumpinfo"          , &opts.dumpinfo,

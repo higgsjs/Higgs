@@ -27,9 +27,8 @@ List of possible contributions:
 Idea: for thesis, complete system, whole-program analysis is complicated
 - could emulate "perfect analysis" through profiling
 - eliminate all type tests and ovf checks that always go the same way
-- use instr instances, hash map, mark collection period programmatically?
-  - doesn't quite work, need to recompile code
-  - also want fresh run
+- Save profiled data. Use instrs ids. Check that opcode and out slot match.
+"Better than Perfect: Highly Effective Type Check Elimination"
 
 ------------------------------------------------------------------------------
 
@@ -168,42 +167,52 @@ DYLA - typed shapes paper
 
 TODO: remove vm field of IRFunction
 
+Next blog post: mention improved resultd across the board
+- Less versions, less type tests, much bigger speedups
+- Will begin work on interprocedural basic block versioning imminently
+- For thesis, comparison against perfect analysis
+
 ------------------------------------------------------------------------------
 
 ECOOP - Dec 21
 - Invite Baptiste to review
 - Invite Erick to review
-- Disable shape prop? Can't
 
-TODO: return optimization?
-- generate the bailout path (inexact argument count) out of line
-  - do this at the ast-to-ir level, two return instructions
-  - return_fast vs return
-- Marc says: wait until later, focus on completing paper
+TODO: create branch for paper code, ecoop2015
 
-TODO: re-test benchmarking configurations
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: re-test benchmarking configurations
 ./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=0"
 ./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=1"
 ./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=5"
 ./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=100"
 ./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=0 --typeprop"
 
-TODO: test typeprop on V8, look at comp time
+[DONE] TODO: time on nocomptime with and without ovf elim
+./benchmark.py --vm_cmd="./higgs" --bench_list="benchmarks/nocomptime/benchmark-list.csv"
+./benchmark.py --vm_cmd="./higgs --noovfelim" --bench_list="benchmarks/nocomptime/benchmark-list.csv"
+- Very minor difference, if any
+
+[DONE] TODO: --noovfelim flag
+
+[DONE] TODO: re-test benchmarking configurations
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=0"
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=1"
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=5"
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=100"
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=0 --typeprop"
+
+[DONE] TODO: test typeprop on V8, look at comp time
 ./higgs --stats --maxvers=0 --typeprop benchmarks/v8bench/base.js benchmarks/v8bench/earley-boyer.js benchmarks/v8bench/drv-earley-boyer.js
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: look into richards slowness, tweak parameters, cache sizes?
 - not enough get prop cache entries for globals

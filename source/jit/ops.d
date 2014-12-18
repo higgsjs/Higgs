@@ -320,7 +320,7 @@ void RMMOp(string op, size_t numBits, Tag tag)(
             if (opts.typeprop && st.fun.typeInfo.argNotIntMax(instr, 0))
             {
                 // Jump directly to the successor block
-                //writeln("TI ovf elim: ", instr.block.fun.getName);
+                writeln("TI ovf elim: ", instr.block.fun.getName);
                 return gen_jump(ver, st, instr, as);
             }
 
@@ -328,7 +328,7 @@ void RMMOp(string op, size_t numBits, Tag tag)(
             if (arg0Type.subMax)
             {
                 // Jump directly to the successor block
-                //writeln(instr.block.fun.getName);
+                writeln("BBV ovf elim: ", instr.block.fun.getName);
                 return gen_jump(ver, st, instr, as);
             }
         }

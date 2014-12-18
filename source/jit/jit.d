@@ -231,6 +231,11 @@ struct ValState
             val.type.fptrKnown = false;
         }
 
+        if (opts.noovfelim)
+        {
+            val.type.subMax = false;
+        }
+
         return val;
     }
 

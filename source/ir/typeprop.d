@@ -47,6 +47,7 @@ import ir.ops;
 import ir.livevars;
 import runtime.vm;
 import jit.ops;
+import options;
 
 /// Type test result
 enum TestResult
@@ -119,6 +120,9 @@ class TypeProp
         /// Check that this is not the maximum integer value
         bool isNotIntMax() const
         {
+            if (opts.noovfelim)
+                return false;
+
             return this.maybeMax? false:true;;
         }
 
