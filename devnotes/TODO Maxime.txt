@@ -172,36 +172,40 @@ Next blog post: mention improved resultd across the board
 - Will begin work on interprocedural basic block versioning imminently
 - For thesis, comparison against perfect analysis
 
+Meeting:
+- Branch profiling?
+
 TODO: FP machine
 - x and y inputs, in [-1, 1]
 - function to compute an output from input coordinates
 - iterative computation
 - table of operators for each input
 
-TODO: remove vm field of IRFunction
-
 TODO: profile the proportion of branches going left and right
 - use static ctor/dtor
 - map of IRInstr to structs
 
+commit
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: remove vm field of IRFunction
+
 ------------------------------------------------------------------------------
 
-ECOOP - Dec 21
+[DONE] ECOOP - Dec 21
 - Invite Baptiste to review
 - Invite Erick to review
 
-TODO: create branch for paper code, ecoop2015
-
-
-
-
-
-
-
-
-
-
-
+[DONE] TODO: create branch for paper code, ecoop2015
 
 [DONE] TODO: re-test benchmarking configurations
 ./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=0"

@@ -81,9 +81,6 @@ IR function
 */
 class IRFunction : IdObject
 {
-    /// VM this function is associated with
-    VM vm;
-
     /// Corresponding Abstract Syntax Tree (AST) node
     FunExpr ast;
 
@@ -134,12 +131,11 @@ class IRFunction : IdObject
     BlockVersion[][IRBlock] versionMap;
 
     /// Constructor
-    this(VM vm, FunExpr ast)
+    this(FunExpr ast)
     {
         // Register this function in the live function reference set
         vm.funRefs[cast(void*)this] = this;
 
-        this.vm = vm;
         this.ast = ast;
         this.name = ast.getName();
         this.numParams = cast(uint32_t)ast.params.length;

@@ -933,7 +933,6 @@ class CodeGenState
     */
     void spillSavedRegs(SpillTestFn spillTest)
     {
-        auto vm = fun.vm;
         auto liveInfo = fun.liveInfo;
 
         // For each allocatable register
@@ -980,7 +979,6 @@ class CodeGenState
     */
     void loadSavedRegs(SpillTestFn spillTest)
     {
-        auto vm = fun.vm;
         auto liveInfo = fun.liveInfo;
 
         // For each allocatable register
@@ -1085,7 +1083,7 @@ class CodeGenState
         if (auto argStr = cast(IRString)argVal)
         {
             // Ensure that the string is allocated
-            argStr.getPtr(fun.vm);
+            argStr.getPtr(vm);
 
             // If no temporary register is supplied, free one
             if (tmpReg == X86Opnd.NONE)
@@ -1729,8 +1727,6 @@ class BlockVersion : CodeFragment
     {
         assert (started);
 
-        auto vm = state.fun.vm;
-
         // Store the branch generation function and targets
         assert (target0 !is null);
         this.branchGenFn = genFn;
@@ -1770,8 +1766,6 @@ class BlockVersion : CodeFragment
     {
         // Ensure that this block has already been compiled
         assert (started && ended);
-
-        auto vm = state.fun.vm;
 
         // Move to the branch code position
         auto origPos = as.getWritePos();
@@ -1938,7 +1932,6 @@ BlockVersion getBlockVersion(
 )
 {
     auto fun = state.fun;
-    auto vm = fun.vm;
 
     // Get the list of versions for this block
     auto versions = fun.versionMap.get(block, []);
@@ -2067,8 +2060,6 @@ BranchCode getBranchEdge(
     // to be generated now
     if (opts.bbv_eager)
         noStub = true;
-
-    auto vm = predState.fun.vm;
 
     assert (
         branch !is null,
@@ -2199,7 +2190,7 @@ void genBranchMoves(
         auto dstOpnd = strDsts[idx];
 
         // Ensure that the string is allocated
-        strVal.getPtr(predState.fun.vm);
+        strVal.getPtr(vm);
 
         as.ptr(scrRegs[0], strVal);
 
@@ -2776,8 +2767,6 @@ extern (C) CodePtr compileEntry(EntryStub stub)
         writeln("entering compileEntry");
     }
 
-    auto vm = stub.vm;
-
     // Get the closure and IRFunction pointers
     auto argCount = vm.getWord(3).uint32Val;
     auto closPtr = vm.getWord(1).ptrVal;
@@ -2961,7 +2950,6 @@ extern (C) CodePtr compileCont(ContStub stub)
 
     auto callVer = stub.callVer;
     auto contBranch = stub.contBranch;
-    auto vm = callVer.state.fun.vm;
 
     // Queue the continuation branch edge to be compiled
     assert (!contBranch.started);

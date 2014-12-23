@@ -320,7 +320,7 @@ void RMMOp(string op, size_t numBits, Tag tag)(
             if (opts.typeprop && st.fun.typeInfo.argNotIntMax(instr, 0))
             {
                 // Jump directly to the successor block
-                writeln("TI ovf elim: ", instr.block.fun.getName);
+                //writeln("TI ovf elim: ", instr.block.fun.getName);
                 return gen_jump(ver, st, instr, as);
             }
 
@@ -328,7 +328,7 @@ void RMMOp(string op, size_t numBits, Tag tag)(
             if (arg0Type.subMax)
             {
                 // Jump directly to the successor block
-                writeln("BBV ovf elim: ", instr.block.fun.getName);
+                //writeln("BBV ovf elim: ", instr.block.fun.getName);
                 return gen_jump(ver, st, instr, as);
             }
         }
@@ -1865,7 +1865,7 @@ void gen_call(
         {
             try
             {
-                astToIR(fun.vm, fun.ast, fun);
+                astToIR(vm, fun.ast, fun);
             }
 
             catch (Error err)
@@ -2708,7 +2708,7 @@ void gen_ret(
     as.jmp(scrRegs[1].opnd);
 
     // Mark the end of the fragment
-    ver.markEnd(as, st.fun.vm);
+    ver.markEnd(as, vm);
 }
 
 void gen_throw(
@@ -2748,7 +2748,7 @@ void gen_throw(
     as.jmp(cretReg.opnd);
 
     // Mark the end of the fragment
-    ver.markEnd(as, st.fun.vm);
+    ver.markEnd(as, vm);
 }
 
 void GetValOp(Tag tag, string fName)(
@@ -3566,7 +3566,7 @@ void gen_obj_set_prop(
             auto propName = instr.getArgStrCst(1);
             assert (propName !is null);
 
-            auto globalObj = st.fun.vm.globalObj.word.ptrVal;
+            auto globalObj = vm.globalObj.word.ptrVal;
             auto objShape = cast(ObjShape)obj_get_shape(globalObj);
             auto defShape = objShape.getDefShape(propName);
 
@@ -3802,7 +3802,7 @@ void gen_obj_set_prop(
 
         // Create a new shape for the property
         defShape = objShape.defProp(
-            st.fun.vm,
+            vm,
             propName,
             valType,
             ATTR_DEFAULT,
@@ -3817,7 +3817,7 @@ void gen_obj_set_prop(
     // Compute the minimum object capacity we can guarantee
     auto minObjCap = (
         (objVal is st.fun.globalVal)?
-        obj_get_cap(st.fun.vm.globalObj.word.ptrVal):
+        obj_get_cap(vm.globalObj.word.ptrVal):
         OBJ_MIN_CAP
     );
 
@@ -3892,7 +3892,7 @@ void gen_obj_set_prop(
         {
             // Create a new shape for the property
             objShape = objShape.defProp(
-                st.fun.vm,
+                vm,
                 propName,
                 valType,
                 ATTR_DEFAULT,
@@ -4209,7 +4209,7 @@ void gen_obj_get_prop(
             auto propName = instr.getArgStrCst(1);
             assert (propName !is null);
 
-            auto globalObj = st.fun.vm.globalObj.word.ptrVal;
+            auto globalObj = vm.globalObj.word.ptrVal;
             auto objShape = cast(ObjShape)obj_get_shape(globalObj);
             auto defShape = objShape.getDefShape(propName);
 
@@ -4416,7 +4416,7 @@ void gen_obj_get_prop(
     // Compute the minimum object capacity we can guarantee
     auto minObjCap = (
         (instr.getArg(0) is st.fun.globalVal)?
-        obj_get_cap(st.fun.vm.globalObj.word.ptrVal):
+        obj_get_cap(vm.globalObj.word.ptrVal):
         OBJ_MIN_CAP
     );
 

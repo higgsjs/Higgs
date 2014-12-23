@@ -354,7 +354,7 @@ IRFunction astToIR(
 
     // If no IR function object was passed, create one
     if (fun is null)
-        fun = new IRFunction(vm, ast);
+        fun = new IRFunction(ast);
 
     assert (
         fun.entryBlock is null,
@@ -533,10 +533,7 @@ IRFunction astToIR(
     foreach (funDecl; ast.funDecls)
     {
         // Create an IR function object for the function
-        auto subFun = new IRFunction(
-            vm,
-            funDecl
-        );
+        auto subFun = new IRFunction(funDecl);
 
         // Store the binding for the function
         assgToIR(
@@ -1442,10 +1439,7 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
         if (countUntil(ctx.fun.ast.funDecls, funExpr) == -1)
         {
             // Create an IR function object for the function
-            auto fun = new IRFunction(
-                ctx.fun.vm,
-                funExpr
-            );
+            auto fun = new IRFunction(funExpr);
 
             // Create a closure of this function
             auto newClos = ctx.addInstr(new IRInstr(

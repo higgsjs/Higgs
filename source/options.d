@@ -40,22 +40,22 @@ import std.getopt;
 
 struct Options
 {
-    /// String of code to execute
+    /// String of code to execute (--e str)
     string execString = null;
 
     /// Force a repl, even after loading files or executing a string
     bool repl = false;
 
-    /// Gather and report various statistics about program execution
-    bool stats = false;
-
-    /// Gather performance statistics
-    bool perf_stats = false;
-
     /// Set stdout to be unbuffered
     bool unbuffered = false;
 
     /* VM options */
+
+    /// Gather and report various statistics about program execution
+    bool stats = false;
+
+    /// Gather performance statistics (without slowing down execution)
+    bool perf_stats = false;
 
     /// Disable loading of the runtime library
     bool noruntime = false;
@@ -74,7 +74,6 @@ struct Options
     /// Maximum number of specialized versions to compile per basic block
     uint maxvers = 20;
 
-    /*
     /// Disable shape versioning and dispatch
     bool shape_novers = false;
 
@@ -83,19 +82,9 @@ struct Options
 
     /// Disable function pointer specialization in shapes
     bool shape_nofptrspec = false;
-    */
-
-    bool shape_novers = true;
-    bool shape_notagspec = true;
-    bool shape_nofptrspec = true;
 
     /// Disable overflow check elimination
-    bool noovfelim = true;
-
-
-
-
-
+    bool noovfelim = false;
 
     /// Disable peephole optimizations
     bool nopeephole = false;
@@ -133,8 +122,8 @@ void parseCmdArgs(ref string[] args)
         config.passThrough,
 
         "e"                 , &opts.execString,
-        "unbuffered"        , &opts.unbuffered,
         "repl"              , &opts.repl,
+        "unbuffered"        , &opts.unbuffered,
         "stats"             , &opts.stats,
         "perf_stats"        , &opts.perf_stats,
 
@@ -161,7 +150,7 @@ void parseCmdArgs(ref string[] args)
     if (opts.noruntime)
         opts.nostdlib = true;
 
-    // If dumping the ASM, we must first generate the ASM
+    // If dumping the ASM, we must first generate the ASM strings
     if (opts.dumpasm)
         opts.genasm = true;
 
