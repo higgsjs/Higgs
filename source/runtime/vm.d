@@ -92,19 +92,11 @@ class RunError : Error
 
         if (excVal.tag is Tag.OBJECT)
         {
-            auto errName = getProp(
-                vm,
-                excVal,
-                "name"w
-            );
+            auto errName = getProp(excVal, "name"w);
 
             this.name = errName.toString;
 
-            auto msgStr = getProp(
-                vm,
-                excVal,
-                "message"w
-            );
+            auto msgStr = getProp(excVal, "message"w);
 
             this.message = msgStr.toString;
         }
@@ -628,23 +620,20 @@ class VM
             strTbl = strtbl_alloc(vm, STR_TBL_INIT_SIZE);
 
             // Allocate the empty object shape
-            emptyShape = new ObjShape(vm);
+            emptyShape = new ObjShape();
 
             // Initialize the initial array shape
             arrayShape = emptyShape.defProp(
-                vm,
                 "__proto__",
                 ValType(Tag.OBJECT),
                 ATTR_CONST_NOT_ENUM,
                 null
             ).defProp(
-                vm,
                 "__arrTbl__",
                 ValType(Tag.REFPTR),
                 ATTR_CONST_NOT_ENUM,
                 null
             ).defProp(
-                vm,
                 "__arrLen__",
                 ValType(Tag.INT32),
                 ATTR_CONST_NOT_ENUM,
@@ -1261,7 +1250,7 @@ class VM
     */
     void defConst(wstring name, ValuePair val, bool enumerable = false)
     {
-        runtime.object.defConst(this, globalObj, name, val, enumerable);
+        runtime.object.defConst(globalObj, name, val, enumerable);
     }
 
     /**
@@ -1337,14 +1326,12 @@ extern (C) CodePtr throwExc(
             );
 
             setProp(
-                vm,
                 exc.pair,
                 propName,
                 str.pair
             );
 
             setProp(
-                vm,
                 exc.pair,
                 "length"w,
                 ValuePair(Word.int64v(depth), Tag.INT32)
@@ -1464,7 +1451,6 @@ extern (C) CodePtr throwError(
 
     auto errCtor = GCRoot(
         getProp(
-            vm,
             vm.globalObj,
             to!wstring(ctorName)
         )
@@ -1475,7 +1461,6 @@ extern (C) CodePtr throwError(
     {
         auto errProto = GCRoot(
             getProp(
-                vm,
                 errCtor.pair,
                 "prototype"w
             )
@@ -1489,7 +1474,6 @@ extern (C) CodePtr throwError(
 
             // Set the error "message" property
             setProp(
-                vm,
                 excObj.pair,
                 "message"w,
                 errStr.pair

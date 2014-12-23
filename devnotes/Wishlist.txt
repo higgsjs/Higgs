@@ -1,6 +1,22 @@
 Wishlist
 --------
 
+TODO: blog post, Higgs' Fancy New Object System => get started
+- use knightmare image for featured image
+- quick sketching program, online?
+- post to r/compilers, r/higgsjs
+- Typed shapes + BBV a bit of a gamble
+
+TODO: blog post, the future of compilation
+- Logical reasoning, supercompilation
+- JIT compilers, continuous of compilation
+- Lazyness is crucial
+- Definite place for controlled code duplication
+TODO: BBV - Hindsight & Future Directions
+- Check notes
+
+------------------------------------------------------------------------------
+
 TODO: optimize x86 instr encoding based on usage
 - e.g.: reg64 to mem move and vice versa?
 - do profiling first
@@ -152,6 +168,13 @@ http://wiki.dlang.org/Memory_Management#Explicit_Class_Instance_Allocation
 - Use @nogc attribute
 
 TODO: try to implement inline array for instr args, phi args
+
+TODO: Can we free one scr reg to reduce spills? May help nbody
+- who uses scrRegs[2]?
+
+
+
+
 
 
 

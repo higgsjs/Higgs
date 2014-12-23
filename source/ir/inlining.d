@@ -93,7 +93,7 @@ void inlinePass(VM vm, IRFunction caller)
         auto nameStr = strArg.str;
 
         // Get the primitve function from the global object
-        auto closVal = getProp(vm, vm.globalObj, nameStr);
+        auto closVal = getProp(vm.globalObj, nameStr);
         assert (
             closVal.tag is Tag.CLOSURE ||
             (caller.isUnit() && caller.getName.canFind("runtime")),
@@ -186,7 +186,7 @@ void inlinePass(VM vm, IRFunction caller)
             // If the property is defined and is a constant
             if (defShape && !defShape.writable && !defShape.configurable)
             {
-                auto val = getProp(vm, vm.globalObj, propName);
+                auto val = getProp(vm.globalObj, propName);
 
                 IRConst newVal;
                 if (val.tag is Tag.INT32)

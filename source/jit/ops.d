@@ -1715,7 +1715,7 @@ void gen_call_prim(
     as.incStatCnt(stats.getPrimCallCtr(to!string(nameStr)), scrRegs[0]);
 
     // Get the primitve function from the global object
-    auto closVal = getProp(vm, vm.globalObj, nameStr);
+    auto closVal = getProp(vm.globalObj, nameStr);
     assert (
         closVal.tag is Tag.CLOSURE,
         "failed to resolve closure in call_prim"
@@ -3248,7 +3248,6 @@ void gen_obj_init_shape(
     {
         // Get the initial object shape
         auto shape = vm.emptyShape.defProp(
-            vm,
             "__proto__",
             ValType(protoTag),
             ATTR_CONST_NOT_ENUM,
@@ -3275,7 +3274,6 @@ void gen_obj_init_shape(
     {
         // Get the initial object shape
         auto shape = vm.emptyShape.defProp(
-            vm,
             "__proto__",
             ValType(),
             ATTR_CONST_NOT_ENUM,
@@ -3297,7 +3295,6 @@ void gen_obj_init_shape(
     {
         // Get the initial object shape
         auto shape = vm.emptyShape.defProp(
-            vm,
             "__proto__",
             ValType(cast(Tag)tagOpnd.imm.imm),
             ATTR_CONST_NOT_ENUM,
@@ -3387,7 +3384,6 @@ void gen_obj_set_prop(
 
         // Set the property value
         setProp(
-            vm,
             objPair,
             propName,
             valPair
@@ -3504,7 +3500,6 @@ void gen_obj_set_prop(
             {
                 // Create a new shape for the property
                 defShape = objShape.defProp(
-                    vm,
                     propName,
                     ValType(),
                     ATTR_DEFAULT,
@@ -3802,7 +3797,6 @@ void gen_obj_set_prop(
 
         // Create a new shape for the property
         defShape = objShape.defProp(
-            vm,
             propName,
             valType,
             ATTR_DEFAULT,
@@ -3892,7 +3886,6 @@ void gen_obj_set_prop(
         {
             // Create a new shape for the property
             objShape = objShape.defProp(
-                vm,
                 propName,
                 valType,
                 ATTR_DEFAULT,
@@ -4562,7 +4555,6 @@ void gen_obj_def_const(
 
         // Attempt to define the constant
         defConst(
-            vm,
             objPair,
             propStr,
             valPair,
@@ -4606,7 +4598,6 @@ void gen_obj_set_attrs(
 
         // Attempt to set the property attributes
         setPropAttrs(
-            vm,
             objPair,
             defShape,
             cast(uint8_t)newAttrs
@@ -4825,7 +4816,6 @@ void gen_set_global(
 
         // Set the property value
         setProp(
-            vm,
             vm.globalObj,
             propStr,
             valPair
@@ -4877,7 +4867,6 @@ void gen_new_clos(
         // Allocate the closure object
         auto closPtr = GCRoot(
             newClos(
-                vm,
                 vm.funProto,
                 cast(uint32)fun.ast.captVars.length,
                 fun
@@ -4889,7 +4878,6 @@ void gen_new_clos(
 
         // Set the "prototype" property on the closure object
         setProp(
-            vm,
             closPtr.pair,
             "prototype"w,
             objPtr.pair

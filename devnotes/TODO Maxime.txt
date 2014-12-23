@@ -41,8 +41,6 @@ Type Specialization without Type Analysis
 
 ------------------------------------------------------------------------------
 
-TODO: thread global obj as hidden fn argument?
-
 TODO: think about interprocedural BBV
 - Return info: try to predict what the function will return
   - speculative/predicted info return vs generic return?
@@ -52,6 +50,7 @@ TODO: think about interprocedural BBV
 - Need function entry stubs, management of entry versions
   - Do we need entry stubs?
   - When going to specialized entry, could we compile immediately?
+  - What do we do right now, for specialized calls?
 
 Return info propagation:
 The return provokes the compilation of the continuation stub
@@ -66,6 +65,7 @@ TODO: verify proportion of calls modifying shapes
 TODO: profile return values, are they often monomorphic?
 
 Global object threading:
+- Should wait before doing this, multiple entry points first
 - Needs to be phi-like or a pseudo-argument so the input ctx can provide it
   - get global obj instruction won't quite work
 - Pseudo-arg might work, but we don't want to count this in hidden args, do we?
@@ -78,37 +78,9 @@ Version explosion:
 - If problem, can have smarter versioning scheme
   - Limit per-value polymorphism, refuse versions or return a compromise
 
-TODO: getter and setter syntax
-- needed for hash map benchmark
-- Easy to recognize the grammar, but need to modify the AST
-  - Use a struct for object literal property descriptors
-- Probably want some kind of runtime call to define getters and setters
-TODO: use global VM ptr in stats.d for code size, stub size?
-- remove code size computation
-TODO: move global VM pointer to runtime/vm, avoid needing to import main
-- maybe want a static VM.init? make ctor private
-
 TODO: synth, right for new synth, up for new melody
 - log the melody
 TODO: try allowing either tri or sine in osc bank
-
-TODO: Can we free one scr reg to reduce spills? May help nbody
-- who uses scrRegs[2]?
-
-TODO: blog post, Higgs' Fancy New Object System => get started
-- use knightmare image for featured image
-- quick sketching program, online?
-- post to r/compilers, r/higgsjs
-- Typed shapes + BBV a bit of a gamble
-
-TODO: blog post, the future of compilation
-- Logical reasoning, supercompilation
-- JIT compilers, continuous of compilation
-- Lazyness is crucial
-- Definite place for controlled code duplication
-TODO: BBV - Hindsight & Future Directions
-- Check notes
-
 TODO: grid sequencer, keyboard movement to select current square
 - pentatonic scale a different color but other notes available
 
@@ -143,11 +115,10 @@ TODO: progress update blog post
   - ALSA audio output bindings
   - Socket bindings
 
-TODO: try using read_shape, known shape for get_enum_tbl
+TODO: try using read_shape, known shape for get_enum_tbl?
 - can we finally beat V8 baseline on string-fasta?
 - need a different mode for when shapes not propagated?
 TODO: can we load directly from moffs64?
-TODO: remove VM from all runtime/object.d calls
 
 ------------------------------------------------------------------------------
 
@@ -173,6 +144,7 @@ Next blog post: mention improved resultd across the board
 - For thesis, comparison against perfect analysis
 
 Meeting:
+- Minor refactorings, unthreading VM pointer
 - Branch profiling?
 
 TODO: FP machine
@@ -181,11 +153,19 @@ TODO: FP machine
 - iterative computation
 - table of operators for each input
 
+TODO: getter and setter syntax
+- needed for hash map benchmark
+- Easy to recognize the grammar, but need to modify the AST
+  - Use a struct for object literal property descriptors
+- Probably want some kind of runtime call to define getters and setters
+
+TODO: use global VM ptr in stats.d for code size, stub size?
+- remove code size computation
+
 TODO: profile the proportion of branches going left and right
 - use static ctor/dtor
 - map of IRInstr to structs
 
-commit
 
 
 
@@ -196,6 +176,10 @@ commit
 
 
 
+
+[DONE] TODO: remove VM from all runtime/object.d calls
+
+[DONE] TODO: remove VM member from ObjShape
 
 [DONE] TODO: remove vm field of IRFunction
 

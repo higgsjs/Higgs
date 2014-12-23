@@ -354,7 +354,7 @@ class ObjShape
     GCRoot enumTbl;
 
     /// Empty shape constructor
-    this(VM vm)
+    this()
     {
         // Increment the number of shapes allocated
         stats.numShapes++;
@@ -372,7 +372,6 @@ class ObjShape
 
     /// Property definition constructor
     private this(
-        VM vm,
         ObjShape parent,
         wstring propName,
         ValType type,
@@ -415,7 +414,6 @@ class ObjShape
     This may fork the shape tree if redefining a property.
     */
     ObjShape defProp(
-        VM vm,
         wstring propName,
         ValType type,
         PropAttr attrs,
@@ -445,7 +443,6 @@ class ObjShape
         {
             // Create the new shape
             auto newShape = new ObjShape(
-                vm,
                 defShape? defShape:this,
                 propName,
                 type,
@@ -472,7 +469,6 @@ class ObjShape
         // Define the property with the same parent
         // as the original shape
         auto curParent = defShape.parent.defProp(
-            vm,
             propName,
             type,
             attrs,
@@ -483,7 +479,6 @@ class ObjShape
         foreach_reverse (shape; shapes)
         {
             curParent = curParent.defProp(
-                vm,
                 shape.propName,
                 shape.type,
                 shape.attrs,
@@ -612,13 +607,12 @@ ValuePair newObj(
 
     obj_set_shape(objPtr, cast(rawptr)vm.emptyShape);
 
-    defConst(vm, objPair, "__proto__"w, protoObj.pair);
+    defConst(objPair, "__proto__"w, protoObj.pair);
 
     return objPair;
 }
 
 ValuePair newClos(
-    VM vm,
     ValuePair proto,
     uint32_t allocNumCells,
     IRFunction fun
@@ -636,8 +630,8 @@ ValuePair newClos(
 
     obj_set_shape(objPair.word.ptrVal, cast(rawptr)vm.emptyShape);
 
-    defConst(vm, objPair, "__proto__"w, protoObj.pair);
-    defConst(vm, objPair, "__fptr__"w, ValuePair(fun));
+    defConst(objPair, "__proto__"w, protoObj.pair);
+    defConst(objPair, "__fptr__"w, ValuePair(fun));
 
     return objPair;
 }
@@ -683,7 +677,7 @@ void setSlotPair(refptr objPtr, uint32_t slotIdx, ValuePair val)
     obj_set_tag(objPtr, slotIdx, val.tag);
 }
 
-ValuePair getProp(VM vm, ValuePair obj, wstring propStr)
+ValuePair getProp(ValuePair obj, wstring propStr)
 {
     // Get the shape from the object
     auto objShape = cast(ObjShape)obj_get_shape(obj.word.ptrVal);
@@ -711,7 +705,7 @@ ValuePair getProp(VM vm, ValuePair obj, wstring propStr)
     }
 
     // Get the prototype pointer
-    auto proto = getProp(vm, obj, "__proto__"w);
+    auto proto = getProp(obj, "__proto__"w);
 
     // If the prototype is null, produce the undefined constant
     if (proto is NULL)
@@ -719,14 +713,12 @@ ValuePair getProp(VM vm, ValuePair obj, wstring propStr)
 
     // Do a recursive lookup on the prototype
     return getProp(
-        vm,
         proto,
         propStr
     );
 }
 
 bool setProp(
-    VM vm,
     ValuePair objPair,
     wstring propStr,
     ValuePair valPair,
@@ -790,7 +782,6 @@ bool setProp(
 
         // Create a new shape for the property
         defShape = objShape.defProp(
-            vm,
             propStr,
             valType,
             defAttrs,
@@ -819,7 +810,6 @@ bool setProp(
 
             // Change the defining shape to match the value type
             objShape = objShape.defProp(
-                vm,
                 propStr,
                 valType,
                 defAttrs,
@@ -890,7 +880,6 @@ bool setProp(
 Define a constant on an object
 */
 bool defConst(
-    VM vm,
     ValuePair objPair,
     wstring propStr,
     ValuePair valPair,
@@ -911,7 +900,6 @@ bool defConst(
     }
 
     setProp(
-        vm,
         objPair,
         propStr,
         valPair,
@@ -927,7 +915,6 @@ bool defConst(
 Set the attributes for a given property
 */
 bool setPropAttrs(
-    VM vm,
     ValuePair obj,
     ObjShape defShape,
     PropAttr attrs
@@ -941,7 +928,6 @@ bool setPropAttrs(
 
     // Redefine the property
     auto newShape = objShape.defProp(
-        vm,
         defShape.propName,
         defShape.type,
         attrs,
