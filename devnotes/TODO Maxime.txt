@@ -29,6 +29,15 @@ Idea: for thesis, complete system, whole-program analysis is complicated
 - eliminate all type tests and ovf checks that always go the same way
 - Save profiled data. Use instrs ids. Check that opcode and out slot match.
 "Better than Perfect: Highly Effective Type Check Elimination"
+Type Specialization without Type Analysis
+- Where perfect analysis will do better:
+  - array types, gets all the monomorphic types without testing
+  - array elem types often used in loop itrs
+- BBV does better at polymorphism:
+  - poly function parameter
+  - object field is null or something else
+- Could do some scout work: profile type checks
+  - how many type checks do/don't always go the same way?
 
 ------------------------------------------------------------------------------
 
@@ -140,18 +149,11 @@ TODO: try using read_shape, known shape for get_enum_tbl
 TODO: can we load directly from moffs64?
 TODO: remove VM from all runtime/object.d calls
 
-TODO: FP machine
-- x and y inputs, in [-1, 1]
-- function to compute an output from input coordinates
-- iterative computation
-- table of operators for each input
-
 ------------------------------------------------------------------------------
 
 Computing Frontiers - Jan 16
 - Mention that approach is novel, alternative compiler architecture
 - More lazyness, future JITs
-- Submit no matter what
 
 DYLA - typed shapes paper
 - can often know at compile time if obj needs to be extended or not
@@ -165,12 +167,22 @@ DYLA - typed shapes paper
 - for global object, can determine prop idx, lower bound on global obj
   size at compilation time
 
-TODO: remove vm field of IRFunction
-
 Next blog post: mention improved resultd across the board
 - Less versions, less type tests, much bigger speedups
 - Will begin work on interprocedural basic block versioning imminently
 - For thesis, comparison against perfect analysis
+
+TODO: FP machine
+- x and y inputs, in [-1, 1]
+- function to compute an output from input coordinates
+- iterative computation
+- table of operators for each input
+
+TODO: remove vm field of IRFunction
+
+TODO: profile the proportion of branches going left and right
+- use static ctor/dtor
+- map of IRInstr to structs
 
 ------------------------------------------------------------------------------
 
@@ -179,6 +191,7 @@ ECOOP - Dec 21
 - Invite Erick to review
 
 TODO: create branch for paper code, ecoop2015
+
 
 
 
