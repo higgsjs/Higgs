@@ -120,6 +120,15 @@ TODO: try using read_shape, known shape for get_enum_tbl?
 - need a different mode for when shapes not propagated?
 TODO: can we load directly from moffs64?
 
+TODO: getter and setter syntax
+- needed for hash map benchmark
+- Easy to recognize the grammar, but need to modify the AST
+  - Use a struct for object literal property descriptors
+- Probably want some kind of runtime call to define getters and setters
+
+TODO: use global VM ptr in stats.d for code size, stub size?
+- remove code size computation
+
 ------------------------------------------------------------------------------
 
 Computing Frontiers - Jan 16
@@ -138,7 +147,7 @@ DYLA - typed shapes paper
 - for global object, can determine prop idx, lower bound on global obj
   size at compilation time
 
-Next blog post: mention improved resultd across the board
+Next blog post: mention improved results across the board
 - Less versions, less type tests, much bigger speedups
 - Will begin work on interprocedural basic block versioning imminently
 - For thesis, comparison against perfect analysis
@@ -153,14 +162,7 @@ TODO: FP machine
 - iterative computation
 - table of operators for each input
 
-TODO: getter and setter syntax
-- needed for hash map benchmark
-- Easy to recognize the grammar, but need to modify the AST
-  - Use a struct for object literal property descriptors
-- Probably want some kind of runtime call to define getters and setters
-
-TODO: use global VM ptr in stats.d for code size, stub size?
-- remove code size computation
+TODO: blog post, Better than Perfect?
 
 TODO: profile the proportion of branches going left and right
 - use static ctor/dtor
