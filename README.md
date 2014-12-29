@@ -7,7 +7,7 @@ A JIT compiler for JavaScript targetting x86-64 platforms.
 
 **Requirements:**
 
-- D compiler ([DMD](http://dlang.org/download.html) recommended)
+- D compiler (latest [DMD](http://dlang.org/download.html) recommended)
 - POSIX compliant OS (Linux, Unix, MacOS X)
 - Python 2.7 (if regenerating object layouts)
 - x86 64-bit CPU
@@ -97,5 +97,3 @@ Documentation for Higgs and included libraries can be found in the [Higgs Wiki](
 You can follow the development of Higgs on [Maxime's blog](http://pointersgonewild.com/category/higgs/).
 
 Come chat with us in [\#higgsjs](http://webchat.freenode.net/?channels=higgsjs) on [Freenode](http://freenode.net/).
-
-Follow Higgs news and discussion by subscribing to [r/higgsjs](http://www.reddit.com/r/higgsjs/) on reddit.
