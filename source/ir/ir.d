@@ -893,10 +893,10 @@ class IRConst : IRValue
 
     static IRConst float64Cst(float64 val)
     {
-        // hash the bit representation which might be different even
-        // though two values compare equal, e.g. 0.0 == -0.0 but 0.0 !is -0.0
-        static assert(ulong.sizeof == float64.sizeof);
-        ulong repr = *cast(ulong*)&val;
+        // Hash the bit representation which might differ even though
+        // two values compare equal, e.g. 0.0 == -0.0 but 0.0 !is -0.0
+        static assert(uint64_t.sizeof == float64.sizeof);
+        ulong repr = *cast(uint64_t*)&val;
 
         if (auto p = repr in float64Vals)
             return *p;
@@ -942,10 +942,13 @@ class IRConst : IRValue
     private static IRConst nullVal = null;
     private static IRConst nullPtrVal = null;
 
+    // Integer constants
     private static IRConst[int32] int32Vals;
     private static IRConst[int64] int64Vals;
-    // hash the bit representation, not the float
-    private static IRConst[ulong] float64Vals;
+
+    // Floating-point constants
+    // Note: we hash the bit representation, not the float
+    private static IRConst[uint64_t] float64Vals;
 
     private this(Word word, Tag tag)
     {
