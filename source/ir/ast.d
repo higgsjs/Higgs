@@ -381,14 +381,15 @@ IRFunction astToIR(
     fun.argcVal = cast(FunParam)entry.addPhi(new FunParam("argc", 3));
 
     // Create values for the visible function parameters
+    fun.paramVals = new FunParam[ast.params.length];
     for (size_t i = 0; i < ast.params.length; ++i)
     {
         auto argIdx = NUM_HIDDEN_ARGS + i;
         auto ident = ast.params[i];
 
         auto paramVal = new FunParam(ident.name, cast(uint32_t)argIdx);
+        fun.paramVals[i] = paramVal;
         entry.addPhi(paramVal);
-        fun.paramMap[ident] = paramVal;
         bodyCtx.localMap[ident] = paramVal;
     }
 

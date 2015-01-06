@@ -6,7 +6,8 @@ function fib(n)
     return fib(n-1) + fib(n-2);
 }
 
-fib.irString();
+var str = fib.irString();
+assert (str.length > 0);
 
 fib(2);
 

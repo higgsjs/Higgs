@@ -103,14 +103,14 @@ class IRFunction : IdObject
     /// Total number of locals, including parameters and temporaries
     uint32_t numLocals = 0;
 
-    /// Hidden argument SSA values
+    /// Hidden parameter SSA values
     FunParam raVal;
     FunParam closVal;
     FunParam thisVal;
     FunParam argcVal;
 
-    /// Map of parameters to SSA values
-    FunParam[IdentExpr] paramMap;
+    /// Visible parameter SSA values
+    FunParam[] paramVals;
 
     /// Map of identifiers to SSA cell values (closure/shared variables)
     IRValue[IdentExpr] cellMap;
@@ -194,9 +194,9 @@ class IRFunction : IdObject
         output.put("this:" ~ thisVal.getName() ~ ", ");
         output.put("argc:" ~ argcVal.getName());
 
-        foreach (argIdx, var; ast.params)
+        foreach (argIdx, paramVal; paramVals)
         {
-            auto paramVal = paramMap[var];
+            auto var = ast.params[argIdx];
             output.put(", " ~ var.toString() ~ ":" ~ paramVal.getName());
         }
         output.put(")");

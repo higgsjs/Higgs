@@ -311,7 +311,7 @@ PhiNode inlineCall(IRInstr callSite, IRFunction callee)
     valMap[callee.argcVal] = IRConst.int32Cst(cast(int32_t)numArgs);
 
     // Map the visible parameters to call site parameters
-    foreach (param; callee.paramMap)
+    foreach (param; callee.paramVals)
     {
         auto argIdx = param.idx - NUM_HIDDEN_ARGS;
         if (argIdx < numArgs)

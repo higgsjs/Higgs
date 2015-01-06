@@ -139,8 +139,6 @@ TODO: FP machine
 - iterative computation
 - table of operators for each input
 
-TODO: assert num benchs successful > 0 in test runner
-
 Interp BBV next step: threading global object?
 
 TODO: look into McGill benchmarks
@@ -148,11 +146,11 @@ TODO: look into McGill benchmarks
 TODO: assess performance with multiple primitive entry points
 - versions, code size, type tests, speed (nocomptime)
 
-TODO: implement entry point spec for call_prim only first
+TODO: implement entry point spec for call_prim
 
 TODO: implement a new CodeGenState ctor which takes optional argTypes
 
-TODO: commit, push to master before entry point spec
+commit, push to master
 
 
 
@@ -162,7 +160,22 @@ TODO: commit, push to master before entry point spec
 
 
 
+[DONE] TODO: assert num benchs successful > 0 in test runner
 
+[DONE] TODO: add/edit test, fn tostring should contain fun name, param names
+./tests/02-regress/ast-string.js
+
+[DONE] FIXME: irString broken
+- string is generated correctly, fails during execution
+- Fails inside of compile() while compiling branch code
+- Fails in new CodeGenState() to get succ version
+- Could we be appending args twice? Yes
+
+[DONE] FIXME: paramMap in IRFunction, does this make sense?
+- should it be an array? paramVals
+- map not needed in ir/ast.d, nor jit/jit.d
+
+[DONE] TODO: commit, push to master before entry point spec
 
 [DONE] TODO: unthread VM pointer from genBranch delegate
 

@@ -322,7 +322,7 @@ class CodeGenState
     /**
     Constructor for a function entry code generation state
     */
-    this(IRFunction fun)
+    this(IRFunction fun, ValType[] argTypes = null)
     {
         this.fun = fun;
 
@@ -331,13 +331,26 @@ class CodeGenState
         mapToStack(fun.thisVal);
         mapToStack(fun.argcVal);
 
-        foreach (ident, param; fun.paramMap)
+        foreach (param; fun.paramVals)
             mapToStack(param);
 
         // Set the tags for the untagged hidden argument values
         setTag(fun.raVal, Tag.RETADDR);
         setTag(fun.closVal, Tag.CLOSURE);
         setTag(fun.argcVal, Tag.INT32);
+
+        // If argument types were specified
+        if (argTypes !is null)
+        {
+            assert (argTypes.length is fun.paramVals.length);
+
+            // TODO
+
+
+
+
+
+        }
     }
 
     /**
@@ -2777,15 +2790,6 @@ extern (C) CodePtr compileEntry(EntryStub stub)
     if (opts.dumpinfo)
         writeln("compiling entry for " ~ fun.getName);
 
-    /*
-    writeln("closPtr=", closPtr);
-    writeln("fun=", cast(ubyte*)fun);
-    writeln("argCount=", argCount);
-    if (argCount > 0)
-        writeln("first arg: ", vm.getWord(4).uint64Val);
-    writeln("orig stack size: ", vm.stackSize());
-    */
-
     // Store the original number of locals for the function
     auto origLocals = fun.numLocals;
 
@@ -2806,12 +2810,6 @@ extern (C) CodePtr compileEntry(EntryStub stub)
 
     // Add space for the newly allocated locals
     vm.push(fun.numLocals - origLocals);
-
-    /*
-    writeln("fun.numLocals=", fun.numLocals);
-    writeln("origLocals=", origLocals);
-    writeln("new stack size: ", vm.stackSize());
-    */
 
     // Request an instance for the function entry blocks
     auto entryInst = getBlockVersion(
