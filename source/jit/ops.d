@@ -344,7 +344,6 @@ void RMMOp(string op, size_t numBits, Tag tag)(
         branchOV,
         delegate void(
             CodeBlock as,
-            VM vm,
             BlockVersion block,
             CodeFragment target0,
             CodeFragment target1,
@@ -934,7 +933,6 @@ void TagTestOp(Tag tag)(
                 null,
                 delegate void(
                     CodeBlock as,
-                    VM vm,
                     BlockVersion block,
                     CodeFragment target0,
                     CodeFragment target1,
@@ -1006,7 +1004,6 @@ void TagTestOp(Tag tag)(
             branchF,
             delegate void(
                 CodeBlock as,
-                VM vm,
                 BlockVersion block,
                 CodeFragment target0,
                 CodeFragment target1,
@@ -1280,7 +1277,6 @@ void CmpOp(string op, size_t numBits)(
             branchF,
             delegate void(
                 CodeBlock as,
-                VM vm,
                 BlockVersion block,
                 CodeFragment target0,
                 CodeFragment target1,
@@ -1485,7 +1481,6 @@ void gen_if_true(
         branchF,
         delegate void(
             CodeBlock as,
-            VM vm,
             BlockVersion block,
             CodeFragment target0,
             CodeFragment target1,
@@ -1530,7 +1525,6 @@ void JumpOp(size_t succIdx)(
         null,
         delegate void(
             CodeBlock as,
-            VM vm,
             BlockVersion block,
             CodeFragment target0,
             CodeFragment target1,
@@ -1601,7 +1595,7 @@ void genCallBranch(
         instr.getTarget(0),
         st,
         false,
-        delegate void(CodeBlock as, VM vm)
+        delegate void(CodeBlock as)
         {
             // If eager compilation is enabled
             if (opts.bbv_eager)
@@ -1631,7 +1625,7 @@ void genCallBranch(
             instr.getTarget(1),
             st,
             false,
-            delegate void(CodeBlock as, VM vm)
+            delegate void(CodeBlock as)
             {
                 // Pop the exception value off the stack and
                 // move it into the instruction's output slot
@@ -1810,7 +1804,6 @@ void gen_call_prim(
         as,
         delegate void(
             CodeBlock as,
-            VM vm,
             BlockVersion block,
             CodeFragment target0,
             CodeFragment target1,
@@ -1991,7 +1984,6 @@ void gen_call(
             as,
             delegate void(
                 CodeBlock as,
-                VM vm,
                 BlockVersion block,
                 CodeFragment target0,
                 CodeFragment target1,
@@ -2176,7 +2168,6 @@ void gen_call(
         as,
         delegate void(
             CodeBlock as,
-            VM vm,
             BlockVersion block,
             CodeFragment target0,
             CodeFragment target1,
@@ -2289,7 +2280,6 @@ void gen_call_apply(
         as,
         delegate void(
             CodeBlock as,
-            VM vm,
             BlockVersion block,
             CodeFragment target0,
             CodeFragment target1,
@@ -2421,7 +2411,6 @@ void gen_load_file(
         as,
         delegate void(
             CodeBlock as,
-            VM vm,
             BlockVersion block,
             CodeFragment target0,
             CodeFragment target1,
@@ -2543,7 +2532,6 @@ void gen_eval_str(
         as,
         delegate void(
             CodeBlock as,
-            VM vm,
             BlockVersion block,
             CodeFragment target0,
             CodeFragment target1,
@@ -2708,7 +2696,7 @@ void gen_ret(
     as.jmp(scrRegs[1].opnd);
 
     // Mark the end of the fragment
-    ver.markEnd(as, vm);
+    ver.markEnd(as);
 }
 
 void gen_throw(
@@ -2748,7 +2736,7 @@ void gen_throw(
     as.jmp(cretReg.opnd);
 
     // Mark the end of the fragment
-    ver.markEnd(as, vm);
+    ver.markEnd(as);
 }
 
 void GetValOp(Tag tag, string fName)(
@@ -3008,7 +2996,6 @@ void gen_break(
         branch,
         delegate void(
             CodeBlock as,
-            VM vm,
             BlockVersion block,
             CodeFragment target0,
             CodeFragment target1,
@@ -3087,7 +3074,6 @@ void gen_capture_tag(
         branchF,
         delegate void(
             CodeBlock as,
-            VM vm,
             BlockVersion block,
             CodeFragment target0,
             CodeFragment target1,
@@ -3174,7 +3160,6 @@ void gen_capture_shape(
         branchF,
         delegate void(
             CodeBlock as,
-            VM vm,
             BlockVersion block,
             CodeFragment target0,
             CodeFragment target1,
@@ -3432,7 +3417,6 @@ void gen_obj_set_prop(
             branchF,
             delegate void(
                 CodeBlock as,
-                VM vm,
                 BlockVersion block,
                 CodeFragment target0,
                 CodeFragment target1,
@@ -3720,7 +3704,6 @@ void gen_obj_set_prop(
             branchF,
             delegate void(
                 CodeBlock as,
-                VM vm,
                 BlockVersion block,
                 CodeFragment target0,
                 CodeFragment target1,
@@ -4066,7 +4049,6 @@ void gen_obj_get_prop(
             branchF,
             delegate void(
                 CodeBlock as,
-                VM vm,
                 BlockVersion block,
                 CodeFragment target0,
                 CodeFragment target1,
@@ -4342,7 +4324,6 @@ void gen_obj_get_prop(
             branchF,
             delegate void(
                 CodeBlock as,
-                VM vm,
                 BlockVersion block,
                 CodeFragment target0,
                 CodeFragment target1,

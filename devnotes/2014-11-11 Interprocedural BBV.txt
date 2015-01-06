@@ -1,18 +1,49 @@
-Multiple entry points per function. Type lookup system, inline caching.
+Plan:
+- First, get multiple entry points working, passing of arg types only
 
-Return:
-- Probably not worth trying to pass the return type interprocedurally, because
-the return point lookup would be expensive
-- May be useful to have context attribute for "no shape changes in callee" on
-return point. This way, can use BBV to avoid losing shape information.
+Multiple entry points per function:
+- Need function entry stubs, management of entry versions
+  - Do we need entry stubs?
+  - When going to specialized entry, could we compile immediately?
+  - What do we do right now, for specialized calls?
+
+Global object threading:
+- Should wait before doing this, multiple entry points first
+- Needs to be phi-like or a pseudo-argument so the input ctx can provide it
+  - get global obj instruction won't quite work
+- Pseudo-arg might work, but we don't want to count this in hidden args, do we?
+  - Would like to avoid copying this on the stack
+  - Could use special handling, it's a hidden arg but we don't write it?
+  - Or swap vmReg for a global obj reg?
+
+Version explosion:
+- Probably won't have explosion, many of the types of input args already exposed
+- If problem, can have smarter versioning scheme
+  - Limit per-value polymorphism, refuse versions or return a compromise
+
+Return info propagation:
+- Return info: try to predict what the function will return
+  - speculative/predicted info return vs generic return?
+  - remark: for many runtime functions, we should know the return type,
+    but it may also not be very relevant
+- Shape changed flag in context
+- Have some system where RA goes to a "no shapes changed" version and RA+K goes
+to a "shapes changed version", or the reverse
+- A little dispatch code fragment can be generated that falls through to the
+default version, triggers the lazy generation of the appropriate block version
+The return provokes the compilation of the continuation stub
+The continuation stub is not compiled until this return happens
+When the first return point is compiled, establish a prediction for other returns
+Compiling other return points will either match or violate the prediction
+Continuation stubs can be compiled in function of this prediction
+For stubs that make no prediction, the mispredict return is a noop
+- Can separate return predictions by entry point versions ***
+TODO: verify proportion of calls modifying shapes
+- Can also do this through profiling, set some bit to zero on call
+TODO: profile return values, are they often monomorphic?
 
 Transitiveness of "no shapes changed"?
 - This is basically a dirty flag, set to false on function entry. If we change
 a chape during the call, we set the flag to true. If a callee sets its flag,
 we set our flag too.
 
-Implementation:
-- Have some system where RA goes to a "no shapes changed" version and RA+K goes
-to a "shapes changed version", or the reverse
-- A little dispatch code fragment can be generated that falls through to the
-default version, triggers the lazy generation of the appropriate block version

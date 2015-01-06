@@ -1,0 +1,20 @@
+Current FFI is modeled after luaJIT FFI and Python's cffi
+http://luajit.org/ext_ffi.html
+- missing ffi.new()
+
+What does the FFI do?
+- Parses cdecl blocks
+- Function wrappers
+- Representation of C type decls
+- Wrappers to access structs, strings, unions, enums, pointers
+
+ffi.new('type'):
+- creates obj of given type
+- can use types defined in cdecl
+  - local to its own FFILib
+
+C decl parsing seems fairly complex, needs detailed look
+
+May want better template strings, to implement new FFI lib
+
+

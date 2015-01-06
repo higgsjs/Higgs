@@ -1493,7 +1493,7 @@ abstract class CodeFragment
     /**
     Store the start position of the code
     */
-    final void markStart(CodeBlock as, VM vm)
+    final void markStart(CodeBlock as)
     {
         assert (
             startIdx is startIdx.max,
@@ -1510,7 +1510,7 @@ abstract class CodeFragment
     /**
     Store the end position of the code
     */
-    final void markEnd(CodeBlock as, VM vm)
+    final void markEnd(CodeBlock as)
     {
         assert (
             !ended,
@@ -1637,10 +1637,7 @@ class ExitCode : CodeFragment
 }
 
 /// Branch edge prelude code generation delegate
-alias PrelGenFn = void delegate(
-    CodeBlock as,
-    VM vm
-);
+alias PrelGenFn = void delegate(CodeBlock as);
 
 /**
 Branch edge transition code
@@ -1682,7 +1679,6 @@ enum BranchShape
 /// Branch code generation delegate
 alias BranchGenFn = void delegate(
     CodeBlock as,
-    VM vm,
     BlockVersion block,
     CodeFragment target0,
     CodeFragment target1,
@@ -1748,7 +1744,6 @@ class BlockVersion : CodeFragment
         // Generate the final branch code
         branchGenFn(
             as,
-            vm,
             this,
             target0,
             target1,
@@ -1756,7 +1751,7 @@ class BlockVersion : CodeFragment
         );
 
         // Store the code end index
-        markEnd(as, vm);
+        markEnd(as);
     }
 
     /**
@@ -1810,7 +1805,6 @@ class BlockVersion : CodeFragment
         assert (branchGenFn !is null);
         branchGenFn(
             as,
-            vm,
             this,
             targets[0],
             targets[1],
@@ -2331,7 +2325,7 @@ void compile(VM vm, IRInstr curInstr)
 
             // Store the code start index for this fragment
             if (ver.startIdx is ver.startIdx.max)
-                ver.markStart(as, vm);
+                ver.markStart(as);
 
             if (opts.dumpinfo)
                 writeln("compiling block: ", block.getName);
@@ -2417,13 +2411,13 @@ void compile(VM vm, IRInstr curInstr)
             assert (branch.predState !is null);
 
             // Store the code start index
-            branch.markStart(as, vm);
+            branch.markStart(as);
 
             //as.printStr("branch code to " ~ branch.branch.target.getName);
 
             // Generate the prelude code, if any
             if (branch.prelGenFn)
-                branch.prelGenFn(as, vm);
+                branch.prelGenFn(as);
 
             // Generate the successor state for this branch
             auto succState = new CodeGenState(
@@ -2456,7 +2450,7 @@ void compile(VM vm, IRInstr curInstr)
             }
 
             // Store the code end index
-            branch.markEnd(as, vm);
+            branch.markEnd(as);
 
             if (opts.dumpinfo)
             {
@@ -2470,7 +2464,7 @@ void compile(VM vm, IRInstr curInstr)
         {
             auto callInstr = stub.callVer.block.lastInstr;
 
-            stub.markStart(as, vm);
+            stub.markStart(as);
 
             if (opts.genasm)
                 as.comment("Cont stub for " ~ stub.contBranch.getName);
@@ -2507,7 +2501,7 @@ void compile(VM vm, IRInstr curInstr)
             // Jump to the compiled continuation
             as.jmp(X86Opnd(cretReg));
 
-            stub.markEnd(as, vm);
+            stub.markEnd(as);
 
             // Set the return address entry for this stub
             vm.setRetEntry(
@@ -2639,7 +2633,7 @@ EntryFn compileUnit(VM vm, IRFunction fun)
     //
 
     auto retEdge = new ExitCode(fun);
-    retEdge.markStart(as, vm);
+    retEdge.markStart(as);
 
     if (opts.trace_instrs)
         as.printStr("Unit return branch for " ~ fun.getName);
@@ -2675,7 +2669,7 @@ EntryFn compileUnit(VM vm, IRFunction fun)
     // Return to the host
     as.ret();
 
-    retEdge.markEnd(as, vm);
+    retEdge.markEnd(as);
 
     // Get the return code address
     auto retAddr = retEdge.getCodePtr(as);
@@ -2691,7 +2685,7 @@ EntryFn compileUnit(VM vm, IRFunction fun)
     );
 
     // Mark the code start index
-    entryInst.markStart(as, vm);
+    entryInst.markStart(as);
 
     as.comment("unit " ~ fun.getName);
 
@@ -2828,7 +2822,7 @@ extern (C) CodePtr compileEntry(EntryStub stub)
     /*
     // warning, ctor is first on queue
     auto as = vm.execHeap;
-    entryInst.markStart(as, vm);
+    entryInst.markStart(as);
     as.getMember!"VM.tsp"(scrRegs[0], vmReg);
     as.getMember!"VM.tStack"(scrRegs[1], vmReg);
 
@@ -2999,7 +2993,7 @@ CodePtr getEntryStub(VM vm, bool ctorCall)
 
     auto stub = new EntryStub(vm, ctorCall);
 
-    stub.markStart(as, vm);
+    stub.markStart(as);
 
     as.saveJITRegs();
 
@@ -3020,7 +3014,7 @@ CodePtr getEntryStub(VM vm, bool ctorCall)
     // Jump to the compiled version
     as.jmp(X86Opnd(RAX));
 
-    stub.markEnd(as, vm);
+    stub.markEnd(as);
 
     vm.entryStub = stub;
 
@@ -3043,7 +3037,7 @@ BranchStub getBranchStub(VM vm, size_t targetIdx)
     vm.branchStubs.length = targetIdx + 1;
     vm.branchStubs[targetIdx] = stub;
 
-    stub.markStart(as, vm);
+    stub.markStart(as);
 
     // Insert the label for this block in the out of line code
     as.comment("Branch stub (target " ~ to!string(targetIdx) ~ ")");
@@ -3085,7 +3079,7 @@ BranchStub getBranchStub(VM vm, size_t targetIdx)
     as.jmp(cretReg.opnd);
 
     // Store the code end index
-    stub.markEnd(as, vm);
+    stub.markEnd(as);
 
     return stub;
 }

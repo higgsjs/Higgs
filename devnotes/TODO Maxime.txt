@@ -38,54 +38,9 @@ Type Specialization without Type Analysis
   - object field is null or something else
 - Could do some scout work: profile type checks
   - how many type checks do/don't always go the same way?
+  - 90% always go the same way, weighed for importance, without versioning
 
 ------------------------------------------------------------------------------
-
-TODO: think about interprocedural BBV
-- Return info: try to predict what the function will return
-  - speculative/predicted info return vs generic return?
-  - remark: for many runtime functions, we should know the return type,
-    but it may also not be very relevant
-- Shape changed flag in context
-- Need function entry stubs, management of entry versions
-  - Do we need entry stubs?
-  - When going to specialized entry, could we compile immediately?
-  - What do we do right now, for specialized calls?
-
-Return info propagation:
-The return provokes the compilation of the continuation stub
-The continuation stub is not compiled until this return happens
-When the first return point is compiled, establish a prediction for other returns
-Compiling other return points will either match or violate the prediction
-Continuation stubs can be compiled in function of this prediction
-For stubs that make no prediction, the mispredict return is a noop
-- Can separate return predictions by entry point versions ***
-TODO: verify proportion of calls modifying shapes
-- Can also do this through profiling, set some bit to zero on call
-TODO: profile return values, are they often monomorphic?
-
-Global object threading:
-- Should wait before doing this, multiple entry points first
-- Needs to be phi-like or a pseudo-argument so the input ctx can provide it
-  - get global obj instruction won't quite work
-- Pseudo-arg might work, but we don't want to count this in hidden args, do we?
-  - Would like to avoid copying this on the stack
-  - Could use special handling, it's a hidden arg but we don't write it?
-  - Or swap vmReg for a global obj reg?
-
-Version explosion:
-- Probably won't have explosion, many of the types of input args already exposed
-- If problem, can have smarter versioning scheme
-  - Limit per-value polymorphism, refuse versions or return a compromise
-
-TODO: synth, right for new synth, up for new melody
-- log the melody
-TODO: try allowing either tri or sine in osc bank
-TODO: grid sequencer, keyboard movement to select current square
-- pentatonic scale a different color but other notes available
-
-TODO: look into freeing vmReg
-- where is it used?
 
 TODO: Higgs is a Typed Architecture
 - Presentation, argument, angry guy, red face
@@ -115,9 +70,8 @@ TODO: progress update blog post
   - ALSA audio output bindings
   - Socket bindings
 
-TODO: try using read_shape, known shape for get_enum_tbl?
-- can we finally beat V8 baseline on string-fasta?
-- need a different mode for when shapes not propagated?
+TODO: look into freeing vmReg
+- where is it used?
 TODO: can we load directly from moffs64?
 
 TODO: getter and setter syntax
@@ -126,14 +80,7 @@ TODO: getter and setter syntax
   - Use a struct for object literal property descriptors
 - Probably want some kind of runtime call to define getters and setters
 
-TODO: use global VM ptr in stats.d for code size, stub size?
-- remove code size computation
-
 ------------------------------------------------------------------------------
-
-Computing Frontiers - Jan 16
-- Mention that approach is novel, alternative compiler architecture
-- More lazyness, future JITs
 
 DYLA - typed shapes paper
 - can often know at compile time if obj needs to be extended or not
@@ -148,13 +95,43 @@ DYLA - typed shapes paper
   size at compilation time
 
 Next blog post: mention improved results across the board
+- Title: Better than Perfect?
 - Less versions, less type tests, much bigger speedups
 - Will begin work on interprocedural basic block versioning imminently
 - For thesis, comparison against perfect analysis
 
-Meeting:
-- Minor refactorings, unthreading VM pointer
-- Branch profiling?
+2015-01-XX Meeting:
+- Minor refactorings, now using global VM object, unthreading VM pointer
+- Created ECOOP2015 branch to keep stable version of code for paper
+- Type test branch profiling
+  - 97% of type test instructions always go the same way
+  - 90% of tests executed belong to instructions that always go the same way
+    - earley-boyer is the most dynamic: 61%
+    - 6 simple benchmarks at 100%: recursive, bits-in-byte, 3d-morph, nsieve, 3bits-byte, fannkuch
+  - Right now, 71% eliminated, theoretical upper bound 90% *without versioning*
+- Not strictly obvious that BBV can or will beat perfect analysis
+  - Where perfect analysis will do better:
+    - array types, gets all the monomorphic types without testing
+    - array elem types often used in loop itrs
+  - BBV does better at polymorphism:
+    - polymorphic function parameter
+    - object field is null or something else
+    - array element can have multiple types
+- Discuss graduation timeline
+
+TODO: look into improving template strings, completing further
+`string text ${expression} string text`
+tagExpr `string text ${expression} string text`
+function tag(stringArr, ...values)
+- Need to test template strings, nested too
+- For now, could ignore tag, support only expression substitution
+  - Full support at the parsing end, implement semantics partially
+- Implement TempStrExpr class
+- Lexer: dumb lexing possible? template string parts
+  - start at backtick or }???
+  - restarting at } is problematic
+  - possibly need some flag like RE, informing the lexer that we're still
+    in an expression
 
 TODO: FP machine
 - x and y inputs, in [-1, 1]
@@ -162,22 +139,53 @@ TODO: FP machine
 - iterative computation
 - table of operators for each input
 
-TODO: blog post, Better than Perfect?
+TODO: assert num benchs successful > 0 in test runner
 
-TODO: profile the proportion of branches going left and right
+Interp BBV next step: threading global object?
+
+TODO: look into McGill benchmarks
+
+TODO: assess performance with multiple primitive entry points
+- versions, code size, type tests, speed (nocomptime)
+
+TODO: implement entry point spec for call_prim only first
+
+TODO: implement a new CodeGenState ctor which takes optional argTypes
+
+TODO: commit, push to master before entry point spec
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: unthread VM pointer from genBranch delegate
+
+[DONE] TODO: think about multiple entry versions
+- multiple versions of function entry block, already accounted for
+  - need a new CodeGenState ctor which takes argTypes
+- call_prim queues entry block ver directly, no stub
+  - specialized call does the same
+- stub is only applicable to generic version
+
+[DONE] TODO: create interp BBV notes file, move notes
+
+[DONE] TODO: look at tutorials for Python FFI
+- cffi works similarly to luaJIT's FFI
+
+[DONE] TODO: create new FFI notes file
+
+[DONE] TODO: look at tutorials for lua FFI
+- Pointers to pointers? can do ffi.new('int*');
+
+[DONE] TODO: profile the proportion of branches going left and right
 - use static ctor/dtor
 - map of IRInstr to structs
-
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: remove VM from all runtime/object.d calls
 

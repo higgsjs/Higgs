@@ -167,6 +167,12 @@ T emplace(T, Args...)(void[] chunk, auto ref Args args) if (is(T == class));
 http://wiki.dlang.org/Memory_Management#Explicit_Class_Instance_Allocation
 - Use @nogc attribute
 
+TODO: synth, right for new synth, up for new melody
+- log the melody
+TODO: try allowing either tri or sine in osc bank
+TODO: grid sequencer, keyboard movement to select current square
+- pentatonic scale a different color but other notes available
+
 TODO: try to implement inline array for instr args, phi args
 
 TODO: Can we free one scr reg to reduce spills? May help nbody
