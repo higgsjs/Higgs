@@ -893,11 +893,16 @@ class IRConst : IRValue
 
     static IRConst float64Cst(float64 val)
     {
-        if (val in float64Vals)
-            return float64Vals[val];
+        // hash the bit representation which might be different even
+        // though two values compare equal, e.g. 0.0 == -0.0 but 0.0 !is -0.0
+        static assert(ulong.sizeof == float64.sizeof);
+        ulong repr = *cast(ulong*)&val;
+
+        if (auto p = repr in float64Vals)
+            return *p;
 
         auto cst = new IRConst(Word.float64v(val), Tag.FLOAT64);
-        float64Vals[val] = cst;
+        float64Vals[repr] = cst;
         return cst;
     }
 
@@ -939,7 +944,8 @@ class IRConst : IRValue
 
     private static IRConst[int32] int32Vals;
     private static IRConst[int64] int64Vals;
-    private static IRConst[float64] float64Vals;
+    // hash the bit representation, not the float
+    private static IRConst[ulong] float64Vals;
 
     private this(Word word, Tag tag)
     {
