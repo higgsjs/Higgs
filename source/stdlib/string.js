@@ -78,6 +78,9 @@ function String(value)
     }
 }
 
+// Set the string prototype object
+String.prototype = $ir_get_str_proto();
+
 //-----------------------------------------------------------------------------
 
 /**
@@ -100,7 +103,7 @@ function string_internal_toCharCodeArray(x)
 function string_internal_fromCharCodeArray(a)
 {
     // Get the array length
-    var len = $rt_arr_get_len(a);
+    var len = $rt_getArrLen(a);
 
     // Allocate a string object
     var strObj = $rt_str_alloc(len);
@@ -121,6 +124,25 @@ function string_internal_isWhiteSpace(c)
            (c === 12288) || (c === 65279);
 }
 
+/// Preallocated character strings for 8-bit char codes
+$rt_char_str_table = (function () 
+{
+    var len = 256;
+    var table = $rt_arrtbl_alloc(len);
+
+    for (var c = 0; c < len; c++)
+    {
+        var str = $rt_str_alloc(1);
+        $rt_str_set_data(str, 0, c);
+        str = $ir_get_str(str);
+
+        $rt_arrtbl_set_word(table, c, $ir_get_word(str))
+        $rt_arrtbl_set_tag(table, c, $ir_get_tag(str))
+    }
+
+    return table;
+})();
+
 //-----------------------------------------------------------------------------
 
 /**
@@ -128,17 +150,43 @@ function string_internal_isWhiteSpace(c)
 */
 function string_fromCharCode(c)
 {
-    if ($ir_eq_i32($argc, 1) && $ir_is_i32(c))
+    if ($ir_eq_i32($argc, 1))
     {
+        // If this is a floating-point number safely convertible to an
+        // integer and within the character table range
+        if ($ir_is_float64(c) && $ir_ge_f64(c, 0.0) && $ir_lt_f64(c, 256.0))
+        {
+            c = $ir_f64_to_i32(c);
+
+            return $ir_make_value(
+                $rt_arrtbl_get_word($rt_char_str_table, c),
+                $rt_arrtbl_get_tag($rt_char_str_table, c)
+            );
+        }
+
+        // If this is a an integer within the character table range
+        if ($ir_is_int32(c) && $ir_ge_i32(c, 0) && $ir_lt_i32(c, 256))
+        {
+            return $ir_make_value(
+                $rt_arrtbl_get_word($rt_char_str_table, c),
+                $rt_arrtbl_get_tag($rt_char_str_table, c)
+            );
+        }
+
+        /*
         var str = $rt_str_alloc(1);
         $rt_str_set_data(str, 0, c);
         return $ir_get_str(str);
-    } 
+        */
+    }
 
-    var args = Array.prototype.slice.call(arguments, 0);
-    for(var i = 0; i < args.length; i++)
-        args[i] = parseInt(args[i]);
-    return string_internal_fromCharCodeArray(args);
+    var str = $rt_str_alloc($argc);
+
+    // TODO: use toUint32 and cap to 0xFFFF, parseInt is dog slow!
+    for (var i = 0; i < $argc; ++i)
+        $rt_str_set_data(str, i, parseInt($ir_get_arg(i)));
+
+    return $ir_get_str(str);
 }
 
 /**
@@ -149,10 +197,13 @@ function string_toString()
     if ($ir_is_string(this))
         return this;
 
+    if ($ir_is_rope(this))
+        return $rt_ropeToStr(this);
+
     if (this instanceof String)
         return this.value;
 
-    return this;
+    throw TypeError('unexpected type in String.prototype.toString');
 }
 
 /**
@@ -162,6 +213,9 @@ function string_valueOf()
 {
     if ($ir_is_string(this))
         return this;
+
+    if ($ir_is_rope(this))
+        return $rt_ropeToStr(this);
 
     if (this instanceof String)
         return this.value;
@@ -175,8 +229,8 @@ function string_valueOf()
 function string_charAt(pos)
 {
     if ($ir_is_string(this) &&
-        $ir_is_i32(pos) && 
-        $ir_ge_i32(pos, 0) && 
+        $ir_is_int32(pos) &&
+        $ir_ge_i32(pos, 0) &&
         $ir_lt_i32(pos, $rt_str_get_len(this)))
     {
         var ch = $rt_str_get_data(this, pos);
@@ -194,7 +248,9 @@ function string_charAt(pos)
     }
 
     var ch = source.charCodeAt(pos);
-    return string_internal_fromCharCodeArray([ch]);
+    var str = $rt_str_alloc(1);
+    $rt_str_set_data(str, 0, ch);
+    return $ir_get_str(str);
 }
 
 /**
@@ -202,12 +258,13 @@ function string_charAt(pos)
 */
 function string_charCodeAt(pos)
 {
-    if ($ir_is_string(this) &&
-        $ir_is_i32(pos) && 
-        $ir_ge_i32(pos, 0) && 
-        $ir_lt_i32(pos, $rt_str_get_len(this)))
+    if ($ir_is_int32(pos) && $ir_ge_i32(pos, 0))
     {
-        return $rt_str_get_data(this, pos);
+        if ($ir_is_string(this) && $ir_lt_i32(pos, $rt_str_get_len(this)))
+            return $rt_str_get_data(this, pos);
+
+        if ($ir_is_rope(this) && $ir_lt_i32(pos, $rt_rope_get_len(this)))
+            return $rt_str_get_data($rt_ropeToStr(this), pos);
     }
 
     var source = this.toString();
@@ -215,7 +272,7 @@ function string_charCodeAt(pos)
 
     if (pos >= 0 && pos < len)
     {
-        if ($ir_is_i32(pos) == false)
+        if ($ir_is_int32(pos) == false)
             pos = $rt_toUint32(pos);
 
         return $rt_str_get_data(source, pos);
@@ -293,7 +350,7 @@ function string_lastIndexOf(searchString, pos)
 
     if (pos + searchString.length > this.length)
         pos = this.length - searchString.length;
-    
+
     var firstChar = searchString.charCodeAt(0);
     for (var i = pos; i >= 0; i--)
     {
@@ -368,9 +425,23 @@ function string_match(regexp)
     {
         var result = [];
         var match;
+        var previousMatch;
 
-        while ((match = re.exec(this)) !== null)
+        while (true)
+        {
+            match = re.exec(this);
+
+            // Stop if no match left
+            if (match === null)
+                break;
+
+            // Stop if we matched an empty string twice in a row (15.10.2.5 NOTE4)
+            if (previousMatch && match[0].length === 0 && previousMatch[0].length === 0)
+                break;
+
             result.push(match[0]);
+            previousMatch = match;
+        }
 
         if (result.length === 0)
             return null;
@@ -398,37 +469,47 @@ function string_replace(searchValue, replaceValue)
 
             return this.substring(0, pos).concat(
                 new String(ret).toString(),
-                this.substring(pos + $rt_str_get_len(searchValue)));
+                this.substring(pos + $rt_str_get_len(searchValue))
+            );
         }
         else
         {
             return this.substring(0, pos).concat(
                 replaceValue.toString(),
-                this.substring(pos + $rt_str_get_len(searchValue)));
+                this.substring(pos + $rt_str_get_len(searchValue))
+            );
         }
     }
-    else if (searchValue instanceof RegExp)
+    else if (searchValue instanceof $rt_RegExp)
     {
         // Save regexp state
         var globalFlagSave = searchValue.global;
         var lastIndexSave = searchValue.lastIndex;
-        var match;
 
         // Set the regexp global to get matches' index
         searchValue.global = true;
         searchValue.lastIndex = 0;
 
-        // Will hold new string parts.
+        // Current and previous regexp matches
+        var previousMatch;
+        var match;
+
+        // Will hold new string parts
         var nsparts = [];
         var nslen = 0;
         var i = 0;
 
-        do {
+        do
+        {
             // Execute regexp
             match = searchValue.exec(this);
 
             // Stop if no match left
             if (match === null)
+                break;
+
+            // Stop if we matched an empty string twice in a row (15.10.2.5 NOTE4)
+            if (previousMatch && match[0].length === 0 && previousMatch[0].length === 0)
                 break;
 
             // Get the last match index
@@ -439,7 +520,7 @@ function string_replace(searchValue, replaceValue)
                 if (i < matchIndex)
                     nsparts.push(this.substring(i, matchIndex));
 
-                // Compose the arguments array with the match array.
+                // Compose the arguments array with the match array
                 match.push(matchIndex);
                 match.push(this.toString());
 
@@ -452,7 +533,7 @@ function string_replace(searchValue, replaceValue)
                 var rvparts = [];
                 var j = 0, k = 0;
 
-                // Get the string representation of the object.
+                // Get the string representation of the object
                 replaceValue = replaceValue.toString();
 
                 for (; j < replaceValue.length; ++j)
@@ -498,7 +579,7 @@ function string_replace(searchValue, replaceValue)
                             }
                             n += c - 48;
 
-                            // Push submatch if index is valid, or the raw string if not.
+                            // Push submatch if index is valid, or the raw string if not
                             if (n < match.length)
                                 rvparts.push(match[n]);
                             else
@@ -508,6 +589,7 @@ function string_replace(searchValue, replaceValue)
                         {
                             rvparts.push("$");
                         }
+
                         k = j + 1;
                     }
                 }
@@ -538,6 +620,9 @@ function string_replace(searchValue, replaceValue)
             }
 
             i = searchValue.lastIndex;
+
+            previousMatch = match;
+
         } while (globalFlagSave);
 
         if (i < this.length)
@@ -596,15 +681,37 @@ function string_split(separator, limit)
     {
         return res;
     }
-    else if (separator === undefined)
+
+    if (separator === undefined)
     {
         res[0] = this;
         return res;
     }
 
+    if (separator instanceof RegExp)
+    {
+        var start  = 0,
+            string = this;
+
+        while (true)
+        {
+            var pos = string.search(separator);
+            if (pos === -1)
+            {
+                res.push(string);
+                break;
+            }
+
+            res.push(string.substring(start, pos));
+            string = string.substring(pos + 1, len);
+        }
+
+        return res;
+    }
+
     var sep = separator + "";
     var this_blank = (len === 0);
-    var sep_blank = (sep.length === 0);    
+    var sep_blank = (sep.length === 0);
 
     // special cases
     if (this_blank)
@@ -651,14 +758,25 @@ function string_substring(start, end)
     var source = this.toString();
     var length = $rt_str_get_len(source);
 
+    if (!$ir_is_int32(start))
+    {
+        start = $rt_toInt32(start);
+    }
+
+    if (!$ir_is_int32(end))
+    {
+        if (end === undefined)
+            end = length;
+        else
+            end = $rt_toInt32(end);
+    }
+
     if (start < 0)
         start = 0;
     else if (start > length)
         start = length;
 
-    if (end === undefined)
-        end = length;
-    else if (end > length)
+    if (end > length)
         end = length;
     else if (end < 0)
         end = 0;
@@ -669,11 +787,11 @@ function string_substring(start, end)
         start = end;
         end = tmp;
     }
-    
-    // Allocate new string.
+
+    // Allocate new string
     var s = $rt_str_alloc(end - start);
 
-    // Copy substring characters in the new allocated string.
+    // Copy substring characters in the new allocated string
     for (var i = start, j = 0; i < end; ++i, ++j)
     {
         var ch = $rt_str_get_data(source, i);
@@ -724,7 +842,7 @@ function string_toLowerCase()
     // This code assumes the array is a copy of the internal char array.
     // It may be more efficient to expose the internal data directly and
     // make a copy only when necessary.
-    
+
     for (var i = 0; i < a.length; i++)
     {
         var c = a[i];
@@ -761,12 +879,13 @@ function string_toUpperCase()
     for (var i = 0; i < a.length; i++)
     {
         var c = a[i];
+
         // FIXME: support full Unicode
         if (c > 255)
             error("Only ASCII characters are currently supported");
 
-        if ((c >= 97 && c <= 122)  || 
-            (c >= 224 && c <= 246) || 
+        if ((c >= 97 && c <= 122)  ||
+            (c >= 224 && c <= 246) ||
             (c >= 248 && c <= 254))
             a[i] = c - 32;
     }

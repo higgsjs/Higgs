@@ -38,28 +38,28 @@
 /***
 Undefined value
 */
-$ir_shape_def_const(this, 'undefined', $undef, false);
+$ir_obj_def_const(this, 'undefined', $undef, false);
 
 /**
 Not-a-number value
 */
-$ir_shape_def_const(this, 'NaN', $ir_div_f64(0.0, 0.0), false);
+$ir_obj_def_const(this, 'NaN', $ir_div_f64(0.0, 0.0), false);
 
 /**
 Infinity value
 */
-$ir_shape_def_const(this, 'Infinity', $ir_div_f64(1.0, 0.0), false);
+$ir_obj_def_const(this, 'Infinity', $ir_div_f64(1.0, 0.0), false);
 
 /**
 Test if a value is NaN
 */
 function isNaN(v)
 {
-    if ($ir_is_f64(v))
+    if ($ir_is_float64(v))
         return $ir_ne_f64(v,v);
 
     var n = $rt_toNumber(v);
-    return ($ir_is_f64(n) && $ir_ne_f64(n, n));
+    return ($ir_is_float64(n) && $ir_ne_f64(n, n));
 }
 
 /**
@@ -67,10 +67,10 @@ Load and execute a source file
 */
 function load(fileName)
 {
-    if (!$ir_is_string(fileName))
-        throw TypeError("expected filename string argument");
+    if (!$ir_is_string(fileName) && !$ir_is_rope(fileName))
+        throw TypeError("expected string for file name argument");
 
-    return $ir_load_file(fileName);
+    return $ir_load_file($rt_toString(fileName));
 }
 
 /**
@@ -78,8 +78,8 @@ Evaluate a source string in the global scope
 */
 function eval(input)
 {
-    if ($ir_is_string(input))
-        return $ir_eval_str(input);
+    if ($ir_is_string(input) || $ir_is_rope(input))
+        return $ir_eval_str($rt_toString(input));
 
     return input;
 }
@@ -100,6 +100,10 @@ function print()
 
         // Print the string
         $ir_print_str(arg);
+
+        // If this is not the last argument, print a space
+        if ($ir_lt_i32($ir_add_i32(i, 1), $argc))
+            $ir_print_str(' ');
     }
 
     // Print a final newline
@@ -167,10 +171,10 @@ Set the value stored in a closure cell
 function $rt_setCellVal(cell, val)
 {
     var word = $ir_get_word(val);
-    var type = $ir_get_type(val);
+    var type = $ir_get_tag(val);
 
     $rt_cell_set_word(cell, word);
-    $rt_cell_set_type(cell, type);
+    $rt_cell_set_tag(cell, type);
 }
 
 /**
@@ -179,7 +183,7 @@ Get the value stored in a closure cell
 function $rt_getCellVal(cell)
 {
     var word = $rt_cell_get_word(cell);
-    var type = $rt_cell_get_type(cell);
+    var type = $rt_cell_get_tag(cell);
 
     //print('getCellVal: ' + $ir_make_value(word, 0));
 
@@ -199,19 +203,54 @@ function $rt_strcat(strA, strB)
     var lenO = $ir_add_i32(lenA, lenB);
     var strO = $rt_str_alloc(lenO);
 
-    // Copy the character data from the first string
-    for (var i = 0; $ir_lt_i32(i, lenA); i = $ir_add_i32(i, 1))
-    {
-        var ch = $rt_str_get_data(strA, i);
-        $rt_str_set_data(strO, i, ch);
-    }
+    // Output pointer
+    var dataO = $ir_add_ptr_i32(strO, $rt_str_ofs_data(strO, 0));
 
-    // Copy the character data from the second string
-    for (var i = 0; $ir_lt_i32(i, lenB); i = $ir_add_i32(i, 1))
-    {
-        var ch = $rt_str_get_data(strB, i);
-        $rt_str_set_data(strO, $ir_add_i32(lenA, i), ch);
-    }
+    // A string pointers
+    var dataA = $ir_add_ptr_i32(strA, $rt_str_ofs_data(strA, 0));
+    var endA = $ir_add_ptr_i32(dataA, $ir_lsft_i32($ir_rsft_i32(lenA, 2), 3));
+
+    // 8 by 8 copy
+	while ($ir_ne_rawptr(dataA, endA))
+	{
+        $ir_store_u64(dataO, 0, $ir_load_u64(dataA, 0));
+        dataA = $ir_add_ptr_i32(dataA, 8);
+        dataO = $ir_add_ptr_i32(dataO, 8);
+	}
+
+    var remA = $ir_and_i32(lenA, 3);
+
+    // Tail remainder copy
+	switch (remA)
+	{
+	    case 3: $ir_store_u16(dataO, 4, $ir_load_u64(dataA, 4));
+	    case 2: $ir_store_u16(dataO, 2, $ir_load_u64(dataA, 2));
+	    case 1: $ir_store_u16(dataO, 0, $ir_load_u64(dataA, 0));
+	};
+
+    dataO = $ir_add_ptr_i32(dataO, $ir_lsft_i32(remA, 1));
+
+    // B string pointers
+    var dataB = $ir_add_ptr_i32(strB, $rt_str_ofs_data(strB, 0));
+    var endB = $ir_add_ptr_i32(dataB, $ir_lsft_i32($ir_rsft_i32(lenB, 2), 3));
+
+    // 8 by 8 copy
+	while ($ir_ne_rawptr(dataB, endB))
+	{
+        $ir_store_u64(dataO, 0, $ir_load_u64(dataB, 0));
+        dataB = $ir_add_ptr_i32(dataB, 8);
+        dataO = $ir_add_ptr_i32(dataO, 8);
+	}
+
+    var remB = $ir_and_i32(lenB, 3);
+
+    // Tail remainder copy
+	switch (remB)
+	{
+	    case 3: $ir_store_u16(dataO, 4, $ir_load_u64(dataB, 4));
+	    case 2: $ir_store_u16(dataO, 2, $ir_load_u64(dataB, 2));
+	    case 1: $ir_store_u16(dataO, 0, $ir_load_u64(dataB, 0));
+	};
 
     // Find/add the concatenated string in the string table
     return $ir_get_str(strO);
@@ -251,81 +290,11 @@ function $rt_strcmp(strA, strB)
 }
 
 /**
-Create a string representing an integer value
-*/
-function $rt_intToStr(intVal, radix)
-{
-    assert (
-        $ir_is_i32(radix)    &&
-        $ir_gt_i32(radix, 0) && 
-        $ir_le_i32(radix, 36),
-        'invalid radix'
-    );
-
-    var strLen;
-    var neg;
-
-    // If the integer is negative, adjust the string length for the minus sign
-    if (intVal < 0)
-    {
-        strLen = 1;
-        intVal *= -1;
-        neg = true;
-    }
-    else
-    {
-        strLen = 0;
-        neg = false;
-    }
-
-    // Compute the number of digits to add to the string length
-    var intVal2 = intVal;
-    do
-    {
-        strLen = $ir_add_i32(strLen, 1);
-        intVal2 = $ir_div_i32(intVal2, radix);
-
-    } while ($ir_ne_i32(intVal2, 0));
-
-    // Allocate a string object
-    var strObj = $rt_str_alloc(strLen);
-
-    // If the string is negative, write the minus sign
-    if ($ir_eq_const(neg, true))
-    {
-        $rt_str_set_data(strObj, 0, 45);
-    }
-
-    var digits = '0123456789abcdefghijklmnopqrstuvwxyz';
-
-    // Write the digits in the string
-    var i = $ir_sub_i32(strLen, 1);
-    do
-    {
-        var digit = $ir_mod_i32(intVal, radix);
-
-        var ch = $rt_str_get_data(digits, digit);
-
-        $rt_str_set_data(strObj, i, ch);
-
-        intVal = $ir_div_i32(intVal, radix);
-
-        i = $ir_sub_i32(i, 1);
-
-    } while ($ir_ne_i32(intVal, 0));
-
-    // Get the corresponding string from the string table
-    return $ir_get_str(strObj);
-}
-
-/**
 Compute the integer value of a string
 */
 function $rt_strToInt(strVal)
 {
     // TODO: add radix support
-
-    // TODO: add floating-point support
 
     var strLen = $rt_str_get_len(strVal);
 
@@ -414,7 +383,202 @@ function $rt_strToInt(strVal)
 }
 
 /**
+Create a string representing an integer value
+*/
+function $rt_intToStr(intVal, radix)
+{
+    assert (
+        $ir_is_int32(radix) &&
+        $ir_gt_i32(radix, 0) &&
+        $ir_le_i32(radix, 36),
+        'invalid radix'
+    );
+
+    var strLen;
+    var neg;
+
+    // If the integer is negative, adjust the string length for the minus sign
+    if (intVal < 0)
+    {
+        strLen = 1;
+        intVal *= -1;
+        neg = true;
+    }
+    else
+    {
+        strLen = 0;
+        neg = false;
+    }
+
+    // Compute the number of digits to add to the string length
+    var intVal2 = intVal;
+    do
+    {
+        strLen = $ir_add_i32(strLen, 1);
+        intVal2 = $ir_div_i32(intVal2, radix);
+
+    } while ($ir_ne_i32(intVal2, 0));
+
+    // Allocate a string object
+    var strObj = $rt_str_alloc(strLen);
+
+    // If the string is negative, write the minus sign
+    if ($ir_eq_const(neg, true))
+    {
+        $rt_str_set_data(strObj, 0, 45);
+    }
+
+    var digits = '0123456789abcdefghijklmnopqrstuvwxyz';
+
+    // Write the digits in the string
+    var i = $ir_sub_i32(strLen, 1);
+    do
+    {
+        var digit = $ir_mod_i32(intVal, radix);
+
+        var ch = $rt_str_get_data(digits, digit);
+
+        $rt_str_set_data(strObj, i, ch);
+
+        intVal = $ir_div_i32(intVal, radix);
+
+        i = $ir_sub_i32(i, 1);
+
+    } while ($ir_ne_i32(intVal, 0));
+
+    // Get the corresponding string from the string table
+    return $ir_get_str(strObj);
+}
+
+/**
+Convert number to string
+*/
+function $rt_numToStr(v, radix)
+{
+    if (!$ir_is_int32(radix))
+    {
+        radix = 10;
+    }
+
+    if ($ir_lt_i32(radix, 2) || $ir_gt_i32(radix, 36))
+    {
+        throw RangeError("radix is not between 2 and 36");
+    }
+
+    if ($ir_is_int32(v))
+    {
+        return $rt_intToStr(v, radix);
+    }
+
+    // NaN
+    if ($ir_ne_f64(v, v))
+        return "NaN";
+    if ($ir_eq_f64(v, Infinity))
+        return "Infinity";
+    if ($ir_eq_f64(v, -Infinity))
+        return "-Infinity";
+
+    return $ir_f64_to_str(v);
+}
+
+/**
+Inlined rope to string conversion with cache check
+*/
+function $rt_ropeToStr(rope)
+{
+    // Get the right-hand string
+    var rightStr = $rt_rope_get_right(rope);
+
+    // If this rope was already converted to a string
+    if ($ir_eq_refptr(rightStr, null))
+    {
+        return $ir_load_string(rope, $rt_rope_ofs_left(rope));
+    }
+
+    return $rt_concatRope(rope, rightStr);
+}
+
+/**
+Convert a rope to a string by concatenation
+*/
+function $rt_concatRope(rope, rightStr)
+{
+    var ropeLen = $rt_rope_get_len(rope);
+
+    // Allocate a string object for the output
+    var dstStr = $rt_str_alloc(ropeLen);
+
+    // Output string data pointer
+    var dataO = $ir_add_ptr_i32(dstStr, $rt_str_ofs_data(null, 0));
+    var idxO = $ir_lsft_i32(ropeLen, 1);
+
+    // Until we are done traversing the ropes
+    for (var curRope = rope;;)
+    {
+        // The right-hand node must be a string
+        var rightLen = $rt_str_get_len(rightStr);
+       
+        // Right string data pointers
+        var dataI = $ir_add_ptr_i32(rightStr, $rt_str_ofs_data(null, 0));
+        var idxI = $ir_lsft_i32(rightLen, 1);
+
+        // Copy the string characters
+	    while ($ir_ne_i32(idxI, 0))
+	    {
+            idxI = $ir_sub_i32(idxI, 2);
+            idxO = $ir_sub_i32(idxO, 2);
+            $ir_store_u16(dataO, idxO, $ir_load_u16(dataI, idxI));
+	    }
+
+        // Move to the next rope
+        curRope = $rt_rope_get_left(curRope);
+
+        // If this is the last string in the chain, stop
+        if ($ir_eq_i32($rt_rope_get_header(curRope), $rt_LAYOUT_STR))
+        {
+            var leftStr = curRope;
+            break;
+        }
+
+        // Get the right-hand string for the current rope
+        rightStr = $rt_rope_get_right(curRope);
+
+        // If the rope was already converted to a string
+        if ($ir_eq_refptr(rightStr, null))
+        {
+            var leftStr = $rt_rope_get_left(curRope);
+            break;
+        }
+    }
+
+    // Copy the last string
+    var leftLen = $rt_str_get_len(leftStr);
+
+    // Left string data pointers
+    var dataI = $ir_add_ptr_i32(leftStr, $rt_str_ofs_data(null, 0));
+    var idxI = $ir_lsft_i32(leftLen, 1);
+
+    // Copy the string characters
+    while ($ir_ne_i32(idxI, 0))
+    {
+        idxI = $ir_sub_i32(idxI, 2);
+        idxO = $ir_sub_i32(idxO, 2);
+        $ir_store_u16(dataO, idxO, $ir_load_u16(dataI, idxI));
+    }
+
+    // Get the corresponding string from the string table
+    dstStr = $ir_get_str(dstStr);
+
+    // Cache the concatenated string in the original rope
+    $rt_rope_set_left(rope, dstStr);
+    $rt_rope_set_right(rope, null);
+
+    return dstStr;
+}
+
+/**
 Get the string representation of a value
+Note: this function returns plain strings only, no ropes
 */
 function $rt_toString(v)
 {
@@ -431,14 +595,24 @@ function $rt_toString(v)
         return $rt_toString(str);
     }
 
-    if ($ir_is_i32(v) || $ir_is_f64(v))
+    if ($ir_is_int32(v))
     {
-        return $rt_numberToString(v, 10);
+        return $rt_intToStr(v, 10);
+    }
+
+    if ($ir_is_float64(v))
+    {
+        return $rt_numToStr(v, 10);
     }
 
     if ($ir_is_string(v))
     {
         return v;
+    }
+
+    if ($ir_is_rope(v))
+    {
+        return $rt_ropeToStr(v);
     }
 
     if ($ir_is_const(v))
@@ -462,43 +636,12 @@ function $rt_toString(v)
 }
 
 /**
-Convert number to string
-*/
-function $rt_numberToString(v, radix)
-{
-    if (!$ir_is_i32(radix))
-    {
-        radix = 10;
-    }
-
-    if ($ir_lt_i32(radix, 2) || $ir_gt_i32(radix, 36))
-    {
-        throw RangeError("radix is not between 2 and 36");
-    }
-
-    if ($ir_is_i32(v))
-    {
-        return $rt_intToStr(v, radix);
-    }
-
-    // NaN
-    if ($ir_ne_f64(v, v))
-        return "NaN";
-    if ($ir_eq_f64(v, Infinity))
-        return "Infinity";
-    if ($ir_eq_f64(v, -Infinity))
-        return "-Infinity";
-
-    return $ir_f64_to_str(v);
-}
-
-/**
 Convert any value to a primitive value
 */
 function $rt_toPrim(v)
 {
-    if ($ir_is_i32(v) ||
-        $ir_is_f64(v) ||
+    if ($ir_is_int32(v) ||
+        $ir_is_float64(v) ||
         $ir_is_const(v))
         return v
 
@@ -508,12 +651,18 @@ function $rt_toPrim(v)
     if ($ir_is_string(v))
         return v;
 
-    if ($ir_is_object(v) || $ir_is_array(v) || $ir_is_closure(v))
+    if ($ir_is_rope(v))
+        return $rt_ropeToStr(v);
+
+    if ($rt_valIsObj(v))
     {
         var str = v.toString();
 
-        if ($ir_is_refptr(str) && $ir_ne_refptr(str, null) && !$ir_is_string(str))
+        if ($rt_valIsObj(str))
             throw TypeError('toString produced non-primitive value');
+
+        if ($ir_is_rope(str))
+            return $rt_ropeToStr(str);
 
         return str;
     }
@@ -529,11 +678,11 @@ function $rt_toBool(v)
     if ($ir_is_const(v))
         return $ir_eq_const(v, true);
 
-    if ($ir_is_i32(v))
+    if ($ir_is_int32(v))
         return $ir_ne_i32(v, 0);
 
-    if ($ir_is_f64(v))
-        return $ir_ne_f64(v, 0.0);
+    if ($ir_is_float64(v))
+        return $ir_ne_f64(v, 0.0) && $ir_eq_f64(v, v);
 
     if ($ir_is_refptr(v) && $ir_eq_refptr(v, null))
         return false;
@@ -551,22 +700,11 @@ function $rt_toBool(v)
 }
 
 /**
-Specialized version of toBool for constant types
-*/
-function $rt_toBoolConst(v)
-{
-    if ($ir_is_const(v))
-        return $ir_eq_const(v, true);
-
-    return $rt_toBool(v);
-}
-
-/**
 Attempt to convert a value to a number. If this fails, return NaN
 */
 function $rt_toNumber(v)
 {
-    if ($ir_is_i32(v) || $ir_is_f64(v))
+    if ($ir_is_int32(v) || $ir_is_float64(v))
         return v;
 
     if ($ir_is_refptr(v) && $ir_eq_refptr(v, null))
@@ -597,7 +735,7 @@ function $rt_toInt32(x)
 {
     x = $rt_toNumber(x);
 
-    if ($ir_is_i32(x))
+    if ($ir_is_int32(x))
         return x;
 
     // NaN or infinity
@@ -616,7 +754,7 @@ function $rt_toUint32(x)
 {
     x = $rt_toNumber(x);
 
-    if ($ir_is_i32(x))
+    if ($ir_is_int32(x))
         return x;
 
     // NaN or infinity
@@ -636,7 +774,7 @@ JS typeof operator
 */
 function $rt_typeof(v)
 {
-    if ($ir_is_i32(v) || $ir_is_f64(v))
+    if ($ir_is_int32(v) || $ir_is_float64(v))
         return "number";
 
     if ($ir_is_const(v))
@@ -657,7 +795,7 @@ function $rt_typeof(v)
     if ($ir_is_closure(v))
         return "function";
 
-    if ($ir_is_string(v))
+    if ($ir_is_string(v) || $ir_is_rope(v))
         return "string";
 
     if ($ir_is_rawptr(v))
@@ -676,13 +814,13 @@ JS unary plus (+) operator
 function $rt_plus(x)
 {
     // If x is integer
-    if ($ir_is_i32(x))
+    if ($ir_is_int32(x))
     {
         return x;
     }
 
     // If x is floating-point
-    else if ($ir_is_f64(x))
+    else if ($ir_is_float64(x))
     {
         return x;
     }
@@ -696,7 +834,7 @@ JS unary minus (-) operator
 function $rt_minus(x)
 {
     // If x is integer
-    if ($ir_is_i32(x))
+    if ($ir_is_int32(x))
     {
         if ($ir_eq_i32(x, 0))
             return -0;
@@ -705,7 +843,7 @@ function $rt_minus(x)
     }
 
     // If x is floating-point
-    else if ($ir_is_f64(x))
+    else if ($ir_is_float64(x))
     {
         if ($ir_eq_f64(x, 0.0))
             return -0;
@@ -722,9 +860,9 @@ JS addition operator
 function $rt_add(x, y)
 {
     // If x is integer
-    if ($ir_is_i32(x))
+    if ($ir_is_int32(x))
     {
-        if ($ir_is_i32(y))
+        if ($ir_is_int32(y))
         {
             var r;
             if (r = $ir_add_i32_ovf(x, y))
@@ -740,20 +878,48 @@ function $rt_add(x, y)
             }
         }
 
-        if ($ir_is_f64(y))
+        if ($ir_is_float64(y))
             return $ir_add_f64($ir_i32_to_f64(x), y);
     }
 
     // If x is floating-point
-    else if ($ir_is_f64(x))
+    else if ($ir_is_float64(x))
     {
-        if ($ir_is_i32(y))
+        if ($ir_is_int32(y))
             return $ir_add_f64(x, $ir_i32_to_f64(y));
 
-        if ($ir_is_f64(y))
+        if ($ir_is_float64(y))
             return $ir_add_f64(x, y);
     }
 
+    // If x is a string
+    else if ($ir_is_string(x))
+    {
+        if ($ir_is_string(y))
+        {
+            var rope = $rt_rope_alloc();
+            var len = $ir_add_i32($rt_str_get_len(x), $rt_str_get_len(y));
+            $rt_rope_set_left(rope, x);
+            $rt_rope_set_right(rope, y);
+            $rt_rope_set_len(rope, len);
+            return rope;
+        }
+    }
+
+    // If x is a rope
+    else if ($ir_is_rope(x))
+    {
+        var sy = $ir_is_string(y)? y:$rt_toString(y);
+
+        var rope = $rt_rope_alloc();
+        var len = $ir_add_i32($rt_rope_get_len(x), $rt_str_get_len(sy));
+        $rt_rope_set_left(rope, x);
+        $rt_rope_set_right(rope, sy);
+        $rt_rope_set_len(rope, len);
+        return rope;
+    }
+
+    // TODO: eliminate toPrim call, specialize more
     // Convert x and y to primitives
     var px = $rt_toPrim(x);
     var py = $rt_toPrim(y);
@@ -775,38 +941,14 @@ function $rt_add(x, y)
 }
 
 /**
-Specialized add for the (int,int) case (e.g.: index increment)
-*/
-function $rt_addInt(x, y)
-{
-    // If x,y are integer
-    if ($ir_is_i32(x) && $ir_is_i32(y))
-    {
-        var r;
-        if (r = $ir_add_i32_ovf(x, y))
-        {
-            return r;
-        }
-        else
-        {
-            // Reconstruct x from r and y
-            // Hence x is not live after the add
-            x = $ir_sub_i32(r, y);
-        }
-    }
-
-    return $rt_add(x, y);
-}
-
-/**
 Specialized add for the (int,int) and (float,float) cases
 */
 function $rt_addIntFloat(x, y)
 {
     // If x is integer
-    if ($ir_is_i32(x))
+    if ($ir_is_int32(x))
     {
-        if ($ir_is_i32(y))
+        if ($ir_is_int32(y))
         {
             var r;
             if (r = $ir_add_i32_ovf(x, y))
@@ -815,24 +957,23 @@ function $rt_addIntFloat(x, y)
             }
             else
             {
-                // Handle the overflow case
-                var fx = $ir_i32_to_f64(x);
-                var fy = $ir_i32_to_f64(y);
-                return $ir_add_f64(fx, fy);
+                // Reconstruct x from r and y
+                // Hence x is not live after the add
+                x = $ir_sub_i32(r, y);
             }
         }
 
-        if ($ir_is_f64(y))
+        if ($ir_is_float64(y))
             return $ir_add_f64($ir_i32_to_f64(x), y);
     }
 
     // If x is floating-point
-    else if ($ir_is_f64(x))
+    else if ($ir_is_float64(x))
     {
-        if ($ir_is_f64(y))
+        if ($ir_is_float64(y))
             return $ir_add_f64(x, y);
 
-        if ($ir_is_i32(y))
+        if ($ir_is_int32(y))
             return $ir_add_f64(x, $ir_i32_to_f64(y));
     }
 
@@ -845,9 +986,9 @@ JS subtraction operator
 function $rt_sub(x, y)
 {
     // If x is integer
-    if ($ir_is_i32(x))
+    if ($ir_is_int32(x))
     {
-        if ($ir_is_i32(y))
+        if ($ir_is_int32(y))
         {
             var r;
             if (r = $ir_sub_i32_ovf(x, y))
@@ -862,17 +1003,17 @@ function $rt_sub(x, y)
             }
         }
 
-        if ($ir_is_f64(y))
+        if ($ir_is_float64(y))
             return $ir_sub_f64($ir_i32_to_f64(x), y);
     }
 
     // If x is floating-point
-    else if ($ir_is_f64(x))
+    else if ($ir_is_float64(x))
     {
-        if ($ir_is_f64(y))
+        if ($ir_is_float64(y))
             return $ir_sub_f64(x, y);
 
-        if ($ir_is_i32(y))
+        if ($ir_is_int32(y))
             return $ir_sub_f64(x, $ir_i32_to_f64(y));
     }
 
@@ -885,53 +1026,29 @@ Specialized sub for the (int,int) and (float,float) cases
 function $rt_subIntFloat(x, y)
 {
     // If x is integer
-    if ($ir_is_i32(x))
+    if ($ir_is_int32(x))
     {
-        if ($ir_is_i32(y))
+        if ($ir_is_int32(y))
         {
             var r;
             if (r = $ir_sub_i32_ovf(x, y))
             {
                 return r;
             }
-            else
-            {
-                var fx = $ir_i32_to_f64(x);
-                var fy = $ir_i32_to_f64(y);
-                return $ir_sub_f64(fx, fy);
-            }
         }
 
-        if ($ir_is_f64(y))
+        if ($ir_is_float64(y))
             return $ir_sub_f64($ir_i32_to_f64(x), y);
     }
 
     // If x is floating-point
-    else if ($ir_is_f64(x))
+    else if ($ir_is_float64(x))
     {
-        if ($ir_is_i32(y))
+        if ($ir_is_int32(y))
             return $ir_sub_f64(x, $ir_i32_to_f64(y));
 
-        if ($ir_is_f64(y))
+        if ($ir_is_float64(y))
             return $ir_sub_f64(x, y);
-    }
-
-    return $rt_sub(x, y);
-}
-
-/**
-Specialized subtract for the (int,int) case (e.g.: index decrement)
-*/
-function $rt_subInt(x, y)
-{
-    // If x,y are integer
-    if ($ir_is_i32(x) && $ir_is_i32(y))
-    {
-        var r;
-        if (r = $ir_sub_i32_ovf(x, y))
-        {
-            return r;
-        }
     }
 
     return $rt_sub(x, y);
@@ -943,12 +1060,12 @@ JS multiplication operator
 function $rt_mul(x, y)
 {
     // If x is integer
-    if ($ir_is_i32(x))
+    if ($ir_is_int32(x))
     {
-        if ($ir_is_i32(y))
+        if ($ir_is_int32(y))
         {
             // If this could produce negative 0
-            if (($ir_lt_i32(x, 0) && $ir_eq_i32(y, 0)) || 
+            if (($ir_lt_i32(x, 0) && $ir_eq_i32(y, 0)) ||
                 ($ir_eq_i32(x, 0) && $ir_lt_i32(y, 0)))
             {
                 var fx = $ir_i32_to_f64(x);
@@ -969,17 +1086,17 @@ function $rt_mul(x, y)
             }
         }
 
-        if ($ir_is_f64(y))
+        if ($ir_is_float64(y))
             return $ir_mul_f64($ir_i32_to_f64(x), y);
     }
 
     // If x is floating-point
-    else if ($ir_is_f64(x))
+    else if ($ir_is_float64(x))
     {
-        if ($ir_is_i32(y))
+        if ($ir_is_int32(y))
             return $ir_mul_f64(x, $ir_i32_to_f64(y));
 
-        if ($ir_is_f64(y))
+        if ($ir_is_float64(y))
             return $ir_mul_f64(x, y);
     }
 
@@ -992,12 +1109,12 @@ Specialized add for the (int,int) and (float,float) cases
 function $rt_mulIntFloat(x, y)
 {
     // If x is integer
-    if ($ir_is_i32(x))
+    if ($ir_is_int32(x))
     {
-        if ($ir_is_i32(y))
+        if ($ir_is_int32(y))
         {
             // If this could produce negative 0
-            if (($ir_lt_i32(x, 0) && $ir_eq_i32(y, 0)) || 
+            if (($ir_lt_i32(x, 0) && $ir_eq_i32(y, 0)) ||
                 ($ir_eq_i32(x, 0) && $ir_lt_i32(y, 0)))
             {
                 var fx = $ir_i32_to_f64(x);
@@ -1018,17 +1135,17 @@ function $rt_mulIntFloat(x, y)
             }
         }
 
-        if ($ir_is_f64(y))
+        if ($ir_is_float64(y))
             return $ir_mul_f64($ir_i32_to_f64(x), y);
     }
 
     // If x is floating-point
-    else if ($ir_is_f64(x))
+    else if ($ir_is_float64(x))
     {
-        if ($ir_is_f64(y))
+        if ($ir_is_float64(y))
             return $ir_mul_f64(x, y);
 
-        if ($ir_is_i32(y))
+        if ($ir_is_int32(y))
             return $ir_mul_f64(x, $ir_i32_to_f64(y));
     }
 
@@ -1041,11 +1158,11 @@ JS division operator
 function $rt_div(x, y)
 {
     // If either value is floating-point or integer
-    if (($ir_is_f64(x) || $ir_is_i32(x)) &&
-        ($ir_is_f64(y) || $ir_is_i32(y)))
+    if (($ir_is_float64(x) || $ir_is_int32(x)) &&
+        ($ir_is_float64(y) || $ir_is_int32(y)))
     {
-        var fx = $ir_is_f64(x)? x:$ir_i32_to_f64(x);
-        var fy = $ir_is_f64(y)? y:$ir_i32_to_f64(y);
+        var fx = $ir_is_float64(x)? x:$ir_i32_to_f64(x);
+        var fy = $ir_is_float64(y)? y:$ir_i32_to_f64(y);
 
         return $ir_div_f64(fx, fy);
     }
@@ -1058,14 +1175,40 @@ Specialized divide for integers and floats
 */
 function $rt_divIntFloat(x, y)
 {
-    // If either value is floating-point or integer
-    if (($ir_is_f64(x) || $ir_is_i32(x)) &&
-        ($ir_is_f64(y) || $ir_is_i32(y)))
+    // If x is integer
+    if ($ir_is_int32(x))
     {
-        var fx = $ir_is_f64(x)? x:$ir_i32_to_f64(x);
-        var fy = $ir_is_f64(y)? y:$ir_i32_to_f64(y);
+        if ($ir_is_int32(y) && $ir_ne_i32(y, 0))
+        {
+            // Perform integer division
+            var r = $ir_div_i32(x, y);
 
-        return $ir_div_f64(fx, fy);
+            // Verify that there was no remainder
+            var v = $ir_mul_i32(r, y);
+            if ($ir_eq_i32(x, v))
+                return r;
+        }
+
+        if ($ir_is_float64(y))
+        {
+            var fx = $ir_i32_to_f64(x);
+            return $ir_div_f64(fx, y);
+        }
+    }
+
+    // If x is floating-point
+    else if ($ir_is_float64(x))
+    {
+        if ($ir_is_float64(y))
+        {
+            return $ir_div_f64(x, y);
+        }
+
+        if ($ir_is_int32(y))
+        {
+            var fy = $ir_i32_to_f64(y);
+            return $ir_div_f64(x, fy);
+        }
     }
 
     return $rt_div(x, y);
@@ -1077,9 +1220,9 @@ JS modulo operator
 function $rt_mod(x, y)
 {
     // If x is integer
-    if ($ir_is_i32(x))
+    if ($ir_is_int32(x))
     {
-        if ($ir_is_i32(y))
+        if ($ir_is_int32(y))
         {
             if ($ir_eq_i32(y, 0))
                 return NaN;
@@ -1087,17 +1230,17 @@ function $rt_mod(x, y)
             return $ir_mod_i32(x, y);
         }
 
-        if ($ir_is_f64(y))
+        if ($ir_is_float64(y))
             return $ir_mod_f64($ir_i32_to_f64(x), y);
     }
 
     // If x is float
-    else if ($ir_is_f64(x))
+    else if ($ir_is_float64(x))
     {
-        if ($ir_is_f64(y))
+        if ($ir_is_float64(y))
             return $ir_mod_f64(x, y);
 
-        if ($ir_is_i32(y))
+        if ($ir_is_int32(y))
             return $ir_mod_f64(x, $ir_i32_to_f64(y));
     }
 
@@ -1110,7 +1253,7 @@ Specialized modulo for the (int,int) case
 function $rt_modInt(x, y)
 {
     // If x,y are integer
-    if ($ir_is_i32(x) && $ir_is_i32(y) && $ir_ne_i32(y, 0))
+    if ($ir_is_int32(x) && $ir_is_int32(y) && $ir_ne_i32(y, 0))
     {
         return $ir_mod_i32(x, y);
     }
@@ -1125,7 +1268,7 @@ function $rt_modInt(x, y)
 function $rt_and(x, y)
 {
     // If both values are integer
-    if ($ir_is_i32(x) && $ir_is_i32(y))
+    if ($ir_is_int32(x) && $ir_is_int32(y))
     {
         return $ir_and_i32(x, y);
     }
@@ -1136,10 +1279,19 @@ function $rt_and(x, y)
 
 function $rt_or(x, y)
 {
-    // If both values are integer
-    if ($ir_is_i32(x) && $ir_is_i32(y))
+    // If x is integer
+    if ($ir_is_int32(x))
     {
-        return $ir_or_i32(x, y);
+        // If y is integer
+        if ($ir_is_int32(y))
+            return $ir_or_i32(x, y);
+    }
+
+    // If x is undefined
+    if ($ir_is_const(x) && $ir_eq_const(x, $undef))
+    {
+        if ($ir_is_int32(y))
+            return y;
     }
 
     // Convert the operands to integers
@@ -1149,7 +1301,7 @@ function $rt_or(x, y)
 function $rt_xor(x, y)
 {
     // If both values are integer
-    if ($ir_is_i32(x) && $ir_is_i32(y))
+    if ($ir_is_int32(x) && $ir_is_int32(y))
     {
         return $ir_xor_i32(x, y);
     }
@@ -1161,7 +1313,7 @@ function $rt_xor(x, y)
 function $rt_lsft(x, y)
 {
     // If both values are integer
-    if ($ir_is_i32(x) && $ir_is_i32(y))
+    if ($ir_is_int32(x) && $ir_is_int32(y))
     {
         return $ir_lsft_i32(x, y);
     }
@@ -1173,7 +1325,7 @@ function $rt_lsft(x, y)
 function $rt_rsft(x, y)
 {
     // If both values are integer
-    if ($ir_is_i32(x) && $ir_is_i32(y))
+    if ($ir_is_int32(x) && $ir_is_int32(y))
     {
         return $ir_rsft_i32(x, y);
     }
@@ -1185,7 +1337,7 @@ function $rt_rsft(x, y)
 function $rt_ursft(x, y)
 {
     // If both values are integer
-    if ($ir_is_i32(x) && $ir_is_i32(y))
+    if ($ir_is_int32(x) && $ir_is_int32(y))
     {
         return $ir_ursft_i32(x, y);
     }
@@ -1196,7 +1348,7 @@ function $rt_ursft(x, y)
 
 function $rt_not(x)
 {
-    if ($ir_is_i32(x))
+    if ($ir_is_int32(x))
     {
         return $ir_not_i32(x);
     }
@@ -1215,23 +1367,26 @@ JS less-than operator
 function $rt_lt(x, y)
 {
     // If x is integer
-    if ($ir_is_i32(x))
+    if ($ir_is_int32(x))
     {
-        if ($ir_is_i32(y))
+        if ($ir_is_int32(y))
             return $ir_lt_i32(x, y);
 
-        if ($ir_is_f64(y))
+        if ($ir_is_float64(y))
             return $ir_lt_f64($ir_i32_to_f64(x), y);
     }
 
     // If x is float
-    else if ($ir_is_f64(x))
+    else if ($ir_is_float64(x))
     {
-        if ($ir_is_i32(y))
+        if ($ir_is_int32(y))
             return $ir_lt_f64(x, $ir_i32_to_f64(y));
 
-        if ($ir_is_f64(y))
+        if ($ir_is_float64(y))
             return $ir_lt_f64(x, y);
+
+        if ($ir_is_const(y) && $ir_eq_const(y, $undef))
+            return false;
     }
 
     var px = $rt_toPrim(x);
@@ -1252,22 +1407,22 @@ Specialized less-than for the integer and float cases
 function $rt_ltIntFloat(x, y)
 {
     // If x is integer
-    if ($ir_is_i32(x))
+    if ($ir_is_int32(x))
     {
-        if ($ir_is_i32(y))
+        if ($ir_is_int32(y))
             return $ir_lt_i32(x, y);
 
-        if ($ir_is_f64(y))
+        if ($ir_is_float64(y))
             return $ir_lt_f64($ir_i32_to_f64(x), y);
     }
 
     // If x is float
-    else if ($ir_is_f64(x))
+    else if ($ir_is_float64(x))
     {
-        if ($ir_is_i32(y))
+        if ($ir_is_int32(y))
             return $ir_lt_f64(x, $ir_i32_to_f64(y));
 
-        if ($ir_is_f64(y))
+        if ($ir_is_float64(y))
             return $ir_lt_f64(x, y);
     }
 
@@ -1280,22 +1435,22 @@ JS less-than or equal operator
 function $rt_le(x, y)
 {
     // If x is integer
-    if ($ir_is_i32(x))
+    if ($ir_is_int32(x))
     {
-        if ($ir_is_i32(y))
+        if ($ir_is_int32(y))
             return $ir_le_i32(x, y);
 
-        if ($ir_is_f64(y))
+        if ($ir_is_float64(y))
             return $ir_le_f64($ir_i32_to_f64(x), y);
     }
 
     // If x is float
-    else if ($ir_is_f64(x))
+    else if ($ir_is_float64(x))
     {
-        if ($ir_is_i32(y))
+        if ($ir_is_int32(y))
             return $ir_le_f64(x, $ir_i32_to_f64(y));
 
-        if ($ir_is_f64(y))
+        if ($ir_is_float64(y))
             return $ir_le_f64(x, y);
     }
 
@@ -1317,22 +1472,22 @@ Specialized less-than or equal for the integer and float cases
 function $rt_leIntFloat(x, y)
 {
     // If x is integer
-    if ($ir_is_i32(x))
+    if ($ir_is_int32(x))
     {
-        if ($ir_is_i32(y))
+        if ($ir_is_int32(y))
             return $ir_le_i32(x, y);
 
-        if ($ir_is_f64(y))
+        if ($ir_is_float64(y))
             return $ir_le_f64($ir_i32_to_f64(x), y);
     }
 
     // If x is float
-    else if ($ir_is_f64(x))
+    else if ($ir_is_float64(x))
     {
-        if ($ir_is_i32(y))
+        if ($ir_is_int32(y))
             return $ir_le_f64(x, $ir_i32_to_f64(y));
 
-        if ($ir_is_f64(y))
+        if ($ir_is_float64(y))
             return $ir_le_f64(x, y);
     }
 
@@ -1345,23 +1500,26 @@ JS greater-than operator
 function $rt_gt(x, y)
 {
     // If x is integer
-    if ($ir_is_i32(x))
+    if ($ir_is_int32(x))
     {
-        if ($ir_is_i32(y))
+        if ($ir_is_int32(y))
             return $ir_gt_i32(x, y);
 
-        if ($ir_is_f64(y))
+        if ($ir_is_float64(y))
             return $ir_gt_f64($ir_i32_to_f64(x), y);
     }
 
     // If x is float
-    else if ($ir_is_f64(x))
+    else if ($ir_is_float64(x))
     {
-        if ($ir_is_i32(y))
+        if ($ir_is_int32(y))
             return $ir_gt_f64(x, $ir_i32_to_f64(y));
 
-        if ($ir_is_f64(y))
+        if ($ir_is_float64(y))
             return $ir_gt_f64(x, y);
+
+        if ($ir_is_const(y) && $ir_eq_const(y, $undef))
+            return false;
     }
 
     var px = $rt_toPrim(x);
@@ -1382,22 +1540,22 @@ Specialized greater-than for the integer and float cases
 function $rt_gtIntFloat(x, y)
 {
     // If x is integer
-    if ($ir_is_i32(x))
+    if ($ir_is_int32(x))
     {
-        if ($ir_is_i32(y))
+        if ($ir_is_int32(y))
             return $ir_gt_i32(x, y);
 
-        if ($ir_is_f64(y))
+        if ($ir_is_float64(y))
             return $ir_gt_f64($ir_i32_to_f64(x), y);
     }
 
     // If x is float
-    else if ($ir_is_f64(x))
+    else if ($ir_is_float64(x))
     {
-        if ($ir_is_i32(y))
+        if ($ir_is_int32(y))
             return $ir_gt_f64(x, $ir_i32_to_f64(y));
 
-        if ($ir_is_f64(y))
+        if ($ir_is_float64(y))
             return $ir_gt_f64(x, y);
     }
 
@@ -1410,22 +1568,22 @@ JS greater-than-or-equal operator
 function $rt_ge(x, y)
 {
     // If x is integer
-    if ($ir_is_i32(x))
+    if ($ir_is_int32(x))
     {
-        if ($ir_is_i32(y))
+        if ($ir_is_int32(y))
             return $ir_ge_i32(x, y);
 
-        if ($ir_is_f64(y))
+        if ($ir_is_float64(y))
             return $ir_ge_f64($ir_i32_to_f64(x), y);
     }
 
     // If x is float
-    else if ($ir_is_f64(x))
+    else if ($ir_is_float64(x))
     {
-        if ($ir_is_i32(y))
+        if ($ir_is_int32(y))
             return $ir_ge_f64(x, $ir_i32_to_f64(y));
 
-        if ($ir_is_f64(y))
+        if ($ir_is_float64(y))
             return $ir_ge_f64(x, y);
     }
 
@@ -1447,22 +1605,22 @@ Specialized greater-than-or-equal for the integer and float cases
 function $rt_geIntFloat(x, y)
 {
     // If x is integer
-    if ($ir_is_i32(x))
+    if ($ir_is_int32(x))
     {
-        if ($ir_is_i32(y))
+        if ($ir_is_int32(y))
             return $ir_ge_i32(x, y);
 
-        if ($ir_is_f64(y))
+        if ($ir_is_float64(y))
             return $ir_ge_f64($ir_i32_to_f64(x), y);
     }
 
     // If x is float
-    else if ($ir_is_f64(x))
+    else if ($ir_is_float64(x))
     {
-        if ($ir_is_i32(y))
+        if ($ir_is_int32(y))
             return $ir_ge_f64(x, $ir_i32_to_f64(y));
 
-        if ($ir_is_f64(y))
+        if ($ir_is_float64(y))
             return $ir_ge_f64(x, y);
     }
 
@@ -1475,12 +1633,12 @@ JS equality (==) comparison operator
 function $rt_eq(x, y)
 {
     // If x is integer
-    if ($ir_is_i32(x))
+    if ($ir_is_int32(x))
     {
-        if ($ir_is_i32(y))
+        if ($ir_is_int32(y))
             return $ir_eq_i32(x, y);
 
-        if ($ir_is_f64(y))
+        if ($ir_is_float64(y))
             return $ir_eq_f64($ir_i32_to_f64(x), y);
 
         // 0 != null
@@ -1556,12 +1714,12 @@ function $rt_eq(x, y)
     }
 
     // If x is float
-    else if ($ir_is_f64(x))
+    else if ($ir_is_float64(x))
     {
-        if ($ir_is_i32(y))
+        if ($ir_is_int32(y))
             return $ir_eq_f64(x, $ir_i32_to_f64(y));
 
-        if ($ir_is_f64(y))
+        if ($ir_is_float64(y))
             return $ir_eq_f64(x, y);
     }
 
@@ -1583,15 +1741,15 @@ Optimized equality (==) for integer comparisons
 function $rt_eqInt(x, y)
 {
     // If x is integer
-    if ($ir_is_i32(x))
+    if ($ir_is_int32(x))
     {
-        if ($ir_is_i32(y))
+        if ($ir_is_int32(y))
             return $ir_eq_i32(x, y);
     }
 
-    if ($ir_is_f64(x))
+    if ($ir_is_float64(x))
     {
-        if ($ir_is_i32(y))
+        if ($ir_is_int32(y))
             return $ir_eq_f64(x, $ir_i32_to_f64(y));
     }
 
@@ -1621,17 +1779,31 @@ function $rt_ne(x, y)
 }
 
 /**
+Optimized inequality (!=) for comparisons with null
+*/
+function $rt_neNull(x)
+{
+    if ($ir_is_refptr(x) && $ir_eq_refptr(x, null))
+        return false;
+
+    if ($ir_is_const(x) && $ir_eq_const(x, $undef))
+        return false;
+
+    return true;
+}
+
+/**
 JS strict equality (===) comparison operator
 */
 function $rt_se(x, y)
 {
     // If x is integer
-    if ($ir_is_i32(x))
+    if ($ir_is_int32(x))
     {
-        if ($ir_is_i32(y))
+        if ($ir_is_int32(y))
             return $ir_eq_i32(x, y);
 
-        if ($ir_is_f64(y))
+        if ($ir_is_float64(y))
             return $ir_eq_f64($ir_i32_to_f64(x), y);
 
         return false;
@@ -1662,7 +1834,14 @@ function $rt_se(x, y)
     {
         if ($ir_is_string(y))
             return $ir_eq_refptr(x, y);
+        if ($ir_is_rope(y))
+            return $rt_se(x, $rt_ropeToStr(y));
         return false;
+    }
+
+    else if ($ir_is_rope(x))
+    {
+        return $rt_se($rt_ropeToStr(x), y);
     }
 
     else if ($ir_is_refptr(x))
@@ -1681,12 +1860,12 @@ function $rt_se(x, y)
     }
 
     // If x is a float
-    else if ($ir_is_f64(x))
+    else if ($ir_is_float64(x))
     {
-        if ($ir_is_f64(y))
+        if ($ir_is_float64(y))
             return $ir_eq_f64(x, y);
 
-        if ($ir_is_i32(y))
+        if ($ir_is_int32(y))
             return $ir_eq_f64(x, $ir_i32_to_f64(y));
 
         return false;
@@ -1710,12 +1889,12 @@ JS strict inequality (!==) comparison operator
 function $rt_ns(x, y)
 {
     // If x is integer
-    if ($ir_is_i32(x))
+    if ($ir_is_int32(x))
     {
-        if ($ir_is_i32(y))
+        if ($ir_is_int32(y))
             return $ir_ne_i32(x, y);
 
-        if ($ir_is_f64(y))
+        if ($ir_is_float64(y))
             return $ir_ne_f64($ir_i32_to_f64(x), y);
 
         return true;
@@ -1746,7 +1925,14 @@ function $rt_ns(x, y)
     {
         if ($ir_is_string(y))
             return $ir_ne_refptr(x, y);
+        if ($ir_is_rope(y))
+            return $rt_ns(x, $rt_ropeToStr(y));
         return true;
+    }
+
+    else if ($ir_is_rope(x))
+    {
+        return $rt_ns($rt_ropeToStr(x), y);
     }
 
     else if ($ir_is_refptr(x))
@@ -1765,12 +1951,12 @@ function $rt_ns(x, y)
     }
 
     // If x is a float
-    else if ($ir_is_f64(x))
+    else if ($ir_is_float64(x))
     {
-        if ($ir_is_f64(y))
+        if ($ir_is_float64(y))
             return $ir_ne_f64(x, y);
 
-        if ($ir_is_i32(y))
+        if ($ir_is_int32(y))
             return $ir_ne_f64(x, $ir_i32_to_f64(y));
 
         return true;
@@ -1822,49 +2008,36 @@ function $rt_newObj(protoPtr)
     // Allocate the object
     var objPtr = $rt_obj_alloc($rt_OBJ_MIN_CAP);
 
-    $ir_shape_init_empty(objPtr);
+    // Initialize the object
+    $ir_obj_init_shape(objPtr, protoPtr);
     $rt_setProto(objPtr, protoPtr);
 
     return objPtr;
 }
 
 /**
-Allocate an array
+Allocate an array of the given length
 */
-function $rt_newArr(protoPtr, numElems)
+function $rt_newArr(length)
 {
     // Allocate the array table
-    var tblPtr = $rt_arrtbl_alloc(numElems);
+    var tblPtr = $rt_arrtbl_alloc(length);
 
     // Allocate the array
     var objPtr = $rt_arr_alloc($rt_OBJ_MIN_CAP);
 
     // Initialize the array object
-    $ir_shape_init_empty(objPtr);
-    $rt_setProto(objPtr, protoPtr);
-    $rt_arr_set_tbl(objPtr, tblPtr);
-    $rt_arr_set_len(objPtr, numElems);
+    $ir_arr_init_shape(objPtr);
+    $rt_setProto(objPtr, $ir_get_arr_proto());
+    $rt_setArrTbl(objPtr, tblPtr);
+    $rt_obj_set_tag(objPtr, $rt_ARRTBL_SLOT_IDX, $ir_get_tag(null));
+
+    // Set the array length
+    $rt_setArrLen(objPtr, length);
 
     //$ir_print_str("Allocated array\n");
 
     return objPtr;
-}
-
-/**
-Get/allocate a regular expresson object
-*/
-function $rt_getRegexp(link, pattern, flags)
-{
-    var rePtr = $ir_get_link(link);
-
-    if (rePtr === null)
-    {
-        rePtr = new $rt_RegExp(pattern, flags);
-
-        $ir_set_link(link, rePtr);
-    }
-
-    return rePtr;
 }
 
 /**
@@ -1895,12 +2068,31 @@ Set the prototype value for an object
 */
 function $rt_setProto(obj, proto)
 {
-    // Attempt to acquire the shape of the proto value
-    if ($ir_ne_refptr(proto, null))
-        $ir_shape_get_def(proto, '');
+    // Write the prototype pointer
+    $rt_obj_set_word(obj, $rt_PROTO_SLOT_IDX, proto);
 
-    // Define the prototype as a non-writable, non-enumerable constant
-    $ir_shape_def_const(obj, '__proto__', proto, false);
+    // Write the prototype tag
+    $rt_obj_set_tag(obj, $rt_PROTO_SLOT_IDX, $ir_get_tag(proto));
+}
+
+function $rt_setArrTbl(arr, tbl)
+{
+    return $ir_store_refptr(arr, $rt_ARRTBL_SLOT_OFS, tbl);
+}
+
+function $rt_getArrTbl(arr)
+{
+    return $ir_load_refptr(arr, $rt_ARRTBL_SLOT_OFS);
+}
+
+function $rt_setArrLen(arr, len)
+{
+    return $ir_store_u32(arr, $rt_ARRLEN_SLOT_OFS, len);
+}
+
+function $rt_getArrLen(arr)
+{
+    return $ir_load_u32(arr, $rt_ARRLEN_SLOT_OFS);
 }
 
 /**
@@ -1908,32 +2100,31 @@ Get a property from an object using a string as key
 */
 function $rt_objGetProp(obj, propStr)
 {
-    // Find the defining shape for this property
-    // This shifts us to a different version where the obj shape is known
-    // Implements a dynamic shape dispatch mechanism
-    var defShape = $ir_shape_get_def(obj, propStr);
+    // Capture the object shape
+    var objShape = $ir_obj_read_shape(obj);
+    if ($ir_break());
+    if ($ir_capture_shape(obj, objShape))
+        if ($ir_capture_shape(obj, objShape))
+            if ($ir_capture_shape(obj, objShape))
+                if ($ir_capture_shape(obj, objShape));
 
-    // If the property is defined on the object
-    if ($ir_ne_rawptr(defShape, $nullptr))
+    // If the property value can be read directly
+    var propVal;
+    if (propVal = $ir_obj_get_prop(obj, propStr))
     {
-        // Get the property value
-        var propVal = $ir_shape_get_prop(obj, defShape);
+        // Return the property value
+        return propVal;
+    }
 
-        // If the property is a getter-setter function
-        if ($ir_shape_is_getset(defShape))
-        {
-            // Call the getter function
-            return $ir_call(propVal.get, obj);
-        }
-        else
-        {
-            // Property was found, is not a getter
-            return propVal;
-        }
+    // Otherwise, if the property is a getter-setter function
+    if ($ir_is_object(propVal))
+    {
+        // Call the getter function
+        return $ir_call(propVal.get, obj);
     }
 
     // Get the object's prototype
-    var proto = $ir_shape_get_proto(obj);
+    var proto = $ir_obj_get_proto(obj);
 
     // If the prototype is null, produce undefined
     if ($ir_eq_refptr(proto, null))
@@ -1951,6 +2142,13 @@ Get a property from a value using a value as a key
 */
 function $rt_getProp(base, prop)
 {
+    /*
+    if ($ir_is_string(prop))
+    {
+        $ir_print_str(prop); $ir_print_str('\n');
+    }
+    */
+
     // If the base is an object or closure
     if ($ir_is_object(base) || $ir_is_closure(base))
     {
@@ -1965,17 +2163,17 @@ function $rt_getProp(base, prop)
     if ($ir_is_array(base))
     {
         // If the property is a non-negative integer
-        if ($ir_is_i32(prop) && $ir_ge_i32(prop, 0) &&
-            $ir_lt_i32(prop, $rt_arr_get_len(base)))
+        if ($ir_is_int32(prop) && $ir_ge_i32(prop, 0) &&
+            $ir_lt_i32(prop, $rt_getArrLen(base)))
         {
-            var tbl = $rt_arr_get_tbl(base);
+            var tbl = $rt_getArrTbl(base);
             var word = $rt_arrtbl_get_word(tbl, prop);
-            var type = $rt_arrtbl_get_type(tbl, prop);
+            var type = $rt_arrtbl_get_tag(tbl, prop);
             return $ir_make_value(word, type);
         }
 
         // If the property is a floating-point number
-        if ($ir_is_f64(prop))
+        if ($ir_is_float64(prop))
         {
             var intVal = $rt_toUint32(prop);
             if (intVal === prop)
@@ -1987,10 +2185,10 @@ function $rt_getProp(base, prop)
         {
             // If this is the length property
             if ($ir_eq_refptr(prop, 'length'))
-                return $rt_arr_get_len(base);
+                return $rt_getArrLen(base);
 
             var propNum = $rt_strToInt(prop);
-            if ($ir_is_i32(propNum))
+            if ($ir_is_int32(propNum))
                 return $rt_getProp(base, propNum);
 
             return $rt_objGetProp(base, prop);
@@ -2003,7 +2201,7 @@ function $rt_getProp(base, prop)
     if ($ir_is_string(base))
     {
         // If the property is a non-negative integer
-        if ($ir_is_i32(prop) && $ir_ge_i32(prop, 0) && 
+        if ($ir_is_int32(prop) && $ir_ge_i32(prop, 0) && 
             $ir_lt_i32(prop, $rt_str_get_len(base)))
         {
             var ch = $rt_str_get_data(base, prop);
@@ -2017,11 +2215,28 @@ function $rt_getProp(base, prop)
             return $rt_str_get_len(base);
 
         // Recurse on String.prototype
-        return $rt_getProp(String.prototype, prop);
+        return $rt_getProp($ir_get_str_proto(), prop);
+    }
+
+    // If the base is a rope
+    if ($ir_is_rope(base))
+    {
+        // If the property is an integer
+        if ($ir_is_int32(prop))
+        {
+            return $rt_getProp($rt_ropeToStr(base), prop);
+        }
+
+        // If this is the length property
+        if ($ir_is_string(prop) && $ir_eq_refptr(prop, 'length'))
+            return $rt_rope_get_len(base);
+
+        // Recurse on String.prototype
+        return $rt_getProp($ir_get_str_proto(), prop);
     }
 
     // If the base is a number
-    if ($ir_is_i32(base) || $ir_is_f64(base))
+    if ($ir_is_int32(base) || $ir_is_float64(base))
     {
         // Recurse on Number.prototype
         return $rt_getProp(Number.prototype, prop);
@@ -2050,82 +2265,92 @@ function $rt_getProp(base, prop)
             throw TypeError("undefined base in property read");
     }
 
-    throw TypeError("invalid base in property read");
+    if ($ir_is_string(prop))
+        throw TypeError('invalid base in read of property "' + prop + '"');
+    else
+        throw TypeError("invalid base in property read");
 }
 
 /**
 Specialized version of getProp for field accesses where
 the base is an object of some kind and the key is a constant string
 */
-function $rt_getPropField(base, prop)
+function $rt_getPropField(base, propStr)
 {
     // If the base is a simple object
-    if ($ir_is_object(base))
+    if ($ir_is_object(base) || $ir_is_closure(base) || $ir_is_array(base))
     {
-        // Find the defining shape for this property
-        var defShape = $ir_shape_get_def(base, prop);
+        var obj = base;
 
-        // If the property is defined on the object
-        if ($ir_ne_rawptr(defShape, $nullptr))
+        // Until we reach the end of the prototype chain
+        for (;;)
         {
-            // If the value is not a getter-setter function, return it
-            if (!$ir_shape_is_getset(defShape))
+            // Capture the object shape
+            var objShape = $ir_obj_read_shape(obj);
+            if ($ir_break());
+            if ($ir_capture_shape(obj, objShape))
+                if ($ir_capture_shape(obj, objShape))
+                    if ($ir_capture_shape(obj, objShape))
+                        if ($ir_capture_shape(obj, objShape))
+                            if ($ir_capture_shape(obj, objShape))
+                                if ($ir_capture_shape(obj, objShape));
+
+            // If the property value can be read directly
+            var propVal;
+            if (propVal = $ir_obj_get_prop(obj, propStr))
             {
-                // Get the property value
-                return $ir_shape_get_prop(base, defShape);
+                // Return the property value
+                return propVal;
+            }
+
+            // If the property is a getter-setter, stop
+            if ($ir_is_object(propVal))
+            {
+                break;
+            }
+
+            // Get the prototype of the object
+            var obj = $ir_obj_get_proto(obj);
+
+            // If we have reached the end of the prototype chain
+            if ($ir_is_refptr(obj))
+            {
+                return $undef;
             }
         }
     }
 
-    return $rt_getProp(base, prop);
+    return $rt_getProp(base, propStr);
 }
 
 /**
-Specialized version of getProp for method accesses where
-the base is an object and the key is a constant string
+Specialized version of getProp for field accesses where
+the base is a string value and the key is a constant string
 */
-function $rt_getPropMethod(base, prop)
+function $rt_getStrMethod(base, propStr)
 {
-    // If the base is an object
-    if ($ir_is_object(base))
+    // If the base is a simple object
+    if ($ir_is_string(base) || $ir_is_rope(base))
     {
-        // Find the defining shape for this property
-        var defShape = $ir_shape_get_def(base, prop);
+        // Get the string prototype object
+        var obj = $ir_get_str_proto();
 
-        // If the property is defined on the object
-        if ($ir_ne_rawptr(defShape, $nullptr))
+        // Capture the object shape
+        var objShape = $ir_obj_read_shape(obj);
+        if ($ir_break());
+        if ($ir_capture_shape(obj, objShape))
+            if ($ir_capture_shape(obj, objShape))
+
+        // If the property value can be read directly
+        var propVal;
+        if (propVal = $ir_obj_get_prop(obj, propStr))
         {
-            // If the value is not a getter-setter function, return it
-            if (!$ir_shape_is_getset(defShape))
-            {
-                // Get the property value
-                return $ir_shape_get_prop(base, defShape);
-            }
-        }
-
-        // Get the prototype of the object
-        var base = $ir_shape_get_proto(base);
-
-        // If the prototype is not null
-        if ($ir_is_object(base))
-        {
-            // Find the defining shape for this property
-            var defShape = $ir_shape_get_def(base, prop);
-
-            // If the property is defined on the object
-            if ($ir_ne_rawptr(defShape, $nullptr))
-            {
-                // If the value is not a getter-setter function, return it
-                if (!$ir_shape_is_getset(defShape))
-                {
-                    // Get the property value
-                    return $ir_shape_get_prop(base, defShape);
-                }
-            }
+            // Return the property value
+            return propVal;
         }
     }
 
-    return $rt_getProp(base, prop);
+    return $rt_getProp(base, propStr);
 }
 
 /**
@@ -2134,14 +2359,17 @@ Specialized version of getProp for array elements
 function $rt_getPropElem(base, prop)
 {
     // If the base is an array and the property is a non-negative integer
-    if ($ir_is_array(base) &&
-        $ir_is_i32(prop) && $ir_ge_i32(prop, 0) &&
-        $ir_lt_i32(prop, $rt_arr_get_len(base)))
+    if ($ir_is_array(base) && $ir_is_int32(prop) && $ir_ge_i32(prop, 0))
     {
-        var tbl = $rt_arr_get_tbl(base);
-        var word = $rt_arrtbl_get_word(tbl, prop);
-        var type = $rt_arrtbl_get_type(tbl, prop);
-        return $ir_make_value(word, type);
+        if ($ir_lt_i32(prop, $rt_getArrLen(base)))
+        {
+            var tbl = $rt_getArrTbl(base);
+            var word = $rt_arrtbl_get_word(tbl, prop);
+            var type = $rt_arrtbl_get_tag(tbl, prop);
+            return $ir_make_value(word, type);
+        }
+
+        return $undef;
     }
 
     return $rt_getProp(base, prop);
@@ -2155,7 +2383,19 @@ function $rt_getPropLength(base)
     // If the base is an array
     if ($ir_is_array(base))
     {
-        return $rt_arr_get_len(base);
+        return $rt_getArrLen(base);
+    }
+
+    // If the base is a string
+    if ($ir_is_string(base))
+    {
+        return $rt_str_get_len(base);
+    }
+
+    // If the base is a rope
+    if ($ir_is_rope(base))
+    {
+        return $rt_rope_get_len(base);
     }
 
     return $rt_getProp(base, "length");
@@ -2166,38 +2406,38 @@ Get a property from the global object
 */
 function $rt_getGlobal(obj, propStr)
 {
-    // Find the defining shape for this property
-    // This shifts us to a different version where the obj shape is known
-    // Implements a dynamic shape dispatch mechanism
-    var defShape = $ir_shape_get_def(obj, propStr);
+    // Capture the object shape
+    var objShape = $ir_obj_read_shape(obj);
+    if ($ir_break());
+    if ($ir_capture_shape(obj, objShape))
+        if ($ir_capture_shape(obj, objShape))
+            if ($ir_capture_shape(obj, objShape))
+                if ($ir_capture_shape(obj, objShape));
 
-    // If the property is defined on the object
-    if ($ir_ne_rawptr(defShape, $nullptr))
+    // If the property value can be read directly
+    var propVal;
+    if (propVal = $ir_obj_get_prop(obj, propStr))
     {
-        // Get the property value
-        var propVal = $ir_shape_get_prop(obj, defShape);
+        // Return the property value
+        return propVal;
+    }
 
-        // If the property is a getter-setter function
-        if ($ir_shape_is_getset(defShape))
-        {
-            // Call the getter function
-            return $ir_call(propVal.get, obj);
-        }
-        else
-        {
-            // Property was found, is not a getter
-            return propVal;
-        }
+    // Otherwise, if the property is a getter-setter function
+    if ($ir_is_object(propVal))
+    {
+        // Call the getter function
+        return $ir_call(propVal.get, obj);
     }
 
     // Get the object's prototype
-    var proto = $ir_shape_get_proto(obj);
+    var proto = $ir_obj_get_proto(obj);
 
     // If the prototype is null, the property is not defined
     if ($ir_eq_refptr(proto, null))
     {
-        var errStr = 'global property not defined: "' + propStr + '"';
+        //$ir_print_str(propStr); $ir_print_str('\n');
 
+        var errStr = 'global property not defined: "' + propStr + '"';
         if (obj.ReferenceError)
             throw ReferenceError(errStr);
         else
@@ -2218,20 +2458,20 @@ function $rt_getGlobalInl(propStr)
 {
     var obj = $global;
 
-    // Find the index for this property
-    // This shifts us to a different version where the obj shape is known
-    // Implements a dynamic shape dispatch mechanism
-    var defShape = $ir_shape_get_def(obj, propStr);
+    // Capture the object shape
+    var objShape = $ir_obj_read_shape(obj);
+    if ($ir_break());
+    if ($ir_capture_shape(obj, objShape))
+        if ($ir_capture_shape(obj, objShape))
+            if ($ir_capture_shape(obj, objShape))
+                if ($ir_capture_shape(obj, objShape));
 
-    // If the property is defined on the object
-    if ($ir_ne_rawptr(defShape, $nullptr))
+    // If the property value can be read directly
+    var propVal;
+    if (propVal = $ir_obj_get_prop(obj, propStr))
     {
-        // If the property is a not getter-setter function, return its value
-        if (!$ir_shape_is_getset(defShape))
-        {
-            // Get the property value
-            return $ir_shape_get_prop(obj, defShape);
-        }
+        // Return the property value
+        return propVal;
     }
 
     // Do the full global lookup
@@ -2246,28 +2486,34 @@ Set a property on an object using a string as key
 */
 function $rt_objSetProp(obj, propStr, val)
 {
-    // Find the index for this property
-    // Handles dynamic version dispatching
-    // This will not transition the object to a new shape
-    var defShape = $ir_shape_get_def(obj, propStr);
+    // Capture the object shape
+    var objShape = $ir_obj_read_shape(obj);
+    if ($ir_break());
+    if ($ir_capture_shape(obj, objShape))
+        if ($ir_capture_shape(obj, objShape))
+            if ($ir_capture_shape(obj, objShape))
+                if ($ir_capture_shape(obj, objShape));
 
-    // If the property is a getter-setter function
-    if ($ir_shape_is_getset(defShape))
-    {
-        // Get the accessor pair
-        var propVal = $ir_shape_get_prop(obj, defShape);
+    // Capture the type tag of the value
+    if ($ir_break());
+    if ($ir_capture_tag(val))
+        if ($ir_capture_tag(val))
+            if ($ir_capture_tag(val))
+                if ($ir_capture_tag(val))
+                    if ($ir_capture_tag(val));
 
-        // Call the setter function
-        $ir_call(propVal.set, obj, val);
-    }
-    else
+    // If the property value can be set directly
+    if ($ir_obj_set_prop(obj, propStr, val))
     {
-        // Hidden inside set_prop, we handle the extended table
-        // May also transition the object to another shape if this
-        // is a new property or the type written doesn't match what was known
-        // If the current shape is unknown, complex logic will be handled in D
-        $ir_shape_set_prop(obj, propStr, defShape, val);
+        // We are done
+        return;
     }
+
+    // The property must have a getter-setter method
+    // Get the accessor pair and call the setter function
+    var propVal
+    if (propVal = $ir_obj_get_prop(obj, propStr));
+    $ir_call(propVal.set, obj, val);
 }
 
 /**
@@ -2288,11 +2534,11 @@ function $rt_extArrTbl(
     for (var i = 0; $ir_lt_i32(i, curLen); i = $ir_add_i32(i, 1))
     {
         $rt_arrtbl_set_word(newTbl, i, $rt_arrtbl_get_word(curTbl, i));
-        $rt_arrtbl_set_type(newTbl, i, $rt_arrtbl_get_type(curTbl, i));
+        $rt_arrtbl_set_tag(newTbl, i, $rt_arrtbl_get_tag(curTbl, i));
     }
 
     // Update the table reference in the array
-    $rt_arr_set_tbl(arr, newTbl);
+    $rt_setArrTbl(arr, newTbl);
 
     return newTbl;
 }
@@ -2303,12 +2549,12 @@ Set an element of an array
 function $rt_setArrElem(arr, index, val)
 {
     // Get the array length
-    var len = $rt_arr_get_len(arr);
+    var len = $rt_getArrLen(arr);
 
     // Get the array table
-    var tbl = $rt_arr_get_tbl(arr);
+    var tbl = $rt_getArrTbl(arr);
 
-    // If the index is outside the current size of the array
+    // If the index is past the current length
     if ($ir_ge_i32(index, len))
     {
         // Compute the new length
@@ -2330,24 +2576,24 @@ function $rt_setArrElem(arr, index, val)
         }
 
         // Update the array length
-        $rt_arr_set_len(arr, newLen);
+        $rt_setArrLen(arr, newLen);
     }
 
     // Set the element in the array
     $rt_arrtbl_set_word(tbl, index, $ir_get_word(val));
-    $rt_arrtbl_set_type(tbl, index, $ir_get_type(val));
+    $rt_arrtbl_set_tag(tbl, index, $ir_get_tag(val));
 }
 
 /**
 Set/change the length of an array
 */
-function $rt_setArrLen(arr, newLen)
+function $rt_setArrLength(arr, newLen)
 {
     // Get the current array length
-    var len = $rt_arr_get_len(arr);
+    var len = $rt_getArrLen(arr);
 
     // Get a reference to the array table
-    var tbl = $rt_arr_get_tbl(arr);
+    var tbl = $rt_getArrTbl(arr);
 
     // If the array length is increasing
     if (newLen > len)
@@ -2358,22 +2604,27 @@ function $rt_setArrLen(arr, newLen)
         // If the new length would exceed the capacity
         if (newLen > cap)
         {
+            // Compute the new size to resize to
+            var newSize = $ir_mul_i32(cap, 2);
+            if ($ir_gt_i32(newLen, newSize))
+                newSize = newLen;
+
             // Extend the internal table
-            $rt_extArrTbl(arr, tbl, len, cap, newLen);
+            $rt_extArrTbl(arr, tbl, len, cap, newSize);
         }
     }
     else
     {
-        // Initialize removed entries to undefined
+        // Set the removed entries to undefined
         for (var i = newLen; i < len; i++)
         {
             $rt_arrtbl_set_word(tbl, i, $ir_get_word(undefined));
-            $rt_arrtbl_set_type(tbl, i, $ir_get_type(undefined));
+            $rt_arrtbl_set_tag(tbl, i, $ir_get_tag(undefined));
         }
     }
 
     // Update the array length
-    $rt_arr_set_len(arr, newLen);
+    $rt_setArrLen(arr, newLen);
 }
 
 /**
@@ -2381,9 +2632,6 @@ Set a property on a value using a value as a key
 */
 function $rt_setProp(base, prop, val)
 {
-    //print(prop);
-    //print('\n');
-
     // If the base is an object or closure
     if ($ir_is_object(base) || $ir_is_closure(base))
     {
@@ -2398,7 +2646,7 @@ function $rt_setProp(base, prop, val)
     if ($ir_is_array(base))
     {
         // If the property is a non-negative integer
-        if ($ir_is_i32(prop) && $ir_ge_i32(prop, 0))
+        if ($ir_is_int32(prop) && $ir_ge_i32(prop, 0))
         {
             return $rt_setArrElem(base, prop, val);
         }
@@ -2409,21 +2657,21 @@ function $rt_setProp(base, prop, val)
             // If this is the length property
             if ($ir_eq_refptr(prop, 'length'))
             {
-                if ($ir_is_i32(val) && $ir_ge_i32(val, 0))
-                    return $rt_setArrLen(base, val);
+                if ($ir_is_int32(val) && $ir_ge_i32(val, 0))
+                    return $rt_setArrLength(base, val);
 
                 assert (false, 'invalid array length');
             }
 
             var propNum = $rt_strToInt(prop);
-            if ($ir_is_i32(propNum))
+            if ($ir_is_int32(propNum))
                 return $rt_setProp(base, propNum, val);
 
             return $rt_objSetProp(base, prop, val);
         }
 
         // If the property is a floating-point number
-        if ($ir_is_f64(prop))
+        if ($ir_is_float64(prop))
         {
             var intVal = $rt_toUint32(prop);
             if (intVal === prop)
@@ -2443,25 +2691,38 @@ function $rt_setProp(base, prop, val)
 /**
 Specialized version of setProp for object properties
 */
-function $rt_setPropField(base, prop, val)
+function $rt_setPropField(base, propStr, val)
 {
     // If the base is an object or closure
     if ($ir_is_object(base) || $ir_is_closure(base))
     {
-        // Find the index for this property
-        var defShape = $ir_shape_get_def(base, prop);
+        var obj = base;
 
-        // If the property is a getter-setter function
-        if (!$ir_shape_is_getset(defShape))
+        // Capture the object shape
+        var objShape = $ir_obj_read_shape(obj);
+        if ($ir_break());
+        if ($ir_capture_shape(obj, objShape))
+            if ($ir_capture_shape(obj, objShape))
+                if ($ir_capture_shape(obj, objShape))
+                    if ($ir_capture_shape(obj, objShape));
+
+        // Capture the type tag of the value
+        if ($ir_break());
+        if ($ir_capture_tag(val))
+            if ($ir_capture_tag(val))
+                if ($ir_capture_tag(val))
+                    if ($ir_capture_tag(val))
+                        if ($ir_capture_tag(val));
+
+        // If the property value can be set directly
+        if ($ir_obj_set_prop(obj, propStr, val))
         {
-            // Set the property value
-            $ir_shape_set_prop(base, prop, defShape, val);
-
+            // We are done
             return;
         }
     }
 
-    return $rt_setProp(base, prop, val);
+    return $rt_setProp(base, propStr, val);
 }
 
 /**
@@ -2469,13 +2730,19 @@ Specialized version of setProp for object properties without type checks.
 The base is assumed to be an object, the property name is assumed to
 be a string, and the property itself is assumed not to be an accessor.
 */
-function $rt_setPropFieldNoCheck(base, prop, val)
+function $rt_setPropFieldNoCheck(obj, propStr, val)
 {
-    // Find the index for this property
-    var defShape = $ir_shape_get_def(base, prop);
+    // Capture the object shape
+    var objShape = $ir_obj_read_shape(obj);
+    if ($ir_break());
+    if ($ir_capture_shape(obj, objShape));
+
+    // Capture the type tag of the value
+    if ($ir_break());
+    if ($ir_capture_tag(val));
 
     // Set the property value
-    $ir_shape_set_prop(base, prop, defShape, val);
+    if ($ir_obj_set_prop(obj, propStr, val));
 }
 
 /**
@@ -2487,19 +2754,21 @@ function $rt_setPropElem(base, prop, val)
     if ($ir_is_array(base))
     {
         // If the property is a non-negative integer
-        // and is within the array bounds
-        if ($ir_is_i32(prop) &&
-            $ir_ge_i32(prop, 0) &&
-            $ir_lt_i32(prop, $rt_arr_get_len(base)))
+        if ($ir_is_int32(prop) && $ir_ge_i32(prop, 0))
         {
-            // Get a reference to the array table
-            var tbl = $rt_arr_get_tbl(base);
+            // If the property is within the array bounds
+            if ($ir_lt_i32(prop, $rt_getArrLen(base)))
+            {
+                // Get a reference to the array table
+                var tbl = $rt_getArrTbl(base);
 
-            // Set the element in the array
-            $rt_arrtbl_set_word(tbl, prop, $ir_get_word(val));
-            $rt_arrtbl_set_type(tbl, prop, $ir_get_type(val));
+                // Set the element in the array
+                $rt_arrtbl_set_word(tbl, prop, $ir_get_word(val));
+                $rt_arrtbl_set_tag(tbl, prop, $ir_get_tag(val));
+                return;
+            }
 
-            return;
+            return $rt_setArrElem(base, prop, val);
         }
     }
 
@@ -2512,11 +2781,11 @@ Set an element of an array without bounds checking
 function $rt_setArrElemNoCheck(arr, index, val)
 {
     // Get the array table
-    var tbl = $rt_arr_get_tbl(arr);
+    var tbl = $rt_getArrTbl(arr);
 
     // Set the element in the array
     $rt_arrtbl_set_word(tbl, index, $ir_get_word(val));
-    $rt_arrtbl_set_type(tbl, index, $ir_get_type(val));
+    $rt_arrtbl_set_tag(tbl, index, $ir_get_tag(val));
 }
 
 /**
@@ -2526,15 +2795,23 @@ function $rt_setGlobalInl(propStr, val)
 {
     var obj = $global;
 
-    // Find the index for this property
-    var defShape = $ir_shape_get_def(obj, propStr);
+    // Capture the object shape
+    var objShape = $ir_obj_read_shape(obj);
+    if ($ir_break());
+    if ($ir_capture_shape(obj, objShape))
+        if ($ir_capture_shape(obj, objShape))
+            if ($ir_capture_shape(obj, objShape))
+                if ($ir_capture_shape(obj, objShape));
 
-    // If the property is a getter-setter function
-    if (!$ir_shape_is_getset(defShape))
+    // Capture the type tag of the value
+    if ($ir_break());
+    if ($ir_capture_tag(val))
+        if ($ir_capture_tag(val));
+
+    // If the property value can be set directly
+    if ($ir_obj_set_prop(obj, propStr, val))
     {
-        // Set the property value
-        $ir_shape_set_prop(obj, propStr, defShape, val);
-
+        // We are done
         return;
     }
 
@@ -2554,15 +2831,42 @@ function $rt_delProp(base, prop)
     if (!$ir_is_string(prop))
         throw TypeError('non-string property name');
 
-    // If the property exists, set its value to undefined
-    var defShape = $ir_shape_get_def(base, prop);
-    if ($ir_ne_rawptr(defShape, $nullptr))
+    // Get the defining shape for the property
+    var defShape = $ir_obj_prop_shape(base, prop);
+
+    // If the property doesn't exist, stop
+    if ($ir_eq_rawptr(defShape, $nullptr))
+        return true;
+
+    // Get the attributes for the shape
+    var attrs = $ir_shape_get_attrs(defShape);
+
+    // If the property is not configurable, stop
+    if (!(attrs & $rt_ATTR_CONFIGURABLE))
+        return false;
+
+    // Set the property value to undefined
+    if ($ir_obj_set_prop(base, prop, $undef))
     {
-        $ir_shape_set_prop(base, prop, defShape, $undef);
+    }
+    else
+    {
+        // For accessors, do nothing
     }
 
-    // Set the property attributes to deleted
-    $ir_shape_set_attrs(base, prop, $rt_ATTR_DELETED | $rt_ATTR_CONFIGURABLE);
+    // Find the defining shape for the property
+    // Note: shape changes once the property is set to undefined
+    var defShape = $ir_obj_prop_shape(base, prop);
+
+    // Set the property attributes to deleted and
+    // preserve the current extensible status
+    $ir_obj_set_attrs(
+        base,
+        defShape,
+        $rt_ATTR_DELETED |
+        $rt_ATTR_CONFIGURABLE |
+        (attrs & $rt_ATTR_EXTENSIBLE)
+    );
 
     return true;
 }
@@ -2571,7 +2875,7 @@ function $rt_delProp(base, prop)
 Implementation of the "instanceof" operator
 */
 function $rt_instanceof(obj, ctor)
-{ 
+{
     if (!$ir_is_closure(ctor))
         throw TypeError('constructor must be function');
 
@@ -2588,7 +2892,7 @@ function $rt_instanceof(obj, ctor)
     // Until we went all the way through the prototype chain
     do
     {
-        var objProto = $ir_shape_get_proto(obj);
+        var objProto = $ir_obj_get_proto(obj);
 
         if ($ir_eq_refptr(objProto, ctorProto))
             return true;
@@ -2606,7 +2910,7 @@ Check if an object has a given property
 function $rt_objHasProp(obj, propStr)
 {
     // Try to find the defining shape for the property
-    var defShape = $ir_shape_get_def(obj, propStr);
+    var defShape = $ir_obj_prop_shape(obj, propStr);
 
     // Check if a defining shape was found
     return $ir_ne_rawptr(defShape, $nullptr);
@@ -2631,8 +2935,8 @@ function $rt_hasOwnProp(base, prop)
     if ($ir_is_array(base))
     {
         // If the property is a non-negative integer
-        if ($ir_is_i32(prop) && $ir_ge_i32(prop, 0) &&
-            $ir_lt_i32(prop, $rt_arr_get_len(base)))
+        if ($ir_is_int32(prop) && $ir_ge_i32(prop, 0) &&
+            $ir_lt_i32(prop, $rt_getArrLen(base)))
             return true;
 
         // If the property is not a string, get one
@@ -2645,9 +2949,9 @@ function $rt_hasOwnProp(base, prop)
 
         // Check if it's an indexed property the array should have
         var n = $rt_strToInt(prop);
-        if ($ir_is_i32(n) &&
+        if ($ir_is_int32(n) &&
             $ir_ge_i32(n, 0) &&
-            $ir_lt_i32(n, $rt_arr_get_len(base)))
+            $ir_lt_i32(n, $rt_getArrLen(base)))
             return true;
 
         return $rt_objHasProp(base, prop);
@@ -2657,7 +2961,7 @@ function $rt_hasOwnProp(base, prop)
     if ($ir_is_string(base))
     {
         // If the property is an int
-        if ($ir_is_i32(prop) && $ir_ge_i32(prop, 0) &&
+        if ($ir_is_int32(prop) && $ir_ge_i32(prop, 0) &&
             $ir_lt_i32(prop, $rt_str_get_len(base)))
            return true;
 
@@ -2672,14 +2976,14 @@ function $rt_hasOwnProp(base, prop)
         // Check if this is a valid index into the string
         var n = $rt_strToInt(prop);
         return (
-            $ir_is_i32(n) &&
+            $ir_is_int32(n) &&
             $ir_ge_i32(n, 0) &&
             $ir_lt_i32(n, $rt_str_get_len(base))
         );
     }
 
     // If the base is a number
-    if ($ir_is_i32(base) || $ir_is_f64(base))
+    if ($ir_is_int32(base) || $ir_is_float64(base))
     {
         return false;
     }
@@ -2707,7 +3011,7 @@ function $rt_in(prop, obj)
         if ($rt_hasOwnProp(obj, prop))
             return true;
 
-        obj = $ir_shape_get_proto(obj);
+        obj = $ir_obj_get_proto(obj);
 
     } while ($ir_ne_refptr(obj, null));
 
@@ -2715,130 +3019,154 @@ function $rt_in(prop, obj)
 }
 
 /**
-Used to enumerate properties in a for-in loop
+Check if a property is shadowed by another in the prototype chain
 */
-function $rt_getPropEnum(obj)
+function $rt_isShadowed(topObj, thisObj, propName)
 {
-    // If the value is not an object or a string
-    if (!$rt_valIsObj(obj) && !$ir_is_string(obj))
+    for (var curObj = topObj;;)
     {
-        // Return the empty enumeration function
-        return function ()
-        {
+        // If we reached this object, stop
+        if ($ir_eq_refptr(curObj, thisObj))
+            return false;
+
+        // If the property exists on this object, it is shadowed
+        if ($rt_hasOwnProp(curObj, propName))
             return true;
-        };
+
+        // Move one down the prototype chain
+        curObj = $ir_obj_get_proto(curObj);
     }
 
-    var curObj = obj;
-    var curShape = $rt_valIsObj(curObj)? $rt_obj_get_shape(curObj):$nullptr;
-    var curIdx = 0;
+    assert (false);
+}
 
-    // Check if a property is shadowed by a prototype's
-    function isShadowed(curObj, propName)
+/**
+Get the current property in an enumeration
+*/
+function $rt_getEnumKey(topObj, curObj, propIdx)
+{
+    //print('getEnumProp, idx =', propIdx);
+
+    // If the current object is an object of some kind
+    if ($rt_valIsObj(curObj))
     {
-        for (;;)
+        // Get the property enumeration table for a given object
+        var objShape = $rt_obj_get_shape(curObj);
+        var enumTbl = $ir_shape_enum_tbl(objShape);
+        var tblLen = $rt_arrtbl_get_cap(enumTbl);
+
+        // Compute the enum table index for the property name
+        var nameIdx = $ir_lsft_i32(propIdx, 1);
+
+        // If we are still within the property enumeration table
+        if ($ir_lt_i32(nameIdx, tblLen))
         {
-            // Move one down the prototype chain
-            curObj = $ir_shape_get_proto(curObj);
+            // Get the name for this property
+            var propName = $ir_load_string(
+                enumTbl,
+                $rt_arrtbl_ofs_word(
+                    enumTbl,
+                    nameIdx
+                )
+            );
 
-            // If we reached the bottom of the chain, stop
-            if ($ir_eq_refptr(curObj, null))
-                return false;
+            // If this property is not enumerable, skip it
+            if ($ir_eq_refptr(propName, null))
+                return null;
 
-            // If the property exists on this object, it is shadowed
-            if ($rt_hasOwnProp(curObj, propName))
-                return true;
+            // If the property is shadowed, skip it
+            if ($rt_isShadowed(topObj, curObj, propName))
+                return null;
+
+            // Return the current key
+            return propName;
+        }
+
+        // If the object is an array
+        if ($ir_is_array(curObj))
+        {
+            // If this is a valid array index
+            var arrIdx = propIdx - $ir_rsft_i32(tblLen, 1);
+            if ($ir_lt_i32(arrIdx, curObj.length))
+                return arrIdx;
+        }
+
+        // No more properties to enumerate
+        return true;
+    }
+
+    // If the object is a string
+    else if ($ir_is_string(curObj))
+    {
+        // If this is a valid character index
+        if ($ir_lt_i32(propIdx, curObj.length))
+            return propIdx;
+
+        // No more properties to enumerate
+        return true;
+    }
+
+    else
+    {
+        // No properties to enumerate
+        return true;
+    }
+}
+
+/**
+Get the next object in a property enumeration
+*/
+function $rt_nextEnumObj(curObj)
+{
+    //print('nextEnumObj');
+
+    // If the current object is an object of some kind
+    if ($rt_valIsObj(curObj))
+    {
+        // Move up the prototype chain
+        return $ir_obj_get_proto(curObj);
+    }
+
+    // If the object is a string
+    if ($ir_is_string(curObj))
+    {
+        // Move up the prototype chain
+        return $ir_get_str_proto();
+    }
+
+    return null;
+}
+
+/**
+Get the value of a property during an enumeration
+*/
+function $rt_getPropEnum(curObj, propName, propIdx)
+{
+    // If this is an object
+    if ($ir_is_object(curObj) && $ir_lt_i32(propIdx, $rt_obj_get_cap(curObj)))
+    {
+        var objShape = $rt_obj_get_shape(curObj);
+        var enumTbl = $ir_shape_enum_tbl(objShape);
+        var tblLen = $rt_arrtbl_get_cap(enumTbl);
+
+        // Compute the enum table index for the property attributes
+        var attrIdx = $ir_add_i32($ir_lsft_i32(propIdx, 1), 1);
+
+        // Get the name attributes this property
+        var attrs = $rt_arrtbl_get_word(enumTbl, attrIdx);
+
+        // If the property is enumerable and not a getter-setter
+        if ($ir_ne_i32(0, $ir_and_i32(attrs, $rt_ATTR_ENUMERABLE)) &&
+            $ir_eq_i32(0, $ir_and_i32(attrs, $rt_ATTR_GETSET)))
+        {
+            // Read the property at the property index directly
+            var word = $rt_obj_get_word(curObj, propIdx);
+            var type = $rt_obj_get_tag(curObj, propIdx);
+            return $ir_make_value(word, type);
         }
     }
 
-    // Function to get the next available property
-    function nextProp()
-    {
-        while (true)
-        {
-            // If we are at the end of the prototype chain, stop
-            if (curObj === null)
-                return true;
-
-            // If the current object is an object of some kind
-            if ($rt_valIsObj(curObj))
-            {
-                var objShape = $rt_obj_get_shape(curObj);
-
-                // For each property shape
-                while ($ir_ne_refptr(curShape, $nullptr))
-                {
-                    // Get the name for this property
-                    var propName = $ir_shape_prop_name(curShape);
-
-                    // Get the attributes for the current shape
-                    var propAttrs = $ir_shape_get_attrs(curShape);
-
-                    // Move to the parent shape
-                    var propShape = curShape;
-                    curShape = $ir_shape_parent(curShape);
-
-                    // If this is not an enumerable property, skip it
-                    if ((propAttrs & $rt_ATTR_ENUMERABLE) == 0)
-                        continue;
-
-                    // If this is not a valid key in this object, skip it
-                    //if ($ir_eq_refptr(keyVal, null))
-                    //    continue;
-
-                    // FIXME: not working
-                    // If this is not the defining shape for this property, skip it
-                    if ($ir_ne_rawptr($ir_shape_get_def(curObj, propName), propShape))
-                        continue;
-
-                    // If the property is shadowed, skip it
-                    if (isShadowed(curObj, propName))
-                        continue;
-
-                    // Return the current key
-                    return propName;
-                }
-
-                // If the object is an array
-                if ($ir_is_array(curObj))
-                {
-                    if (curIdx < curObj.length)
-                    {
-                        return curIdx++;
-                    }
-                }
-
-                // Move up the prototype chain
-                curObj = $ir_shape_get_proto(curObj);
-                curShape = $rt_valIsObj(curObj)? $rt_obj_get_shape(curObj):$nullptr;
-                curIdx = 0;
-                continue;
-            }
-
-            // If the object is a string
-            else if ($ir_is_string(curObj))
-            {
-                if (curIdx < curObj.length)
-                {
-                    return curIdx++;
-                }
-                else
-                {
-                    // Move up the prototype chain
-                    curObj = String.prototype;
-                    curShape = $rt_valIsObj(curObj)? $rt_obj_get_shape(curObj):$nullptr;
-                    curIdx = 0;
-                    continue;
-                }
-            }
-
-            else
-            {
-                return true;
-            }
-        }
-    }
-
-    return nextProp;
+    // Fall back to the array element read
+    return $rt_getPropElem(curObj, propName);
 }
 

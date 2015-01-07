@@ -45,17 +45,15 @@ import parser.parser;
 import ir.ast;
 import runtime.layout;
 import runtime.vm;
+import runtime.string;
 import repl;
 
 /**
-VM which doesn't load the standard library
+Initialize the VM without the standard library
 */
-class VMNoStdLib : VM
+void initVMNoStdLib()
 {
-    this()
-    {
-        super(true, false);
-    }
+    VM.init(true, false);
 }
 
 void assertInt(VM vm, string input, int32 intVal)
@@ -70,7 +68,7 @@ void assertInt(VM vm, string input, int32 intVal)
     auto ret = vm.evalString(input);
 
     assert (
-        ret.type == Type.INT32,
+        ret.tag == Tag.INT32,
         "non-integer value: " ~ ret.toString ~ "\n" ~
         "for input:\n" ~
         input
@@ -94,12 +92,12 @@ void assertFloat(VM vm, string input, double floatVal, double eps = 1E-4)
     auto ret = vm.evalString(input);
 
     assert (
-        ret.type == Type.INT32 ||
-        ret.type == Type.FLOAT64,
+        ret.tag == Tag.INT32 ||
+        ret.tag == Tag.FLOAT64,
         "non-numeric value: " ~ ret.toString
     );
 
-    auto fRet = (ret.type == Type.FLOAT64)? ret.word.floatVal:ret.word.int32Val;
+    auto fRet = (ret.tag == Tag.FLOAT64)? ret.word.floatVal:ret.word.int32Val;
 
     assert (
         abs(fRet - floatVal) <= eps,
@@ -119,7 +117,7 @@ void assertBool(VM vm, string input, bool boolVal)
     auto ret = vm.evalString(input);
 
     assert (
-        ret.type == Type.CONST,
+        ret.tag == Tag.CONST,
         "non-const value: " ~ ret.toString
     );
 
@@ -136,18 +134,23 @@ void assertBool(VM vm, string input, bool boolVal)
     );
 }
 
+void assertTrue(VM vm, string input)
+{
+    assertBool(vm, input, true);
+}
+
 void assertStr(VM vm, string input, string strVal)
 {
     auto ret = vm.evalString(input);
 
     assert (
-        ret.type is Type.STRING,
+        ret.tag is Tag.STRING,
         "non-string value: " ~ ret.toString ~ "\n" ~
         "for eval string \"" ~ input ~ "\""
     );
 
     assert (
-        ret.toString == strVal,
+        extractStr(ret.word.ptrVal) == strVal,
         format(
             "Test failed:\n" ~
             input ~ "\n" ~
@@ -191,8 +194,8 @@ unittest
 {
     writefln("JIT core");
 
-    // Create an VM without a runtime or stdlib
-    auto vm = new VM(false, false);
+    // Initialize the VM without a runtime or stdlib
+    VM.init(false, false);
 
     // Do nothing
     vm.evalString("");
@@ -200,7 +203,7 @@ unittest
     // Constant integer 1
     auto v = vm.evalString("1");
     assert (v.word.int32Val == 1);
-    assert (v.type is Type.INT32);
+    assert (v.tag is Tag.INT32);
 
     // 32-bit integer add
     vm.assertInt("$ir_add_i32(1, 2)", 3);
@@ -212,7 +215,7 @@ unittest
     // Comparison and conditional branching
     vm.assertInt("if ($ir_eq_i32(7, 7)) return 1; else return 0;", 1);
     vm.assertInt("if ($ir_eq_i32(3, 2)) false; return 3;", 3);
-    vm.assertInt("if ($ir_is_i32(5)) return 1; else return 2;", 1);
+    vm.assertInt("if ($ir_is_int32(5)) return 1; else return 2;", 1);
 
     // Add with overflow test
     vm.assertInt("if ($ir_add_i32_ovf(3, 1)) return 3; else return -1;", 3);
@@ -223,7 +226,7 @@ unittest
 {
     writefln("global expressions");
 
-    auto vm = new VMNoStdLib();
+    initVMNoStdLib();
 
     vm.evalString("x = 7");
     vm.assertInt("x = 7; return x;", 7);
@@ -294,7 +297,7 @@ unittest
 {
     writefln("global functions");
 
-    auto vm = new VMNoStdLib();
+    initVMNoStdLib();
 
     vm.assertInt("return function () { return 9; } ()", 9);
     vm.assertInt("return function () { return 2 * 3; } ()", 6);
@@ -309,7 +312,7 @@ unittest
 {
     writefln("argument passing");
 
-    auto vm = new VMNoStdLib();
+    initVMNoStdLib();
 
     vm.assertInt("return function (x) { return x; } (7)", 7);
     vm.assertInt("return function (x) { return x + 3; } (5)", 8);
@@ -332,7 +335,7 @@ unittest
 {
     writefln("local variables");
 
-    auto vm = new VMNoStdLib();
+    initVMNoStdLib();
 
     vm.assertInt("return function () { var x = 4; return x; } ()", 4);
     vm.assertInt("return function () { var x = 0; return x++; } ()", 0);
@@ -350,7 +353,7 @@ unittest
 {
     writefln("comparison and branching");
 
-    auto vm = new VMNoStdLib();
+    initVMNoStdLib();
 
     vm.assertInt("if (true) return 1; else return 0;", 1);
     vm.assertInt("if (false) return 1; else return 0;", 0);
@@ -407,7 +410,7 @@ unittest
 {
     writefln("recursion");
 
-    auto vm = new VMNoStdLib();
+    initVMNoStdLib();
 
     vm.assertInt(
         "
@@ -456,7 +459,7 @@ unittest
 {
     writefln("loops");
 
-    auto vm = new VMNoStdLib();
+    initVMNoStdLib();
 
     vm.assertInt(
         "
@@ -557,7 +560,7 @@ unittest
 {
     writefln("switch");
 
-    auto vm = new VMNoStdLib();
+    initVMNoStdLib();
 
     vm.assertInt(
         "
@@ -655,19 +658,21 @@ unittest
 {
     writefln("strings");
 
-    auto vm = new VMNoStdLib();
+    initVMNoStdLib();
 
-    vm.assertStr("return 'foo'", "foo");
-    vm.assertStr("return 'foo' + 'bar'", "foobar");
-    vm.assertStr("return 'foo' + 1", "foo1");
-    vm.assertStr("return 'foo' + true", "footrue");
-    vm.assertInt("return 'foo'? 1:0", 1);
-    vm.assertInt("return ''? 1:0", 0);
-    vm.assertBool("return ('foo' === 'foo')", true);
-    vm.assertBool("return ('foo' === 'f' + 'oo')", true);
-    vm.assertBool("return ('bar' == 'bar')", true);
-    vm.assertBool("return ('bar' != 'b')", true);
-    vm.assertBool("return ('bar' != 'bar')", false);
+    vm.assertStr("'foo'", "foo");
+    vm.assertInt("'foo'? 1:0", 1);
+    vm.assertInt("''? 1:0", 0);
+    vm.assertStr("'foo' + 1", "foo1");
+    vm.assertStr("'foo' + true", "footrue");
+    vm.assertTrue("'foo' + 'bar' == 'foobar'");
+    vm.assertTrue("'foo' === 'foo'");
+    vm.assertTrue("'foo' === 'f' + 'oo'");
+    vm.assertTrue("'foo' !== 'f' + 'o'");
+    vm.assertTrue("'f' + 'oo' !== null");
+    vm.assertTrue("'bar' == 'bar'");
+    vm.assertTrue("'bar' != 'b'");
+    vm.assertBool("'bar' != 'bar'", false);
 
     vm.assertStr(
         "
@@ -690,18 +695,18 @@ unittest
 {
     writefln("typeof");
 
-    auto vm = new VMNoStdLib();
+    initVMNoStdLib();
 
-    vm.assertStr("return typeof 'foo'", "string");
-    vm.assertStr("return typeof 1", "number");
-    vm.assertStr("return typeof true", "boolean");
-    vm.assertStr("return typeof false", "boolean");
-    vm.assertStr("return typeof null", "object");
-    vm.assertInt("return (typeof 'foo' === 'string')? 1:0", 1);
+    vm.assertStr("typeof 'foo'", "string");
+    vm.assertStr("typeof 1", "number");
+    vm.assertStr("typeof true", "boolean");
+    vm.assertStr("typeof false", "boolean");
+    vm.assertStr("typeof null", "object");
+    vm.assertStr("typeof ('f' + 'oo')", "string");
+    vm.assertTrue("typeof 'foo' === 'string'");
     vm.assertStr("x = 3; return typeof x;", "number");
     vm.assertStr("x = 3; return typeof void x;", "undefined");
-    // FIXME: re-enable once delete supported
-    //vm.assertStr("delete x; return typeof x;", "undefined");
+    vm.assertStr("delete x; return typeof x;", "undefined");
 }
 
 /// Global scope, global object
@@ -709,7 +714,7 @@ unittest
 {
     writefln("global object");
 
-    auto vm = new VMNoStdLib();
+    initVMNoStdLib();
 
     writeln("exprs");
 
@@ -759,11 +764,11 @@ unittest
     writeln("many globals");
 
     // Many global variables
-    vm = new VMNoStdLib();
+    initVMNoStdLib();
     vm.load("tests/core/many_globals/many_globals.js");
-    vm = new VMNoStdLib();
+    initVMNoStdLib();
     vm.load("tests/core/many_globals/many_globals2.js");
-    vm = new VMNoStdLib();
+    initVMNoStdLib();
     vm.load("tests/core/many_globals/many_globals3.js");
 }
 
@@ -772,7 +777,7 @@ unittest
 {
     writefln("in-place operators");
 
-    auto vm = new VMNoStdLib();
+    initVMNoStdLib();
 
     vm.assertInt("a = 1; a += 2; return a;", 3);
     vm.assertInt("a = 1; a += 4; a -= 3; return a;", 2);
@@ -789,7 +794,7 @@ unittest
 {
     writefln("objects and properties");
 
-    auto vm = new VMNoStdLib();
+    initVMNoStdLib();
 
     writeln("obj basic");
 
@@ -836,7 +841,7 @@ unittest
 {
     writefln("new operator");
 
-    auto vm = new VMNoStdLib();
+    initVMNoStdLib();
 
     vm.assertInt("function f() {}; o = new f(); return 0", 0);
     vm.assertInt("function f() {}; o = new f(); return (o? 1:0)", 1);
@@ -939,7 +944,7 @@ unittest
 {
     writefln("arrays");
 
-    auto vm = new VMNoStdLib();
+    initVMNoStdLib();
  
     vm.assertInt("a = []; return 0", 0);
     vm.assertInt("a = [1]; return 0", 0);
@@ -958,7 +963,7 @@ unittest
 {
     writefln("inline IR");
 
-    auto vm = new VMNoStdLib();
+    initVMNoStdLib();
 
     vm.assertStr("typeof $undef", "undefined");
     vm.assertStr("typeof $nullptr", "rawptr");
@@ -1053,41 +1058,6 @@ unittest
         ",
         -1
     );
-
-    // Link and integer value
-    vm.assertInt(
-        "
-        var link = $ir_make_link(0);
-        $ir_set_link(link, 133);
-        return $ir_get_link(link);
-        ",
-        133
-    );
-
-    // Link and string value
-    vm.assertBool(
-        "
-        var link = $ir_make_link(0);
-        $ir_set_link(link, 'abc');
-        return ($ir_get_link(link) === 'abc');
-        ",
-        true
-    );
-
-    vm.assertInt(
-        "
-        var sum = 0;
-        for (var i = 0; i < 10; ++i)
-        {
-            var link = $ir_make_link(0);
-            if (i === 0)
-                $ir_set_link(link, 1);
-            sum += $ir_get_link(link);
-        }
-        return sum;
-        ",
-        10
-    );
 }
 
 /// Basic test programs
@@ -1095,7 +1065,7 @@ unittest
 {
     writefln("basic");
 
-    auto vm = new VMNoStdLib();
+    initVMNoStdLib();
 
     // Basic suite
     vm.load("tests/core/basic_arith/basic_arith.js");
@@ -1117,7 +1087,7 @@ unittest
 {
     writefln("runtime");
 
-    auto vm = new VMNoStdLib();
+    initVMNoStdLib();
 
     vm.assertInt("$rt_toBool(0)? 1:0", 0);
     vm.assertInt("$rt_toBool(5)? 1:0", 1);
@@ -1135,7 +1105,7 @@ unittest
     vm.assertInt("$rt_add(5, 3)", 8);
     vm.assertFloat("$rt_add(5, 3.5)", 8.5);
     vm.assertStr("$rt_add(5, 'bar')", "5bar");
-    vm.assertStr("$rt_add('foo', 'bar')", "foobar");
+    vm.assertBool("$rt_add('foo', 'bar') == 'foobar'", true);
 
     vm.assertInt("$rt_sub(5, 3)", 2);
     vm.assertFloat("$rt_sub(5, 3.5)", 1.5);
@@ -1189,7 +1159,7 @@ unittest
 {
     writefln("closures");
 
-    auto vm = new VMNoStdLib();
+    initVMNoStdLib();
 
     vm.assertInt(
         "
@@ -1254,7 +1224,7 @@ unittest
 {
     writefln("stdlib/math");
 
-    auto vm = new VM();
+    VM.init();
 
     //import options;
     //opts.jit_trace_instrs = true;
@@ -1298,11 +1268,13 @@ unittest
 {
     writefln("stdlib/object");
 
-    auto vm = new VM();
+    VM.init();
 
     vm.assertBool("o = {k:3}; return o.hasOwnProperty('k');", true);
     vm.assertBool("o = {k:3}; p = Object.create(o); return p.hasOwnProperty('k')", false);
     vm.assertBool("o = {k:3}; p = Object.create(o); return 'k' in p;", true);
+
+    vm = null;
 }
 
 /// Stdlib Number library
@@ -1310,13 +1282,15 @@ unittest
 {
     writefln("stdlib/number");
 
-    auto vm = new VM();
+    VM.init();
 
     vm.assertInt("Number(10)", 10);
     vm.assertInt("Number(true)", 1);
     vm.assertInt("Number(null)", 0);
 
     vm.assertStr("(10).toString()", "10");
+
+    vm = null;
 }
 
 /// Stdlib Array library
@@ -1324,11 +1298,16 @@ unittest
 {
     writefln("stdlib/array");
 
-    auto vm = new VM();
+    VM.init();
 
     vm.assertInt("a = Array(10); return a.length;", 10);
     vm.assertInt("a = Array(1,2,3); return a.length;", 3);
-    vm.assertStr("([0,1,2]).toString()", "0,1,2");
+    vm.assertTrue("[0,1,2].toString() == '0,1,2'");
+
+    vm.assertInt("Array.prototype['0'] = 7; a = [3]; a['0'];", 3);
+    vm.assertInt("a = [function () { return 9; }]; a[0]();", 9);
+
+    vm = null;
 }
 
 /// Stdlib String library
@@ -1336,7 +1315,7 @@ unittest
 {
     writefln("stdlib/string");
 
-    auto vm = new VM();
+    VM.init();
 
     vm.assertStr("String(10)", "10");
     vm.assertStr("String(1.5)", "1.5");
@@ -1351,11 +1330,13 @@ unittest
 {
     writefln("stdlib/global");
 
-    auto vm = new VM();
+    VM.init();
 
     vm.assertInt("parseInt(10)", 10);
     vm.assertInt("parseInt(-1)", -1);
     vm.assertBool("isNaN(parseInt('zux'))", true);
+
+    destroy(vm);
 }
 
 /// Exceptions
@@ -1363,24 +1344,24 @@ unittest
 {
     writefln("exceptions (intra)");
 
-    auto vm = new VM();
+    VM.init();
 
     // Intraprocedural tests
     vm.load("tests/core/exceptions/throw_intra.js");
-    vm.assertStr("str;", "abc");
+    vm.assertTrue("str == 'abc'");
     vm.load("tests/core/exceptions/finally_ret.js");
-    vm.assertStr("test();", "abcd");
-    vm.assertStr("str;", "abcdef");
+    vm.assertTrue("test() == 'abcd'");
+    vm.assertTrue("str == 'abcdef'");
     vm.load("tests/core/exceptions/finally_break.js");
-    vm.assertStr("test(); return str;", "abcdefg");
+    vm.assertTrue("test(); return str == 'abcdefg'");
     vm.load("tests/core/exceptions/finally_cont.js");
-    vm.assertStr("test(); return str;", "abcdefbcdefg");
+    vm.assertTrue("test(); return str == 'abcdefbcdefg'");
     vm.load("tests/core/exceptions/finally_throw.js");
-    vm.assertStr("test(); return str;", "abcdefghijk");
+    vm.assertTrue("test(); return str == 'abcdefghijk'");
     vm.load("tests/core/exceptions/throw_in_finally.js");
-    vm.assertStr("str;", "abcdef");
+    vm.assertTrue("str == 'abcdef'");
     vm.load("tests/core/exceptions/throw_in_catch.js");
-    vm.assertStr("str;", "abcdefg");
+    vm.assertTrue("str == 'abcdefg'");
 
     writefln("exceptions (inter)");
 
@@ -1388,17 +1369,17 @@ unittest
     vm.load("tests/core/exceptions/throw_inter.js");
     vm.assertInt("test();", 0);
     vm.load("tests/core/exceptions/throw_inter_fnl.js");
-    vm.assertStr("str;", "abcdef");
+    vm.assertTrue("str == 'abcdef'");
     vm.load("tests/core/exceptions/try_call.js");
-    vm.assertStr("str;", "abc");
+    vm.assertTrue("str == 'abc'");
     vm.load("tests/core/exceptions/try_loop_getprop.js");
-    vm.assertStr("str;", "abcd");
+    vm.assertTrue("str == 'abcd'");
 }
 
 /// Dynamic code loading and eval
 unittest
 {
-    auto vm = new VM();
+    VM.init();
 
     writefln("load");
 
@@ -1415,12 +1396,14 @@ unittest
 
     // Eval throwing an exception
     vm.assertThrows("eval('throw 1')");
+
+    destroy(vm);
 }
 
 /// High-level features
 unittest
 {
-    auto vm = new VM();
+    VM.init();
 
     // Call with apply
     writefln("apply");
@@ -1436,6 +1419,8 @@ unittest
     writeln("for-in");
     vm.load("tests/core/for_in/for_in.js");
     vm.assertInt("test();", 0);
+
+    destroy(vm);
 }
 
 /// Regression tests
@@ -1443,11 +1428,10 @@ unittest
 {
     writefln("regression");
 
-    VM vm;
+    VM.init();
 
-    vm = new VM();
-
-    vm.assertBool("4294967295.0 === 0xFFFFFFFF", true);
+    vm.assertTrue("4294967295.0 === 0xFFFFFFFF");
+    vm.assertInt("NaN? 1:0", 0);
 
     vm.assertInt("return ~[]", -1);
     vm.assertInt("return ~{}", -1);
@@ -1500,12 +1484,10 @@ unittest
 {
     writefln("garbage collector");
 
-    VM vm;
-
-    vm = new VM();
+    VM.init();
     vm.assertInt("v = 3; $ir_gc_collect(0); return v;", 3);
 
-    vm = new VM();
+    VM.init();
     vm.assertInt("
         function f() 
         { 
@@ -1519,71 +1501,79 @@ unittest
     );
 
     writefln("gc/collect");
-    vm = new VM();
+    VM.init();
     vm.load("tests/core/gc/collect.js");
     vm.assertInt("test();", 0);
 
     writefln("gc/objects");
-    vm = new VM();
+    VM.init();
     vm.load("tests/core/gc/objects.js");
 
     writefln("gc/new");
-    vm = new VM();
+    VM.init();
     vm.load("tests/core/gc/new.js");
 
     writefln("gc/arrays");
-    vm = new VM();
+    VM.init();
     vm.load("tests/core/gc/arrays.js");
 
     writefln("gc/closures");
-    vm = new VM();
+    VM.init();
     vm.load("tests/core/gc/closures.js");
     vm.assertInt("test();", 0);
 
     writefln("gc/objext");
-    vm = new VM();
+    VM.init();
     vm.load("tests/core/gc/objext.js");
 
     writefln("gc/deepstack");
-    vm = new VM();
+    VM.init();
     vm.load("tests/core/gc/deepstack.js");
     vm.assertInt("test();", 0);
 
     writefln("gc/bigloop");
-    vm = new VM();
+    VM.init();
     vm.load("tests/core/gc/bigloop.js");
 
     writefln("gc/apply");
-    vm = new VM();
+    VM.init();
     vm.load("tests/core/gc/apply.js");
     vm.assertInt("test();", 0);
 
+    writefln("gc/extraargs");
+    VM.init();
+    vm.load("tests/core/gc/extraargs.js");
+
     writefln("gc/arguments");
-    vm = new VM();
+    VM.init();
     vm.load("tests/core/gc/arguments.js");
     vm.assertInt("test();", 0);
 
     writefln("gc/strcat");
-    vm = new VM();
+    VM.init();
     vm.load("tests/core/gc/strcat.js");
     vm.assertInt("test();", 0);
 
     writefln("gc/globalexc");
-    vm = new VM();
+    VM.init();
     vm.load("tests/core/gc/globalexc.js");
 
+    writefln("gc/for-in");
+    VM.init();
+    vm.load("tests/core/gc/for-in.js");
+
     writefln("gc/graph");
-    vm = new VM();
+    VM.init();
     vm.load("tests/core/gc/graph.js");
     vm.assertInt("test();", 0);
 
     writefln("gc/stackvm");
-    vm = new VM();
+    VM.init();
     vm.load("tests/core/gc/stackvm.js");
     vm.assertInt("test();", 0);
 
     writefln("gc/load");
-    vm = new VM();
+    VM.init();
     vm.load("tests/core/gc/load.js");
     vm.assertInt("theFlag;", 1337);
 }

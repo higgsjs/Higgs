@@ -152,7 +152,7 @@ Set.prototype.add = function (key)
 Remove an item from the map
 */
 Set.prototype.delete = function (key)
-{    
+{
     var index = (this.hashFn(key) % this.array.length);
 
     // Until a free cell is found
@@ -182,7 +182,7 @@ Set.prototype.delete = function (key)
                 var distToFree =
                     (shiftIndex < curFreeIndex)?
                     (shiftIndex + this.array.length - curFreeIndex):
-                    (shiftIndex - curFreeIndex);                    
+                    (shiftIndex - curFreeIndex);
 
                 // If the free slot is between the element and its origin
                 if (distToFree <= distToOrig)

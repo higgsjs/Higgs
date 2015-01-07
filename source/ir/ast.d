@@ -37,6 +37,7 @@
 
 module ir.ast;
 
+import std.ascii;
 import std.stdint;
 import std.stdio;
 import std.array;
@@ -74,13 +75,13 @@ class IRGenCtx
     /// Map of identifiers to values (local variables)
     IRValue[IdentExpr] localMap;
 
-    alias Tuple!(
+    alias LabelTargets = Tuple!(
         wstring, "name",
         IRBlock, "breakTarget",
         IRGenCtx[]*, "breakCtxs",
         IRBlock, "contTarget", 
         IRGenCtx[]*, "contCtxs"
-    ) LabelTargets;
+    );
 
     /// Target blocks for named statement labels
     LabelTargets[] labelTargets;
@@ -98,10 +99,10 @@ class IRGenCtx
     IRGenCtx[]* throwCtxs;
 
     /// Finally statement and context pair
-    alias Tuple!(
+    alias FnlInfo = Tuple!(
         ASTStmt, "stmt",
         IRGenCtx, "ctx"
-    ) FnlInfo;
+    );
 
     /**
     Code generation context constructor
@@ -335,25 +336,6 @@ class IRGenCtx
         ift.setTarget(1, falseBlock);
         return ift;
     }
-
-    /**
-    Create a location-dependent link value
-    */
-    IRInstr makeLink()
-    {
-        return addInstr(new IRInstr(
-            &MAKE_LINK,
-            new IRLinkIdx()
-        ));
-    }
-
-    /**
-    Obtain a constant string value
-    */
-    IRValue strVal(wstring str)
-    {
-        return new IRString(str);
-    }
 }
 
 /**
@@ -372,7 +354,7 @@ IRFunction astToIR(
 
     // If no IR function object was passed, create one
     if (fun is null)
-        fun = new IRFunction(vm, ast);
+        fun = new IRFunction(ast);
 
     assert (
         fun.entryBlock is null,
@@ -399,14 +381,15 @@ IRFunction astToIR(
     fun.argcVal = cast(FunParam)entry.addPhi(new FunParam("argc", 3));
 
     // Create values for the visible function parameters
+    fun.paramVals = new FunParam[ast.params.length];
     for (size_t i = 0; i < ast.params.length; ++i)
     {
         auto argIdx = NUM_HIDDEN_ARGS + i;
         auto ident = ast.params[i];
 
         auto paramVal = new FunParam(ident.name, cast(uint32_t)argIdx);
+        fun.paramVals[i] = paramVal;
         entry.addPhi(paramVal);
-        fun.paramMap[ident] = paramVal;
         bodyCtx.localMap[ident] = paramVal;
     }
 
@@ -440,11 +423,10 @@ IRFunction astToIR(
     if (ast.usesArguments)
     {
         // Create the "arguments" array
-        auto protoVal = bodyCtx.addInstr(new IRInstr(&GET_ARR_PROTO));
         auto argObjVal = genRtCall(
             bodyCtx,
             "newArr",
-            [protoVal, fun.argcVal],
+            [fun.argcVal],
             fun.ast.pos
         );
 
@@ -452,7 +434,7 @@ IRFunction astToIR(
         bodyCtx.localMap[ast.argObjIdent] = argObjVal;
 
         // Set the "callee" property
-        auto calleeStr = bodyCtx.strVal("callee");
+        auto calleeStr = new IRString("callee");
         auto setInstr = genRtCall(
             bodyCtx,
             "setPropFieldNoCheck",
@@ -552,10 +534,7 @@ IRFunction astToIR(
     foreach (funDecl; ast.funDecls)
     {
         // Create an IR function object for the function
-        auto subFun = new IRFunction(
-            vm,
-            funDecl
-        );
+        auto subFun = new IRFunction(funDecl);
 
         // Store the binding for the function
         assgToIR(
@@ -606,7 +585,7 @@ IRFunction astToIR(
     fun.liveInfo = new LiveInfo(fun);
 
     // If the type analysis is enabled
-    if (opts.jit_typeprop)
+    if (opts.typeprop)
     {
         fun.typeInfo = new TypeProp(fun, fun.liveInfo);
     }
@@ -618,7 +597,7 @@ IRFunction astToIR(
     }
     else
     {
-        if (opts.jit_typeprop)
+        if (opts.typeprop)
             fun.typeInfo = new TypeProp(fun, fun.liveInfo);
     }
     */
@@ -698,7 +677,6 @@ void stmtToIR(IRGenCtx ctx, ASTStmt stmt)
             lastInstr.setTarget(0, trueBlock);
             lastInstr.setTarget(1, falseBlock);
         }
-
         else
         {
             // Convert the expression value to a boolean
@@ -768,7 +746,7 @@ void stmtToIR(IRGenCtx ctx, ASTStmt stmt)
             testVal
         );
 
-        // If the expresson is true, jump to the loop body
+        // Branch based on the boolean value
         testCtx.ifTrue(boolVal, bodyBlock, exitBlock);
 
         // Compile the loop body statement
@@ -897,7 +875,7 @@ void stmtToIR(IRGenCtx ctx, ASTStmt stmt)
         );
 
         // Store a copy of the loop entry phi nodes
-        auto entryLocals = testCtx.localMap.dup;        
+        auto entryLocals = testCtx.localMap.dup;
 
         // Compile the loop test in the entry context
         auto testVal = exprToIR(testCtx, forStmt.testExpr);
@@ -956,72 +934,140 @@ void stmtToIR(IRGenCtx ctx, ASTStmt stmt)
     // For-in loop statement
     else if (auto forInStmt = cast(ForInStmt)stmt)
     {
-        // Create the loop test, body and exit blocks
-        auto testBlock = ctx.fun.newBlock("forin_test");
-        auto bodyBlock = ctx.fun.newBlock("forin_body");
-        auto exitBlock = ctx.fun.newBlock("forin_exit");
+        // Create the loop blocks
+        auto entryBlock     = ctx.fun.newBlock("forin_entry");
+        auto propTestBlock  = ctx.fun.newBlock("forin_prop_test");
+        auto nextObjBlock   = ctx.fun.newBlock("forin_next_obj");
+        auto bodyBlock      = ctx.fun.newBlock("forin_body");
+        auto exitBlock      = ctx.fun.newBlock("forin_exit");
+
+        // Create the loop phi nodes
+        auto curObjPhi = entryBlock.addPhi(new PhiNode());
+        auto propIdxPhi = entryBlock.addPhi(new PhiNode());
+
+        //
+        // 1: Loop initialization
+        //
 
         // Evaluate the object expression
-        auto objVal = exprToIR(ctx, forInStmt.inExpr);
+        auto topObj = exprToIR(ctx, forInStmt.inExpr);
 
-        // Get the property enumerator
-        auto enumVal = genRtCall(
-            ctx,
-            "getPropEnum",
-            [objVal],
-            stmt.pos
-        );
+        //
+        // 2: Loop entry, get next property name
+        //
 
-        // Create a context for the loop entry (the loop test)
+        // Create a context for the loop entry
         IRGenCtx[] breakCtxLst = [];
         IRGenCtx[] contCtxLst = [];
-        auto testCtx = createLoopEntry(
+        auto loopEntryCtx = createLoopEntry(
             ctx,
-            testBlock,
+            entryBlock,
             stmt,
             exitBlock,
             &breakCtxLst,
-            testBlock,
+            entryBlock,
             &contCtxLst
         );
 
         // Store a copy of the loop entry phi nodes
-        auto entryLocals = testCtx.localMap.dup;
+        auto entryLocals = loopEntryCtx.localMap.dup;
 
-        // Get the next property
-        auto callInstr = testCtx.addInstr(new IRInstr(&CALL, 2));
-        callInstr.setArg(0, enumVal);
-        callInstr.setArg(1, enumVal);
+        // Set the loop initialization phi args
+        assert (entryBlock.numIncoming is 1);
+        auto entryBranch = entryBlock.getIncoming(0);
+        entryBranch.setPhiArg(curObjPhi, topObj);
+        entryBranch.setPhiArg(propIdxPhi, IRConst.int32Cst(0));
 
-        // Generate the call targets
-        genCallTargets(testCtx, callInstr, stmt.pos);
+        // Get the next enumerable property key
+        auto propName = genRtCall(
+            loopEntryCtx,
+            "getEnumKey",
+            [topObj, curObjPhi, propIdxPhi],
+            stmt.pos
+        );
 
-        // If the property is a constant value, exit the loop
-        auto isConst = testCtx.addInstr(new IRInstr(&IS_CONST, callInstr));
-        testCtx.ifTrue(isConst, exitBlock, bodyBlock);
+        // Compute the next property index
+        auto propIdxInc = loopEntryCtx.addInstr(new IRInstr(
+            &ADD_I32,
+            propIdxPhi,
+            IRConst.int32Cst(1)
+        ));
+
+        // If the property is a null pointer, continue to the next property
+        auto isPropRef = loopEntryCtx.addInstr(new IRInstr(&IS_REFPTR, propName));
+        auto ifPropRef = loopEntryCtx.ifTrue(isPropRef, entryBlock, propTestBlock);
+
+        // Set the phi args for the null property name branch
+        contCtxLst ~= loopEntryCtx.subCtx();
+        auto propRefBranch = ifPropRef.getTarget(0);
+        propRefBranch.setPhiArg(curObjPhi, curObjPhi);
+        propRefBranch.setPhiArg(propIdxPhi, propIdxInc);
+
+        //
+        // 3: Test if last property
+        //
+
+        auto propTestCtx = loopEntryCtx.subCtx(propTestBlock);
+
+        // If the property is a null pointer, continue to the next property
+        auto isConst = propTestCtx.addInstr(new IRInstr(&IS_CONST, propName));
+        propTestCtx.ifTrue(isConst, nextObjBlock, bodyBlock);
+
+        //
+        // 4: Get next object
+        //
+
+        auto nextObjCtx = loopEntryCtx.subCtx(nextObjBlock);
+
+        // Get the next object
+        auto nextObj = genRtCall(
+            nextObjCtx,
+            "nextEnumObj",
+            [curObjPhi],
+            stmt.pos
+        );
+
+        // If the next object is null, exit the loop, we are done
+        auto isObjRef = nextObjCtx.addInstr(new IRInstr(&IS_REFPTR, nextObj));
+        auto ifObjNull = nextObjCtx.ifTrue(isObjRef, exitBlock, entryBlock);
+        breakCtxLst ~= nextObjCtx.subCtx();
+
+        // If we have a next object, jump back to the entry block
+        auto nextObjBranch = ifObjNull.getTarget(1);
+        contCtxLst ~= nextObjCtx.subCtx();
+        nextObjBranch.setPhiArg(curObjPhi, nextObj);
+        nextObjBranch.setPhiArg(propIdxPhi, IRConst.int32Cst(0));
+
+        //
+        // 5: Loop body
+        //
 
         // Create the body context
-        auto bodyCtx = testCtx.subCtx(bodyBlock);
+        auto bodyCtx = loopEntryCtx.subCtx(bodyBlock);
 
-        // Assign into the variable expression
+        // Assign the property name into the variable expression
         assgToIR(
             bodyCtx,
             forInStmt.varExpr,
             null,
             delegate IRValue(IRGenCtx ctx)
             {
-                return callInstr;
+                return propName;
             }
         );
 
         // Compile the loop body statement
         stmtToIR(bodyCtx, forInStmt.bodyStmt);
 
-        // Add the test exit to the break context list
-        breakCtxLst ~= testCtx.subCtx();
-
-        // Add the body exit to the continue context list
+        // Jump back to the loop entry
+        auto nextPropJump = bodyCtx.jump(entryBlock);
         contCtxLst ~= bodyCtx.subCtx();
+        nextPropJump.setPhiArg(curObjPhi, curObjPhi);
+        nextPropJump.setPhiArg(propIdxPhi, propIdxInc);
+
+        //
+        // 6: Loop exit
+        //
 
         // Merge the break contexts into the loop exit
         auto loopExitCtx = mergeContexts(
@@ -1030,16 +1076,72 @@ void stmtToIR(IRGenCtx ctx, ASTStmt stmt)
             exitBlock
         );
 
+        // Set the loop phi arguments for continue contexts
+        foreach (contCtx; contCtxLst)
+        {
+            // Get the continue branch
+            auto contBranch = contCtx.getLastInstr;
+
+            // Set the phi arguments on all loop entry targets
+            // that do not already have phi arguments set
+            for (size_t tIdx = 0; tIdx < IRInstr.MAX_TARGETS; ++tIdx)
+            {
+                if (auto desc = contBranch.getTarget(tIdx))
+                {
+                    if (desc.target == entryBlock &&
+                        desc.getPhiArg(curObjPhi) is null)
+                    {
+                        desc.setPhiArg(curObjPhi, curObjPhi);
+                        desc.setPhiArg(propIdxPhi, propIdxInc);
+                    }
+                }
+            }
+        }
+
         // Merge the continue contexts with the loop entry
         mergeLoopEntry(
             ctx,
             contCtxLst,
             entryLocals,
-            testBlock
+            entryBlock
         );
 
         // Continue code generation after the loop exit
         ctx.merge(loopExitCtx);
+
+        // For each use of the property name (for-in key)
+        for (auto use = propName.getFirstUse; use !is null; use = use.next)
+        {
+            auto instr = cast(IRInstr)use.owner;
+
+            // If the use is a simple property read using the key
+            if (instr is null)
+                continue;
+            if (instr.opcode !is &CALL_PRIM)
+                continue;
+            if (getArgStrCst(instr, 0) != "$rt_getPropElem")
+                continue;
+            if (instr.getArg(2) !is propName)
+                continue;
+            if (instr.getTarget(1) !is null)
+                continue;
+
+            // Replace the call with getPropEnum, a property read
+            // optimized for for-in statements
+            auto callInstr = instr.block.addInstr(new IRInstr(&CALL_PRIM, 4));
+            callInstr.setArg(0, new IRString("$rt_getPropEnum"));
+            callInstr.setArg(1, instr.getArg(1));
+            callInstr.setArg(2, instr.getArg(2));
+            callInstr.setArg(3, propIdxPhi);
+
+            auto desc = instr.getTarget(0);
+            auto newDesc = callInstr.setTarget(0, desc.target);
+            foreach (arg; desc.args)
+                newDesc.setPhiArg(cast(PhiNode)arg.owner, arg.value);
+
+            instr.replUses(callInstr);
+            instr.block.delInstr(instr);
+        }
     }
 
     // Switch statement
@@ -1338,10 +1440,7 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
         if (countUntil(ctx.fun.ast.funDecls, funExpr) == -1)
         {
             // Create an IR function object for the function
-            auto fun = new IRFunction(
-                ctx.fun.vm,
-                funExpr
-            );
+            auto fun = new IRFunction(funExpr);
 
             // Create a closure of this function
             auto newClos = ctx.addInstr(new IRInstr(
@@ -1440,6 +1539,22 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
             return genBinOp("eq");
         }
 
+        IRValue genNe()
+        {
+            if (cast(NullExpr)binExpr.rExpr)
+            {
+                auto lVal = exprToIR(ctx, binExpr.lExpr);
+                return genRtCall(
+                    ctx,
+                    "neNull",
+                    [lVal],
+                    expr.pos
+                );
+            }
+
+            return genBinOp("ne");
+        }
+
         auto op = binExpr.op;
 
         // Arithmetic operators
@@ -1484,7 +1599,7 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
         else if (op.str == "==")
             return genEq();
         else if (op.str == "!=")
-            return genBinOp("ne");
+            return genNe();
         else if (op.str == "<")
             return genBinOp("ltIntFloat");
         else if (op.str == "<=")
@@ -1676,10 +1791,10 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
             }
             else
             {
-                objVal = ctx.addInstr(new IRInstr(&GET_GLOBAL_OBJ));
+                objVal = ctx.fun.globalVal;
 
                 if (auto identExpr = cast(IdentExpr)unExpr.expr)
-                    propVal = ctx.strVal(identExpr.name);
+                    propVal = new IRString(identExpr.name);
                 else
                     propVal = exprToIR(ctx, unExpr.expr);
             }
@@ -1737,7 +1852,7 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
                 {
                     return genRtCall(
                         ctx,
-                        (op.str == "++")? "addInt":"subInt",
+                        (op.str == "++")? "addIntFloat":"subIntFloat",
                         [lArg, rArg],
                         expr.pos
                     );
@@ -1765,7 +1880,7 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
 
                     return genRtCall(
                         ctx, 
-                        (op.str == "++")? "addInt":"subInt",
+                        (op.str == "++")? "addIntFloat":"subIntFloat",
                         [lArg, rArg],
                         expr.pos
                     );
@@ -1891,11 +2006,11 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
             // Evaluate the index expression
             auto keyVal = exprToIR(ctx, indexExpr.index);
 
-            // Get the method property
-            closVal = genRtCall(
+            // Get the closure value
+            closVal = genGetProp(
                 ctx,
-                "getPropMethod",
-                [thisVal, keyVal],
+                thisVal,
+                keyVal,
                 expr.pos
             );
         }
@@ -1905,7 +2020,7 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
             closVal = exprToIR(ctx, baseExpr);
 
             // The this value is the global object
-            thisVal = ctx.addInstr(new IRInstr(&GET_GLOBAL_OBJ));
+            thisVal = ctx.fun.globalVal;
         }
 
         // Add the call instruction
@@ -1974,64 +2089,23 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
         // Evaluate the index expression
         auto idxVal = exprToIR(ctx, indexExpr.index);
 
-        // If the property is a constant string
-        if (auto strProp = cast(StringExpr)indexExpr.index)
-        {
-            // If the property is "length"
-            if (strProp.val == "length")
-            {
-                // Use a primitive specialized for array length
-                return genRtCall(
-                    ctx,
-                    "getPropLength",
-                    [baseVal],
-                    expr.pos
-                );
-            }
-
-            // If the property is not "prototype" or "apply"
-            if (strProp.val != "prototype" && strProp.val != "apply")
-            {
-                // Use a primitive specialized for object fields
-                return genRtCall(
-                    ctx,
-                    "getPropField",
-                    [baseVal, idxVal],
-                    expr.pos
-                );
-            }
-
-            // Get the property from the base value
-            return genRtCall(
-                ctx,
-                "getProp",
-                [baseVal, idxVal],
-                expr.pos
-            );
-        }
-
-        // The property is non-constant, likely an array index
-        else
-        {
-            // Use a primitive specialized for object fields
-            return genRtCall(
-                ctx,
-                "getPropElem",
-                [baseVal, idxVal],
-                expr.pos
-            );
-        }
+        // Get the property value
+        return genGetProp(
+            ctx,
+            baseVal,
+            idxVal,
+            expr.pos
+        );
     }
 
     else if (auto arrayExpr = cast(ArrayExpr)expr)
     {
         // Create the array
-        auto protoVal = ctx.addInstr(new IRInstr(&GET_ARR_PROTO));
-        auto numVal = cast(IRValue)IRConst.int32Cst(cast(int32_t)arrayExpr.exprs.length);
+        auto numVal = IRConst.int32Cst(cast(int32_t)arrayExpr.exprs.length);
         auto arrVal = genRtCall(
             ctx,
             "newArr",
-            [protoVal, numVal],
+            [numVal],
             expr.pos
         );
 
@@ -2113,18 +2187,17 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
 
     else if (auto stringExpr = cast(StringExpr)expr)
     {
-        return ctx.strVal(stringExpr.val);
+        return new IRString(stringExpr.val);
     }
 
     else if (auto regexpExpr = cast(RegexpExpr)expr)
     {
-        auto linkInstr = ctx.makeLink();
-        auto strInstr = ctx.strVal(regexpExpr.pattern);
-        auto flagsInstr = ctx.strVal(regexpExpr.flags);
+        auto reStr = new IRString(regexpExpr.pattern);
+        auto flagsStr = new IRString(regexpExpr.flags);
         auto reInstr = genRtCall(
             ctx,
-            "getRegexp",
-            [linkInstr, strInstr, flagsInstr],
+            "getRegExp",
+            [reStr, flagsStr],
             expr.pos
         );
 
@@ -2150,6 +2223,70 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
     {
         assert (false, "unhandled expression type:\n" ~ expr.toString());
     }
+}
+
+/**
+Generate the appropriate get-property call for an indexing operation
+*/
+IRValue genGetProp(
+    IRGenCtx ctx,
+    IRValue base,
+    IRValue index,
+    SrcPos pos
+)
+{
+    // If the property is a constant string
+    if (auto indexStr = cast(IRString)index)
+    {
+        auto propName = indexStr.str;
+
+        // If the property does not start with a digit
+        if (propName.length > 0 && !propName[0].isDigit)
+        {
+            // If the property is "length"
+            if (propName == "length")
+            {
+                // Use a primitive specialized for array & string length
+                return genRtCall(
+                    ctx,
+                    "getPropLength",
+                    [base],
+                    pos
+                );
+            }
+
+            // If this is a probable string method name
+            if (propName == "charAt"     ||
+                propName == "charCodeAt" ||
+                propName == "substr"     ||
+                propName == "substring")
+            {
+                // Use a primitive specialized for string methods
+                return genRtCall(
+                    ctx,
+                    "getStrMethod",
+                    [base, index],
+                    pos
+                );
+            }
+
+            // Use a primitive specialized for object fields
+            return genRtCall(
+                ctx,
+                "getPropField",
+                [base, index],
+                pos
+            );
+        }
+    }
+
+    // Use a primitive specialized for array elements
+    return genRtCall(
+        ctx,
+        "getPropElem",
+        [base, index],
+        pos
+    );
 }
 
 /**
@@ -2206,7 +2343,7 @@ IRValue refToIR(
             return genRtCall(
                 ctx,
                 "getGlobalInl",
-                [ctx.strVal(identExpr.name)],
+                [new IRString(identExpr.name)],
                 identExpr.pos
             );
         }
@@ -2214,12 +2351,11 @@ IRValue refToIR(
         {
             // Use getProp to get the global value
             // This won't throw an exception if the global doesn't exist
-            auto globInstr = ctx.addInstr(new IRInstr(&GET_GLOBAL_OBJ));
-            auto propStr = ctx.strVal(identExpr.name);
-            return  genRtCall(
+            auto propStr = new IRString(identExpr.name);
+            return genRtCall(
                 ctx,
                 "getProp",
-                [globInstr, propStr],
+                [ctx.fun.globalVal, propStr],
                 identExpr.pos
             );
         }
@@ -2254,10 +2390,10 @@ IRValue refToIR(
 }
 
 /// In-place operation delegate function
-alias IRValue delegate(IRGenCtx ctx, IRValue lArg, IRValue rArg) InPlaceOpFn;
+alias InPlaceOpFn = IRValue delegate(IRGenCtx ctx, IRValue lArg, IRValue rArg);
 
 /// Expression evaluation delegate function
-alias IRValue delegate(IRGenCtx ctx) ExprEvalFn;
+alias ExprEvalFn = IRValue delegate(IRGenCtx ctx);
 
 /**
 Generate IR for an assignment expression
@@ -2291,10 +2427,10 @@ IRValue assgToIR(
             if (base !is null)
             {
                 // Get the property from the object
-                lhsTemp = genRtCall(
+                lhsTemp = genGetProp(
                     ctx,
-                    "getProp",
-                    [base, index],
+                    base,
+                    index,
                     lhsExpr.pos
                 );
             }
@@ -2342,7 +2478,7 @@ IRValue assgToIR(
             genRtCall(
                 ctx,
                 "setGlobalInl",
-                [ctx.strVal(identExpr.name), rhsVal],
+                [new IRString(identExpr.name), rhsVal],
                 lhsExpr.pos
             );
         }
@@ -2569,18 +2705,6 @@ IRValue genIIR(IRGenCtx ctx, ASTExpr expr)
     {
         // Generate the call targets
         genCallTargets(ctx, instr, expr.pos);
-    }
-
-    // If this is the shape_get_def instruction (shape dispatch)
-    if (instr.opcode is &SHAPE_GET_DEF)
-    {
-        auto contBlock = ctx.fun.newBlock("shape_cont");
-
-        // Set the branch target for the instruction
-        instr.setTarget(0, contBlock);
-
-        // Continue code generation in the new block
-        ctx.merge(contBlock);
     }
 
     // If this instruction has no output, return the undefined value
@@ -2818,9 +2942,9 @@ IRGenCtx createLoopEntry(
     // Register the loop labels, if any
     loopCtx.regLabels(
         loopStmt.labels,
-        breakBlock, 
-        breakCtxLst, 
-        contBlock, 
+        breakBlock,
+        breakCtxLst,
+        contBlock,
         contCtxLst
     );
 

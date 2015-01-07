@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2011, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2011-2014, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -39,7 +39,7 @@
 lib/draw - provides basic drawing API using xlib
 */
 
-(function()
+(function(exports)
 {
 
     /* DEPENDENCIES */
@@ -302,7 +302,7 @@ lib/draw - provides basic drawing API using xlib
             timeout = 1000 / frame_rate - work_time;
             if (timeout < 0)
                 timeout = 0;
-            else if ($ir_is_f64(timeout))
+            else if ($ir_is_float64(timeout))
                 timeout = $ir_f64_to_i32(timeout);
 
             // Just sleep for a bit to not grind the CPU
@@ -543,7 +543,7 @@ lib/draw - provides basic drawing API using xlib
 
     var TextItem = Xlib.XTextItem();
 
-    CanvasProto.drawText = function(x, y, text)
+    CanvasProto.drawText = function (x, y, text)
     {
         // TODO: wchars
         var text_c = ffi.cstr(text);
@@ -557,13 +557,29 @@ lib/draw - provides basic drawing API using xlib
         c.free(text_c);
     };
 
+    /**
+    Draw an image object (see lib/image) onto the canvas
+    */
+    CanvasProto.drawImage = function (x, y, img)
+    {
+        // TODO: use Pixmap objects to make this faster
+
+        for (var imgY = 0; imgY < img.height; ++imgY)
+        {
+            for (var imgX = 0; imgX < img.width; ++imgX)
+            {
+                var pix = img.getPixel(imgX, imgY);
+                this.setColor(pix.r, pix.g, pix.b);
+                this.drawPoint(x + imgX, y + imgY);
+            }
+        }
+    }
 
     /**
     EXPORTS
     */
 
-    exports = {
-        Window : Window
-    };
+    exports.Window = Window;
 
-})();
+})(exports);
+

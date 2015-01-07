@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2011, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2011-2014, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -38,8 +38,7 @@
 /**
 Functions for dealing with the filesystem
 */
-
-(function ()
+(function (exports)
 {
     var range = require('lib/range');
     var ffi = require('lib/ffi');
@@ -161,6 +160,8 @@ Functions for dealing with the filesystem
     */
     function dirRange(path)
     {
+        path = String(path);
+
         if (!this instanceof dirRange)
             return new dirRange(path);
 
@@ -274,19 +275,16 @@ Functions for dealing with the filesystem
         return this.range.filter(isDir).map(getName).filter(notDots).toArray();
     };
 
-
     /**
     EXPORTS
     */
-    exports = {
-        DirError : DirError,
-        dirRange : dirRange,
-        dir : dir,
-        d_types : d_types,
-        d_types_map : d_types_map,
-        isFile : isFile,
-        isDir : isDir
-    };
+    exports.DirError = DirError;
+    exports.dirRange = dirRange;
+    exports.dir = dir;
+    exports.d_types = d_types;
+    exports.d_types_map = d_types_map;
+    exports.isFile = isFile;
+    exports.isDir = isDir;
 
-})();
+})(exports);
 

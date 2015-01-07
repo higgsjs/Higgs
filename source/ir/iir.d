@@ -67,12 +67,9 @@ static this()
 
     foreach (memberName; __traits(allMembers, ir.ops))
     {
-        alias Alias(alias Sym) = Sym;
-        alias member = Alias!(__traits(getMember, ir.ops, memberName));
-
-        static if (__traits(compiles, addOp(member)))
+        static if (__traits(compiles, addOp( __traits(getMember, ir.ops, memberName) )))
         {
-            addOp(member);
+            addOp( __traits(getMember, ir.ops, memberName) );
         }
     }
 }

@@ -47,6 +47,7 @@ import std.stdint;
 import std.typecons;
 import std.path;
 import std.file;
+import std.algorithm;
 import options;
 import stats;
 import util.misc;
@@ -89,28 +90,19 @@ class RunError : Error
 
         this.name = "run-time error";
 
-        if (excVal.type is Type.OBJECT)
+        if (excVal.tag is Tag.OBJECT)
         {
-            auto errName = getProp(
-                vm,
-                excVal,
-                "name"w
-            );
+            auto errName = getProp(excVal, "name"w);
 
-            if (errName.type is Type.STRING)
-                this.name = errName.toString();
+            this.name = errName.toString;
 
-            auto msgStr = getProp(
-                vm,
-                excVal,
-                "message"w
-            );
+            auto msgStr = getProp(excVal, "message"w);
 
-            this.message = msgStr.toString();
+            this.message = msgStr.toString;
         }
         else
         {
-            this.message = excVal.toString();
+            this.message = excVal.toString;
         }
 
         super(toString());
@@ -136,9 +128,9 @@ Memory word union
 */
 union Word
 {
-    static Word int32v(int32 i) { Word w; w.int32Val = i; return w; }
+    static Word int32v(int32 i) { Word w; w.int64Val = 0; w.int32Val = i; return w; }
     static Word int64v(int64 i) { Word w; w.int64Val = i; return w; }
-    static Word uint32v(uint32 i) { Word w; w.uint32Val = i; return w; }
+    static Word uint32v(uint32 i) { Word w; w.int64Val = 0; w.uint32Val = i; return w; }
     static Word uint64v(uint64 i) { Word w; w.uint64Val = i; return w; }
     static Word float64v(float64 f) { Word w; w.floatVal = f; return w; }
     static Word refv(refptr p) { Word w; w.ptrVal = p; return w; }
@@ -170,8 +162,8 @@ unittest
     );
 }
 
-/// Word type values
-enum Type : ubyte
+/// Type tag values
+enum Tag : ubyte
 {
     CONST = 0,
     INT32,
@@ -180,46 +172,57 @@ enum Type : ubyte
     RAWPTR,
     RETADDR,
     FUNPTR,
-    MAPPTR,
     SHAPEPTR,
 
-    // GC heap pointer types
+    // GC heap pointer tags
     REFPTR,
     OBJECT,
     ARRAY,
     CLOSURE,
-    STRING
+    STRING,
+    ROPE
 }
 
 /**
-Test if a given type is a heap pointer
+Test if a given tag is a heap pointer
 */
-bool isHeapPtr(Type type)
+bool isHeapPtr(Tag tag)
 {
-    switch (type)
+    switch (tag)
     {
-        case Type.REFPTR:
-        case Type.OBJECT:
-        case Type.ARRAY:
-        case Type.CLOSURE:
-        case Type.STRING:
+        case Tag.REFPTR:
+        case Tag.OBJECT:
+        case Tag.ARRAY:
+        case Tag.CLOSURE:
+        case Tag.STRING:
+        case Tag.ROPE:
         return true;
 
-        default:
+        case Tag.CONST:
+        case Tag.INT32:
+        case Tag.INT64:
+        case Tag.FLOAT64:
+        case Tag.RAWPTR:
+        case Tag.RETADDR:
+        case Tag.FUNPTR:
+        case Tag.SHAPEPTR:
         return false;
+
+        default:
+        assert (false);
     }
 }
 
 /**
-Test if a type is an object of some kind
+Test if a tag is an object of some kind
 */
-bool isObject(Type type)
+bool isObject(Tag tag)
 {
-    switch (type)
+    switch (tag)
     {
-        case Type.OBJECT:
-        case Type.ARRAY:
-        case Type.CLOSURE:
+        case Tag.OBJECT:
+        case Tag.ARRAY:
+        case Tag.CLOSURE:
         return true;
 
         default:
@@ -230,29 +233,29 @@ bool isObject(Type type)
 /**
 Produce a string representation of a type tag
 */
-string typeToString(Type type)
+string tagToString(Tag tag)
 {
     // Switch on the type tag
-    switch (type)
+    switch (tag)
     {
-        case Type.INT32:    return "int32";
-        case Type.INT64:    return "int64";
-        case Type.FLOAT64:  return "float64";
-        case Type.RAWPTR:   return "rawptr";
-        case Type.RETADDR:  return "retaddr";
-        case Type.CONST:    return "const";
-        case Type.FUNPTR:   return "funptr";
-        case Type.MAPPTR:   return "mapptr";
-        case Type.SHAPEPTR: return "shapeptr";
+        case Tag.INT32:    return "int32";
+        case Tag.INT64:    return "int64";
+        case Tag.FLOAT64:  return "float64";
+        case Tag.RAWPTR:   return "rawptr";
+        case Tag.RETADDR:  return "retaddr";
+        case Tag.CONST:    return "const";
+        case Tag.FUNPTR:   return "funptr";
+        case Tag.SHAPEPTR: return "shapeptr";
 
-        case Type.REFPTR:   return "refptr";
-        case Type.OBJECT:   return "object";
-        case Type.ARRAY:    return "array";
-        case Type.CLOSURE:  return "closure";
-        case Type.STRING:   return "string";
+        case Tag.REFPTR:   return "refptr";
+        case Tag.OBJECT:   return "object";
+        case Tag.ARRAY:    return "array";
+        case Tag.CLOSURE:  return "closure";
+        case Tag.STRING:   return "string";
+        case Tag.ROPE:     return "rope";
 
         default:
-        assert (false, "unsupported type");
+        assert (false, "unsupported type tag");
     }
 }
 
@@ -264,35 +267,35 @@ bool refIsLayout(refptr ptr, uint32 layoutId)
     return (ptr !is null && obj_get_header(ptr) == layoutId);
 }
 
-/// Word and type pair
+/// Word and tag pair
 struct ValuePair
 {
     Word word;
 
-    Type type;
+    Tag tag;
 
-    this(Word word, Type type)
+    this(Word word, Tag tag)
     {
         this.word = word;
-        this.type = type;
+        this.tag = tag;
     }
 
-    this(refptr ptr, Type type)
+    this(refptr ptr, Tag tag)
     {
         this.word.ptrVal = ptr;
-        this.type = type;
+        this.tag = tag;
     }
 
     this(int32 int32Val)
     {
-        this.word.int32Val = int32Val;
-        this.type = Type.INT32;
+        this.word = Word.int32v(int32Val);
+        this.tag = Tag.INT32;
     }
 
     this(IRFunction fun)
     {
         this.word.funVal = fun;
-        this.type = Type.FUNPTR;
+        this.tag = Tag.FUNPTR;
     }
 
     /**
@@ -301,7 +304,7 @@ struct ValuePair
     bool isLayout(uint32 layoutId)
     {
         return (
-            type is Type.REFPTR && 
+            tag is Tag.REFPTR && 
             refIsLayout(word.ptrVal, layoutId)
         );
     }
@@ -312,29 +315,29 @@ struct ValuePair
     string toString()
     {
         // Switch on the type tag
-        switch (type)
+        switch (tag)
         {
-            case Type.INT32:
+            case Tag.INT32:
             return to!string(word.int32Val);
 
-            case Type.FLOAT64:
+            case Tag.FLOAT64:
             if (word.floatVal != word.floatVal)
                 return "NaN";
             if (word.floatVal == 1.0/0)
                 return "Infinity";
             if (word.floatVal == -1.0/0)
                 return "-Infinity";
-            return to!string(word.floatVal);
+            return format("%f", word.floatVal);
 
-            case Type.RAWPTR:
+            case Tag.RAWPTR:
             if (word.ptrVal is null)
                 return "nullptr";
             return to!string(word.ptrVal);
 
-            case Type.RETADDR:
+            case Tag.RETADDR:
             return to!string(word.ptrVal);
 
-            case Type.CONST:
+            case Tag.CONST:
             if (this == TRUE)
                 return "true";
             if (this == FALSE)
@@ -346,13 +349,10 @@ struct ValuePair
                 "unsupported constant " ~ to!string(word.uint64Val)
             );
 
-            case Type.FUNPTR:
+            case Tag.FUNPTR:
             return "funptr";
 
-            case Type.MAPPTR:
-            return "mapptr";
-
-            case Type.REFPTR:
+            case Tag.REFPTR:
             if (this == NULL)
                 return "null";
             if (ptrValid(word.ptrVal) is false)
@@ -365,17 +365,33 @@ struct ValuePair
                 return "array";
             return "refptr";
 
-            case Type.OBJECT:
+            case Tag.OBJECT:
             return "object";
 
-            case Type.ARRAY:
-            return "array";
+            case Tag.ARRAY:
+            if (ptrValid(word.ptrVal) is false)
+                return "invalid array ptr";
+            auto len = getArrLen(word.ptrVal);
+            auto tbl = getArrTbl(word.ptrVal);
+            auto output = "[";
+            for (uint32_t i = 0; i < len; ++i)
+            {
+                auto elWord = Word.uint64v(arrtbl_get_word(tbl, i));
+                auto elTag = cast(Tag)arrtbl_get_tag(tbl, i);
+                output ~= ValuePair(elWord, elTag).toString;
+                if (i < len - 1)
+                    output ~= ",";
+            }
+            return output ~ "]";
 
-            case Type.CLOSURE:
+            case Tag.CLOSURE:
             return "closure";
 
-            case Type.STRING:
+            case Tag.STRING:
             return extractStr(word.ptrVal);
+
+            case Tag.ROPE:
+            return ropeToStr(word.ptrVal);
 
             default:
             assert (false, "unsupported value type");
@@ -389,16 +405,19 @@ struct ValuePair
 }
 
 // Note: low byte is set to allow for one byte immediate comparison
-immutable NULL    = ValuePair(Word(0x00), Type.REFPTR);
-immutable TRUE    = ValuePair(Word(0x01), Type.CONST);
-immutable FALSE   = ValuePair(Word(0x02), Type.CONST);
-immutable UNDEF   = ValuePair(Word(0x03), Type.CONST);
+immutable NULL    = ValuePair(Word(0x00), Tag.REFPTR);
+immutable TRUE    = ValuePair(Word(0x01), Tag.CONST);
+immutable FALSE   = ValuePair(Word(0x02), Tag.CONST);
+immutable UNDEF   = ValuePair(Word(0x03), Tag.CONST);
 
 /// Stack size, 256K words (2MB)
 immutable size_t STACK_SIZE = 2^^18;
 
-/// Initial heap size, 16M bytes
-immutable size_t HEAP_INIT_SIZE = 2^^24;
+/// Initial object heap size, release 128M, debug 16M bytes
+version (release)
+    immutable size_t HEAP_INIT_SIZE = 2 ^^ 27;
+else
+    immutable size_t HEAP_INIT_SIZE = 2 ^^ 24;
 
 /// Initial link table size
 immutable size_t LINK_TBL_INIT_SIZE = 16384;
@@ -406,14 +425,17 @@ immutable size_t LINK_TBL_INIT_SIZE = 16384;
 /// Initial global object size
 immutable size_t GLOBAL_OBJ_INIT_SIZE = 1024;
 
-/// Initial executable heap size, release 128M, debug 16M bytes
-version (release)
-    immutable size_t EXEC_HEAP_INIT_SIZE = 2 ^^ 27;
-else
-    immutable size_t EXEC_HEAP_INIT_SIZE = 2 ^^ 24;
+/// Initial executable heap size 16M bytes
+immutable size_t EXEC_HEAP_INIT_SIZE = 2 ^^ 24;
+
+/// Fraction of the executable heap reserved for stubs
+immutable size_t EXEC_HEAP_STUB_FRAC = 8;
 
 /// Initial subroutine heap size, 64K bytes
 immutable size_t SUBS_HEAP_INIT_SIZE = 2 ^^ 16;
+
+/// Global VM instance
+VM vm = null;
 
 /**
 Virtual Machine (VM) instance
@@ -424,25 +446,25 @@ class VM
     Word* wStack;
 
     /// Type stack
-    Type* tStack;
+    Tag* tStack;
 
     /// Word stack upper limit
     Word* wUpperLimit;
 
     /// Type stack upper limit
-    Type* tUpperLimit;
+    Tag* tUpperLimit;
 
-    /// Word and type stack pointers (stack top)
+    /// Word stack pointer (stack top)
     Word* wsp;
 
-    /// Type stack pointer (stack top)
-    Type* tsp;
+    /// Tag stack pointer (stack top)
+    Tag* tsp;
 
     /// Heap start pointer
     ubyte* heapStart;
 
     /// Heap size
-    size_t heapSize;
+    size_t heapSize = HEAP_INIT_SIZE;
 
     /// Heap upper limit
     ubyte* heapLimit;
@@ -468,23 +490,14 @@ class VM
     /// Garbage collection count
     size_t gcCount = 0;
 
-    /// Link table words
-    Word* wLinkTable;
-
-    /// Link table types
-    Type* tLinkTable;
-
-    /// Link table size
-    uint32 linkTblSize;
-
-    /// Free link table entries
-    uint32[] linkTblFree;
-
     /// String table reference
     refptr strTbl;
 
     /// Empty object shape
     ObjShape emptyShape;
+
+    /// Initial array shape
+    ObjShape arrayShape;
 
     /// Object prototype object
     ValuePair objProto;
@@ -495,20 +508,29 @@ class VM
     /// Function prototype object
     ValuePair funProto;
 
+    /// String prototype object
+    ValuePair strProto;
+
     /// Global object reference
     ValuePair globalObj;
 
     /// Runtime error value (uncaught exceptions)
     RunError runError;
 
+    /// Current instruction (set when calling into host code)
+    IRInstr curInstr;
+
     /// Executable heap
     CodeBlock execHeap;
 
+    /// Stub space start position
+    size_t stubStartPos;
+
+    /// Current stub space write position
+    size_t stubWritePos;
+
     /// Subroutine heap
     CodeBlock subsHeap;
-
-    /// Current instruction (set when calling into host code)
-    IRInstr curInstr;
 
     /// Map of return addresses to return entries
     RetEntry[CodePtr] retAddrMap;
@@ -525,178 +547,230 @@ class VM
     /// Function entry stub
     EntryStub entryStub;
 
-    /// Branch target stubs
+    /// Generic branch target stubs
     BranchStub[] branchStubs;
 
-    /// Get global fallback subroutine
-    CodePtr getGlobalSub;
-
-    /// Shape lookup fallback subroutine
-    CodePtr defShapeSub;
+    /// Get property fallback subroutine
+    CodePtr getPropSub;
 
     /// Space to save registers when calling into hosted code
     Word* regSave;
 
     /**
-    Constructor, initializes the VM state
+    Initialize or reinitialize the global VM object
     */
-    this(bool loadRuntime = true, bool loadStdLib = true)
+    static void init(bool loadRuntime = true, bool loadStdLib = true)
     {
         assert (
             !(loadStdLib && !loadRuntime),
             "cannot load stdlib without loading runtime"
         );
 
-        // Allocate the word stack
-        wStack = cast(Word*)GC.malloc(
-            Word.sizeof * STACK_SIZE,
-            GC.BlkAttr.NO_SCAN |
-            GC.BlkAttr.NO_INTERIOR
-        );
-
-        // Allocate the type stack
-        tStack = cast(Type*)GC.malloc(
-            Type.sizeof * STACK_SIZE,
-            GC.BlkAttr.NO_SCAN |
-            GC.BlkAttr.NO_INTERIOR
-        );
-
-        // Initialize the stack limit pointers
-        wUpperLimit = wStack + STACK_SIZE;
-        tUpperLimit = tStack + STACK_SIZE;
-
-        // Initialize the stack pointers just past the end of the stack
-        wsp = wUpperLimit;
-        tsp = tUpperLimit;
-
-        // Allocate a block of immovable memory for the heap
-        heapSize = HEAP_INIT_SIZE;
-        heapStart = cast(ubyte*)GC.malloc(
-            heapSize,
-            GC.BlkAttr.NO_SCAN |
-            GC.BlkAttr.NO_INTERIOR
-        );
-        memset(heapStart, 0, heapSize);
-
-        // Check that the allocation was successful
-        if (heapStart is null)
-            throw new Error("heap allocation failed");
-
-        // Initialize the allocation and limit pointers
-        allocPtr = heapStart;
-        heapLimit = heapStart + heapSize;
-
-        /// Link table size
-        linkTblSize = LINK_TBL_INIT_SIZE;
-
-        /// Free link table entries
-        linkTblFree = new LinkIdx[linkTblSize];
-        for (uint32 i = 0; i < linkTblSize; ++i)
-            linkTblFree[i] = i;
-
-        /// Link table words
-        wLinkTable = cast(Word*)GC.malloc(
-            Word.sizeof * linkTblSize,
-            GC.BlkAttr.NO_SCAN |
-            GC.BlkAttr.NO_INTERIOR
-        );
-
-        /// Link table types
-        tLinkTable = cast(Type*)GC.malloc(
-            Type.sizeof * linkTblSize,
-            GC.BlkAttr.NO_SCAN |
-            GC.BlkAttr.NO_INTERIOR
-        );
-
-        // Initialize the link table
-        for (size_t i = 0; i < linkTblSize; ++i)
+        // If a VM object was already created
+        if (vm !is null)
         {
-            wLinkTable[i].int32Val = 0;
-            tLinkTable[i] = Type.INT32;
+            // Explicitly free the VM object and its resources
+            VM.free();
         }
 
-        // Allocate and initialize the string table
-        strTbl = strtbl_alloc(this, STR_TBL_INIT_SIZE);
+        // Allocate the global VM object
+        vm = new VM();
 
-        // Allocate the empty object shape
-        emptyShape = new ObjShape(this);
-
-        // Allocate the object prototype object
-        objProto = newObj(
-            this,
-            NULL
-        );
-
-        // Allocate the array prototype object
-        arrProto = newObj(
-            this,
-            objProto
-        );
-
-        // Allocate the function prototype object
-        funProto = newObj(
-            this,
-            objProto
-        );
-
-        // Allocate the global object
-        globalObj = newObj(
-            this,
-            objProto,
-            GLOBAL_OBJ_INIT_SIZE
-        );
-
-        // Allocate the executable heap
-        execHeap = new CodeBlock(EXEC_HEAP_INIT_SIZE, opts.jit_genasm);
-
-        // Allocate the subroutine heap
-        subsHeap = new CodeBlock(SUBS_HEAP_INIT_SIZE, opts.jit_genasm);
-
-        // Allocate the register save space
-        regSave = cast(Word*)GC.malloc(
-            Word.sizeof * allocRegs.length,
-            GC.BlkAttr.NO_SCAN |
-            GC.BlkAttr.NO_INTERIOR
-        );
-
-        // Define the object-related constants
-        defObjConsts(this);
-
-        // If the runtime library should be loaded
-        if (loadRuntime)
+        with (vm)
         {
-            // Load the layout code
-            load("runtime/layout.js", true);
+            // Allocate the word stack
+            wStack = cast(Word*)GC.malloc(
+                Word.sizeof * STACK_SIZE,
+                GC.BlkAttr.NO_SCAN |
+                GC.BlkAttr.NO_INTERIOR |
+                GC.BlkAttr.NO_MOVE
+            );
 
-            // Load the runtime library
-            load("runtime/runtime.js", true);
+            // Allocate the tag stack
+            tStack = cast(Tag*)GC.malloc(
+                Tag.sizeof * STACK_SIZE,
+                GC.BlkAttr.NO_SCAN |
+                GC.BlkAttr.NO_INTERIOR |
+                GC.BlkAttr.NO_MOVE
+            );
+
+            // Initialize the stack limit pointers
+            wUpperLimit = wStack + STACK_SIZE;
+            tUpperLimit = tStack + STACK_SIZE;
+
+            // Initialize the stack pointers just past the end of the stack
+            wsp = wUpperLimit;
+            tsp = tUpperLimit;
+
+            // Allocate two blocks of immovable memory
+            // for the from-space and to-space heaps
+            heapStart = allocHeapBlock(vm, heapSize);
+            toStart = allocHeapBlock(vm, heapSize);
+
+            // Initialize the from-space heap to zero
+            memset(heapStart, 0, heapSize);
+
+            // Initialize the allocation and limit pointers
+            allocPtr = heapStart;
+            heapLimit = heapStart + heapSize;
+            toAlloc = toStart;
+            toLimit = toStart + heapSize;
+
+            // Allocate and initialize the string table
+            strTbl = strtbl_alloc(vm, STR_TBL_INIT_SIZE);
+
+            // Allocate the empty object shape
+            emptyShape = new ObjShape();
+
+            // Initialize the initial array shape
+            arrayShape = emptyShape.defProp(
+                "__proto__",
+                ValType(Tag.OBJECT),
+                ATTR_CONST_NOT_ENUM,
+                null
+            ).defProp(
+                "__arrTbl__",
+                ValType(Tag.REFPTR),
+                ATTR_CONST_NOT_ENUM,
+                null
+            ).defProp(
+                "__arrLen__",
+                ValType(Tag.INT32),
+                ATTR_CONST_NOT_ENUM,
+                null
+            );
+
+            // Allocate the object prototype object
+            objProto = newObj(NULL);
+
+            // Allocate the array prototype object
+            arrProto = newObj(objProto);
+
+            // Allocate the string prototype object
+            strProto = newObj(objProto);
+
+            // Allocate the function prototype object
+            funProto = newObj(objProto);
+
+            // Allocate the global object
+            globalObj = newObj(objProto, GLOBAL_OBJ_INIT_SIZE);
+
+            // Allocate the executable heap
+            execHeap = new CodeBlock(EXEC_HEAP_INIT_SIZE, opts.genasm);
+
+            // Compute the stub space start position
+            stubStartPos = execHeap.getSize - (execHeap.getSize / EXEC_HEAP_STUB_FRAC);
+            stubWritePos = stubStartPos;
+
+            // Allocate the subroutine heap
+            subsHeap = new CodeBlock(SUBS_HEAP_INIT_SIZE, opts.genasm);
+
+            // Allocate the register save space
+            regSave = cast(Word*)GC.malloc(
+                Word.sizeof * allocRegs.length,
+                GC.BlkAttr.NO_SCAN |
+                GC.BlkAttr.NO_INTERIOR
+            );
+
+            // Define the object-related constants
+            defObjConsts(vm);
+
+            // If the runtime library should be loaded
+            if (loadRuntime)
+            {
+                // Load the layout code
+                load("runtime/layout.js", true);
+
+                // Load the runtime library
+                load("runtime/runtime.js", true);
+            }
+
+            // If the standard library should be loaded
+            if (loadStdLib)
+            {
+                load("stdlib/object.js");
+                load("stdlib/error.js");
+                load("stdlib/function.js");
+                load("stdlib/math.js");
+                load("stdlib/string.js");
+                load("stdlib/array.js");
+                load("stdlib/number.js");
+                load("stdlib/boolean.js");
+                load("stdlib/date.js");
+                load("stdlib/map.js");
+                load("stdlib/set.js");
+                load("stdlib/json.js");
+                load("stdlib/regexp.js");
+                load("stdlib/global.js");
+                load("stdlib/commonjs.js");
+            }
+        }
+    }
+
+    /**
+    Free the global VM object and its allocated resources
+    Note: we intentionally do not rely on the VM destructor
+    because D does not guarantee destructor call order
+    */
+    static void free()
+    {
+        with (vm)
+        {
+            // Free the stacks
+            GC.free(wStack);
+            GC.free(tStack);
+
+            // Free the heap blocks
+            GC.free(heapStart);
+            GC.free(toStart);
+
+            // Destroy the root shapes
+            destroy(arrayShape);
+            destroy(emptyShape);
+
+            // Destroy the executable heaps
+            destroy(execHeap);
+            destroy(subsHeap);
+
+            // Free the IRFunction references
+            foreach (ptr, fun; funRefs)
+                destroy(fun);
+
+            // Unregister all the GC roots to prevent them from
+            // touching the VM object after the it is destroyed
+            for (auto root = firstRoot; root !is null;)
+            {
+                auto next = root.nextRoot;
+                destroy(root);
+                root = next;
+            }
         }
 
-        // If the standard library should be loaded
-        if (loadStdLib)
-        {
-            load("stdlib/object.js");
-            load("stdlib/error.js");
-            load("stdlib/function.js");
-            load("stdlib/math.js");
-            load("stdlib/string.js");
-            load("stdlib/array.js");
-            load("stdlib/number.js");
-            load("stdlib/boolean.js");
-            load("stdlib/date.js");
-            load("stdlib/json.js");
-            load("stdlib/regexp.js");
-            load("stdlib/map.js");
-            load("stdlib/set.js");
-            load("stdlib/global.js");
-            load("stdlib/commonjs.js");
-        }
+        // Destroy the VM object itself
+        destroy(vm);
+
+        // Nullify the global VM object pointer
+        vm = null;
+    }
+
+    /**
+    Do not call the VM constructor directly
+    */
+    private this()
+    {
+    }
+
+    /**
+    Do not call the VM destructor directly
+    */
+    private ~this()
+    {
     }
 
     /**
     Set the value and type of a stack slot
     */
-    void setSlot(StackIdx idx, Word w, Type t)
+    void setSlot(StackIdx idx, Word w, Tag t)
     {
         assert (
             &wsp[idx] >= wStack && &wsp[idx] < wUpperLimit,
@@ -720,7 +794,7 @@ class VM
     */
     void setSlot(StackIdx idx, ValuePair val)
     {
-        setSlot(idx, val.word, val.type);
+        setSlot(idx, val.word, val.tag);
     }
 
     /**
@@ -728,7 +802,7 @@ class VM
     */
     void setSlot(StackIdx idx, uint32 val)
     {
-        setSlot(idx, Word.int32v(val), Type.INT32);
+        setSlot(idx, Word.int32v(val), Tag.INT32);
     }
 
     /**
@@ -736,7 +810,7 @@ class VM
     */
     void setSlot(StackIdx idx, float64 val)
     {
-        setSlot(idx, Word.float64v(val), Type.FLOAT64);
+        setSlot(idx, Word.float64v(val), Tag.FLOAT64);
     }
 
     /**
@@ -753,9 +827,9 @@ class VM
     }
 
     /**
-    Get a type from the type stack
+    Get a type tag from the tag stack
     */
-    Type getType(StackIdx idx)
+    Tag getTag(StackIdx idx)
     {
         assert (
             &tsp[idx] >= tStack && &tsp[idx] < tUpperLimit,
@@ -770,7 +844,7 @@ class VM
     */
     ValuePair getSlot(StackIdx idx)
     {
-        return ValuePair(getWord(idx), getType(idx));
+        return ValuePair(getWord(idx), getTag(idx));
     }
 
     /**
@@ -793,9 +867,9 @@ class VM
     }
 
     /**
-    Push a word and type on the stack
+    Push a word and tag on the stack
     */
-    void push(Word w, Type t)
+    void push(Word w, Tag t)
     {
         push(1);
         setSlot(0, w, t);
@@ -807,7 +881,7 @@ class VM
     void push(ValuePair val)
     {
         push(1);
-        setSlot(0, val.word, val.type);
+        setSlot(0, val.word, val.tag);
     }
 
     /**
@@ -843,91 +917,6 @@ class VM
     }
 
     /**
-    Allocate a link table entry
-    */
-    LinkIdx allocLink()
-    {
-        if (linkTblFree.length == 0)
-        {
-            assert (false, "no free link entries");
-        }
-
-        auto idx = linkTblFree.back;
-        linkTblFree.popBack();
-
-        return idx;
-    }
-
-    /**
-    Free a link table entry
-    */
-    void freeLink(LinkIdx idx)
-    {
-        assert (
-            idx <= linkTblSize,
-            "invalid link index"
-        );
-
-        // Remove any heap reference
-        wLinkTable[idx].uint32Val = 0;
-        tLinkTable[idx] = Type.INT32;
-
-        linkTblFree ~= idx;
-    }
-
-    /**
-    Get the word associated with a link value
-    */
-    Word getLinkWord(LinkIdx idx)
-    {
-        assert (
-            idx <= linkTblSize,
-            "invalid link index"
-        );
-
-        return wLinkTable[idx];
-    }
-
-    /**
-    Get the type associated with a link value
-    */
-    Type getLinkType(LinkIdx idx)
-    {
-        assert (
-            idx <= linkTblSize,
-            "invalid link index"
-        );
-
-        return tLinkTable[idx];
-    }
-
-    /**
-    Set the word associated with a link value
-    */
-    void setLinkWord(LinkIdx idx, Word word)
-    {
-        assert (
-            idx <= linkTblSize,
-            "invalid link index"
-        );
-
-        wLinkTable[idx] = word;
-    }
-
-    /**
-    Set the type associated with a link value
-    */
-    void setLinkType(LinkIdx idx, Type type)
-    {
-        assert (
-            idx <= linkTblSize,
-            "invalid link index"
-        );
-
-        tLinkTable[idx] = type;
-    }
-
-    /**
     Get the value pair for an IR value
     */
     ValuePair getValue(IRValue val)
@@ -941,8 +930,6 @@ class VM
                 dstVal.toString()
             );
 
-            //writefln("getting value from slot of %s", val);
-
             // Get the value at the output slot
             return getSlot(dstVal.outSlot);
         }
@@ -950,7 +937,7 @@ class VM
         // If the value is a string
         if (auto strVal = cast(IRString)val)
         {
-            return ValuePair(strVal.getPtr(this), Type.STRING);
+            return ValuePair(strVal.getPtr(this), Tag.STRING);
         }
 
         // Get the constant value pair for this IR value
@@ -976,7 +963,7 @@ class VM
         auto argVal = getArgVal(instr, argIdx);
 
         assert (
-            argVal.type == Type.CONST,
+            argVal.tag == Tag.CONST,
             "expected constant value for arg " ~ to!string(argIdx)
         );
 
@@ -991,7 +978,7 @@ class VM
         auto argVal = getArgVal(instr, argIdx);
 
         assert (
-            argVal.type == Type.INT32,
+            argVal.tag == Tag.INT32,
             "expected uint32 value for arg " ~ to!string(argIdx)
         );
 
@@ -1011,7 +998,7 @@ class VM
         auto strVal = getArgVal(instr, argIdx);
 
         assert (
-            strVal.type is Type.STRING,
+            strVal.tag is Tag.STRING,
             format("expected string value for arg %s of:\n%s", argIdx, instr)
         );
 
@@ -1054,16 +1041,16 @@ class VM
         }
 
         // Push the argument count
-        push(Word.int32v(argCount), Type.INT32);
+        push(Word.int32v(argCount), Tag.INT32);
 
         // Push the "this" argument
         push(thisVal);
 
         // Push the closure argument
-        push(Word.ptrv(closPtr), Type.CLOSURE);
+        push(Word.ptrv(closPtr), Tag.CLOSURE);
 
         // Push the return address
-        push(Word.ptrv(cast(rawptr)retAddr), Type.RETADDR);
+        push(Word.ptrv(cast(rawptr)retAddr), Tag.RETADDR);
 
         // Push space for the callee locals
         auto numLocals = fun.numLocals - NUM_HIDDEN_ARGS - fun.numParams;
@@ -1118,15 +1105,6 @@ class VM
     }
 
     /**
-    Execute a unit-level function
-    */
-    ValuePair exec(FunExpr fun)
-    {
-        auto ir = astToIR(this, fun, null);
-        return exec(ir);
-    }
-
-    /**
     Get the path for a load command based on a (potentially relative) path
     */
     string getLoadPath(string fileName)
@@ -1149,8 +1127,17 @@ class VM
     {
         //writeln("load(", fileName, ")");
         auto file = getLoadPath(fileName);
+
+        // Start recording compilation time
+        stats.compTimeStart();
+
         auto ast = parseFile(file, isRuntime);
-        return exec(ast);
+        auto ir = astToIR(this, ast, null);
+
+        // Stop recording compilation time
+        stats.compTimeStop();
+
+        return exec(ir);
     }
 
     /**
@@ -1161,20 +1148,20 @@ class VM
         //writefln("input: %s", input);
 
         auto ast = parseString(input, fileName);
-        auto result = exec(ast);
+        auto ir = astToIR(this, ast, null);
 
-        return result;
+        return exec(ir);
     }
 
     /// Stack frame visit function
-    alias void delegate(
+    alias VisitFrameFn = void delegate(
         IRFunction fun,
         Word* wsp,
-        Type* tsp,
+        Tag* tsp,
         size_t depth,
         size_t frameSize,
         IRInstr curInstr
-    ) VisitFrameFn;
+    );
 
     /**
     Visit each stack frame currently on the stack
@@ -1263,7 +1250,7 @@ class VM
     */
     void defConst(wstring name, ValuePair val, bool enumerable = false)
     {
-        runtime.object.defConst(this, globalObj, name, val, enumerable);
+        runtime.object.defConst(globalObj, name, val, enumerable);
     }
 
     /**
@@ -1294,7 +1281,7 @@ extern (C) CodePtr throwExc(
     IRInstr throwInstr,
     CodeFragment throwHandler,
     Word excWord,
-    Type excType
+    Tag excTag
 )
 {
     //writefln("entering throwExc");
@@ -1306,15 +1293,11 @@ extern (C) CodePtr throwExc(
     auto curHandler = throwHandler;
 
     // Get a GC root for the exception object
-    auto exc = GCRoot(
-        vm,
-        excWord,
-        excType
-    );
+    auto exc = GCRoot(excWord, excTag);
 
     // If the exception value is an object,
     // add trace information to the object
-    if (exc.type is Type.OBJECT)
+    if (exc.tag is Tag.OBJECT)
     {
         assert (vm.curInstr is null);
         vm.curInstr = throwInstr;
@@ -1322,7 +1305,7 @@ extern (C) CodePtr throwExc(
         auto visitFrame = delegate void(
             IRFunction fun,
             Word* wsp,
-            Type* tsp,
+            Tag* tsp,
             size_t depth,
             size_t frameSize,
             IRInstr curInstr
@@ -1332,7 +1315,6 @@ extern (C) CodePtr throwExc(
 
             auto pos = curInstr.srcPos? curInstr.srcPos:fun.ast.pos;
             auto str = GCRoot(
-                vm,
                 getString(
                     vm,
                     to!wstring(
@@ -1340,21 +1322,19 @@ extern (C) CodePtr throwExc(
                         " (" ~ pos.toString ~ ")"
                     )
                 ),
-                Type.STRING
+                Tag.STRING
             );
 
             setProp(
-                vm,
                 exc.pair,
                 propName,
                 str.pair
             );
 
             setProp(
-                vm,
                 exc.pair,
                 "length"w,
-                ValuePair(Word.int64v(depth), Type.INT32)
+                ValuePair(Word.int64v(depth), Tag.INT32)
             );
         };
 
@@ -1391,7 +1371,7 @@ extern (C) CodePtr throwExc(
             auto excCodeAddr = curHandler.getCodePtr(vm.execHeap);
 
             // Push the exception value on the stack
-            vm.push(exc.word, exc.type);
+            vm.push(exc.word, exc.tag);
 
             // Return the exception handler address
             return excCodeAddr;
@@ -1465,47 +1445,35 @@ extern (C) CodePtr throwError(
     vm.setCurInstr(throwInstr);
 
     auto errStr = GCRoot(
-        vm,
         getString(vm, to!wstring(errMsg)),
-        Type.STRING
+        Tag.STRING
     );
 
     auto errCtor = GCRoot(
-        vm,
         getProp(
-            vm,
             vm.globalObj,
             to!wstring(ctorName)
         )
     );
 
     // If the error constructor is a function
-    if (errCtor.type is Type.CLOSURE)
+    if (errCtor.tag is Tag.CLOSURE)
     {
         auto errProto = GCRoot(
-            vm,
             getProp(
-                vm,
                 errCtor.pair,
                 "prototype"w
             )
         );
 
         // If the error prototype is an object
-        if (errProto.type is Type.OBJECT)
+        if (errProto.tag is Tag.OBJECT)
         {
             // Create the error object
-            auto excObj = GCRoot(
-                vm,
-                newObj(
-                    vm,
-                    errProto.pair
-                )
-            );
+            auto excObj = GCRoot(newObj(errProto.pair));
 
             // Set the error "message" property
             setProp(
-                vm,
                 excObj.pair,
                 "message"w,
                 errStr.pair
@@ -1518,7 +1486,7 @@ extern (C) CodePtr throwError(
                 throwInstr,
                 throwHandler,
                 excObj.word,
-                excObj.type
+                excObj.tag
             );
         }
     }
@@ -1531,7 +1499,7 @@ extern (C) CodePtr throwError(
         throwInstr,
         throwHandler,
         errStr.word,
-        errStr.type,
+        errStr.tag,
     );
 }
 

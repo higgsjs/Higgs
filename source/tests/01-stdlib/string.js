@@ -216,14 +216,13 @@ function test_slice()
 
 function test_substring()
 {
-    if ('foo'.substring(0) !== 'foo')
-        return 1;
-    if ('foo'.substring(1) !== 'oo')
-        return 2;
-    if ('foobar'.substring(1,4) !== 'oob')
-        return 3;
+    assert ('foo'.substring(0) === 'foo');
 
-    return 0;
+    assert ('foo'.substring(1) === 'oo');
+
+    assert ('foobar'.substring(1,4) === 'oob');
+
+    assert ('foobar'.substring(-1,1.6) === 'f');
 }
 
 function test_substr()
@@ -262,23 +261,19 @@ function test_concat()
 
 function test_replace()
 {
-    if ('foobif'.replace('oo', 'oobar') !== 'foobarbif')
-        return 1;
+    assert ('foobif'.replace('oo', 'oobar') === 'foobarbif')
 
-    if ('foobar'.replace(/(.)\1/, '$1') !== 'fobar')
-        return 2;
+    assert ('foobar'.replace(/(.)\1/, '$1') === 'fobar')
 
-    if ('foobar'.replace(/(.)/g, '$1$1') !== 'ffoooobbaarr')
-        return 3;
+    assert ('foobar'.replace(/(.)/g, '$1$1') === 'ffoooobbaarr')
 
-    if ('foobar foobar'.replace(/\bf/g, "$`") !== 'oobar foobar oobar')
-        return 4;
-    
-    if ('foobar foobar'.replace(/\bf/g, "$'") !== 'oobar foobaroobar oobaroobar')
-        return 5;
-    if ('f'.replace(/a/g, "b") !== 'f')
-        return 6;
-    return 0;
+    assert ('foobar foobar'.replace(/\bf/g, "$`") === 'oobar foobar oobar')
+
+    assert ('foobar foobar'.replace(/\bf/g, "$'") === 'oobar foobaroobar oobaroobar')
+
+    assert ('f'.replace(/a/g, "b") === 'f')
+
+    assert ('QBZPbageby_'.replace(/^\s*|\s*$/g, '') === 'QBZPbageby_');
 }
 
 function test_split()
@@ -332,7 +327,11 @@ function test_split()
         return 12;
 
     if (!array_eq('181'.split([8]), ['1','1']))
-        return 12;
+        return 13;
+
+    assert (array_eq('181 181'.split(/\s/), ['181', '181']))
+    assert (array_eq('181 181'.split(new RegExp('\\s')), ['181', '181']))
+    assert (array_eq('181 181'.split(new RegExp(/\s/)), ['181', '181']))
 
     return 0;
 }
@@ -428,9 +427,7 @@ function test()
     if (r != 0)
         return 1200 + r;
 
-    var r = test_substring();
-    if (r != 0)
-        return 1300 + r;
+    test_substring();
 
     var r = test_substr();
     if (r != 0)
@@ -440,9 +437,7 @@ function test()
     if (r != 0)
         return 1500 + r;
 
-    var r = test_replace();
-    if (r != 0)
-        return 1600 + r;
+    test_replace();
 
     var r = test_split();
     if (r != 0)
@@ -460,7 +455,7 @@ function test()
 }
 
 // TODO: convert this test to use assertions &
-// exceptions instead of return codes 
+// exceptions instead of return codes
 var r = test();
 assert (r === 0, r);
 

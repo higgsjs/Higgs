@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2011, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2011-2014, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -38,11 +38,8 @@
 /**
 FFI - provides functionality for writing bindings to/wrappers for C code.
 */
-
-
-(function()
+(function(exports)
 {
-
     /**
     ERRORS
     */
@@ -1853,7 +1850,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
                `function(lib)
                 {
                     var fun_sym = $ir_get_sym(lib, '` + fname + `');
-                    return function(` + arg_str  + `)
+                    return function(` + arg_str + `)
                     {
                         return $ir_call_ffi(fun_sym, ` +
                             ('\'' + sig + '\'') +
@@ -1940,6 +1937,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
     c.cfun('malloc', '*,i32');
     c.cfun('realloc', '*,*,i32');
     c.cfun('free', 'void,*');
+    c.cfun('strlen', 'i32,*');
 
     /**
     TYPE UTILTIY FUNCTIONS
@@ -1954,6 +1952,8 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
     */
     function cstr(str, len)
     {
+        str = $rt_toString(str);
+
         var c_str, i;
         len = len || str.length;
         c_str = c.malloc(len + 1);
@@ -2040,16 +2040,15 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
     /**
     EXPORTS
     */
-    exports = {
-        c : c,
-        FFILib : FFILib,
-        string : string,
-        cstr : cstr,
-        jsstrcpy : jsstrcpy,
-        isNullPtr : isNullPtr,
-        nullPtr : nullPtr,
-        cbuffer : cbuffer,
-        os : os_name
-    };
+    exports.c = c;
+    exports.FFILib = FFILib;
+    exports.string = string;
+    exports.cstr = cstr;
+    exports.jsstrcpy = jsstrcpy;
+    exports.isNullPtr = isNullPtr;
+    exports.nullPtr = nullPtr;
+    exports.cbuffer = cbuffer;
+    exports.os = os_name;
 
-})();
+})(exports);
+

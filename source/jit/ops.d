@@ -38,6 +38,7 @@
 module jit.ops;
 
 import core.memory;
+import core.stdc.string;
 import std.c.math;
 import std.stdio;
 import std.string;
@@ -67,12 +68,12 @@ import jit.jit;
 import core.sys.posix.dlfcn;
 
 /// Instruction code generation function
-alias void function(
+alias GenFn = void function(
     BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
-) GenFn;
+);
 
 /// Get an argument by index
 void gen_get_arg(
@@ -106,7 +107,7 @@ void gen_get_arg(
     // Copy the type value
     auto typeSlot = X86Opnd(8, tspReg, 1 * argSlot, 1, idxReg64.reg);
     as.mov(scrRegs[1].opnd(8), typeSlot);
-    st.setOutType(as, instr, scrRegs[1].reg(8));
+    st.setOutTag(as, instr, scrRegs[1].reg(8));
 }
 
 void gen_make_value(
@@ -124,9 +125,9 @@ void gen_make_value(
         as.mov(outOpnd, wordOpnd);
 
     // Get the type value from the second operand
-    auto typeOpnd = st.getWordOpnd(as, instr, 1, 8, scrRegs[0].opnd(8));
-    assert (typeOpnd.isGPR);
-    st.setOutType(as, instr, typeOpnd.reg);
+    auto tagOpnd = st.getWordOpnd(as, instr, 1, 8, scrRegs[0].opnd(8));
+    assert (tagOpnd.isGPR);
+    st.setOutTag(as, instr, tagOpnd.reg);
 }
 
 void gen_get_word(
@@ -141,34 +142,34 @@ void gen_get_word(
 
     as.mov(outOpnd, wordOpnd);
 
-    st.setOutType(as, instr, Type.INT64);
+    st.setOutTag(as, instr, Tag.INT64);
 }
 
-void gen_get_type(
+void gen_get_tag(
     BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
 )
 {
-    auto typeOpnd = st.getTypeOpnd(as, instr, 0, scrRegs[0].opnd(8), true);
+    auto tagOpnd = st.getTagOpnd(as, instr, 0, scrRegs[0].opnd(8), true);
     auto outOpnd = st.getOutOpnd(as, instr, 32);
 
-    if (typeOpnd.isImm)
+    if (tagOpnd.isImm)
     {
-        as.mov(outOpnd, typeOpnd);
+        as.mov(outOpnd, tagOpnd);
     }
     else if (outOpnd.isGPR)
     {
-        as.movzx(outOpnd, typeOpnd);
+        as.movzx(outOpnd, tagOpnd);
     }
     else
     {
-        as.movzx(scrRegs[0].opnd(32), typeOpnd);
+        as.movzx(scrRegs[0].opnd(32), tagOpnd);
         as.mov(outOpnd, scrRegs[0].opnd(32));
     }
 
-    st.setOutType(as, instr, Type.INT32);
+    st.setOutTag(as, instr, Tag.INT32);
 }
 
 void gen_i32_to_f64(
@@ -188,7 +189,7 @@ void gen_i32_to_f64(
     as.cvtsi2sd(X86Opnd(XMM0), opnd0);
 
     as.movq(outOpnd, X86Opnd(XMM0));
-    st.setOutType(as, instr, Type.FLOAT64);
+    st.setOutTag(as, instr, Tag.FLOAT64);
 }
 
 void gen_f64_to_i32(
@@ -208,10 +209,10 @@ void gen_f64_to_i32(
     as.cvttsd2si(scrRegs[0].opnd(64), X86Opnd(XMM0));
     as.mov(outOpnd, scrRegs[0].opnd(32));
 
-    st.setOutType(as, instr, Type.INT32);
+    st.setOutTag(as, instr, Tag.INT32);
 }
 
-void RMMOp(string op, size_t numBits, Type typeTag)(
+void RMMOp(string op, size_t numBits, Tag tag)(
     BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
@@ -237,6 +238,9 @@ void RMMOp(string op, size_t numBits, Type typeTag)(
         scrRegs[1].opnd(numBits),
         true
     );
+
+    // Get type information about the first argument
+    auto arg0Type = st.getType(instr.getArg(0));
 
     // Allow reusing an input register for the output,
     // except for subtraction which is not commutative
@@ -298,57 +302,82 @@ void RMMOp(string op, size_t numBits, Type typeTag)(
         }
     }
 
-    // Set the output type
-    st.setOutType(as, instr, typeTag);
+    // Set the output type tag
+    st.setOutTag(as, instr, tag);
 
-    // If the instruction has an exception/overflow target
-    if (instr.getTarget(0))
+    // If the instruction has no exception/overflow target, stop
+    if (instr.getTarget(0) is null)
+        return;
+
+    // If this is an add operation
+    static if (op == "add")
     {
-        auto branchNO = getBranchEdge(instr.getTarget(0), st, false);
-        auto branchOV = getBranchEdge(instr.getTarget(1), st, false);
-
-        // Generate the branch code
-        ver.genBranch(
-            as,
-            branchNO,
-            branchOV,
-            delegate void(
-                CodeBlock as,
-                VM vm,
-                CodeFragment target0,
-                CodeFragment target1,
-                BranchShape shape
-            )
+        // If we are adding something to 1
+        auto arg1Cst = cast(IRConst)instr.getArg(1);
+        if (arg1Cst && arg1Cst.isInt32 && arg1Cst.int32Val == 1)
+        {
+            // If the type analysis shows that there can be no overflow
+            if (opts.typeprop && st.fun.typeInfo.argNotIntMax(instr, 0))
             {
-                final switch (shape)
-                {
-                    case BranchShape.NEXT0:
-                    jo32Ref(as, vm, target1, 1);
-                    break;
-
-                    case BranchShape.NEXT1:
-                    jno32Ref(as, vm, target0, 0);
-                    break;
-
-                    case BranchShape.DEFAULT:
-                    jo32Ref(as, vm, target1, 1);
-                    jmp32Ref(as, vm, target0, 0);
-                }
+                // Jump directly to the successor block
+                //writeln("TI ovf elim: ", instr.block.fun.getName);
+                return gen_jump(ver, st, instr, as);
             }
-        );
+
+            // If there can be no overflow
+            if (arg0Type.subMax)
+            {
+                // Jump directly to the successor block
+                //writeln("BBV ovf elim: ", instr.block.fun.getName);
+                return gen_jump(ver, st, instr, as);
+            }
+        }
     }
+
+    auto branchNO = getBranchEdge(instr.getTarget(0), st, false);
+    auto branchOV = getBranchEdge(instr.getTarget(1), st, false);
+
+    // Generate the branch code
+    ver.genBranch(
+        as,
+        branchNO,
+        branchOV,
+        delegate void(
+            CodeBlock as,
+            BlockVersion block,
+            CodeFragment target0,
+            CodeFragment target1,
+            BranchShape shape
+        )
+        {
+            final switch (shape)
+            {
+                case BranchShape.NEXT0:
+                jo32Ref(as, vm, block, target1, 1);
+                break;
+
+                case BranchShape.NEXT1:
+                jno32Ref(as, vm, block, target0, 0);
+                break;
+
+                case BranchShape.DEFAULT:
+                jo32Ref(as, vm, block, target1, 1);
+                jmp32Ref(as, vm, block, target0, 0);
+            }
+        }
+    );
 }
 
-alias RMMOp!("add" , 32, Type.INT32) gen_add_i32;
-alias RMMOp!("sub" , 32, Type.INT32) gen_sub_i32;
-alias RMMOp!("imul", 32, Type.INT32) gen_mul_i32;
-alias RMMOp!("and" , 32, Type.INT32) gen_and_i32;
-alias RMMOp!("or"  , 32, Type.INT32) gen_or_i32;
-alias RMMOp!("xor" , 32, Type.INT32) gen_xor_i32;
+alias gen_add_i32 = RMMOp!("add", 32, Tag.INT32);
+alias gen_sub_i32 = RMMOp!("sub", 32, Tag.INT32);
+alias gen_mul_i32 = RMMOp!("imul", 32, Tag.INT32);
+alias gen_and_i32 = RMMOp!("and", 32, Tag.INT32);
+alias gen_or_i32 = RMMOp!("or", 32, Tag.INT32);
+alias gen_xor_i32 = RMMOp!("xor", 32, Tag.INT32);
 
-alias RMMOp!("add" , 32, Type.INT32) gen_add_i32_ovf;
-alias RMMOp!("sub" , 32, Type.INT32) gen_sub_i32_ovf;
-alias RMMOp!("imul", 32, Type.INT32) gen_mul_i32_ovf;
+alias gen_add_i32_ovf = RMMOp!("add", 32, Tag.INT32);
+alias gen_sub_i32_ovf = RMMOp!("sub", 32, Tag.INT32);
+alias gen_mul_i32_ovf = RMMOp!("imul", 32, Tag.INT32);
 
 void gen_add_ptr_i32(
     BlockVersion ver,
@@ -385,8 +414,8 @@ void gen_add_ptr_i32(
     as.mov(opndOut, opnd0);
     as.add(opndOut, scrRegs[1].opnd);
 
-    // Set the output type
-    st.setOutType(as, instr, Type.RAWPTR);
+    // Set the output type tag
+    st.setOutTag(as, instr, Tag.RAWPTR);
 }
 
 void divOp(string op)(
@@ -427,12 +456,12 @@ void divOp(string op)(
     else
         assert (false);
 
-    // Set the output type
-    st.setOutType(as, instr, Type.INT32);
+    // Set the output type tag
+    st.setOutTag(as, instr, Tag.INT32);
 }
 
-alias divOp!("div") gen_div_i32;
-alias divOp!("mod") gen_mod_i32;
+alias gen_div_i32 = divOp!("div");
+alias gen_mod_i32 = divOp!("mod");
 
 void gen_not_i32(
     BlockVersion ver,
@@ -447,8 +476,8 @@ void gen_not_i32(
     as.mov(outOpnd, opnd0);
     as.not(outOpnd);
 
-    // Set the output type
-    st.setOutType(as, instr, Type.INT32);
+    // Set the output type tag
+    st.setOutTag(as, instr, Tag.INT32);
 }
 
 void ShiftOp(string op)(
@@ -514,13 +543,13 @@ void ShiftOp(string op)(
     if (shiftOpnd != outOpnd)
         as.mov(outOpnd, shiftOpnd);
 
-    // Set the output type
-    st.setOutType(as, instr, Type.INT32);
+    // Set the output type tag
+    st.setOutTag(as, instr, Tag.INT32);
 }
 
-alias ShiftOp!("sal") gen_lsft_i32;
-alias ShiftOp!("sar") gen_rsft_i32;
-alias ShiftOp!("shr") gen_ursft_i32;
+alias gen_lsft_i32 = ShiftOp!("sal");
+alias gen_rsft_i32 = ShiftOp!("sar");
+alias gen_ursft_i32 = ShiftOp!("shr");
 
 void FPOp(string op)(
     BlockVersion ver,
@@ -553,14 +582,14 @@ void FPOp(string op)(
 
     as.movq(outOpnd, X86Opnd(XMM0));
 
-    // Set the output type
-    st.setOutType(as, instr, Type.FLOAT64);
+    // Set the output type tag
+    st.setOutTag(as, instr, Tag.FLOAT64);
 }
 
-alias FPOp!("add") gen_add_f64;
-alias FPOp!("sub") gen_sub_f64;
-alias FPOp!("mul") gen_mul_f64;
-alias FPOp!("div") gen_div_f64;
+alias gen_add_f64 = FPOp!("add");
+alias gen_sub_f64 = FPOp!("sub");
+alias gen_mul_f64 = FPOp!("mul");
+alias gen_div_f64 = FPOp!("div");
 
 void HostFPOp(alias cFPFun, size_t arity = 1)(
     BlockVersion ver,
@@ -591,29 +620,26 @@ void HostFPOp(alias cFPFun, size_t arity = 1)(
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
 
-    as.saveJITRegs();
-
     // Call the host function
+    // Note: we do not save the JIT regs because they are callee-saved
     as.ptr(scrRegs[0], &cFPFun);
     as.call(scrRegs[0]);
-
-    as.loadJITRegs();
 
     // Store the output value into the output operand
     as.movq(outOpnd, X86Opnd(XMM0));
 
-    st.setOutType(as, instr, Type.FLOAT64);
+    st.setOutTag(as, instr, Tag.FLOAT64);
 }
 
-alias HostFPOp!(std.c.math.sin) gen_sin_f64;
-alias HostFPOp!(std.c.math.cos) gen_cos_f64;
-alias HostFPOp!(std.c.math.sqrt) gen_sqrt_f64;
-alias HostFPOp!(std.c.math.ceil) gen_ceil_f64;
-alias HostFPOp!(std.c.math.floor) gen_floor_f64;
-alias HostFPOp!(std.c.math.log) gen_log_f64;
-alias HostFPOp!(std.c.math.exp) gen_exp_f64;
-alias HostFPOp!(std.c.math.pow, 2) gen_pow_f64;
-alias HostFPOp!(std.c.math.fmod, 2) gen_mod_f64;
+alias gen_sin_f64 = HostFPOp!(std.c.math.sin);
+alias gen_cos_f64 = HostFPOp!(std.c.math.cos);
+alias gen_sqrt_f64 = HostFPOp!(std.c.math.sqrt);
+alias gen_ceil_f64 = HostFPOp!(std.c.math.ceil);
+alias gen_floor_f64 = HostFPOp!(std.c.math.floor);
+alias gen_log_f64 = HostFPOp!(std.c.math.log);
+alias gen_exp_f64 = HostFPOp!(std.c.math.exp);
+alias gen_pow_f64 = HostFPOp!(std.c.math.pow, 2);
+alias gen_mod_f64 = HostFPOp!(std.c.math.fmod, 2);
 
 void FPToStr(string fmt)(
     BlockVersion ver,
@@ -660,13 +686,13 @@ void FPToStr(string fmt)(
     // Store the output value into the output operand
     as.mov(outOpnd, X86Opnd(RAX));
 
-    st.setOutType(as, instr, Type.STRING);
+    st.setOutTag(as, instr, Tag.STRING);
 }
 
-alias FPToStr!("%G") gen_f64_to_str;
-alias FPToStr!(format("%%.%sf", float64.dig)) gen_f64_to_str_lng;
+alias gen_f64_to_str = FPToStr!("%G");
+alias gen_f64_to_str_lng = FPToStr!(format("%%.%sf", float64.dig));
 
-void LoadOp(size_t memSize, bool signed, Type typeTag)(
+void LoadOp(size_t memSize, bool signed, Tag tag)(
     BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
@@ -680,7 +706,6 @@ void LoadOp(size_t memSize, bool signed, Type typeTag)(
     // The offset operand may be a register or an immediate
     auto opnd1 = st.getWordOpnd(as, instr, 1, 32, scrRegs[1].opnd(32), true);
 
-    //auto outOpnd = st.getOutOpnd(as, instr, 64);
     auto outOpnd = st.getOutOpnd(as, instr, (memSize < 64)? 32:64);
 
     // Create the memory operand
@@ -738,24 +763,25 @@ void LoadOp(size_t memSize, bool signed, Type typeTag)(
     }
 
     // Set the output type tag
-    st.setOutType(as, instr, typeTag);
+    st.setOutTag(as, instr, tag);
 }
 
-alias LoadOp!(8 , false, Type.INT32) gen_load_u8;
-alias LoadOp!(16, false, Type.INT32) gen_load_u16;
-alias LoadOp!(32, false, Type.INT32) gen_load_u32;
-alias LoadOp!(64, false, Type.INT64) gen_load_u64;
-alias LoadOp!(8 , true , Type.INT32) gen_load_i8;
-alias LoadOp!(16, true , Type.INT32) gen_load_i16;
-alias LoadOp!(32, true , Type.INT32) gen_load_i32;
-alias LoadOp!(64, true, Type.INT64) gen_load_i64;
-alias LoadOp!(64, false, Type.FLOAT64) gen_load_f64;
-alias LoadOp!(64, false, Type.REFPTR) gen_load_refptr;
-alias LoadOp!(64, false, Type.RAWPTR) gen_load_rawptr;
-alias LoadOp!(64, false, Type.FUNPTR) gen_load_funptr;
-alias LoadOp!(64, false, Type.SHAPEPTR) gen_load_shapeptr;
+alias gen_load_u8 = LoadOp!(8, false, Tag.INT32);
+alias gen_load_u16 = LoadOp!(16, false, Tag.INT32);
+alias gen_load_u32 = LoadOp!(32, false, Tag.INT32);
+alias gen_load_u64 = LoadOp!(64, false, Tag.INT64);
+alias gen_load_i8 = LoadOp!(8, true , Tag.INT32);
+alias gen_load_i16 = LoadOp!(16, true , Tag.INT32);
+alias gen_load_i32 = LoadOp!(32, true , Tag.INT32);
+alias gen_load_i64 = LoadOp!(64, true , Tag.INT64);
+alias gen_load_f64 = LoadOp!(64, false, Tag.FLOAT64);
+alias gen_load_refptr = LoadOp!(64, false, Tag.REFPTR);
+alias gen_load_string = LoadOp!(64, false, Tag.STRING);
+alias gen_load_rawptr = LoadOp!(64, false, Tag.RAWPTR);
+alias gen_load_funptr = LoadOp!(64, false, Tag.FUNPTR);
+alias gen_load_shapeptr = LoadOp!(64, false, Tag.SHAPEPTR);
 
-void StoreOp(size_t memSize, Type typeTag)(
+void StoreOp(size_t memSize, Tag tag)(
     BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
@@ -793,21 +819,21 @@ void StoreOp(size_t memSize, Type typeTag)(
     as.mov(memOpnd, opnd2);
 }
 
-alias StoreOp!(8 , Type.INT32) gen_store_u8;
-alias StoreOp!(16, Type.INT32) gen_store_u16;
-alias StoreOp!(32, Type.INT32) gen_store_u32;
-alias StoreOp!(64, Type.INT64) gen_store_u64;
-alias StoreOp!(8 , Type.INT32) gen_store_i8;
-alias StoreOp!(16, Type.INT32) gen_store_i16;
-alias StoreOp!(32, Type.INT32) gen_store_i32;
-alias StoreOp!(64, Type.INT64) gen_store_u64;
-alias StoreOp!(64, Type.FLOAT64) gen_store_f64;
-alias StoreOp!(64, Type.REFPTR) gen_store_refptr;
-alias StoreOp!(64, Type.RAWPTR) gen_store_rawptr;
-alias StoreOp!(64, Type.FUNPTR) gen_store_funptr;
-alias StoreOp!(64, Type.SHAPEPTR) gen_store_shapeptr;
+alias gen_store_u8 = StoreOp!(8, Tag.INT32);
+alias gen_store_u16 = StoreOp!(16, Tag.INT32);
+alias gen_store_u32 = StoreOp!(32, Tag.INT32);
+alias gen_store_u64 = StoreOp!(64, Tag.INT64);
+alias gen_store_i8 = StoreOp!(8, Tag.INT32);
+alias gen_store_i16 = StoreOp!(16, Tag.INT32);
+alias gen_store_i32 = StoreOp!(32, Tag.INT32);
+alias gen_store_u64 = StoreOp!(64, Tag.INT64);
+alias gen_store_f64 = StoreOp!(64, Tag.FLOAT64);
+alias gen_store_refptr = StoreOp!(64, Tag.REFPTR);
+alias gen_store_rawptr = StoreOp!(64, Tag.RAWPTR);
+alias gen_store_funptr = StoreOp!(64, Tag.FUNPTR);
+alias gen_store_shapeptr = StoreOp!(64, Tag.SHAPEPTR);
 
-void IsTypeOp(Type type)(
+void TagTestOp(Tag tag)(
     BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
@@ -818,25 +844,25 @@ void IsTypeOp(Type type)(
     //as.printStr("    " ~ instr.block.fun.getName);
 
     // Get an operand for the value's type
-    auto typeOpnd = st.getTypeOpnd(as, instr, 0, X86Opnd.NONE, true);
+    auto tagOpnd = st.getTagOpnd(as, instr, 0, X86Opnd.NONE, true);
 
     auto testResult = TestResult.UNKNOWN;
 
     // If the type is available through basic block versioning
-    if (typeOpnd.isImm)
+    if (tagOpnd.isImm)
     {
         // Get the known type
-        auto knownType = cast(Type)typeOpnd.imm.imm;
+        auto knownTag = cast(Tag)tagOpnd.imm.imm;
 
         // Get the test result
-        testResult = (type is knownType)? TestResult.TRUE:TestResult.FALSE;
+        testResult = (tag is knownTag)? TestResult.TRUE:TestResult.FALSE;
     }
 
     // If the type analysis was run
-    if (opts.jit_typeprop)
+    if (opts.typeprop)
     {
         // Get the type analysis result for this value at this instruction
-        auto propResult = st.fun.typeInfo.argIsType(instr, 0, type);
+        auto propResult = st.fun.typeInfo.argIsType(instr, 0, tag);
 
         //writeln("result: ", propResult);
 
@@ -844,7 +870,7 @@ void IsTypeOp(Type type)(
         if (propResult != TestResult.UNKNOWN)
         {
             // Warn if the analysis knows more than BBV
-            if (testResult == TestResult.UNKNOWN && opts.jit_maxvers > 0)
+            if (testResult == TestResult.UNKNOWN && opts.maxvers > 0)
             {
                 writeln(
                     "analysis yields more info than BBV for:\n",
@@ -890,7 +916,7 @@ void IsTypeOp(Type type)(
             auto outOpnd = st.getOutOpnd(as, instr, 64);
             auto outVal = boolResult? TRUE:FALSE;
             as.mov(outOpnd, X86Opnd(outVal.word.int8Val));
-            st.setOutType(as, instr, Type.CONST);
+            st.setOutTag(as, instr, Tag.CONST);
         }
 
         // If our only use is an immediately following if_true
@@ -907,7 +933,7 @@ void IsTypeOp(Type type)(
                 null,
                 delegate void(
                     CodeBlock as,
-                    VM vm,
+                    BlockVersion block,
                     CodeFragment target0,
                     CodeFragment target1,
                     BranchShape shape
@@ -920,7 +946,7 @@ void IsTypeOp(Type type)(
 
                         case BranchShape.NEXT1:
                         case BranchShape.DEFAULT:
-                        jmp32Ref(as, vm, target0, 0);
+                        jmp32Ref(as, vm, block, target0, 0);
                     }
                 }
             );
@@ -930,10 +956,10 @@ void IsTypeOp(Type type)(
     }
 
     // Increment the stat counter for this specific kind of type test
-    as.incStatCnt(stats.getTypeTestCtr(instr.opcode.mnem), scrRegs[1]);
+    as.incStatCnt(stats.getTagTestCtr(instr.opcode.mnem), scrRegs[1]);
 
     // Compare against the tested type
-    as.cmp(typeOpnd, X86Opnd(type));
+    as.cmp(tagOpnd, X86Opnd(tag));
 
     // If this instruction has many uses or is not followed by an if_true
     if (instr.hasManyUses || ifUseNext(instr) is false)
@@ -951,8 +977,8 @@ void IsTypeOp(Type type)(
         if (outReg != outOpnd)
             as.mov(outOpnd, outReg.reg.opnd(64));
 
-        // Set the output type
-        st.setOutType(as, instr, Type.CONST);
+        // Set the output type tag
+        st.setOutTag(as, instr, Tag.CONST);
     }
 
     // If our only use is an immediately following if_true
@@ -961,13 +987,10 @@ void IsTypeOp(Type type)(
         // If the argument is not a constant, add type information
         // about the argument's type along the true branch
         CodeGenState trueSt = st;
-        if (opts.jit_maxvers > 0)
+        if (auto dstArg = cast(IRDstValue)instr.getArg(0))
         {
-            if (auto dstArg = cast(IRDstValue)instr.getArg(0))
-            {
-                trueSt = new CodeGenState(trueSt);
-                trueSt.setType(dstArg, type);
-            }
+            trueSt = new CodeGenState(trueSt);
+            trueSt.setTag(dstArg, tag);
         }
 
         // Get branch edges for the true and false branches
@@ -981,7 +1004,7 @@ void IsTypeOp(Type type)(
             branchF,
             delegate void(
                 CodeBlock as,
-                VM vm,
+                BlockVersion block,
                 CodeFragment target0,
                 CodeFragment target1,
                 BranchShape shape
@@ -990,32 +1013,33 @@ void IsTypeOp(Type type)(
                 final switch (shape)
                 {
                     case BranchShape.NEXT0:
-                    jne32Ref(as, vm, target1, 1);
+                    jne32Ref(as, vm, block, target1, 1);
                     break;
 
                     case BranchShape.NEXT1:
-                    je32Ref(as, vm, target0, 0);
+                    je32Ref(as, vm, block, target0, 0);
                     break;
 
                     case BranchShape.DEFAULT:
-                    jne32Ref(as, vm, target1, 1);
-                    jmp32Ref(as, vm, target0, 0);
+                    jne32Ref(as, vm, block, target1, 1);
+                    jmp32Ref(as, vm, block, target0, 0);
                 }
             }
         );
     }
 }
 
-alias IsTypeOp!(Type.CONST) gen_is_const;
-alias IsTypeOp!(Type.INT32) gen_is_i32;
-alias IsTypeOp!(Type.INT64) gen_is_i64;
-alias IsTypeOp!(Type.FLOAT64) gen_is_f64;
-alias IsTypeOp!(Type.RAWPTR) gen_is_rawptr;
-alias IsTypeOp!(Type.REFPTR) gen_is_refptr;
-alias IsTypeOp!(Type.OBJECT) gen_is_object;
-alias IsTypeOp!(Type.ARRAY) gen_is_array;
-alias IsTypeOp!(Type.CLOSURE) gen_is_closure;
-alias IsTypeOp!(Type.STRING) gen_is_string;
+alias gen_is_const = TagTestOp!(Tag.CONST);
+alias gen_is_int32 = TagTestOp!(Tag.INT32);
+alias gen_is_int64 = TagTestOp!(Tag.INT64);
+alias gen_is_float64 = TagTestOp!(Tag.FLOAT64);
+alias gen_is_rawptr = TagTestOp!(Tag.RAWPTR);
+alias gen_is_refptr = TagTestOp!(Tag.REFPTR);
+alias gen_is_object = TagTestOp!(Tag.OBJECT);
+alias gen_is_array = TagTestOp!(Tag.ARRAY);
+alias gen_is_closure = TagTestOp!(Tag.CLOSURE);
+alias gen_is_string = TagTestOp!(Tag.STRING);
+alias gen_is_rope = TagTestOp!(Tag.ROPE);
 
 void CmpOp(string op, size_t numBits)(
     BlockVersion ver,
@@ -1024,76 +1048,6 @@ void CmpOp(string op, size_t numBits)(
     CodeBlock as
 )
 {
-
-
-
-    // FIXME: Temporary hack to eliminate comparison against null when
-    // shape is known. To be eliminated once we have constant prop in BBV.
-    static if (op == "ne")
-    {
-        if (instr.getArg(1) is IRConst.nullPtrCst)
-        {
-            auto val = cast(IRDstValue)instr.getArg(0);
-            auto valSt = st.getState(val);
-
-            if (valSt.type.typeKnown &&
-                valSt.type.typeTag is Type.SHAPEPTR &&
-                valSt.type.shapeKnown)
-            {
-                // Evaluate the boolean condition
-                auto boolResult = st.getShape(val) !is null;
-
-                // If this instruction has many uses or is not followed by an if
-                if (instr.hasManyUses || ifUseNext(instr) is false)
-                {
-                    auto outOpnd = st.getOutOpnd(as, instr, 64);
-                    auto outVal = boolResult? TRUE:FALSE;
-                    as.mov(outOpnd, X86Opnd(outVal.word.int8Val));
-                    st.setOutType(as, instr, Type.CONST);
-                }
-
-                // If our only use is an immediately following if_true
-                if (ifUseNext(instr) is true)
-                {
-                    // Get the branch edge
-                    auto targetIdx = boolResult? 0:1;
-                    auto branch = getBranchEdge(instr.next.getTarget(targetIdx), st, true);
-
-                    // Generate the branch code
-                    ver.genBranch(
-                        as,
-                        branch,
-                        null,
-                        delegate void(
-                            CodeBlock as,
-                            VM vm,
-                            CodeFragment target0,
-                            CodeFragment target1,
-                            BranchShape shape
-                        )
-                        {
-                            final switch (shape)
-                            {
-                                case BranchShape.NEXT0:
-                                break;
-
-                                case BranchShape.NEXT1:
-                                case BranchShape.DEFAULT:
-                                jmp32Ref(as, vm, target0, 0);
-                            }
-                        }
-                    );
-                }
-
-                return;
-            }
-        }
-    }
-
-
-
-
-
     // Check if this is a floating-point comparison
     static bool isFP = op.startsWith("f");
 
@@ -1290,15 +1244,30 @@ void CmpOp(string op, size_t numBits)(
         if (outReg != outOpnd)
             as.mov(outOpnd, outReg.reg.opnd(64));
 
-        // Set the output type
-        st.setOutType(as, instr, Type.CONST);
+        // Set the output type tag
+        st.setOutTag(as, instr, Tag.CONST);
     }
 
     // If there is an immediately following if_true using this value
     if (ifUseNext(instr) is true)
     {
+        // If this is a less-than comparison and the argument
+        // is not a constant, mark the argument as being
+        // submaximal along the true branch
+        CodeGenState trueSt = st;
+        static if (op == "lt")
+        {
+            if (auto dstArg = cast(IRDstValue)instr.getArg(0))
+            {
+                trueSt = new CodeGenState(trueSt);
+                ValType argType = trueSt.getType(dstArg);
+                argType.subMax = true;
+                trueSt.setType(dstArg, argType);
+            }
+        }
+
         // Get branch edges for the true and false branches
-        auto branchT = getBranchEdge(instr.next.getTarget(0), st, false);
+        auto branchT = getBranchEdge(instr.next.getTarget(0), trueSt, false);
         auto branchF = getBranchEdge(instr.next.getTarget(1), st, false);
 
         // Generate the branch code
@@ -1308,7 +1277,7 @@ void CmpOp(string op, size_t numBits)(
             branchF,
             delegate void(
                 CodeBlock as,
-                VM vm,
+                BlockVersion block,
                 CodeFragment target0,
                 CodeFragment target1,
                 BranchShape shape
@@ -1320,16 +1289,16 @@ void CmpOp(string op, size_t numBits)(
                     final switch (shape)
                     {
                         case BranchShape.NEXT0:
-                        jne32Ref(as, vm, target1, 1);
+                        jne32Ref(as, vm, block, target1, 1);
                         break;
 
                         case BranchShape.NEXT1:
-                        je32Ref(as, vm, target0, 0);
+                        je32Ref(as, vm, block, target0, 0);
                         break;
 
                         case BranchShape.DEFAULT:
-                        je32Ref(as, vm, target0, 0);
-                        jmp32Ref(as, vm, target1, 1);
+                        je32Ref(as, vm, block, target0, 0);
+                        jmp32Ref(as, vm, block, target1, 1);
                     }
                 }
                 else if (op == "ne")
@@ -1337,16 +1306,16 @@ void CmpOp(string op, size_t numBits)(
                     final switch (shape)
                     {
                         case BranchShape.NEXT0:
-                        je32Ref(as, vm, target1, 1);
+                        je32Ref(as, vm, block, target1, 1);
                         break;
 
                         case BranchShape.NEXT1:
-                        jne32Ref(as, vm, target0, 0);
+                        jne32Ref(as, vm, block, target0, 0);
                         break;
 
                         case BranchShape.DEFAULT:
-                        jne32Ref(as, vm, target0, 0);
-                        jmp32Ref(as, vm, target1, 1);
+                        jne32Ref(as, vm, block, target0, 0);
+                        jmp32Ref(as, vm, block, target1, 1);
                     }
                 }
                 else if (op == "lt")
@@ -1354,16 +1323,16 @@ void CmpOp(string op, size_t numBits)(
                     final switch (shape)
                     {
                         case BranchShape.NEXT0:
-                        jge32Ref(as, vm, target1, 1);
+                        jge32Ref(as, vm, block, target1, 1);
                         break;
 
                         case BranchShape.NEXT1:
-                        jl32Ref(as, vm, target0, 0);
+                        jl32Ref(as, vm, block, target0, 0);
                         break;
 
                         case BranchShape.DEFAULT:
-                        jl32Ref(as, vm, target0, 0);
-                        jmp32Ref(as, vm, target1, 1);
+                        jl32Ref(as, vm, block, target0, 0);
+                        jmp32Ref(as, vm, block, target1, 1);
                     }
                 }
                 else if (op == "le")
@@ -1371,16 +1340,16 @@ void CmpOp(string op, size_t numBits)(
                     final switch (shape)
                     {
                         case BranchShape.NEXT0:
-                        jg32Ref(as, vm, target1, 1);
+                        jg32Ref(as, vm, block, target1, 1);
                         break;
 
                         case BranchShape.NEXT1:
-                        jle32Ref(as, vm, target0, 0);
+                        jle32Ref(as, vm, block, target0, 0);
                         break;
 
                         case BranchShape.DEFAULT:
-                        jle32Ref(as, vm, target0, 0);
-                        jmp32Ref(as, vm, target1, 1);
+                        jle32Ref(as, vm, block, target0, 0);
+                        jmp32Ref(as, vm, block, target1, 1);
                     }
                 }
                 else if (op == "gt")
@@ -1388,16 +1357,16 @@ void CmpOp(string op, size_t numBits)(
                     final switch (shape)
                     {
                         case BranchShape.NEXT0:
-                        jle32Ref(as, vm, target1, 1);
+                        jle32Ref(as, vm, block, target1, 1);
                         break;
 
                         case BranchShape.NEXT1:
-                        jg32Ref(as, vm, target0, 0);
+                        jg32Ref(as, vm, block, target0, 0);
                         break;
 
                         case BranchShape.DEFAULT:
-                        jg32Ref(as, vm, target0, 0);
-                        jmp32Ref(as, vm, target1, 1);
+                        jg32Ref(as, vm, block, target0, 0);
+                        jmp32Ref(as, vm, block, target1, 1);
                     }
                 }
                 else if (op == "ge")
@@ -1405,16 +1374,16 @@ void CmpOp(string op, size_t numBits)(
                     final switch (shape)
                     {
                         case BranchShape.NEXT0:
-                        jl32Ref(as, vm, target1, 1);
+                        jl32Ref(as, vm, block, target1, 1);
                         break;
 
                         case BranchShape.NEXT1:
-                        jge32Ref(as, vm, target0, 0);
+                        jge32Ref(as, vm, block, target0, 0);
                         break;
 
                         case BranchShape.DEFAULT:
-                        jge32Ref(as, vm, target0, 0);
-                        jmp32Ref(as, vm, target1, 1);
+                        jge32Ref(as, vm, block, target0, 0);
+                        jmp32Ref(as, vm, block, target1, 1);
                     }
                 }
 
@@ -1425,9 +1394,9 @@ void CmpOp(string op, size_t numBits)(
                     // True: 100
                     // False: 111 or 000 or 001
                     // False: JNE + JP
-                    jne32Ref(as, vm, target1, 1);
-                    jp32Ref(as, vm, target1, 1);
-                    jmp32Ref(as, vm, target0, 0);
+                    jne32Ref(as, vm, block, target1, 1);
+                    jp32Ref(as, vm, block, target1, 1);
+                    jmp32Ref(as, vm, block, target0, 0);
                 }
                 else if (op == "fne")
                 {
@@ -1435,56 +1404,56 @@ void CmpOp(string op, size_t numBits)(
                     // True: 111 or 000 or 001
                     // False: 100
                     // True: JNE + JP
-                    jne32Ref(as, vm, target0, 0);
-                    jp32Ref(as, vm, target0, 0);
-                    jmp32Ref(as, vm, target1, 1);
+                    jne32Ref(as, vm, block, target0, 0);
+                    jp32Ref(as, vm, block, target0, 0);
+                    jmp32Ref(as, vm, block, target1, 1);
                 }
                 else if (op == "flt")
                 {
-                    ja32Ref(as, vm, target0, 0);
-                    jmp32Ref(as, vm, target1, 1);
+                    ja32Ref(as, vm, block, target0, 0);
+                    jmp32Ref(as, vm, block, target1, 1);
                 }
                 else if (op == "fle")
                 {
-                    jae32Ref(as, vm, target0, 0);
-                    jmp32Ref(as, vm, target1, 1);
+                    jae32Ref(as, vm, block, target0, 0);
+                    jmp32Ref(as, vm, block, target1, 1);
                 }
                 else if (op == "fgt")
                 {
-                    ja32Ref(as, vm, target0, 0);
-                    jmp32Ref(as, vm, target1, 1);
+                    ja32Ref(as, vm, block, target0, 0);
+                    jmp32Ref(as, vm, block, target1, 1);
                 }
                 else if (op == "fge")
                 {
-                    jae32Ref(as, vm, target0, 0);
-                    jmp32Ref(as, vm, target1, 1);
+                    jae32Ref(as, vm, block, target0, 0);
+                    jmp32Ref(as, vm, block, target1, 1);
                 }
             }
         );
     }
 }
 
-alias CmpOp!("eq", 8) gen_eq_i8;
-alias CmpOp!("eq", 32) gen_eq_i32;
-alias CmpOp!("ne", 32) gen_ne_i32;
-alias CmpOp!("lt", 32) gen_lt_i32;
-alias CmpOp!("le", 32) gen_le_i32;
-alias CmpOp!("gt", 32) gen_gt_i32;
-alias CmpOp!("ge", 32) gen_ge_i32;
-alias CmpOp!("eq", 64) gen_eq_i64;
+alias gen_eq_i8 = CmpOp!("eq", 8);
+alias gen_eq_i32 = CmpOp!("eq", 32);
+alias gen_ne_i32 = CmpOp!("ne", 32);
+alias gen_lt_i32 = CmpOp!("lt", 32);
+alias gen_le_i32 = CmpOp!("le", 32);
+alias gen_gt_i32 = CmpOp!("gt", 32);
+alias gen_ge_i32 = CmpOp!("ge", 32);
+alias gen_eq_i64 = CmpOp!("eq", 64);
 
-alias CmpOp!("eq", 8) gen_eq_const;
-alias CmpOp!("ne", 8) gen_ne_const;
-alias CmpOp!("eq", 64) gen_eq_refptr;
-alias CmpOp!("ne", 64) gen_ne_refptr;
-alias CmpOp!("eq", 64) gen_eq_rawptr;
-alias CmpOp!("ne", 64) gen_ne_rawptr;
-alias CmpOp!("feq", 64) gen_eq_f64;
-alias CmpOp!("fne", 64) gen_ne_f64;
-alias CmpOp!("flt", 64) gen_lt_f64;
-alias CmpOp!("fle", 64) gen_le_f64;
-alias CmpOp!("fgt", 64) gen_gt_f64;
-alias CmpOp!("fge", 64) gen_ge_f64;
+alias gen_eq_const = CmpOp!("eq", 8);
+alias gen_ne_const = CmpOp!("ne", 8);
+alias gen_eq_refptr = CmpOp!("eq", 64);
+alias gen_ne_refptr = CmpOp!("ne", 64);
+alias gen_eq_rawptr = CmpOp!("eq", 64);
+alias gen_ne_rawptr = CmpOp!("ne", 64);
+alias gen_eq_f64 = CmpOp!("feq", 64);
+alias gen_ne_f64 = CmpOp!("fne", 64);
+alias gen_lt_f64 = CmpOp!("flt", 64);
+alias gen_le_f64 = CmpOp!("fle", 64);
+alias gen_gt_f64 = CmpOp!("fgt", 64);
+alias gen_ge_f64 = CmpOp!("fge", 64);
 
 void gen_if_true(
     BlockVersion ver,
@@ -1512,7 +1481,7 @@ void gen_if_true(
         branchF,
         delegate void(
             CodeBlock as,
-            VM vm,
+            BlockVersion block,
             CodeFragment target0,
             CodeFragment target1,
             BranchShape shape
@@ -1521,22 +1490,22 @@ void gen_if_true(
             final switch (shape)
             {
                 case BranchShape.NEXT0:
-                jne32Ref(as, vm, target1, 1);
+                jne32Ref(as, vm, block, target1, 1);
                 break;
 
                 case BranchShape.NEXT1:
-                je32Ref(as, vm, target0, 0);
+                je32Ref(as, vm, block, target0, 0);
                 break;
 
                 case BranchShape.DEFAULT:
-                je32Ref(as, vm, target0, 0);
-                jmp32Ref(as, vm, target1, 1);
+                je32Ref(as, vm, block, target0, 0);
+                jmp32Ref(as, vm, block, target1, 1);
             }
         }
     );
 }
 
-void gen_jump(
+void JumpOp(size_t succIdx)(
     BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
@@ -1544,7 +1513,7 @@ void gen_jump(
 )
 {
     auto branch = getBranchEdge(
-        instr.getTarget(0),
+        instr.getTarget(succIdx),
         st,
         true
     );
@@ -1556,7 +1525,7 @@ void gen_jump(
         null,
         delegate void(
             CodeBlock as,
-            VM vm,
+            BlockVersion block,
             CodeFragment target0,
             CodeFragment target1,
             BranchShape shape
@@ -1571,11 +1540,14 @@ void gen_jump(
                 assert (false);
 
                 case BranchShape.DEFAULT:
-                jmp32Ref(as, vm, target0, 0);
+                jmp32Ref(as, vm, block, target0, 0);
             }
         }
     );
 }
+
+alias gen_jump = JumpOp!(0);
+alias gen_jump_false = JumpOp!(1);
 
 /**
 Throw an exception and unwind the stack when one calls a non-function.
@@ -1612,8 +1584,6 @@ void genCallBranch(
     bool mayThrow
 )
 {
-    auto vm = st.fun.vm;
-
     // Map the return value to its stack location
     st.mapToStack(instr);
 
@@ -1625,10 +1595,10 @@ void genCallBranch(
         instr.getTarget(0),
         st,
         false,
-        delegate void(CodeBlock as, VM vm)
+        delegate void(CodeBlock as)
         {
             // If eager compilation is enabled
-            if (opts.jit_eager)
+            if (opts.bbv_eager)
             {
                 // Set the return address entry when compiling the
                 // continuation block
@@ -1643,7 +1613,7 @@ void genCallBranch(
             if (instr.hasUses)
             {
                 as.setWord(instr.outSlot, retWordReg.opnd(64));
-                as.setType(instr.outSlot, retTypeReg.opnd(8));
+                as.setTag(instr.outSlot, retTagReg.opnd(8));
             }
         }
     );
@@ -1655,16 +1625,16 @@ void genCallBranch(
             instr.getTarget(1),
             st,
             false,
-            delegate void(CodeBlock as, VM vm)
+            delegate void(CodeBlock as)
             {
                 // Pop the exception value off the stack and
                 // move it into the instruction's output slot
-                as.add(tspReg, Type.sizeof);
+                as.add(tspReg, Tag.sizeof);
                 as.add(wspReg, Word.sizeof);
                 as.getWord(scrRegs[0], -1);
                 as.setWord(instr.outSlot, scrRegs[0].opnd(64));
-                as.getType(scrRegs[0].reg(8), -1);
-                as.setType(instr.outSlot, scrRegs[0].opnd(8));
+                as.getTag(scrRegs[0].reg(8), -1);
+                as.setTag(instr.outSlot, scrRegs[0].opnd(8));
             }
         );
     }
@@ -1695,7 +1665,7 @@ void genCallBranch(
     }
 
     // If eager compilation is enabled
-    if (opts.jit_eager)
+    if (opts.bbv_eager)
     {
         // Generate the call branch code
         ver.genBranch(
@@ -1730,8 +1700,6 @@ void gen_call_prim(
     CodeBlock as
 )
 {
-    auto vm = st.fun.vm;
-
     // Function name string (D string)
     auto strArg = cast(IRString)instr.getArg(0);
     assert (strArg !is null);
@@ -1741,9 +1709,9 @@ void gen_call_prim(
     as.incStatCnt(stats.getPrimCallCtr(to!string(nameStr)), scrRegs[0]);
 
     // Get the primitve function from the global object
-    auto closVal = getProp(vm, vm.globalObj, nameStr);
+    auto closVal = getProp(vm.globalObj, nameStr);
     assert (
-        closVal.type is Type.CLOSURE,
+        closVal.tag is Tag.CLOSURE,
         "failed to resolve closure in call_prim"
     );
     assert (closVal.word.ptrVal !is null);
@@ -1755,7 +1723,7 @@ void gen_call_prim(
     auto numArgs = cast(int32_t)instr.numArgs - 1;
     assert (
         numArgs is fun.numParams,
-        "incorrect argument count for primitive call"
+        "incorrect argument count for call to primitive " ~ fun.getName
     );
 
     // Check that the hidden arguments are not used
@@ -1792,14 +1760,14 @@ void gen_call_prim(
         as.setWord(dstIdx, argOpnd);
 
         // Copy the argument type
-        auto typeOpnd = st.getTypeOpnd(
+        auto tagOpnd = st.getTagOpnd(
             as,
             instr,
             instrArgIdx,
             scrRegs[1].opnd(8),
             true
         );
-        as.setType(dstIdx, typeOpnd);
+        as.setTag(dstIdx, tagOpnd);
     }
 
     // Write the argument count
@@ -1814,25 +1782,11 @@ void gen_call_prim(
         }
     );
 
+    // TODO
     // TODO: analysis to detect possible shape changes
-    // If the callee might change some object shapes
-    auto funName = fun.getName;
-    if (
-        !funName.startsWith("$rt_se") &&
-        !funName.startsWith("$rt_ns") &&
-        !funName.startsWith("$rt_toBool") &&
-        !funName.startsWith("$rt_newObj") &&
-        !funName.startsWith("$rt_newArr") &&
-        !funName.startsWith("$rt_getProp") &&
-        !funName.startsWith("$rt_objGetProp") &&
-        !funName.startsWith("$rt_hasOwnProp") &&
-        !funName.startsWith("$rt_setArrLen"))
-    {
-        //writeln(funName, " <= ", st.fun.getName);
-
-        // Clear the known shape information
-        st.clearShapes();
-    }
+    // TODO
+    // Clear the known shape information
+    st.clearShapes();
 
     // Push space for the callee arguments and locals
     as.sub(X86Opnd(tspReg), X86Opnd(fun.numLocals));
@@ -1850,7 +1804,7 @@ void gen_call_prim(
         as,
         delegate void(
             CodeBlock as,
-            VM vm,
+            BlockVersion block,
             CodeFragment target0,
             CodeFragment target1,
             BranchShape shape
@@ -1861,11 +1815,11 @@ void gen_call_prim(
             assert (raSlot !is NULL_STACK);
 
             // Write the return address on the stack
-            as.movAbsRef(vm, scrRegs[0], target0, 0);
+            as.movAbsRef(vm, scrRegs[0], block, target0, 0);
             as.setWord(raSlot, scrRegs[0].opnd(64));
 
             // Jump to the function entry block
-            jmp32Ref(as, vm, entryVer, 0);
+            jmp32Ref(as, vm, block, entryVer, 0);
         },
         false
     );
@@ -1878,29 +1832,205 @@ void gen_call(
     CodeBlock as
 )
 {
-    as.incStatCnt(&stats.numCall, scrRegs[0]);
-
-    // Free an extra register to use as scratch
-    auto scrReg3 = st.freeReg(as, instr);
-
     //
     // Function pointer extraction
     //
 
-    // Get the type tag for the closure value
-    auto closType = st.getTypeOpnd(
-        as,
-        instr,
-        0,
-        scrRegs[0].opnd(8),
-        false
-    );
+    // Get the type information for the closure value
+    auto closType = st.getType(instr.getArg(0));
 
-    // If the value is not a closure, bailout
-    as.cmp(closType, X86Opnd(Type.CLOSURE));
-    as.jne(Label.THROW);
+    // This may throw an exception if the callee is not a closure
+    auto mayThrow = !closType.tagKnown || closType.tag !is Tag.CLOSURE;
 
-    // Get the word for the closure value
+    // Get the number of arguments supplied
+    auto numArgs = cast(uint32_t)instr.numArgs - 2;
+
+    // If the callee function is known
+    if (closType.fptrKnown)
+    {
+        as.incStatCnt(&stats.numCallFast, scrRegs[0]);
+
+        // Get the function pointer
+        IRFunction fun = closType.fptr;
+
+        // If the function is not yet compiled, compile it now
+        if (fun.entryBlock is null)
+        {
+            try
+            {
+                astToIR(vm, fun.ast, fun);
+            }
+
+            catch (Error err)
+            {
+                assert (
+                    false,
+                    "failed to generate IR for: \"" ~ fun.getName ~ "\"\n" ~
+                    err.toString
+                );
+            }
+        }
+
+        // Compute the number of missing arguments
+        auto numMissing = (fun.numParams > numArgs)? (fun.numParams - numArgs):0;
+
+        // Compute the actual number of extra arguments
+        auto numExtra = (numArgs > fun.numParams)? (numArgs - fun.numParams):0;
+
+        // Compute the number of arguments we actually need to pass
+        auto numPassed = numArgs + numMissing;
+
+        // Compute the number of locals in this frame
+        auto frameSize = fun.numLocals + numExtra;
+
+        // Copy the function arguments supplied
+        for (int32_t i = 0; i < numArgs; ++i)
+        {
+            auto instrArgIdx = 2 + i;
+            auto dstIdx = -(numPassed - i);
+
+            // Copy the argument word
+            auto argOpnd = st.getWordOpnd(
+                as,
+                instr,
+                instrArgIdx,
+                64,
+                scrRegs[1].opnd(64),
+                true,
+                false
+            );
+            as.setWord(dstIdx, argOpnd);
+
+            // Copy the argument type
+            auto tagOpnd = st.getTagOpnd(
+                as,
+                instr,
+                instrArgIdx,
+                scrRegs[1].opnd(8),
+                true
+            );
+            as.setTag(dstIdx, tagOpnd);
+        }
+
+        // Write undefined values for the missing arguments
+        for (int32_t i = 0; i < numMissing; ++i)
+        {
+            auto dstIdx = -(i + 1);
+
+            as.setWord(dstIdx, UNDEF.word.int8Val);
+            as.setTag(dstIdx, UNDEF.tag);
+        }
+
+        // Write the argument count
+        as.setWord(-numPassed - 1, numArgs);
+
+        // Write the "this" argument
+        if (fun.thisVal.hasUses)
+        {
+            auto thisReg = st.getWordOpnd(
+                as,
+                instr,
+                1,
+                64,
+                scrRegs[1].opnd(64),
+                true,
+                false
+            );
+            as.setWord(-numPassed - 2, thisReg);
+            auto tagOpnd = st.getTagOpnd(
+                as,
+                instr,
+                1,
+                scrRegs[1].opnd(8),
+                true
+            );
+            as.setTag(-numPassed - 2, tagOpnd);
+        }
+
+        // Write the closure argument
+        if (fun.closVal.hasUses)
+        {
+            auto closReg = st.getWordOpnd(
+                as,
+                instr,
+                0,
+                64,
+                scrRegs[0].opnd(64),
+                false,
+                false
+            );
+            as.setWord(-numPassed - 3, closReg);
+        }
+
+        // Spill the values that are live after the call
+        st.spillLiveBefore(as, instr);
+
+        // Clear the known shape information
+        st.clearShapes();
+
+        // Push space for the callee arguments and locals
+        as.sub(X86Opnd(tspReg), X86Opnd(frameSize));
+        as.sub(X86Opnd(wspReg), X86Opnd(8 * frameSize));
+
+        // Request an instance for the function entry block
+        auto entryVer = getBlockVersion(
+            fun.entryBlock,
+            new CodeGenState(fun)
+        );
+
+        ver.genCallBranch(
+            st,
+            instr,
+            as,
+            delegate void(
+                CodeBlock as,
+                BlockVersion block,
+                CodeFragment target0,
+                CodeFragment target1,
+                BranchShape shape
+            )
+            {
+                // Get the return address slot of the callee
+                auto raSlot = entryVer.block.fun.raVal.outSlot;
+                assert (raSlot !is NULL_STACK);
+
+                // Write the return address on the stack
+                as.movAbsRef(vm, scrRegs[0], block, target0, 0);
+                as.setWord(raSlot, scrRegs[0].opnd(64));
+
+                // Jump to the function entry block
+                jmp32Ref(as, vm, block, entryVer, 0);
+            },
+            false
+        );
+
+        return;
+    }
+
+    as.incStatCnt(&stats.numCallSlow, scrRegs[0]);
+
+    // If an exception may be thrown
+    if (mayThrow)
+    {
+        // Get the type tag for the closure value
+        auto closTag = st.getTagOpnd(
+            as,
+            instr,
+            0,
+            scrRegs[1].opnd(8),
+            false
+        );
+
+        // If the value is not a closure, bailout
+        as.incStatCnt(stats.getTagTestCtr("is_closure"), scrRegs[2]);
+        as.cmp(closTag, X86Opnd(Tag.CLOSURE));
+        as.jne(Label.THROW);
+    }
+
+    // Free an extra register to use as scratch
+    auto scrReg3 = st.freeReg(as, instr);
+
+    // Get the closure pointer in a register
     auto closReg = st.getWordOpnd(
         as,
         instr,
@@ -1916,12 +2046,6 @@ void gen_call(
     auto fptrMem = X86Opnd(64, closReg.reg, FPTR_SLOT_OFS);
     as.mov(scrRegs[1].opnd(64), fptrMem);
 
-    //
-    // Function call logic
-    //
-
-    auto numArgs = cast(uint32_t)instr.numArgs - 2;
-
     // Compute -missingArgs = numArgs - numParams
     // This is the negation of the number of missing arguments
     // We use this as an offset when writing arguments to the stack
@@ -1934,17 +2058,13 @@ void gen_call(
     as.label(Label.FALSE);
     as.movsx(scrRegs[2].opnd(64), scrRegs[2].opnd(32));
 
-    //as.printStr("missing args");
-    //as.printInt(scrRegs[2].opnd(64));
-    //as.printInt(scrRegs[2].opnd(32));
-
     // Initialize the missing arguments, if any
     as.mov(scrReg3.opnd(64), scrRegs[2].opnd(64));
     as.label(Label.LOOP);
     as.cmp(scrReg3.opnd(64), X86Opnd(0));
     as.jge(Label.LOOP_EXIT);
     as.mov(X86Opnd(64, wspReg, 0, 8, scrReg3), X86Opnd(UNDEF.word.int8Val));
-    as.mov(X86Opnd(8, tspReg, 0, 1, scrReg3), X86Opnd(Type.CONST));
+    as.mov(X86Opnd(8, tspReg, 0, 1, scrReg3), X86Opnd(Tag.CONST));
     as.add(scrReg3.opnd(64), X86Opnd(1));
     as.jmp(Label.LOOP);
     as.label(Label.LOOP_EXIT);
@@ -1954,7 +2074,7 @@ void gen_call(
         as.mov(X86Opnd(64, wspReg, -8 * cast(int32_t)(argIdx+1), 8, scrRegs[2]), val);
     }
 
-    static void movArgType(CodeBlock as, size_t argIdx, X86Opnd val)
+    static void movArgTag(CodeBlock as, size_t argIdx, X86Opnd val)
     {
         as.mov(X86Opnd(8, tspReg, -1 * cast(int32_t)(argIdx+1), 1, scrRegs[2]), val);
     }
@@ -1977,14 +2097,14 @@ void gen_call(
         movArgWord(as, i, argOpnd);
 
         // Copy the argument type
-        auto typeOpnd = st.getTypeOpnd(
+        auto tagOpnd = st.getTagOpnd(
             as,
             instr,
             instrArgIdx,
             scrReg3.opnd(8),
             true
         );
-        movArgType(as, i, typeOpnd);
+        movArgTag(as, i, tagOpnd);
     }
 
     // Write the argument count
@@ -2001,14 +2121,14 @@ void gen_call(
         false
     );
     movArgWord(as, numArgs + 1, thisReg);
-    auto typeOpnd = st.getTypeOpnd(
+    auto tagOpnd = st.getTagOpnd(
         as,
         instr,
         1,
         scrReg3.opnd(8),
         true
     );
-    movArgType(as, numArgs + 1, typeOpnd);
+    movArgTag(as, numArgs + 1, tagOpnd);
 
     // Write the closure argument
     movArgWord(as, numArgs + 2, closReg);
@@ -2048,14 +2168,14 @@ void gen_call(
         as,
         delegate void(
             CodeBlock as,
-            VM vm,
+            BlockVersion block,
             CodeFragment target0,
             CodeFragment target1,
             BranchShape shape
         )
         {
             // Write the return address on the stack
-            as.movAbsRef(vm, scrReg3, target0, 0);
+            as.movAbsRef(vm, scrReg3, block, target0, 0);
             movArgWord(as, numArgs + 3, scrReg3.opnd);
 
             // Adjust the stack pointers
@@ -2071,7 +2191,7 @@ void gen_call(
             as.getMember!("IRFunction.entryCode")(scrRegs[0], scrRegs[1]);
             as.jmp(scrRegs[0].opnd(64));
         },
-        true
+        mayThrow
     );
 }
 
@@ -2088,6 +2208,9 @@ void gen_call_apply(
         CodePtr retAddr
     )
     {
+        // Increment the number of calls performed using apply
+        stats.numCallApply++;
+
         vm.setCurInstr(instr);
 
         auto closVal = vm.getArgVal(instr, 0);
@@ -2096,12 +2219,12 @@ void gen_call_apply(
         auto argcVal = vm.getArgUint32(instr, 3);
 
         assert (
-            tblVal.type !is Type.ARRAY,
+            tblVal.tag !is Tag.ARRAY,
             "invalid argument table"
         );
 
         assert (
-            closVal.type is Type.CLOSURE,
+            closVal.tag is Tag.CLOSURE,
             "apply call on to non-function"
         );
 
@@ -2118,7 +2241,7 @@ void gen_call_apply(
         for (uint32_t i = 0; i < argcVal; ++i)
         {
             argVals[i].word.uint64Val = arrtbl_get_word(tblPtr, i);
-            argVals[i].type = cast(Type)arrtbl_get_type(tblPtr, i);
+            argVals[i].tag = cast(Tag)arrtbl_get_tag(tblPtr, i);
         }
 
         // Prepare the callee stack frame
@@ -2157,7 +2280,7 @@ void gen_call_apply(
         as,
         delegate void(
             CodeBlock as,
-            VM vm,
+            BlockVersion block,
             CodeFragment target0,
             CodeFragment target1,
             BranchShape shape
@@ -2170,7 +2293,7 @@ void gen_call_apply(
             as.ptr(cargRegs[1], instr);
 
             // Pass the return address as third argument
-            as.movAbsRef(vm, cargRegs[2], target0, 0);
+            as.movAbsRef(vm, cargRegs[2], block, target0, 0);
 
             // Call the host function
             as.ptr(scrRegs[0], &op_call_apply);
@@ -2222,7 +2345,7 @@ void gen_load_file(
 
             // Create a GC root for the function to prevent it from
             // being collected if the GC runs during its own compilation
-            auto funPtr = GCRoot(vm, Word.funv(fun), Type.FUNPTR);
+            auto funPtr = GCRoot(Word.funv(fun), Tag.FUNPTR);
 
             // Create a version instance object for the unit function entry
             auto entryInst = getBlockVersion(
@@ -2288,7 +2411,7 @@ void gen_load_file(
         as,
         delegate void(
             CodeBlock as,
-            VM vm,
+            BlockVersion block,
             CodeFragment target0,
             CodeFragment target1,
             BranchShape shape
@@ -2354,7 +2477,7 @@ void gen_eval_str(
 
             // Create a GC root for the function to prevent it from
             // being collected if the GC runs during its own compilation
-            auto funPtr = GCRoot(vm, Word.funv(fun), Type.FUNPTR);
+            auto funPtr = GCRoot(Word.funv(fun), Tag.FUNPTR);
 
             // Create a version instance object for the unit function entry
             auto entryInst = getBlockVersion(
@@ -2409,7 +2532,7 @@ void gen_eval_str(
         as,
         delegate void(
             CodeBlock as,
-            VM vm,
+            BlockVersion block,
             CodeFragment target0,
             CodeFragment target1,
             BranchShape shape
@@ -2438,6 +2561,56 @@ void gen_eval_str(
     );
 }
 
+/*
+size_t[Tag] retCounts;
+size_t undefCount;
+size_t boolCount;
+
+extern (C) void countRet(Word word, Tag tag, IRInstr instr)
+{
+    if (word == UNDEF.word && tag == UNDEF.tag)
+        undefCount++;
+
+    if ((word == TRUE.word && tag == TRUE.tag) || (word == FALSE.word && tag == FALSE.tag))
+    {
+        //writeln(instr.block.fun.getName);
+        boolCount++;
+    }
+
+
+    if (tag == Tag.CLOSURE)
+        writeln(instr.block.fun.getName);
+
+
+    retCounts[tag]++;
+}
+
+static ~this()
+{
+    alias Tuple!(Tag, "tag", ulong, "cnt") Cnt;
+    Cnt[] cnts;
+    foreach (tag, count; retCounts)
+        cnts ~= Cnt(tag, count);
+    cnts.sort!"a.cnt > b.cnt";
+
+    foreach (pair; cnts)
+    {
+        writeln(pair.tag, ": ", pair.cnt);
+    }
+
+    writeln("undef: ", undefCount);
+    writeln("bool: ", boolCount);
+}
+
+as.pushRegs();
+as.mov(cargRegs[0].opnd(64), retOpnd);
+as.mov(cargRegs[1].opnd(8), tagOpnd);
+as.ptr(cargRegs[2], instr);
+as.ptr(cargRegs[3], &countRet);
+as.call(cargRegs[3]);
+as.popRegs();
+*/
+
 void gen_ret(
     BlockVersion ver,
     CodeGenState st,
@@ -2458,28 +2631,27 @@ void gen_ret(
         instr,
         0,
         64,
-        //scrRegs[0].opnd(64),
         retWordReg.opnd(64),
         true,
         false
     );
 
     // Get the return value type operand
-    auto typeOpnd = st.getTypeOpnd(
+    auto tagOpnd = st.getTagOpnd(
         as,
         instr,
         0,
-        (retOpnd != retTypeReg.opnd(64))? retTypeReg.opnd(8):scrRegs[1].opnd(8),
+        (retOpnd != retTagReg.opnd(64))? retTagReg.opnd(8):scrRegs[1].opnd(8),
         true
     );
 
     //as.printStr("ret from " ~ fun.getName);
 
-    // Move the return word and type to the return registers
+    // Move the return word and tag to the return registers
     if (retWordReg.opnd != retOpnd)
         as.mov(retWordReg.opnd, retOpnd);
-    if (retTypeReg.opnd(8) != typeOpnd)
-        as.mov(retTypeReg.opnd(8), typeOpnd);
+    if (retTagReg.opnd(8) != tagOpnd)
+        as.mov(retTagReg.opnd(8), tagOpnd);
 
     // If this is a runtime primitive function
     if (fun.isPrim)
@@ -2488,7 +2660,7 @@ void gen_ret(
         as.getWord(scrRegs[1], raSlot);
 
         // Pop all local stack slots
-        as.add(tspReg.opnd(64), X86Opnd(Type.sizeof * numLocals));
+        as.add(tspReg.opnd(64), X86Opnd(Tag.sizeof * numLocals));
         as.add(wspReg.opnd(64), X86Opnd(Word.sizeof * numLocals));
     }
     else
@@ -2524,7 +2696,7 @@ void gen_ret(
     as.jmp(scrRegs[1].opnd);
 
     // Mark the end of the fragment
-    ver.markEnd(as, st.fun.vm);
+    ver.markEnd(as);
 }
 
 void gen_throw(
@@ -2536,7 +2708,7 @@ void gen_throw(
 {
     // Get the string pointer
     auto excWordOpnd = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, true, false);
-    auto excTypeOpnd = st.getTypeOpnd(as, instr, 0, X86Opnd.NONE, true);
+    auto excTypeOpnd = st.getTagOpnd(as, instr, 0, X86Opnd.NONE, true);
 
     // Spill the values live before the instruction
     st.spillValues(
@@ -2564,10 +2736,10 @@ void gen_throw(
     as.jmp(cretReg.opnd);
 
     // Mark the end of the fragment
-    ver.markEnd(as, st.fun.vm);
+    ver.markEnd(as);
 }
 
-void GetValOp(Type typeTag, string fName)(
+void GetValOp(Tag tag, string fName)(
     BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
@@ -2577,19 +2749,20 @@ void GetValOp(Type typeTag, string fName)(
     auto fSize = 8 * mixin("VM." ~ fName ~ ".sizeof");
 
     auto outOpnd = st.getOutOpnd(as, instr, fSize);
+    assert (outOpnd.isReg);
 
-    as.getMember!("VM." ~ fName)(scrRegs[0].reg(fSize), vmReg);
-    as.mov(outOpnd, scrRegs[0].opnd(fSize));
+    as.getMember!("VM." ~ fName)(outOpnd.reg, vmReg);
 
-    st.setOutType(as, instr, typeTag);
+    st.setOutTag(as, instr, tag);
 }
 
-alias GetValOp!(Type.OBJECT, "objProto.word") gen_get_obj_proto;
-alias GetValOp!(Type.OBJECT, "arrProto.word") gen_get_arr_proto;
-alias GetValOp!(Type.OBJECT, "funProto.word") gen_get_fun_proto;
-alias GetValOp!(Type.OBJECT, "globalObj.word") gen_get_global_obj;
-alias GetValOp!(Type.INT32, "heapSize") gen_get_heap_size;
-alias GetValOp!(Type.INT32, "gcCount") gen_get_gc_count;
+alias gen_get_obj_proto = GetValOp!(Tag.OBJECT, "objProto.word");
+alias gen_get_arr_proto = GetValOp!(Tag.OBJECT, "arrProto.word");
+alias gen_get_fun_proto = GetValOp!(Tag.OBJECT, "funProto.word");
+alias gen_get_str_proto = GetValOp!(Tag.OBJECT, "strProto.word");
+alias gen_get_global_obj = GetValOp!(Tag.OBJECT, "globalObj.word");
+alias gen_get_heap_size = GetValOp!(Tag.INT32, "heapSize");
+alias gen_get_gc_count = GetValOp!(Tag.INT32, "gcCount");
 
 void gen_get_heap_free(
     BlockVersion ver,
@@ -2607,10 +2780,10 @@ void gen_get_heap_free(
 
     as.mov(outOpnd, scrRegs[1].opnd(32));
 
-    st.setOutType(as, instr, Type.INT32);
+    st.setOutTag(as, instr, Tag.INT32);
 }
 
-void HeapAllocOp(Type type)(
+void HeapAllocOp(Tag tag)(
     BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
@@ -2698,20 +2871,21 @@ void HeapAllocOp(Type type)(
     as.loadJITRegs();
 
     // Store the output value into the output operand
-    as.mov(outOpnd, X86Opnd(RAX));
+    as.mov(outOpnd, cretReg.opnd);
 
     // Allocation done
     as.label(Label.DONE);
 
     // Set the output type tag
-    st.setOutType(as, instr, type);
+    st.setOutTag(as, instr, tag);
 }
 
-alias HeapAllocOp!(Type.REFPTR) gen_alloc_refptr;
-alias HeapAllocOp!(Type.OBJECT) gen_alloc_object;
-alias HeapAllocOp!(Type.ARRAY) gen_alloc_array;
-alias HeapAllocOp!(Type.CLOSURE) gen_alloc_closure;
-alias HeapAllocOp!(Type.STRING) gen_alloc_string;
+alias gen_alloc_refptr = HeapAllocOp!(Tag.REFPTR);
+alias gen_alloc_object = HeapAllocOp!(Tag.OBJECT);
+alias gen_alloc_array = HeapAllocOp!(Tag.ARRAY);
+alias gen_alloc_closure = HeapAllocOp!(Tag.CLOSURE);
+alias gen_alloc_string = HeapAllocOp!(Tag.STRING);
+alias gen_alloc_rope = HeapAllocOp!(Tag.ROPE);
 
 void gen_gc_collect(
     BlockVersion ver,
@@ -2720,7 +2894,7 @@ void gen_gc_collect(
     CodeBlock as
 )
 {
-    extern (C) void op_gc_collect(VM vm, IRInstr curInstr, uint32_t heapSize)
+    extern (C) void op_gc_collect(IRInstr curInstr, uint32_t heapSize)
     {
         vm.setCurInstr(curInstr);
 
@@ -2741,14 +2915,13 @@ void gen_gc_collect(
     );
 
     // Get the string pointer
-    auto heapSizeOpnd = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, true, false);
+    auto heapSizeOpnd = st.getWordOpnd(as, instr, 0, 32, X86Opnd.NONE, true, false);
 
     as.saveJITRegs();
 
     // Call the host function
-    as.mov(cargRegs[0], vmReg);
-    as.ptr(cargRegs[1], instr);
-    as.mov(cargRegs[2].opnd, heapSizeOpnd);
+    as.ptr(cargRegs[0], instr);
+    as.mov(cargRegs[1].opnd(32), heapSizeOpnd);
     as.ptr(scrRegs[0], &op_gc_collect);
     as.call(scrRegs[0]);
 
@@ -2762,7 +2935,7 @@ void gen_get_str(
     CodeBlock as
 )
 {
-    extern (C) refptr getStr(VM vm, IRInstr curInstr, refptr strPtr)
+    extern (C) refptr getStr(IRInstr curInstr, refptr strPtr)
     {
         vm.setCurInstr(curInstr);
 
@@ -2778,14 +2951,8 @@ void gen_get_str(
         return str;
     }
 
-    // Spill the values live before the instruction
-    st.spillValues(
-        as,
-        delegate bool(LiveInfo liveInfo, IRDstValue value)
-        {
-            return liveInfo.liveBefore(value, instr);
-        }
-    );
+    // Spill the values live before this instruction
+    st.spillLiveBefore(as, instr);
 
     // Get the string pointer
     auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, true, false);
@@ -2796,156 +2963,554 @@ void gen_get_str(
     as.saveJITRegs();
 
     // Call the fallback implementation
-    as.mov(cargRegs[0], vmReg);
-    as.ptr(cargRegs[1], instr);
-    as.mov(cargRegs[2].opnd, opnd0);
+    as.ptr(cargRegs[0], instr);
+    as.mov(cargRegs[1].opnd, opnd0);
     as.ptr(scrRegs[0], &getStr);
     as.call(scrRegs[0]);
 
     as.loadJITRegs();
 
     // Store the output value into the output operand
-    as.mov(outOpnd, X86Opnd(RAX));
+    as.mov(outOpnd, cretReg.opnd);
 
     // The output is a reference pointer
-    st.setOutType(as, instr, Type.STRING);
+    st.setOutTag(as, instr, Tag.STRING);
 }
 
-void gen_make_link(
+void gen_break(
     BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
 )
 {
-    auto vm = st.fun.vm;
+    assert (instr.getTarget(0) && instr.getTarget(1));
+    assert (instr.getTarget(0).target is instr.getTarget(1).target);
 
-    auto linkArg = cast(IRLinkIdx)instr.getArg(0);
-    assert (linkArg !is null);
+    auto branch = getBranchEdge(instr.getTarget(0), st, false);
 
-    if (linkArg.linkIdx is NULL_LINK)
+    // Generate the branch code
+    ver.genBranch(
+        as,
+        branch,
+        branch,
+        delegate void(
+            CodeBlock as,
+            BlockVersion block,
+            CodeFragment target0,
+            CodeFragment target1,
+            BranchShape shape
+        )
+        {
+            final switch (shape)
+            {
+                case BranchShape.NEXT0:
+                break;
+
+                case BranchShape.NEXT1:
+                break;
+
+                case BranchShape.DEFAULT:
+                jmp32Ref(as, vm, block, target0, 1);
+            }
+        }
+    );
+}
+
+/// Inputs: any value x
+/// Shifts us to version where the tag of the value is known
+/// Implements a dynamic type tag dispatch mechanism
+void gen_capture_tag(
+    BlockVersion ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    assert (instr.getTarget(0).args.length is 0);
+
+    // Get the argument value
+    auto argVal = instr.getArg(0);
+
+    // Get type information about the argument
+    ValType argType = st.getType(argVal);
+
+    // If the type tag is marked as known
+    if (argType.tagKnown)
     {
-        linkArg.linkIdx = vm.allocLink();
-
-        vm.setLinkWord(linkArg.linkIdx, NULL.word);
-        vm.setLinkType(linkArg.linkIdx, NULL.type);
+        // Jump directly to the false successor block
+        return gen_jump_false(ver, st, instr, as);
     }
 
-    // Set the output value
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
-    as.mov(outOpnd, X86Opnd(linkArg.linkIdx));
+    auto argDst = cast(IRDstValue)argVal;
+    assert (argDst !is null);
 
-    // Set the output type
-    st.setOutType(as, instr, Type.INT32);
+    // Get the current argument value type tag
+    auto argTag = argDst? vm.getTag(argDst.outSlot):argType.tag;
+
+    // Get the type operand
+    auto tagOpnd = st.getTagOpnd(as, instr, 0);
+
+    // Increment the counter for this type tag test
+    auto testName = "is_" ~ toLower(to!string(argTag));
+    as.incStatCnt(stats.getTagTestCtr(testName), scrRegs[0]);
+
+    // Compare this entry's type tag with the value's tag
+    as.cmp(tagOpnd, X86Opnd(argTag));
+
+    // On the recursive branch, no information is gained
+    auto branchT = getBranchEdge(instr.getTarget(0), st, false);
+
+    // Mark the value's type tag as known on the loop exit branch,
+    // and queue this branch for immediate compilation (fall through)
+    auto falseSt = new CodeGenState(st);
+    falseSt.setTag(argDst, argTag);
+    auto branchF = getBranchEdge(instr.getTarget(1), falseSt, true);
+
+    // Generate the branch code
+    ver.genBranch(
+        as,
+        branchT,
+        branchF,
+        delegate void(
+            CodeBlock as,
+            BlockVersion block,
+            CodeFragment target0,
+            CodeFragment target1,
+            BranchShape shape
+        )
+        {
+            final switch (shape)
+            {
+                case BranchShape.NEXT0:
+                je32Ref(as, vm, block, target1, 1);
+                break;
+
+                case BranchShape.NEXT1:
+                jne32Ref(as, vm, block, target0, 0);
+                break;
+
+                case BranchShape.DEFAULT:
+                jne32Ref(as, vm, block, target0, 0);
+                jmp32Ref(as, vm, block, target1, 1);
+            }
+        }
+    );
 }
 
-void gen_set_link(
+/// Inputs: obj, propName
+/// Capture the shape of the object
+/// This shifts us to a different version where the obj shape is known
+/// Implements a dynamic shape dispatch mechanism
+void gen_capture_shape(
     BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
 )
 {
-    // Get the link index operand
-    auto idxReg = st.getWordOpnd(as, instr, 0, 64, scrRegs[0].opnd(64));
-    assert (idxReg.isGPR);
+    assert (instr.getTarget(0).args.length is 0);
 
-    // Set the link word
-    auto valWord = st.getWordOpnd(as, instr, 1, 64, scrRegs[1].opnd(64));
-    as.getMember!("VM.wLinkTable")(scrRegs[2], vmReg);
-    auto wordMem = X86Opnd(64, scrRegs[2], 0, Word.sizeof, idxReg.reg);
-    as.mov(wordMem, valWord);
+    // Get the object and shape argument values
+    auto objVal = cast(IRDstValue)instr.getArg(0);
+    auto shapeVal = cast(IRDstValue)instr.getArg(1);
+    assert (objVal !is null);
+    assert (shapeVal !is null);
 
-    // Set the link type
-    auto valType = st.getTypeOpnd(as, instr, 1, scrRegs[1].opnd(8));
-    as.getMember!("VM.tLinkTable")(scrRegs[2], vmReg);
-    auto typeMem = X86Opnd(8, scrRegs[2], 0, Type.sizeof, idxReg.reg);
-    as.mov(typeMem, valType);
+    // Get type information about the object argument
+    ValType objType = st.getType(objVal);
+
+    // If the shape is marked as known
+    if (objType.shapeKnown)
+    {
+        // Increment the count of known shape instances
+        as.incStatCnt(&stats.numShapeKnown, scrRegs[0]);
+
+        // Jump directly to the false successor block
+        return gen_jump_false(ver, st, instr, as);
+    }
+
+    // Increment the count of shape tests
+    as.incStatCnt(&stats.numShapeTests, scrRegs[0]);
+
+    // Get the current shape argument word
+    assert (shapeVal.block !is instr.block);
+    auto shapeWord = vm.getWord(shapeVal.outSlot);
+
+    // Get the shape argument operand
+    auto shapeOpnd = st.getWordOpnd(as, instr, 1, 64);
+
+    // Compare the shape operand with the observed shape
+    as.ptr(scrRegs[0], shapeWord.ptrVal);
+    as.cmp(shapeOpnd, scrRegs[0].opnd);
+
+    // On the recursive branch, no information is gained
+    auto branchT = getBranchEdge(instr.getTarget(0), st, false);
+
+    // Mark the object shape as known on the false branch,
+    // and queue this branch for immediate compilation (fall through)
+    auto falseSt = new CodeGenState(st);
+    falseSt.setShape(objVal, cast(ObjShape)shapeWord.shapeVal);
+    auto branchF = getBranchEdge(instr.getTarget(1), falseSt, true);
+
+    // Generate the branch code
+    ver.genBranch(
+        as,
+        branchT,
+        branchF,
+        delegate void(
+            CodeBlock as,
+            BlockVersion block,
+            CodeFragment target0,
+            CodeFragment target1,
+            BranchShape shape
+        )
+        {
+            final switch (shape)
+            {
+                case BranchShape.NEXT0:
+                je32Ref(as, vm, block, target1, 1);
+                break;
+
+                case BranchShape.NEXT1:
+                jne32Ref(as, vm, block, target0, 0);
+                break;
+
+                case BranchShape.DEFAULT:
+                jne32Ref(as, vm, block, target0, 0);
+                jmp32Ref(as, vm, block, target1, 1);
+            }
+        }
+    );
 }
 
-void gen_get_link(
+/// Reads the shape of an object, does nothing if the shape is known
+/// Inputs: obj
+void gen_obj_read_shape(
     BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
 )
 {
-    // Get the link index operand
-    auto idxReg = st.getWordOpnd(as, instr, 0, 64, scrRegs[0].opnd(64));
-    assert (idxReg.isGPR);
+    auto objVal = cast(IRDstValue)instr.getArg(0);
+    assert (objVal !is null);
+
+    // Get the object operand
+    auto opnd0 = st.getWordOpnd(as, instr, 0, 64);
+    assert (opnd0.isReg);
 
     // Get the output operand
     auto outOpnd = st.getOutOpnd(as, instr, 64);
+    assert (outOpnd.isReg);
 
-    // Read the link word
-    as.getMember!("VM.wLinkTable")(scrRegs[1], vmReg);
-    auto wordMem = X86Opnd(64, scrRegs[1], 0, Word.sizeof, idxReg.reg);
-    as.mov(scrRegs[1].opnd(64), wordMem);
-    as.mov(outOpnd, scrRegs[1].opnd(64));
+    // TODO: find way to have instr in valMap without getting outOpnd?
 
-    // Read the link type
-    as.getMember!("VM.tLinkTable")(scrRegs[1], vmReg);
-    auto typeMem = X86Opnd(8, scrRegs[1], 0, Type.sizeof, idxReg.reg);
-    as.mov(scrRegs[1].opnd(8), typeMem);
-    st.setOutType(as, instr, scrRegs[1].reg(8));
+    // If the shape is known, do nothing
+    if (st.shapeKnown(objVal))
+    {
+        //as.mov(outOpnd, X86Opnd(0));
+        st.setOutTag(as, instr, Tag.CONST);
+        return;
+    }
+
+    // Get the object shape
+    as.getField(outOpnd.reg, opnd0.reg, obj_ofs_shape(null));
+
+    st.setOutTag(as, instr, Tag.SHAPEPTR);
 }
 
-/*
-void gen_map_prop_idx(
+/// Initializes an object to the empty shape
+/// Inputs: obj
+void gen_obj_init_shape(
     BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
 )
 {
-    static const uint NUM_CACHE_ENTRIES = 4;
-    static const uint CACHE_ENTRY_SIZE = 8 + 4;
-
-    as.incStatCnt(&stats.numMapPropIdx, scrRegs[0]);
-
-    static allocFieldFlag(IRInstr instr)
+    extern (C) void op_obj_init_shape(refptr objPtr, Tag protoTag)
     {
-        if (instr.getArg(2) is IRConst.trueCst)
-            return true; 
-        if (instr.getArg(2) is IRConst.falseCst)
-            return false;
-        assert (false);
+        // Get the initial object shape
+        auto shape = vm.emptyShape.defProp(
+            "__proto__",
+            ValType(protoTag),
+            ATTR_CONST_NOT_ENUM,
+            null
+        );
+
+        obj_set_shape(objPtr, cast(rawptr)shape);
+
+        assert (
+            vm.wUpperLimit > vm.wStack,
+            "invalid wStack after init shape"
+        );
     }
 
-    extern (C) static uint32_t op_map_prop_idx(ObjMap map, refptr strPtr, bool allocField)
+    // Get the object operand
+    auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
+    assert (objOpnd.isReg);
+
+    // Get the type operand for the prototype argument
+    auto tagOpnd = st.getTagOpnd(as, instr, 1);
+
+    // If property tag specialization is disabled
+    if (opts.shape_notagspec)
     {
-        //writeln("slow lookup");
+        // Get the initial object shape
+        auto shape = vm.emptyShape.defProp(
+            "__proto__",
+            ValType(),
+            ATTR_CONST_NOT_ENUM,
+            null
+        );
 
-        // Increment the count of slow property lookups
-        stats.numMapPropSlow++;
+        // Set the object shape
+        as.ptr(scrRegs[0], shape);
+        as.setField(objOpnd.reg, obj_ofs_shape(null), scrRegs[0]);
 
-        // Lookup the property index
-        assert (map !is null, "map is null");
-        auto propIdx = map.getPropIdx(strPtr, allocField);
+        // Propagate the object shape
+        st.setShape(cast(IRDstValue)instr.getArg(0), shape);
 
-        return propIdx;
+        return;
     }
 
-    extern (C) static uint32_t updateCache(IRInstr instr, ObjMap map, ubyte* cachePtr)
+    // If the prototype tag is a constant
+    if (tagOpnd.isImm)
     {
-        // Get the property name
-        auto nameArgInstr = cast(IRInstr)instr.getArg(1);
-        auto propName = (cast(IRString)nameArgInstr.getArg(0)).str;
+        // Get the initial object shape
+        auto shape = vm.emptyShape.defProp(
+            "__proto__",
+            ValType(cast(Tag)tagOpnd.imm.imm),
+            ATTR_CONST_NOT_ENUM,
+            null
+        );
 
-        //writeln("cache miss");
+        // Set the object shape
+        as.ptr(scrRegs[0], shape);
+        as.setField(objOpnd.reg, obj_ofs_shape(null), scrRegs[0]);
+
+        // Propagate the object shape
+        st.setShape(cast(IRDstValue)instr.getArg(0), shape);
+
+        return;
+    }
+
+    // Spill the values live before this instruction
+    st.spillLiveBefore(as, instr);
+
+    as.saveJITRegs();
+
+    // Call the host function
+    // Note: we move objOpnd first to avoid corruption
+    as.mov(cargRegs[0].opnd(64), objOpnd);
+    as.mov(cargRegs[1].opnd(8), tagOpnd);
+    as.ptr(scrRegs[0], &op_obj_init_shape);
+    as.call(scrRegs[0]);
+
+    as.loadJITRegs();
+
+    // Clear any known shape for this object
+    st.clearShape(cast(IRDstValue)instr.getArg(0));
+}
+
+/// Initializes an array to the initial shape
+/// Inputs: arr
+void gen_arr_init_shape(
+    BlockVersion ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    // Get the object operand
+    auto opnd0 = st.getWordOpnd(as, instr, 0, 64);
+    assert (opnd0.isReg);
+
+    // Load the array shape into r0
+    as.getMember!("VM.arrayShape")(scrRegs[0], vmReg);
+
+    // Set the object shape
+    as.setField(opnd0.reg, obj_ofs_shape(null), scrRegs[0]);
+
+    // Propagate the array shape
+    st.setShape(cast(IRDstValue)instr.getArg(0), vm.arrayShape);
+}
+
+/// Sets the value of a property
+/// Inputs: obj, propName, val
+void gen_obj_set_prop(
+    BlockVersion ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    extern (C) static uint8_t op_shape_set_prop(IRInstr instr)
+    {
+        // Increment the host set prop stat
+        ++stats.numSetPropHost;
+
+        vm.setCurInstr(instr);
+
+        auto objPair = vm.getArgVal(instr, 0);
+        auto strPtr = vm.getArgStr(instr, 1);
+        auto valPair = vm.getArgVal(instr, 2);
+
+        auto propName = extractWStr(strPtr);
         //writeln("propName=", propName);
-        //writeln("cachePtr=", cast(uint64_t)cast(void*)cachePtr);
-        //writeln("map ptr=" , cast(uint64_t)cast(void*)map);
-        //writeln("map id=", map.id);
 
-        // Increment the count of property cache misses
-        stats.numMapPropMisses++;
+        // Get the shape of the object
+        auto objShape = cast(ObjShape)obj_get_shape(objPair.word.ptrVal);
+        assert (objShape !is null);
 
-        // Lookup the property index
-        assert (map !is null, "map is null");
-        auto propIdx = map.getPropIdx(propName, allocFieldFlag(instr));
+        // Find the shape defining this property (if it exists)
+        auto defShape = objShape.getDefShape(propName);
 
-        //writeln("shifting cache entries");
+        // Set the property value
+        setProp(
+            objPair,
+            propName,
+            valPair
+        );
+
+        vm.setCurInstr(null);
+
+        return (!defShape || defShape.isGetSet is false)? 1:0;
+    }
+
+    static void gen_slow_path(
+        BlockVersion ver,
+        CodeGenState st,
+        IRInstr instr,
+        CodeBlock as
+    )
+    {
+        // Get the object value
+        auto objVal = cast(IRDstValue)instr.getArg(0);
+
+        // Spill the values live before this instruction
+        st.spillLiveBefore(as, instr);
+
+        as.saveJITRegs();
+
+        // Call the host function
+        as.ptr(cargRegs[0], instr);
+        as.ptr(scrRegs[0], &op_shape_set_prop);
+        as.call(scrRegs[0]);
+
+        as.loadJITRegs();
+
+        // Clear any known shape for this object
+        st.clearShape(objVal);
+
+        // Check the success flag
+        as.cmp(cretReg.opnd(8), X86Opnd(1));
+
+        auto branchT = getBranchEdge(instr.getTarget(0), st, false);
+        auto branchF = getBranchEdge(instr.getTarget(1), st, false);
+
+        // Generate the branch code
+        ver.genBranch(
+            as,
+            branchT,
+            branchF,
+            delegate void(
+                CodeBlock as,
+                BlockVersion block,
+                CodeFragment target0,
+                CodeFragment target1,
+                BranchShape shape
+            )
+            {
+                final switch (shape)
+                {
+                    case BranchShape.NEXT0:
+                    jne32Ref(as, vm, block, target1, 1);
+                    break;
+
+                    case BranchShape.NEXT1:
+                    je32Ref(as, vm, block, target0, 0);
+                    break;
+
+                    case BranchShape.DEFAULT:
+                    je32Ref(as, vm, block, target0, 0);
+                    jmp32Ref(as, vm, block, target1, 1);
+                }
+            }
+        );
+    }
+
+    static const uint NUM_CACHE_ENTRIES = 4;
+    static const uint CACHE_ENTRY_SIZE = 8 + 4 + 8;
+
+    extern (C) static void updateCache(
+        IRInstr instr,
+        ObjShape objShape,
+        ubyte* cachePtr
+    )
+    {
+        // Increment the cache update stat
+        ++stats.numSetPropCacheUpd;
+
+        //writeln("entering setProp updateCache");
+
+        //writeln("objShape=", cast(void*)objShape);
+        //writeln("objShape.slotIdx=", objShape.slotIdx);
+
+        // Extract the property name, if known
+        auto propName = instr.getArgStrCst(1);
+        assert (propName !is null);
+
+        //writeln("propName=", propName);
+
+        uint32_t slotIdx;
+        ObjShape newShape = objShape;
+
+        // If the object is not extensible
+        if (!objShape.extensible)
+        {
+            // Jump to the true branch without adding the property
+            slotIdx = -1;
+        }
+        else
+        {
+            // Try a lookup for an existing property
+            assert (objShape !is null);
+            auto defShape = objShape.getDefShape(propName);
+
+            // If the defining shape was not found
+            if (defShape is null)
+            {
+                // Create a new shape for the property
+                defShape = objShape.defProp(
+                    propName,
+                    ValType(),
+                    ATTR_DEFAULT,
+                    null
+                );
+
+                slotIdx = defShape.slotIdx;
+                newShape = defShape;
+            }
+            else if (!defShape.writable)
+            {
+                // Jump to the true branch without writing the property
+                slotIdx = -1;
+            }
+            else if (defShape.isGetSet)
+            {
+                // Jump to the false branch
+                slotIdx = -2;
+            }
+            else
+            {
+                // Get the property slot index
+                slotIdx = defShape.slotIdx;
+            }
+        }
+
+        //writeln("slotIdx=", slotIdx);
 
         // Shift the current cache entries down
         for (uint i = NUM_CACHE_ENTRIES - 1; i > 0; --i)
@@ -2957,23 +3522,621 @@ void gen_map_prop_idx(
             );
         }
 
-        // Add a new cache entry
-        *(cast(uint64_t*)(cachePtr + 0)) = map.id;
-        *(cast(uint32_t*)(cachePtr + 8)) = propIdx;
+        // Write a new cache entry
+        *(cast(ObjShape*)(cachePtr +  0)) = objShape;
+        *(cast(uint32_t*)(cachePtr +  8)) = slotIdx;
+        *(cast(ObjShape*)(cachePtr + 12)) = newShape;
 
-        //writeln("returning");
-
-        // Return the property index
-        return propIdx;
+        //writeln("leaving updateCache");
     }
 
-    static CodePtr getFallbackSub(VM vm)
+    static void gen_cache_path(
+        BlockVersion ver,
+        CodeGenState st,
+        IRInstr instr,
+        CodeBlock as
+    )
     {
-        if (vm.propIdxSub)
-            return vm.propIdxSub;
+        bool withinCap = false;
+
+        // If the this is a global property read
+        if (instr.getArg(0) is st.fun.globalVal)
+        {
+            auto propName = instr.getArgStrCst(1);
+            assert (propName !is null);
+
+            auto globalObj = vm.globalObj.word.ptrVal;
+            auto objShape = cast(ObjShape)obj_get_shape(globalObj);
+            auto defShape = objShape.getDefShape(propName);
+
+            if (defShape !is null)
+            {
+                auto objCap = obj_get_cap(globalObj);
+                withinCap = defShape.slotIdx < objCap;
+            }
+        }
+
+        auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
+        assert (objOpnd.isReg);
+
+        // Get extra temporary registers
+        auto scrReg3 = st.freeReg(as, instr);
+        assert (scrReg3.reg != objOpnd.reg);
+
+        // Spill the values live before this instruction
+        st.spillLiveBefore(as, instr);
+
+        // Try or retry a cache lookup
+        as.label(Label.RETRY);
+
+        // Get the object shape
+        as.getField(scrRegs[0], objOpnd.reg, obj_ofs_shape(null));
+
+        // Load the current address (inline cache address)
+        as.lea(scrRegs[1], X86Mem(8, RIP, 5));
+
+        // Inline cache entries
+        // [objShape (pointer) | slotIdx (uint32_t) | newShape (pointer) ]+
+        as.jmp(Label.AFTER_DATA);
+        for (uint i = 0; i < NUM_CACHE_ENTRIES; ++i)
+        {
+            as.writeInt(0xFFFFFFFFFFFFFFFF, 64);
+            as.writeInt(0x00000000, 32);
+            as.writeInt(0xFFFFFFFFFFFFFFFF, 64);
+        }
+        as.label(Label.AFTER_DATA);
+
+        // Zero out upper half of slot idx reg
+        //as.mov(scrRegs[2].opnd, X86Opnd(0));
+
+        // For each cache entry
+        for (uint i = 0; i < NUM_CACHE_ENTRIES; ++i)
+        {
+            auto objShapeOpnd = X86Opnd(64, scrRegs[1], CACHE_ENTRY_SIZE * i +  0);
+            auto slotIdxOpnd  = X86Opnd(32, scrRegs[1], CACHE_ENTRY_SIZE * i +  8);
+            auto newShapeOpnd = X86Opnd(64, scrRegs[1], CACHE_ENTRY_SIZE * i + 12);
+
+            as.cmp(objShapeOpnd, scrRegs[0].opnd);
+
+            // If it's a match, get the slot new shape
+            as.cmove(scrRegs[2].reg(32), slotIdxOpnd);
+            as.cmove(scrReg3, newShapeOpnd);
+
+            // If this is a cache hit, we are done, stop
+            as.je(Label.MATCH);
+        }
+
+        // Call the fallback sub to update the inline cache
+        // r0 = shape ptr
+        // r1 = cache ptr
+        as.push(objOpnd.reg);
+        as.push(objOpnd.reg);
+        as.ptr(cargRegs[0], instr);
+        as.mov(cargRegs[1], scrRegs[0]);
+        as.mov(cargRegs[2], scrRegs[1]);
+        as.ptr(scrRegs[0], &updateCache);
+        as.call(scrRegs[0].opnd);
+        as.pop(objOpnd.reg);
+        as.pop(objOpnd.reg);
+
+        // The inline cache is updated, retry the lookup
+        as.jmp(Label.RETRY);
+
+        // Inline cache match
+        as.label(Label.MATCH);
+
+        // Check if this is a non-writable property or a setter
+        as.cmp(scrRegs[2].opnd(32), X86Opnd(0));
+        as.jl(Label.DONE);
+
+        // Register mapping:
+        // r0 = capacity
+        // r1 = object
+        // r2 = slotIdx
+        // r3 = newShape
+
+        // Get the object capacity into r0
+        as.mov(scrRegs[0].opnd, X86Opnd(0));
+        as.getField(scrRegs[0].reg(32), objOpnd.reg, obj_ofs_cap(null));
+
+        // Move the object operand into r1
+        as.mov(scrRegs[1].opnd, objOpnd);
+        objOpnd = scrRegs[1].opnd;
+
+        // If we don't know that the property is within capacity
+        if (!withinCap)
+        {
+            // If the slot index is within capacity, skip the host write call
+            as.cmp(scrRegs[0].opnd(32), scrRegs[2].opnd(32));
+            as.jg(Label.WRITE);
+
+            //as.printStr(to!string(instr.getArgStrCst(1)));
+
+            // Call the host set prop function
+            as.saveJITRegs();
+            as.push(scrRegs[2]);
+            as.push(scrRegs[2]);
+            as.ptr(cargRegs[0], instr);
+            as.ptr(scrRegs[0], &op_shape_set_prop);
+            as.call(scrRegs[0]);
+            as.pop(scrRegs[2]);
+            as.pop(scrRegs[2]);
+            as.loadJITRegs();
+
+            as.jmp(Label.DONE);
+
+            as.label(Label.WRITE);
+        }
+
+        // Update the object shape
+        as.setField(objOpnd.reg, obj_ofs_shape(null), scrReg3);
+
+        // Register mapping:
+        // r0 = capacity
+        // r1 = object
+        // r2 = slotIdx
+        // r3 = value
+
+        auto valOpnd = st.getWordOpnd(as, instr, 2, 64, scrReg3.opnd, true, false);
+        auto tagOpnd = st.getTagOpnd(as, instr, 2, X86Opnd.NONE, true);
+
+        // Write the word value
+        auto wordMem = X86Opnd(64, objOpnd.reg, OBJ_WORD_OFS, 8, scrRegs[2]);
+        as.mov(wordMem, valOpnd);
+
+        // Write the type value
+        as.add(objOpnd, scrRegs[2].opnd);
+        auto typeMem = X86Opnd(8, objOpnd.reg, OBJ_WORD_OFS, 8, scrRegs[0]);
+        as.genMove(typeMem, tagOpnd, scrReg3.opnd(8));
+
+        as.label(Label.DONE);
+
+        // Check if this is a non-writable property (-1) or a setter (-2)
+        as.cmp(scrRegs[2].opnd(32), X86Opnd(0));
+
+        auto branchT = getBranchEdge(instr.getTarget(0), st, false);
+        auto branchF = getBranchEdge(instr.getTarget(1), st, false);
+
+        // Generate the branch code
+        ver.genBranch(
+            as,
+            branchT,
+            branchF,
+            delegate void(
+                CodeBlock as,
+                BlockVersion block,
+                CodeFragment target0,
+                CodeFragment target1,
+                BranchShape shape
+            )
+            {
+                final switch (shape)
+                {
+                    case BranchShape.NEXT0:
+                    jl32Ref(as, vm, block, target1, 1);
+                    break;
+
+                    case BranchShape.NEXT1:
+                    jge32Ref(as, vm, block, target0, 0);
+                    break;
+
+                    case BranchShape.DEFAULT:
+                    jge32Ref(as, vm, block, target0, 0);
+                    jmp32Ref(as, vm, block, target1, 1);
+                }
+            }
+        );
+    }
+
+    // Increment the number of set prop operations
+    as.incStatCnt(&stats.numSetProp, scrRegs[1]);
+
+    // Get the argument values
+    auto objVal = cast(IRDstValue)instr.getArg(0);
+    auto propVal = instr.getArg(2);
+
+    // Extract the property name, if known
+    auto propName = instr.getArgStrCst(1);
+
+    // If the property name is unknown, use the slow path
+    if (propName is null)
+        return gen_slow_path(ver, st, instr, as);
+
+    // If the object shape is unknown
+    if (!st.shapeKnown(objVal))
+    {
+        // If shape versioning is disabled, use an inline cache
+        if (opts.shape_novers)
+            return gen_cache_path(ver, st, instr, as);
+
+        // Use the slow path
+        return gen_slow_path(ver, st, instr, as);
+    }
+
+    // Get the type for the property value
+    auto valType = st.getType(propVal).propType;
+
+    // If we type of the property value is unknown, use the slow path
+    if (!valType.tagKnown && !opts.shape_notagspec)
+    {
+        //as.printStr("val type unknown!");
+        return gen_slow_path(ver, st, instr, as);
+    }
+
+    // Get the object and defining shapes
+    auto objShape = st.getShape(objVal);
+    assert (objShape !is null);
+
+    // Try a lookup for an existing property
+    auto defShape = objShape.getDefShape(propName);
+
+    // If the defining shape was not found
+    if (defShape is null)
+    {
+        // If the object is not extensible, jump to the
+        // true branch without adding the new property
+        if (!objShape.extensible)
+            return gen_jump(ver, st, instr, as);
+
+        // Create a new shape for the property
+        defShape = objShape.defProp(
+            propName,
+            valType,
+            ATTR_DEFAULT,
+            null
+        );
+    }
+
+    // Get the property slot index
+    auto slotIdx = defShape.slotIdx;
+    assert (slotIdx !is PROTO_SLOT_IDX);
+
+    // Compute the minimum object capacity we can guarantee
+    auto minObjCap = (
+        (objVal is st.fun.globalVal)?
+        obj_get_cap(vm.globalObj.word.ptrVal):
+        OBJ_MIN_CAP
+    );
+
+    // If the property has accessors, jump to the false branch
+    if (defShape.isGetSet)
+        return gen_jump_false(ver, st, instr, as);
+
+    // If the shape is not writable, do nothing, jump to the true branch
+    if (!defShape.writable)
+        return gen_jump(ver, st, instr, as);
+
+    // If the property exists on the object and is writable
+    if (slotIdx <= objShape.slotIdx)
+    {
+        auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
+        auto valOpnd = st.getWordOpnd(as, instr, 2, 64, scrRegs[2].opnd(64), true);
+        auto tagOpnd = st.getTagOpnd(as, instr, 2, X86Opnd.NONE, true);
+        assert (objOpnd.isReg);
+
+        // Check if we need to write the type tag
+        bool writeTag = (valType.tag != defShape.type.tag) || !defShape.type.tagKnown;
+
+        // If we need to write the type tag or check the object capacity
+        if (writeTag || slotIdx >= minObjCap)
+        {
+            // Get the object capacity into r1
+            as.getField(scrRegs[1].reg(32), objOpnd.reg, obj_ofs_cap(null));
+        }
+
+        auto tblOpnd = objOpnd;
+
+        // If we can't guarantee that the slot index is within capacity,
+        // generate the extension table code
+        if (slotIdx >= minObjCap)
+        {
+            tblOpnd = scrRegs[0].opnd;
+
+            // Move the object operand into r0
+            as.mov(tblOpnd, objOpnd);
+
+            // If the slot index is below capacity, skip the ext table code
+            as.cmp(scrRegs[1].opnd, X86Opnd(slotIdx));
+            as.jg(Label.SKIP);
+
+            // Get the ext table pointer into r0
+            as.getField(tblOpnd.reg, tblOpnd.reg, obj_ofs_next(null));
+
+            // If we need to write the type tag
+            if (writeTag)
+            {
+                // Get the ext table capacity into r1
+                as.getField(scrRegs[1].reg(32), tblOpnd.reg, obj_ofs_cap(null));
+            }
+
+            as.label(Label.SKIP);
+        }
+
+        // Store the word value
+        auto wordMem = X86Opnd(64, tblOpnd.reg, OBJ_WORD_OFS + 8 * slotIdx);
+        as.genMove(wordMem, valOpnd);
+
+        // If we need to write the type tag
+        if (writeTag)
+        {
+            // Store the type tag
+            auto typeMem = X86Opnd(8 , tblOpnd.reg, OBJ_WORD_OFS + slotIdx, 8, scrRegs[1]);
+            as.genMove(typeMem, tagOpnd, scrRegs[2].opnd);
+        }
+
+        // If the value type doesn't match the shape type
+        if (!valType.isSubType(defShape.type))
+        {
+            // Create a new shape for the property
+            objShape = objShape.defProp(
+                propName,
+                valType,
+                ATTR_DEFAULT,
+                defShape
+            );
+
+            // Update the object shape
+            as.ptr(scrRegs[2], objShape);
+            as.setField(objOpnd.reg, obj_ofs_shape(null), scrRegs[2]);
+
+            // Set the new object shape
+            st.setShape(objVal, objShape);
+
+            // Increment the number of shape changes due to type
+            as.incStatCnt(&stats.numShapeFlips, scrRegs[0]);
+        }
+
+        // Property successfully set, jump to the true branch
+        return gen_jump(ver, st, instr, as);
+    }
+
+    // This is a new property
+    // If the slot index is within the guaranteed object capacity
+    //
+    // Note: we don't check if the property goes in the extended
+    // table because we cant guarantee the object size is sufficient
+    // or that the extended table even exists
+    if (slotIdx < minObjCap)
+    {
+        auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
+        auto valOpnd = st.getWordOpnd(as, instr, 2, 64, scrRegs[0].opnd(64), true);
+        auto tagOpnd = st.getTagOpnd(as, instr, 2, scrRegs[1].opnd(8), true);
+        assert (objOpnd.isReg);
+
+        // Get the object capacity into r2
+        as.getField(scrRegs[2].reg(32), objOpnd.reg, obj_ofs_cap(null));
+
+        // Set the word and tag values
+        auto wordMem = X86Opnd(64, objOpnd.reg, OBJ_WORD_OFS + 8 * slotIdx);
+        auto typeMem = X86Opnd(8 , objOpnd.reg, OBJ_WORD_OFS + slotIdx, 8, scrRegs[2]);
+        as.mov(wordMem, valOpnd);
+        as.mov(typeMem, tagOpnd);
+
+        // Update the object shape
+        as.ptr(scrRegs[0].reg, defShape);
+        as.setField(objOpnd.reg, obj_ofs_shape(null), scrRegs[0].reg);
+
+        // Set the new object shape
+        st.setShape(objVal, defShape);
+
+        // Property successfully set, jump to the true branch
+        return gen_jump(ver, st, instr, as);
+    }
+
+    // Use the slow path
+    return gen_slow_path(ver, st, instr, as);
+}
+
+/// Gets the value of a property
+/// Inputs: obj, propName
+void gen_obj_get_prop(
+    BlockVersion ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    struct OutVal
+    {
+        Word word;
+        Tag tag;
+        uint8_t success;
+    }
+
+    static assert (OutVal.sizeof == 2 * Word.sizeof);
+
+    extern (C) static void op_obj_get_prop(
+        OutVal* outVal,
+        refptr objPtr,
+        refptr strPtr
+    )
+    {
+        // Increment the host get prop stat
+        ++stats.numGetPropHost;
+
+        // Get a temporary D string for the property name
+        auto propStr = tempWStr(strPtr);
+
+        // Get the shape of the object
+        auto objShape = cast(ObjShape)obj_get_shape(objPtr);
+        assert (objShape !is null);
+
+        // Find the shape defining this property (if it exists)
+        auto defShape = objShape.getDefShape(propStr);
+
+        // If the property doesn't exist
+        if (defShape is null)
+        {
+            outVal.word = UNDEF.word;
+            outVal.tag = Tag.CONST;
+            outVal.success = 0;
+            return;
+        }
+
+        // Get the slot index and the object capacity
+        uint32_t slotIdx = defShape.slotIdx;
+        auto objCap = obj_get_cap(objPtr);
+
+        if (slotIdx < objCap)
+        {
+            outVal.word = Word.int64v(obj_get_word(objPtr, slotIdx));
+            outVal.tag = cast(Tag)obj_get_tag(objPtr, slotIdx);
+        }
+        else
+        {
+            auto extTbl = obj_get_next(objPtr);
+            assert (slotIdx < obj_get_cap(extTbl));
+            outVal.word = Word.int64v(obj_get_word(extTbl, slotIdx));
+            outVal.tag = cast(Tag)obj_get_tag(extTbl, slotIdx);
+        }
+
+        outVal.success = (defShape.isGetSet is false)? 1:0;
+    }
+
+    static void gen_slow_path(
+        BlockVersion ver,
+        CodeGenState st,
+        IRInstr instr,
+        CodeBlock as
+    )
+    {
+        // Spill the values live before this instruction
+        st.spillLiveBefore(as, instr);
+
+        // Get the object and string operands
+        auto objOpnd = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
+        auto strOpnd = st.getWordOpnd(as, instr, 1, 64, scrRegs[0].opnd, false, false);
+
+        auto outOpnd = st.getOutOpnd(as, instr, 64);
+
+        as.saveJITRegs();
+
+        // Stack allocate space for the value pair output
+        as.sub(RSP, OutVal.sizeof);
+
+        // Call the host function
+        as.mov(cargRegs[0].opnd, RSP.opnd);
+        as.mov(cargRegs[1].opnd, objOpnd);
+        as.mov(cargRegs[2].opnd, strOpnd);
+        as.ptr(scrRegs[0], &op_obj_get_prop);
+        as.call(scrRegs[0]);
+
+        // Free the extra stack space
+        as.mov(scrRegs[0].opnd, RSP.opnd);
+        as.add(RSP, OutVal.sizeof);
+
+        as.loadJITRegs();
+
+        auto wordMem = X86Opnd(64, scrRegs[0], OutVal.word.offsetof);
+        auto tagMem = X86Opnd(8, scrRegs[0], OutVal.tag.offsetof);
+        auto flagMem = X86Opnd(8, scrRegs[0], OutVal.success.offsetof);
+
+        // Set the output word and tag
+        as.mov(outOpnd, wordMem);
+        as.mov(scrRegs[1].opnd(8), tagMem);
+        st.setOutTag(as, instr, scrRegs[1].reg(8));
+
+        // Check the success flag
+        as.cmp(flagMem, X86Opnd(1));
+
+        auto branchT = getBranchEdge(instr.getTarget(0), st, false);
+        auto branchF = getBranchEdge(instr.getTarget(1), st, false);
+
+        // Generate the branch code
+        ver.genBranch(
+            as,
+            branchT,
+            branchF,
+            delegate void(
+                CodeBlock as,
+                BlockVersion block,
+                CodeFragment target0,
+                CodeFragment target1,
+                BranchShape shape
+            )
+            {
+                final switch (shape)
+                {
+                    case BranchShape.NEXT0:
+                    jne32Ref(as, vm, block, target1, 1);
+                    break;
+
+                    case BranchShape.NEXT1:
+                    je32Ref(as, vm, block, target0, 0);
+                    break;
+
+                    case BranchShape.DEFAULT:
+                    je32Ref(as, vm, block, target0, 0);
+                    jmp32Ref(as, vm, block, target1, 1);
+                }
+            }
+        );
+    }
+
+    static const uint NUM_CACHE_ENTRIES = 4;
+    static const uint CACHE_ENTRY_SIZE = 8 + 4 + 2;
+
+    extern (C) static void updateCache(
+        IRInstr instr,
+        ObjShape objShape,
+        ubyte* cachePtr
+    )
+    {
+        // Increment the cache update stat
+        ++stats.numGetPropCacheUpd;
+
+        //writeln("entering getProp updateCache");
+
+        // Extract the property name
+        auto propName = instr.getArgStrCst(1);
+        assert (propName !is null);
+
+        // Find the shape defining this property (if it exists)
+        assert (objShape !is null);
+        //writeln("objShape=", cast(void*)objShape);
+        //writeln("objShape.slotIdx=", objShape.slotIdx);
+        //writeln("getting def shape");
+        auto defShape = objShape.getDefShape(propName);
+        //writeln("getting slot idx");
+        auto slotIdx = defShape? defShape.slotIdx:0xFFFFFFFF;
+        assert (!defShape || !defShape.deleted);
+
+        // Determine the action index
+        int16_t actIdx;
+        if (!defShape)
+            actIdx = 2;
+        else if (defShape.isGetSet)
+            actIdx = 1;
+        else
+            actIdx = 0;
+
+        //writeln("shifting entries");
+
+        // Shift the current cache entries down
+        for (uint i = NUM_CACHE_ENTRIES - 1; i > 0; --i)
+        {
+            memcpy(
+                cachePtr + CACHE_ENTRY_SIZE * i,
+                cachePtr + CACHE_ENTRY_SIZE * (i-1),
+                CACHE_ENTRY_SIZE
+            );
+        }
+
+        // Write a new cache entry
+        *(cast(ObjShape*)(cachePtr +  0)) = objShape;
+        *(cast(uint32_t*)(cachePtr +  8)) = slotIdx;
+        *(cast(uint16_t*)(cachePtr + 12)) = actIdx;
+
+        //writeln("leaving updateCache");
+    }
+
+    static CodePtr getFallbackSub()
+    {
+        if (vm.getPropSub)
+            return vm.getPropSub;
 
         auto as = vm.subsHeap;
-        vm.propIdxSub = as.getAddress(as.getWritePos);
+        vm.getPropSub = as.getAddress(as.getWritePos);
 
         // Save the JIT and alloc registers
         as.saveJITRegs();
@@ -3003,928 +4166,305 @@ void gen_map_prop_idx(
 
         // Link the labels in this subroutine
         as.linkLabels();
-        return vm.propIdxSub;
+        return vm.getPropSub;
     }
 
-    // If the property name is a known constant string
-    auto nameArgInstr = cast(IRInstr)instr.getArg(1);
-    if (nameArgInstr && nameArgInstr.opcode is &SET_STR)
+    static void gen_cache_path(
+        BlockVersion ver,
+        CodeGenState st,
+        IRInstr instr,
+        CodeBlock as
+    )
     {
+        bool withinCap = false;
+
+        // If the this is a global property read
+        if (instr.getArg(0) is st.fun.globalVal)
+        {
+            auto propName = instr.getArgStrCst(1);
+            assert (propName !is null);
+
+            auto globalObj = vm.globalObj.word.ptrVal;
+            auto objShape = cast(ObjShape)obj_get_shape(globalObj);
+            auto defShape = objShape.getDefShape(propName);
+
+            if (defShape !is null)
+            {
+                auto objCap = obj_get_cap(globalObj);
+                withinCap = defShape.slotIdx < objCap;
+            }
+        }
+
+        // Get the object operand
+        auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
+        assert (objOpnd.isReg);
+
+        // Get the output operand
+        auto outOpnd = st.getOutOpnd(as, instr, 64);
+
         // Free an extra temporary register
         auto scrReg3 = st.freeReg(as, instr);
 
-        // Get the map operand
-        auto opnd0 = st.getWordOpnd(as, instr, 0, 64, scrRegs[0].opnd(64), false, false);
-        assert (opnd0.isReg);
+        // Try or retry a cache lookup
+        as.label(Label.RETRY);
 
-        // Get the output operand
-        auto outOpnd = st.getOutOpnd(as, instr, 32);
+        // Get the object shape
+        as.getField(scrRegs[0], objOpnd.reg, obj_ofs_shape(null));
+
+        // Load the current address (inline cache address)
+        as.lea(scrRegs[1], X86Mem(8, RIP, 5));
 
         // Inline cache entries
-        // [mapIdx (uint64_t) | propIdx (uint32_t)]+
-        as.lea(scrRegs[1], X86Mem(8, RIP, 5));
+        // [mapIdx (pointer) | slotIdx (uint32_t) | actIdx (uint8_t) ]+
         as.jmp(Label.AFTER_DATA);
         for (uint i = 0; i < NUM_CACHE_ENTRIES; ++i)
         {
             as.writeInt(0xFFFFFFFFFFFFFFFF, 64);
             as.writeInt(0x00000000, 32);
+            as.writeInt(0x0000, 16);
         }
         as.label(Label.AFTER_DATA);
 
-        // Get the map id
-        as.getMember!("ObjMap.id")(scrRegs[2].reg(64), opnd0.reg);
-
-        //as.printStr("inline cache lookup");
-        //as.printStr("map ptr=");
-        //as.printUint(opnd0);
-        //as.printStr("cache ptr=");
-        //as.printUint(scrRegs[1].opnd(64));
-        //as.printStr("map id=");
-        //as.printUint(scrRegs[2].opnd(64));
+        // Zero out upper half of slot idx reg
+        //as.mov(scrRegs[2].opnd, X86Opnd(0));
 
         // For each cache entry
         for (uint i = 0; i < NUM_CACHE_ENTRIES; ++i)
         {
-            auto mapIdxOpnd  = X86Opnd(64, scrRegs[1], CACHE_ENTRY_SIZE * i + 0);
-            auto propIdxOpnd = X86Opnd(32, scrRegs[1], CACHE_ENTRY_SIZE * i + 8);
+            auto shapeOpnd   = X86Opnd(64, scrRegs[1], CACHE_ENTRY_SIZE * i +  0);
+            auto slotIdxOpnd = X86Opnd(32, scrRegs[1], CACHE_ENTRY_SIZE * i +  8);
+            auto actIdxOpnd  = X86Opnd(16, scrRegs[1], CACHE_ENTRY_SIZE * i + 12);
 
-            // Move the prop idx for this entry into the output operand
-            if (outOpnd.isMem)
-            {
-                as.mov(scrReg3.opnd(32), propIdxOpnd);
-                as.mov(outOpnd, scrReg3.opnd(32));
-            }
-            else
-            {
-                as.mov(outOpnd, propIdxOpnd);
-            }
+            as.cmp(shapeOpnd, scrRegs[0].opnd(64));
+
+            // If it's a match, get the slot and action index
+            as.cmove(scrRegs[2].reg(32), slotIdxOpnd);
+            as.cmove(scrReg3.reg(16), actIdxOpnd);
 
             // If this is a cache hit, we are done, stop
-            as.cmp(mapIdxOpnd, scrRegs[2].opnd(64));
-            as.je(Label.DONE);
+            as.je(Label.MATCH);
         }
 
         // Call the fallback sub to update the inline cache
-        // r0 = map ptr
+        // r0 = shape ptr
         // r1 = cache ptr
         // r2 = instr
-        if (opnd0 != scrRegs[0].opnd)
-            as.mov(scrRegs[0].opnd, opnd0);
-        auto updateCacheSub = getFallbackSub(st.fun.vm);
+        auto updateCacheSub = getFallbackSub();
         as.ptr(scrRegs[2], instr);
         as.ptr(scrReg3, updateCacheSub);
         as.call(scrReg3);
 
-        // Store the output value into the output operand
-        as.mov(outOpnd, cretReg.opnd(32));
-
-        //as.printUint(outOpnd);
-
-        // Cache entry found
-        as.label(Label.DONE);
-    }
-    else
-    {
-        // Spill the values live before the instruction
-        st.spillValues(
-            as,
-            delegate bool(LiveInfo liveInfo, IRDstValue value)
-            {
-                return liveInfo.liveBefore(value, instr);
-            }
-        );
-
-        // Get the map operand
-        auto opnd0 = st.getWordOpnd(as, instr, 0, 64, scrRegs[0].opnd(64), false, false);
-        assert (opnd0.isReg);
-
-        // Get the property name operand
-        auto opnd1 = st.getWordOpnd(as, instr, 1, 64, X86Opnd.NONE, false, false);
-
-        // Get the output operand
-        auto outOpnd = st.getOutOpnd(as, instr, 32);
-
-        as.saveJITRegs();
-
-        // Call the host function
-        as.mov(cargRegs[0].opnd(64), opnd0);
-        as.mov(cargRegs[1].opnd(64), opnd1);
-        as.mov(cargRegs[2].opnd(64), X86Opnd(allocFieldFlag(instr)? 1:0));
-        as.ptr(scrRegs[0], &op_map_prop_idx);
-        as.call(scrRegs[0]);
-
-        as.loadJITRegs();
-
-        // Store the output value into the output operand
-        as.mov(outOpnd, cretReg.opnd(32));
-    }
-
-    // Set the output type
-    st.setOutType(as, instr, Type.INT32);
-}
-*/
-
-/// Initializes an object to the empty shape
-/// Inputs: obj
-void gen_shape_init_empty(
-    BlockVersion ver,
-    CodeGenState st,
-    IRInstr instr,
-    CodeBlock as
-)
-{
-    auto vm = ver.state.fun.vm;
-
-    // Get the object operand
-    auto opnd0 = st.getWordOpnd(as, instr, 0, 64);
-    assert (opnd0.isReg);
-
-    // Load the empty shape into r0
-    as.getMember!("VM.emptyShape")(scrRegs[0], vmReg);
-
-    // Set the object shape
-    as.setField(opnd0.reg, obj_ofs_shape(null), scrRegs[0]);
-
-    // Propagate the object shape
-    st.setShape(cast(IRDstValue)instr.getArg(0), vm.emptyShape);
-}
-
-/// Returns the shape defining a property, null if undefined
-/// Inputs: obj, propName
-/// Find the defining shape for this property
-/// This shifts us to a different version where the obj shape is known
-/// Implements a dynamic shape dispatch mechanism
-void gen_shape_get_def(
-    BlockVersion ver,
-    CodeGenState st,
-    IRInstr instr,
-    CodeBlock as
-)
-{
-    static const uint NUM_CACHE_ENTRIES = 4;
-
-    /// Default/slow path for when the property name is unknown
-    extern (C) ObjShape op_shape_get_def(
-        refptr objPtr,
-        refptr strPtr
-    )
-    {
-        // Increment the def shape host stat
-        ++stats.numDefShapeHost;
-
-        // Get a temporary slice on the JS string characters
-        auto propStr = tempWStr(strPtr);
-
-        auto objShape = cast(ObjShape)obj_get_shape(objPtr);
-        assert (
-            objShape !is null,
-            "shape_get_def: obj shape is null for lookup of \"" ~ 
-            to!string(propStr) ~ "\""
-        );
-
-        // Lookup the shape defining this property
-        auto defShape = objShape.getDefShape(propStr);
-
-        return defShape;
-    }
-
-    extern (C) static ObjShape updateCache(
-        BlockVersion ver,
-        ObjShape objShape,
-        size_t cachePos
-    )
-    {
-        //writeln("entering updateCache");
-
-        // Increment the def shape update stat
-        ++stats.numDefShapeUpd;
-
-        auto vm = ver.block.fun.vm;
-        auto as = vm.execHeap;
-
-        auto instr = ver.block.lastInstr;
-        assert (instr.opcode is &SHAPE_GET_DEF);
-
-        // Get the property name
-        auto propName = instr.getArgStrCst(1);
-
-        //writeln(propName);
-
-        // Lookup the defining shape
-        assert (objShape !is null, "objShape is null");
-        auto defShape = objShape.getDefShape(propName);
-
-        // Get the state at the shape dispatch instruction
-        auto extInfo = cast(ShapeDispInfo)ver.extInfo;
-        assert (extInfo !is null);
-        auto instrSt = extInfo.instrSt;
-
-        // If the inline cache is not yet full
-        if (ver.targets.length < NUM_CACHE_ENTRIES + 1)
-        {
-            //writeln("compiling new version");
-
-            // Stop recording execution time, start recording compilation time
-            stats.execTimeStop();
-            stats.compTimeStart();
-
-            auto spillTest = delegate bool(LiveInfo liveInfo, IRDstValue val)
-            {
-                return liveInfo.liveBefore(val, instr);
-            };
-
-            // Spill the saved registers
-            instrSt.spillSavedRegs(spillTest);
-
-            // Get the default version state
-            assert (ver.targets[0] !is null);
-            auto defBranch = cast(BranchCode)ver.targets[0];
-            assert (defBranch !is null);
-            CodeGenState defSt;
-            if (defBranch.predState)
-                defSt = defBranch.predState;
-            else
-                defSt = defBranch.target.state;
-            assert (defSt !is null);
-
-            // Create a new state object where the object shape is known
-            auto targetSt = new CodeGenState(defSt);
-            auto objVal = cast(IRDstValue)instr.getArg(0);
-            assert (objVal !is null);
-            targetSt.setShape(objVal, objShape);
-            if (instr.hasUses)
-                targetSt.setShape(instr, defShape);
-
-            // Create a version instance object for the target
-            auto targetInst = getBranchEdge(
-                instr.getTarget(0),
-                targetSt,
-                true
-            );
-
-            // Add the version instance to the target list
-            ver.targets ~= targetInst;
-
-            // Get the output operand for the instruction
-            auto outOpnd = defSt.getWordOpnd(instr, 64);
-            assert (outOpnd.isReg);
-
-            auto curPos = as.getWritePos();
-            as.setWritePos(cachePos);
-
-            // Rewrite the inline cache
-            // For each existing version
-            for (uint targetIdx = 1; targetIdx < ver.targets.length; ++targetIdx)
-            {
-                auto branch = cast(BranchCode)ver.targets[targetIdx];
-                targetSt = branch.predState? branch.predState:branch.target.state;
-
-                objShape = targetSt.shapeKnown(objVal)? targetSt.getShape(objVal):null;
-                defShape = (instr.hasUses && targetSt.shapeKnown(instr))? targetSt.getShape(instr):null;
-
-                // Move the cached defining shape for this entry to the output operand
-                as.ptr(outOpnd.reg, defShape);
-
-                // Compare this entry's shape with the input object shape
-                as.ptr(scrRegs[0], objShape);
-                as.cmp(scrRegs[0].opnd, scrRegs[1].opnd);
-
-                // If equal, jump to the cached target
-                je32Ref(as, vm, branch, targetIdx);
-            }
-
-            as.setWritePos(curPos);
-
-            // Compile the new version and link references
-            vm.compile(instr);
-
-            // Reload the saved registers
-            instrSt.loadSavedRegs(spillTest);
-
-            // Stop recording compilation time, resume recording execution time
-            stats.compTimeStop();
-            stats.execTimeStart();
-        }
-
-        // If the inline cache is exactly at capacity
-        // and the default version was not yet compiled
-        else if (
-            ver.targets.length == NUM_CACHE_ENTRIES + 1 &&
-            ver.targets[0].ended == false
-        )
-        {
-            //writeln("cache at capacity ***");
-
-            // Stop recording execution time, start recording compilation time
-            stats.execTimeStop();
-            stats.compTimeStart();
-
-            auto spillTest = delegate bool(LiveInfo liveInfo, IRDstValue val)
-            {
-                return liveInfo.liveBefore(val, instr);
-            };
-
-            // Spill the saved registers
-            instrSt.spillSavedRegs(spillTest);
-
-            // Queue the default version for compilation
-            vm.queue(ver.targets[0]);
-
-            auto curPos = as.getWritePos();
-            as.setWritePos(ver.endIdx - 5);
-
-            // Overwrite the retry jump to jump to the default version
-            jmp32Ref(as, vm, ver.targets[0], 0);
-            assert (as.getWritePos == ver.endIdx);
-
-            as.setWritePos(curPos);
-
-            // Compile the default version and link references
-            vm.compile(instr);
-
-            // Reload the saved registers
-            instrSt.loadSavedRegs(spillTest);
-
-            // Stop recording compilation time, resume recording execution time
-            stats.compTimeStop();
-            stats.execTimeStart();
-        }
-
-        //writeln("leaving updateCache");
-
-        //writeln("  objShape: ", cast(void*)objShape);
-        //writeln("  defShape: ", cast(void*)defShape);
-
-        // Return the defining shape
-        return defShape;
-    }
-
-    static CodePtr getFallbackSub(VM vm)
-    {
-        if (vm.defShapeSub)
-            return vm.defShapeSub;
-
-        auto as = vm.subsHeap;
-        vm.defShapeSub = as.getAddress(as.getWritePos);
-
-        // Align SP to a multiple of 16 bytes
-        as.sub(X86Opnd(RSP), X86Opnd(8));
-
-        // Save the allocatable registers
-        as.saveAllocRegs();
-
-        // Save the JIT registers
-        as.saveJITRegs();
-
-        // Set the argument registers
-        as.mov(cargRegs[0], scrRegs[0]);
-        as.mov(cargRegs[1], scrRegs[1]);
-        as.mov(cargRegs[2], scrRegs[2]);
-
-        // Call the host fallback code
-        as.ptr(scrRegs[0], &updateCache);
-        as.call(scrRegs[0].opnd);
-
-        // Restore the JIT registers
-        as.loadJITRegs();
-
-        // Restore the allocatable registers
-        as.loadAllocRegs();
-
-        // Pop the stack alignment padding
-        as.add(X86Opnd(RSP), X86Opnd(8));
-
-        // Return to the point of call
-        as.ret();
-
-        // Link the labels in this subroutine
-        as.linkLabels();
-        return vm.defShapeSub;
-    }
-
-    // Get the object argument value
-    auto objVal = cast(IRDstValue)instr.getArg(0);
-
-    // Extract the property name, if known
-    auto propName = instr.getArgStrCst(1);
-
-    // If the object shape and the property name are both known
-    if (st.shapeKnown(objVal) && propName !is null)
-    {
-        // Increment the count for known shapes
-        as.incStatCnt(&stats.numDefShapeKnown, scrRegs[0]);
-        //as.printStr("shape known");
-
-        // Get the object shape
-        auto objShape = st.getShape(objVal);
-        assert (objShape !is null);
-
-        // Get the output operand
-        auto outOpnd = st.getOutOpnd(as, instr, 64);
-        assert (outOpnd.isReg);
-
-        // Get the defining shape for the property
-        auto defShape = objShape.getDefShape(propName);
-
-        as.ptr(outOpnd.reg, defShape);
-
-        // Set the output type and shape for this instruction
-        st.setOutType(as, instr, Type.SHAPEPTR);
-        st.setShape(instr, defShape);
-
-        // Get the default version for the successor block
-        auto branch = getBranchEdge(
-            instr.getTarget(0),
-            st,
-            true
-        );
-
-        // Check that the successor follows us directly
-        ver.genBranch(
-            as,
-            branch,
-            null,
-            delegate void(
-                CodeBlock as,
-                VM vm,
-                CodeFragment target0,
-                CodeFragment target1,
-                BranchShape shape
-            )
-            {
-                assert (shape is BranchShape.NEXT0);
-            }
-        );
-    }
-
-    // If the property name is a known constant string
-    else if (propName !is null)
-    {
-        // Increment the count of dispatches
-        as.incStatCnt(&stats.numDefShapeDisp, scrRegs[0]);
-
-        // Create an extended info object for the shape dispatch
-        auto extInfo = new ShapeDispInfo();
-        assert (ver.extInfo is null);
-        ver.extInfo = extInfo;
-
-        // Get the object operand
-        auto opnd0 = st.getWordOpnd(as, instr, 0, 64);
-        assert (opnd0.isReg);
-
-        // Get the output operand
-        auto outOpnd = st.getOutOpnd(as, instr, 64);
-        assert (outOpnd.isReg);
-
-        // Free an extra temporary register
-        auto scrReg3 = st.freeReg(as, instr);
-        assert (scrReg3.opnd != opnd0);
-
-        // Set the output type for this instruction
-        st.setOutType(as, instr, Type.SHAPEPTR);
-
-        // Label for doing a new inline cache lookup
-        as.label(Label.RETRY);
-
-        // Load the object shape in r1
-        as.getField(scrRegs[1], opnd0.reg, obj_ofs_shape(null));
-
-        // Inline cache entries, initially, none of these will match
-        size_t cachePos = as.getWritePos();
-        for (uint i = 0; i < NUM_CACHE_ENTRIES; ++i)
-        {
-            // Move the cached defining shape for this entry to the output operand
-            as.ptr(outOpnd.reg, null);
-
-            // Compare this entry's shape with the input object shape
-            as.ptr(scrRegs[0], null);
-            as.cmp(scrRegs[0].opnd, scrRegs[1].opnd);
-
-            // If equal, jump to the cached target
-            if (opts.jit_genasm)
-                as.writeASM("je", instr.getTarget(0).target.getName);
-            as.writeBytes(JE_REL32_OPCODE[0], JE_REL32_OPCODE[1]);
-            as.writeInt(0xFFFFFFFF, 32);
-        }
-
-        // Store a copy of the state at the shape dispatch instruction
-        extInfo.instrSt = new CodeGenState(st);
-
-        // Call the fallback sub to update the inline cache
-        // r0 = block version
-        // r1 = shape pointer
-        // r2 = inline cache position
-        auto updateCacheSub = getFallbackSub(st.fun.vm);
-        as.ptr(scrRegs[0], ver);
-        as.mov(scrRegs[2], cachePos);
-        as.ptr(scrReg3, updateCacheSub);
-        as.call(scrReg3);
-
-        // Move the return value (defining shape) to the output operand
-        as.mov(outOpnd, cretReg.opnd);
-
-        // Do another inline cache lookup now that the cache is updated
-        // Note: this jump will be overwritten to jump to the default
-        // version once the inline cache is full
+        // The inline cache is updated, retry the lookup
         as.jmp(Label.RETRY);
 
-        // Generate a branch for the default successor
-        // version, but don't compile it
-        assert (instr.getTarget(0).args.length is 0);
-        auto branch = getBranchEdge(
-            instr.getTarget(0),
-            st,
-            false
-        );
+        // Inline cache match
+        // r2 = slotIdx
+        // r3 = action
+        as.label(Label.MATCH);
 
-        // Store a reference to the default version branch
-        ver.targets = [branch];
+        // Compare the action register with 2 (missing property)
+        as.cmp(scrReg3.opnd(16), X86Opnd(2));
+        as.jne(Label.READ);
 
-        // Mark the end of this code fragment
-        ver.markEnd(as, st.fun.vm);
-    }
+        // Set the output type tag to const (undefined)
+        as.mov(scrRegs[0].opnd(8), X86Opnd(Tag.CONST));
+        st.setOutTag(as, instr, scrRegs[0].reg(8));
 
-    // The property name is unknown
-    else
-    {
-        //as.printStr("prop name unknown");
+        as.jmp(Label.DONE);
 
-        // Spill the values live before this instruction
-        st.spillLiveBefore(as, instr);
+        // Property read
+        as.label(Label.READ);
 
-        auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
-        auto opnd1 = st.getWordOpnd(as, instr, 1, 64, X86Opnd.NONE, false, false);
-        auto outOpnd = st.getOutOpnd(as, instr, 64);
+        // Get the object capacity into r0
+        //as.mov(scrRegs[0].opnd, X86Opnd(0));
+        as.getField(scrRegs[0].reg(32), objOpnd.reg, obj_ofs_cap(null));
 
-        as.saveJITRegs();
-
-        // Call the host function
-        as.mov(cargRegs[0].opnd(64), opnd0);
-        as.mov(cargRegs[1].opnd(64), opnd1);
-        as.ptr(scrRegs[0], &op_shape_get_def);
-        as.call(scrRegs[0]);
-
-        as.loadJITRegs();
-
-        // Store the output value into the output operand
-        as.mov(outOpnd, cretReg.opnd);
-
-        // Set the output type for this instruction
-        st.setOutType(as, instr, Type.SHAPEPTR);
-
-        // Get the default version for the successor block
-        auto branch = getBranchEdge(
-            instr.getTarget(0),
-            st,
-            true
-        );
-
-        // Check that the successor follows us directly
-        ver.genBranch(
-            as,
-            branch,
-            null,
-            delegate void(
-                CodeBlock as,
-                VM vm,
-                CodeFragment target0,
-                CodeFragment target1,
-                BranchShape shape
-            )
-            {
-                assert (shape is BranchShape.NEXT0);
-            }
-        );
-    }
-}
-
-/// Sets the value of a property
-/// Inputs: obj, propName, defShape, val
-void gen_shape_set_prop(
-    BlockVersion ver,
-    CodeGenState st,
-    IRInstr instr,
-    CodeBlock as
-)
-{
-    extern (C) static void op_shape_set_prop(VM vm, IRInstr instr)
-    {
-        // Increment the host get prop stat
-        ++stats.numSetPropHost;
-
-        auto objPair = vm.getArgVal(instr, 0);
-        auto strPtr = vm.getArgStr(instr, 1);
-        auto valPair = vm.getArgVal(instr, 3);
-
-        auto propStr = extractWStr(strPtr);
-
-        // Set the property value
-        setProp(
-            vm,
-            objPair,
-            propStr,
-            valPair
-        );
-    }
-
-    // Increment the number of set prop operations
-    as.incStatCnt(&stats.numSetProp, scrRegs[1]);
-
-    // Get the object and property shape values
-    auto objVal = cast(IRDstValue)instr.getArg(0);
-    auto defVal = cast(IRDstValue)instr.getArg(2);
-
-    // Extract the property name, if known
-    auto propName = instr.getArgStrCst(1);
-
-    // Compute the minimum object capacity we can guarantee
-    auto minObjCap = (
-        (objVal is st.fun.globalVal)?
-        obj_get_cap(st.fun.vm.globalObj.word.ptrVal):
-        OBJ_MIN_CAP
-    );
-
-    // If the defining shape is known
-    // We are overwriting an existing property of this object
-    if (st.shapeKnown(defVal))
-    {
-        // Get the property shape, may be unknown
-        auto defShape = st.getShape(defVal);
-
-        // If the defining shape is writable
-        if (defShape !is null && defShape.writable)
+        // If we don't know that the property is within capacity
+        if (!withinCap)
         {
-            auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
-            auto valOpnd = st.getWordOpnd(as, instr, 3, 64, scrRegs[2].opnd(64), true);
-            auto typeOpnd = st.getTypeOpnd(as, instr, 3, X86Opnd.NONE, true);
-            assert (objOpnd.isReg);
+            // Move the object operand into r1
+            as.mov(scrRegs[1].opnd, objOpnd);
+            objOpnd = scrRegs[1].opnd;
 
-
-
-            // TODO
-            // TODO: handle type mismatches with defShape
-            // TODO
-
-            /*
-            if (!typeOpnd.isImm)
-            {
-                as.cmp(typeOpnd, X86Opnd(defShape.type.typeTag));
-                as.je(Label.JOIN);
-                as.printStr(format("mismatch, propName=%s prev=%s", defShape.propName, defShape.type.typeTag));
-                as.label(Label.JOIN);
-            }
-            */
-
-
-
-            // Get the object capacity into r1
-            as.getField(scrRegs[1].reg(32), objOpnd.reg, obj_ofs_cap(null));
-
-            auto slotIdx = defShape.slotIdx;
-
-            auto tblOpnd = objOpnd;
-
-            // If we can't guarantee that the slot index is within capacity,
-            // generate the extension table code
-            if (slotIdx >= minObjCap)
-            {
-                tblOpnd = scrRegs[0].opnd;
-
-                // Move the object operand into r0
-                as.mov(tblOpnd, objOpnd);
-
-                // If the slot index is below capacity, skip the ext table code
-                as.cmp(scrRegs[1].opnd, X86Opnd(slotIdx));
-                as.jg(Label.SKIP);
-
-                // Get the ext table pointer into r0
-                as.getField(tblOpnd.reg, tblOpnd.reg, obj_ofs_next(null));
-
-                // Get the ext table capacity into r1
-                as.getField(scrRegs[1].reg(32), tblOpnd.reg, obj_ofs_cap(null));
-
-                as.label(Label.SKIP);
-            }
-
-            // Set the word and type values
-            auto wordMem = X86Opnd(64, tblOpnd.reg, OBJ_WORD_OFS + 8 * slotIdx);
-            as.genMove(wordMem, valOpnd);
-            auto typeMem = X86Opnd(8 , tblOpnd.reg, OBJ_WORD_OFS + slotIdx, 8, scrRegs[1]);
-            as.genMove(typeMem, typeOpnd, scrRegs[2].opnd);
-
-            return;
-        }
-    }
-
-    // If the object shape is known but the defining shape is unknown
-    // We are probably adding a new property to this object
-    if (st.shapeKnown(objVal) && propName !is null)
-    {
-        // Get the object shape, may be unknown
-        auto objShape = st.getShape(objVal);
-        assert (objShape !is null);
-
-        // Try a lookup for an existing property
-        auto defShape = objShape.getDefShape(propName);
-
-        // If the defining shape was not found
-        if (defShape is null)
-        {
-            // Create a new shape for the property
-            defShape = objShape.defProp(
-                st.fun.vm,
-                propName,
-                ValType(),
-                ATTR_DEFAULT,
-                null
-            );
-        }
-
-        auto slotIdx = defShape.slotIdx;
-
-
-
-
-        // TODO
-        // TODO: handle type mismatches with defShape
-        // TODO
-
-
-
-
-
-        // If the property is writable and the slot index is
-        // within the guaranteed object capacity
-        //
-        // Note: we don't check if the property goes in the extended
-        // table because we cant guarantee the object size is sufficient
-        // or that the extended table even exists
-        if (defShape.writable && slotIdx < minObjCap)
-        {
-            auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
-            auto valOpnd = st.getWordOpnd(as, instr, 3, 64, scrRegs[0].opnd(64), true);
-            auto typeOpnd = st.getTypeOpnd(as, instr, 3, scrRegs[1].opnd(8), true);
-            assert (objOpnd.isReg);
-
-            // Get the object capacity into r2
-            as.getField(scrRegs[2].reg(32), objOpnd.reg, obj_ofs_cap(null));
-
-            // Set the word and type values
-            auto wordMem = X86Opnd(64, objOpnd.reg, OBJ_WORD_OFS + 8 * slotIdx);
-            auto typeMem = X86Opnd(8 , objOpnd.reg, OBJ_WORD_OFS + slotIdx, 8, scrRegs[2]);
-            as.mov(wordMem, valOpnd);
-            as.mov(typeMem, typeOpnd);
-
-            // Update the object shape
-            as.ptr(scrRegs[0].reg, defShape);
-            as.setField(objOpnd.reg, obj_ofs_shape(null), scrRegs[0].reg);
-
-            // Set the new object shape
-            st.setShape(objVal, defShape);
-
-            return;
-        }
-    }
-
-    // Spill the values live before this instruction
-    st.spillLiveBefore(as, instr);
-
-    as.saveJITRegs();
-
-    // Call the host function
-    as.mov(cargRegs[0].opnd(64), vmReg.opnd(64));
-    as.ptr(cargRegs[1], instr);
-    as.ptr(scrRegs[0], &op_shape_set_prop);
-    as.call(scrRegs[0]);
-
-    as.loadJITRegs();
-
-    // Clear any known shape for this object
-    st.clearShape(objVal);
-}
-
-/// Gets the value of a property
-/// Inputs: obj, propShape
-void gen_shape_get_prop(
-    BlockVersion ver,
-    CodeGenState st,
-    IRInstr instr,
-    CodeBlock as
-)
-{
-    // Increment the number of get prop operations
-    as.incStatCnt(&stats.numGetProp, scrRegs[1]);
-
-    // Get the property shape value
-    auto defVal = cast(IRDstValue)instr.getArg(1);
-
-    // If the defining shape is known
-    if (st.shapeKnown(defVal))
-    {
-        // Compute the minimum object capacity we can guarantee
-        auto minObjCap = (
-            (instr.getArg(0) is st.fun.globalVal)?
-            obj_get_cap(st.fun.vm.globalObj.word.ptrVal):
-            OBJ_MIN_CAP
-        );
-
-        // Get the property shape
-        auto defShape = st.getShape(defVal);
-        assert (defShape !is null);
-
-        // No need to get the shape operand
-        auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
-        assert (objOpnd.isReg);
-        auto outOpnd = st.getOutOpnd(as, instr, 64);
-        assert (outOpnd.isReg);
-
-        // Get the object capacity into r1
-        as.getField(scrRegs[1].reg(32), objOpnd.reg, obj_ofs_cap(null));
-
-        auto slotIdx = defShape.slotIdx;
-
-        auto tblOpnd = objOpnd;
-
-        // If we can't guarantee that the slot index is within capacity,
-        // generate the extension table code
-        if (slotIdx >= minObjCap)
-        {
-            tblOpnd = scrRegs[0].opnd;
-
-            // Move the object operand into r0
-            as.mov(tblOpnd, objOpnd);
-
-            // If the slot index is below capacity, skip the ext table code
-            as.cmp(scrRegs[1].opnd, X86Opnd(slotIdx));
+            // If the slot index is within capacity, skip the ext table code
+            as.cmp(scrRegs[0].opnd, scrRegs[2].opnd);
             as.jg(Label.SKIP);
 
-            // Get the ext table pointer into r0
-            as.getField(tblOpnd.reg, tblOpnd.reg, obj_ofs_next(null));
+            // Get the ext table pointer into r1
+            as.getField(scrRegs[1].reg, scrRegs[1], obj_ofs_next(null));
 
-            // Get the ext table capacity into r1
-            as.getField(scrRegs[1].reg(32), tblOpnd.reg, obj_ofs_cap(null));
+            // Get the ext table capacity into r0
+            as.getField(scrRegs[0].reg(32), scrRegs[1], obj_ofs_cap(null));
 
             as.label(Label.SKIP);
         }
 
-        //as.printStr("read, slotIdx=" ~ to!string(slotIdx));
-        //as.printUint(scrRegs[1].opnd);
-
-        // Load the word and type values
-        auto wordMem = X86Opnd(64, tblOpnd.reg, OBJ_WORD_OFS + 8 * slotIdx);
-        auto typeMem = X86Opnd(8 , tblOpnd.reg, OBJ_WORD_OFS + slotIdx, 8, scrRegs[1]);
+        // Load the word value
+        auto wordMem = X86Opnd(64, objOpnd.reg, OBJ_WORD_OFS, 8, scrRegs[2]);
         as.mov(outOpnd, wordMem);
-        as.mov(scrRegs[2].opnd(8), typeMem);
 
-        // Set the output type
-        st.setOutType(as, instr, scrRegs[2].reg(8));
+        // Load the type value
+        as.add(scrRegs[2].opnd, objOpnd);
+        auto typeMem = X86Opnd(8, scrRegs[2], OBJ_WORD_OFS, 8, scrRegs[0]);
+        as.mov(scrRegs[0].opnd(8), typeMem);
+        st.setOutTag(as, instr, scrRegs[0].reg(8));
+
+        as.label(Label.DONE);
+
+        // Compare the action register with 0 (true branch)
+        as.cmp(scrReg3.opnd(16), X86Opnd(0));
+
+        auto branchT = getBranchEdge(instr.getTarget(0), st, false);
+        auto branchF = getBranchEdge(instr.getTarget(1), st, false);
+
+        // Generate the branch code
+        ver.genBranch(
+            as,
+            branchT,
+            branchF,
+            delegate void(
+                CodeBlock as,
+                BlockVersion block,
+                CodeFragment target0,
+                CodeFragment target1,
+                BranchShape shape
+            )
+            {
+                final switch (shape)
+                {
+                    case BranchShape.NEXT0:
+                    jne32Ref(as, vm, block, target1, 1);
+                    break;
+
+                    case BranchShape.NEXT1:
+                    je32Ref(as, vm, block, target0, 0);
+                    break;
+
+                    case BranchShape.DEFAULT:
+                    je32Ref(as, vm, block, target0, 0);
+                    jmp32Ref(as, vm, block, target1, 1);
+                }
+            }
+        );
     }
-    else
+
+    // Increment the number of get prop operations
+    as.incStatCnt(&stats.numGetProp, scrRegs[1]);
+
+    // Get the object argument
+    auto objVal = cast(IRDstValue)instr.getArg(0);
+
+    // Extract the property name, if known
+    auto propName = instr.getArgStrCst(1);
+
+    // If the property name is unknown, use the slow path
+    if (propName is null)
+        return gen_slow_path(ver, st, instr, as);
+
+    // If the object shape is unknown, use the inline cache
+    if (!st.shapeKnown(objVal))
+        return gen_cache_path(ver, st, instr, as);
+
+    // Get the object and defining shapes
+    auto objShape = st.getShape(objVal);
+    assert (objShape !is null);
+
+    // Try a lookup for an existing property
+    auto defShape = objShape.getDefShape(propName);
+
+    // If the property doesn't exist
+    if (defShape is null)
     {
-        auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
-        assert (objOpnd.isReg);
-        auto shapeOpnd = st.getWordOpnd(as, instr, 1, 64);
-        assert (shapeOpnd.isReg);
         auto outOpnd = st.getOutOpnd(as, instr, 64);
-        assert (outOpnd.isReg);
+
+        // Set the output type tag to const (undefined)
+        st.setOutTag(as, instr, Tag.CONST);
+
+        // Jump to the false branch
+        return gen_jump_false(ver, st, instr, as);
+    }
+
+    // Get the property slot index
+    auto slotIdx = defShape.slotIdx;
+
+    // Compute the minimum object capacity we can guarantee
+    auto minObjCap = (
+        (instr.getArg(0) is st.fun.globalVal)?
+        obj_get_cap(vm.globalObj.word.ptrVal):
+        OBJ_MIN_CAP
+    );
+
+    // No need to get the shape operand
+    auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
+    assert (objOpnd.isReg);
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    assert (outOpnd.isReg);
+
+    // If we need to read the type tag or check the object capacity
+    if (!defShape.type.tagKnown || slotIdx >= minObjCap)
+    {
+        // Get the object capacity into r1
+        as.getField(scrRegs[1].reg(32), objOpnd.reg, obj_ofs_cap(null));
+    }
+
+    auto tblOpnd = objOpnd;
+
+    // If we can't guarantee that the slot index is within capacity,
+    // generate the extension table code
+    if (slotIdx >= minObjCap)
+    {
+        tblOpnd = scrRegs[0].opnd;
 
         // Move the object operand into r0
-        as.mov(scrRegs[0].opnd, objOpnd);
-
-        // Get the object capacity into r1
-        as.getField(scrRegs[1].reg(32), scrRegs[0], obj_ofs_cap(null));
-
-        // Get the slot index into r2
-        as.getMember!("ObjShape.slotIdx")(scrRegs[2].reg(32), shapeOpnd.reg);
+        as.mov(tblOpnd, objOpnd);
 
         // If the slot index is below capacity, skip the ext table code
-        as.cmp(scrRegs[1].opnd, scrRegs[2].opnd);
+        as.cmp(scrRegs[1].opnd, X86Opnd(slotIdx));
         as.jg(Label.SKIP);
 
         // Get the ext table pointer into r0
-        as.getField(scrRegs[0], scrRegs[0], obj_ofs_next(null));
+        as.getField(tblOpnd.reg, tblOpnd.reg, obj_ofs_next(null));
 
-        // Get the ext table capacity into r1
-        as.getField(scrRegs[1].reg(32), scrRegs[0], obj_ofs_cap(null));
+        // If we need to read the type tag
+        if (!defShape.type.tagKnown)
+        {
+            // Get the ext table capacity into r1
+            as.getField(scrRegs[1].reg(32), tblOpnd.reg, obj_ofs_cap(null));
+        }
 
         as.label(Label.SKIP);
-
-        // Load the word value
-        auto wordMem = X86Opnd(64, scrRegs[0], OBJ_WORD_OFS, 8, scrRegs[2]);
-        as.mov(outOpnd, wordMem);
-
-        // Load type value
-        as.shl(scrRegs[1].opnd, X86Opnd(3)); // r1 = cap * 8
-        as.add(scrRegs[1].opnd, scrRegs[2].opnd); // r2 = cap * 8 + slotIdx
-        auto typeMem = X86Opnd(8 , scrRegs[0], OBJ_WORD_OFS, 1, scrRegs[1]);
-        as.mov(scrRegs[1].opnd(8), typeMem);
-        st.setOutType(as, instr, scrRegs[1].reg(8));
     }
+
+    // Load the word value
+    auto wordMem = X86Opnd(64, tblOpnd.reg, OBJ_WORD_OFS + 8 * slotIdx);
+    as.mov(outOpnd, wordMem);
+
+    // If the property's type tag is known
+    if (defShape.type.tagKnown)
+    {
+        // Propagate the shape type
+        assert (!opts.shape_notagspec);
+        st.setType(instr, defShape.type);
+    }
+    else
+    {
+        // Load the type value
+        auto typeMem = X86Opnd(8, tblOpnd.reg, OBJ_WORD_OFS + slotIdx, 8, scrRegs[1]);
+        as.mov(scrRegs[1].opnd(8), typeMem);
+        st.setOutTag(as, instr, scrRegs[1].reg(8));
+    }
+
+    // If the property has accessors, jump to the false branch
+    if (defShape.isGetSet)
+        return gen_jump_false(ver, st, instr, as);
+
+    // Normal property successfully read, jump to the true branch
+    return gen_jump(ver, st, instr, as);
 }
 
 /// Get the prototype of an object
 /// Inputs: obj
-void gen_shape_get_proto(
+void gen_obj_get_proto(
     BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
@@ -3937,31 +4477,55 @@ void gen_shape_get_proto(
     auto outOpnd = st.getOutOpnd(as, instr, 64);
     assert (outOpnd.isReg);
 
-    // Get the object capacity into r1
-    as.getField(scrRegs[1].reg(32), objOpnd.reg, obj_ofs_cap(null));
+    // Get the object type
+    auto objType = st.getType(instr.getArg(0));
 
     auto slotIdx = PROTO_SLOT_IDX;
 
-    // Load the word and type values
+    // If the object shape is known
+    if (objType.shapeKnown)
+    {
+        auto defShape = objType.shape.getDefShape("__proto__");
+        assert (defShape !is null);
+        assert (defShape.slotIdx is slotIdx);
+
+        // If the shape's type tag is known
+        if (defShape.type.tagKnown)
+        {
+            // Load the word value
+            auto wordMem = X86Opnd(64, objOpnd.reg, OBJ_WORD_OFS + 8 * slotIdx);
+            as.mov(outOpnd, wordMem);
+
+            // Set the output type tag
+            st.setOutTag(as, instr, defShape.type.tag);
+
+            return;
+        }
+    }
+
+    // Get the object capacity into r1
+    as.getField(scrRegs[1].reg(32), objOpnd.reg, obj_ofs_cap(null));
+
+    // Load the word and tag values
     auto wordMem = X86Opnd(64, objOpnd.reg, OBJ_WORD_OFS + 8 * slotIdx);
     auto typeMem = X86Opnd(8 , objOpnd.reg, OBJ_WORD_OFS + slotIdx, 8, scrRegs[1]);
     as.mov(outOpnd, wordMem);
     as.mov(scrRegs[2].opnd(8), typeMem);
 
-    // Set the output type
-    st.setOutType(as, instr, scrRegs[2].reg(8));
+    // Set the output type tag
+    st.setOutTag(as, instr, scrRegs[2].reg(8));
 }
 
 /// Define a constant property
 /// Inputs: obj, propName, val, enumerable
-void gen_shape_def_const(
+void gen_obj_def_const(
     BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
 )
 {
-    extern (C) static void op_shape_def_const(VM vm, IRInstr instr)
+    extern (C) static void op_shape_def_const(IRInstr instr)
     {
         auto objPair = vm.getArgVal(instr, 0);
         auto strPtr = vm.getArgStr(instr, 1);
@@ -3972,7 +4536,6 @@ void gen_shape_def_const(
 
         // Attempt to define the constant
         defConst(
-            vm,
             objPair,
             propStr,
             valPair,
@@ -3980,83 +4543,28 @@ void gen_shape_def_const(
         );
     }
 
-    auto vm = st.fun.vm;
-
-    // Get the object and value arguments
-    auto objVal = cast(IRDstValue)instr.getArg(0);
-    auto valVal = cast(IRDstValue)instr.getArg(2);
-
-    // Extract the property name, if known
-    auto propName = instr.getArgStrCst(1);
-
-    // If we know that the object has the empty shape
-    // and we are defining the prototype value
-    if (st.shapeKnown(objVal) && 
-        st.getShape(objVal) is st.fun.vm.emptyShape &&
-        propName == "__proto__" &&
-        st.shapeKnown(valVal))
-    {
-        // Get the object shape
-        auto objShape = st.getShape(objVal);
-
-        // Get the prototype value sha[pe
-        auto valShape = st.getShape(valVal);
-
-        // Ensure that the property doesn't already exist
-        assert (objShape.getDefShape(propName) is null);
-
-        // Create a new shape for the property
-        auto newShape = objShape.defProp(
-            vm,
-            propName,
-            ValType(),
-            0,
-            null
-        );
-
-        auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
-        assert (objOpnd.isReg);
-        auto valOpnd = st.getWordOpnd(as, instr, 2, 64);
-        assert (valOpnd.isReg);
-        auto typeOpnd = st.getTypeOpnd(as, instr, 2, scrRegs[1].opnd(8), true);
-
-        // Set the prototype value and type
-        as.getField(scrRegs[0].reg(32), objOpnd.reg, obj_ofs_cap(null));
-        auto wordMem = X86Opnd(64, objOpnd.reg, OBJ_WORD_OFS + 8 * PROTO_SLOT_IDX);
-        auto typeMem = X86Opnd(8 , objOpnd.reg, OBJ_WORD_OFS + PROTO_SLOT_IDX, 8, scrRegs[0]);
-        as.mov(wordMem, valOpnd);
-        as.mov(typeMem, typeOpnd);
-
-        // Update the object shape
-        as.ptr(scrRegs[0].reg, newShape);
-        as.setField(objOpnd.reg, obj_ofs_shape(null), scrRegs[0].reg);
-
-        // Set the new object shape
-        st.setShape(objVal, newShape);
-
-        return;
-    }
-
+    // Get the object argument
+    auto objDst = cast(IRDstValue)instr.getArg(0);
+ 
     // Spill the values live before this instruction
     st.spillLiveBefore(as, instr);
 
     as.saveJITRegs();
 
     // Call the host function
-    as.mov(cargRegs[0].opnd(64), vmReg.opnd(64));
-    as.ptr(cargRegs[1], instr);
+    as.ptr(cargRegs[0], instr);
     as.ptr(scrRegs[0], &op_shape_def_const);
     as.call(scrRegs[0]);
 
     as.loadJITRegs();
 
     // Clear any known shape for this object
-    st.clearShape(objVal);
+    st.clearShape(objDst);
 }
 
 /// Sets the attributes for a property
-/// Inputs: obj, propName, attrBits
-void gen_shape_set_attrs(
+/// Inputs: obj, defShape, attrBits
+void gen_obj_set_attrs(
     BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
@@ -4066,17 +4574,14 @@ void gen_shape_set_attrs(
     extern (C) static void op_shape_set_attrs(VM vm, IRInstr instr)
     {
         auto objPair = vm.getArgVal(instr, 0);
-        auto strPtr = vm.getArgStr(instr, 1);
-        auto attrBits = vm.getArgUint32(instr, 2);
-
-        auto propStr = extractWStr(strPtr);
+        auto defShape = vm.getArgVal(instr, 1).word.shapeVal;
+        auto newAttrs = vm.getArgUint32(instr, 2);
 
         // Attempt to set the property attributes
         setPropAttrs(
-            vm,
             objPair,
-            propStr,
-            cast(uint8_t)attrBits
+            defShape,
+            cast(uint8_t)newAttrs
         );
     }
 
@@ -4097,52 +4602,96 @@ void gen_shape_set_attrs(
     st.clearShape(cast(IRDstValue)instr.getArg(0));
 }
 
-/// Get the parent shape for a given shape
-/// Inputs: shape
-void gen_shape_parent(
+/// Inputs: obj, propName
+/// Get the shape associated with the property name (if any)
+void gen_obj_prop_shape(
     BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
 )
 {
-    extern (C) static ObjShape op_shape_parent(ObjShape shape)
+    extern (C) ObjShape op_obj_prop_shape(
+        refptr objPtr,
+        refptr strPtr
+    )
     {
-        assert (shape !is null);
-        return shape.parent;
+        auto objShape = cast(ObjShape)obj_get_shape(objPtr);
+
+        // Get a temporary D string for the property name
+        auto propStr = tempWStr(strPtr);
+
+        // Lookup the shape defining this property
+        auto defShape = objShape.getDefShape(propStr);
+
+        return defShape;
+    }
+
+    // Get the object argument value
+    auto objVal = cast(IRDstValue)instr.getArg(0);
+
+    // Extract the property name, if known
+    auto propName = instr.getArgStrCst(1);
+
+    // If the object shape and the property name are both known
+    if (st.shapeKnown(objVal) && propName !is null)
+    {
+        //as.printStr("shape known");
+
+        // Get the object shape
+        auto objShape = st.getShape(objVal);
+        assert (objShape !is null);
+
+        // Get the output operand
+        auto outOpnd = st.getOutOpnd(as, instr, 64);
+        assert (outOpnd.isReg);
+
+        // Get the defining shape for the property
+        auto defShape = objShape.getDefShape(propName);
+
+        as.ptr(outOpnd.reg, defShape);
+
+        // Set the output type and shape for this instruction
+        st.setOutTag(as, instr, Tag.SHAPEPTR);
+        st.setShape(instr, defShape);
+
+        return;
     }
 
     // Spill the values live before this instruction
     st.spillLiveBefore(as, instr);
 
-    auto shapeOpnd = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
+    auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
+    auto opnd1 = st.getWordOpnd(as, instr, 1, 64, scrRegs[0].opnd, false, false);
     auto outOpnd = st.getOutOpnd(as, instr, 64);
 
     as.saveJITRegs();
 
     // Call the host function
-    as.mov(cargRegs[0].opnd(64), shapeOpnd);
-    as.ptr(scrRegs[0], &op_shape_parent);
+    as.mov(cargRegs[0].opnd(64), opnd0);
+    as.mov(cargRegs[1].opnd(64), opnd1);
+    as.ptr(scrRegs[0], &op_obj_prop_shape);
     as.call(scrRegs[0]);
 
-    // Set the output value
-    as.mov(outOpnd, cretReg.opnd);
-    st.setOutType(as, instr, Type.SHAPEPTR);
-
     as.loadJITRegs();
+
+    // Store the output value into the output operand
+    as.mov(outOpnd, cretReg.opnd);
+
+    // Set the output type for this instruction
+    st.setOutTag(as, instr, Tag.SHAPEPTR);
 }
 
-/// Get the property name associated with a given shape
+/// Get a table of enumerable property names for objects of this shape
 /// Inputs: shape
-void gen_shape_prop_name(
+void gen_shape_enum_tbl(
     BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
 )
 {
-    extern (C) static refptr op_shape_prop_name(
-        VM vm,
+    extern (C) static refptr op_shape_enum_tbl(
         IRInstr curInstr,
         ObjShape shape
     )
@@ -4150,32 +4699,49 @@ void gen_shape_prop_name(
         assert (shape !is null);
 
         vm.setCurInstr(curInstr);
-        auto strObj = getString(vm, shape.propName);
+
+        auto enumTbl = shape.genEnumTbl();
+
         vm.setCurInstr(null);
 
-        return strObj;
+        return enumTbl;
     }
 
-    // Spill the values live before this instruction
-    st.spillLiveBefore(as, instr);
+    auto shapeOpnd = st.getWordOpnd(as, instr, 0, 64);
+    assert (shapeOpnd.isReg);
 
-    auto shapeOpnd = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
+    // Spill the values live after this instruction
+    st.spillLiveAfter(as, instr);
+
     auto outOpnd = st.getOutOpnd(as, instr, 64);
+
+    st.setOutTag(as, instr, Tag.REFPTR);
+
+    // Get the table pointer and check if null
+    as.getMember!("ObjShape.enumTbl.pair.word")(scrRegs[0], shapeOpnd.reg);
+    as.cmp(scrRegs[0].opnd, X86Opnd(0));
+    as.je(Label.FALLBACK);
+
+    as.mov(outOpnd, scrRegs[0].opnd);
+    as.jmp(Label.DONE);
+
+    // Fallback code
+    as.label(Label.FALLBACK);
 
     as.saveJITRegs();
 
     // Call the host function
-    as.mov(cargRegs[0], vmReg);
-    as.ptr(cargRegs[1], instr);
-    as.mov(cargRegs[2].opnd(64), shapeOpnd);
-    as.ptr(scrRegs[0], &op_shape_prop_name);
+    as.mov(cargRegs[1].opnd(64), shapeOpnd);
+    as.ptr(cargRegs[0], instr);
+    as.ptr(scrRegs[0], &op_shape_enum_tbl);
     as.call(scrRegs[0]);
 
     // Set the output value
     as.mov(outOpnd, cretReg.opnd);
-    st.setOutType(as, instr, Type.STRING);
 
     as.loadJITRegs();
+
+    as.label(Label.DONE);
 }
 
 /// Get the attributes associated with a given shape
@@ -4208,104 +4774,9 @@ void gen_shape_get_attrs(
 
     // Set the output value
     as.mov(outOpnd, cretReg.opnd(32));
-    st.setOutType(as, instr, Type.INT32);
+    st.setOutTag(as, instr, Tag.INT32);
 
     as.loadJITRegs();
-}
-
-/// Test if a given shape corresponds to a getter-setter
-/// Inputs: shape, may be null
-void gen_shape_is_getset(
-    BlockVersion ver,
-    CodeGenState st,
-    IRInstr instr,
-    CodeBlock as
-)
-{
-    // Get the shape value
-    auto defVal = cast(IRDstValue)instr.getArg(0);
-
-    // If the defining shape is known
-    if (st.shapeKnown(defVal))
-    {
-        // Get the property shape
-        auto defShape = st.getShape(defVal);
-
-        // TODO: should eventually optimize this with basic constant
-        // propagation instead of duplicating code from is_type(x) ops
-
-        // Get the boolean value of the test
-        auto boolResult = (defShape !is null && defShape.isGetSet);
-
-        // If this instruction has many uses or is not followed by an if
-        if (instr.hasManyUses || ifUseNext(instr) is false)
-        {
-            auto outOpnd = st.getOutOpnd(as, instr, 64);
-            auto outVal = boolResult? TRUE:FALSE;
-            as.mov(outOpnd, X86Opnd(outVal.word.int8Val));
-            st.setOutType(as, instr, Type.CONST);
-        }
-
-        // If our only use is an immediately following if_true
-        if (ifUseNext(instr) is true)
-        {
-            // Get the branch edge
-            auto targetIdx = boolResult? 0:1;
-            auto branch = getBranchEdge(instr.next.getTarget(targetIdx), st, true);
-
-            // Generate the branch code
-            ver.genBranch(
-                as,
-                branch,
-                null,
-                delegate void(
-                    CodeBlock as,
-                    VM vm,
-                    CodeFragment target0,
-                    CodeFragment target1,
-                    BranchShape shape
-                )
-                {
-                    final switch (shape)
-                    {
-                        case BranchShape.NEXT0:
-                        break;
-
-                        case BranchShape.NEXT1:
-                        case BranchShape.DEFAULT:
-                        jmp32Ref(as, vm, target0, 0);
-                    }
-                }
-            );
-        }
-    }
-    else
-    {
-        extern (C) static Word op_shape_is_getset(ObjShape shape)
-        {
-            return (shape !is null && shape.isGetSet)? TRUE.word:FALSE.word;
-        }
-
-        // Spill the values live before this instruction
-        st.spillLiveBefore(as, instr);
-
-        auto shapeOpnd = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
-        auto outOpnd = st.getOutOpnd(as, instr, 8);
-
-        as.saveJITRegs();
-
-        // Call the host function
-        as.mov(cargRegs[0].opnd(64), shapeOpnd);
-        as.ptr(scrRegs[0], &op_shape_is_getset);
-        as.call(scrRegs[0]);
-
-        as.loadJITRegs();
-
-        // Set the output value
-        as.mov(outOpnd, cretReg.opnd(8));
-
-        st.setOutType(as, instr, Type.CONST);
-    }
 }
 
 void gen_set_global(
@@ -4315,7 +4786,7 @@ void gen_set_global(
     CodeBlock as
 )
 {
-    extern (C) static void op_set_global(VM vm, IRInstr instr)
+    extern (C) static void op_set_global(IRInstr instr)
     {
         // Property string (D string)
         auto strArg = cast(IRString)instr.getArg(0);
@@ -4326,7 +4797,6 @@ void gen_set_global(
 
         // Set the property value
         setProp(
-            vm,
             vm.globalObj,
             propStr,
             valPair
@@ -4347,8 +4817,7 @@ void gen_set_global(
     as.saveJITRegs();
 
     // Call the host function
-    as.mov(cargRegs[0].opnd(64), vmReg.opnd(64));
-    as.ptr(cargRegs[1], instr);
+    as.ptr(cargRegs[0], instr);
     as.ptr(scrRegs[0], &op_set_global);
     as.call(scrRegs[0]);
 
@@ -4363,7 +4832,6 @@ void gen_new_clos(
 )
 {
     extern (C) static refptr op_new_clos(
-        VM vm,
         IRInstr curInstr,
         IRFunction fun
     )
@@ -4379,9 +4847,7 @@ void gen_new_clos(
 
         // Allocate the closure object
         auto closPtr = GCRoot(
-            vm,
             newClos(
-                vm,
                 vm.funProto,
                 cast(uint32)fun.ast.captVars.length,
                 fun
@@ -4389,17 +4855,10 @@ void gen_new_clos(
         );
 
         // Allocate the prototype object
-        auto objPtr = GCRoot(
-            vm,
-            newObj(
-                vm,
-                vm.objProto
-            )
-        );
+        auto objPtr = GCRoot(newObj(vm.objProto));
 
         // Set the "prototype" property on the closure object
         setProp(
-            vm,
             closPtr.pair,
             "prototype"w,
             objPtr.pair
@@ -4428,12 +4887,12 @@ void gen_new_clos(
 
     auto funArg = cast(IRFunPtr)instr.getArg(0);
     assert (funArg !is null);
+    assert (funArg.fun !is null);
 
     as.saveJITRegs();
 
-    as.mov(cargRegs[0], vmReg);
-    as.ptr(cargRegs[1], instr);
-    as.ptr(cargRegs[2], funArg.fun);
+    as.ptr(cargRegs[0], instr);
+    as.ptr(cargRegs[1], funArg.fun);
     as.ptr(scrRegs[0], &op_new_clos);
     as.call(scrRegs[0]);
 
@@ -4442,7 +4901,11 @@ void gen_new_clos(
     auto outOpnd = st.getOutOpnd(as, instr, 64);
     as.mov(outOpnd, X86Opnd(cretReg));
 
-    st.setOutType(as, instr, Type.CLOSURE);
+    // Set the output type and mark the function pointer as known
+    ValType outType = ValType(Tag.CLOSURE);
+    outType.fptrKnown = true;
+    outType.fptr = funArg.fun;
+    st.setType(instr, outType);
 }
 
 void gen_print_str(
@@ -4470,6 +4933,18 @@ void gen_print_str(
     as.call(scrRegs[0].opnd(64));
 
     as.popRegs();
+}
+
+void gen_print_ptr(
+    BlockVersion ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    auto opnd = st.getWordOpnd(as, instr, 0, 64, scrRegs[0].opnd, false, false);
+
+    as.printPtr(opnd);
 }
 
 void gen_get_time_ms(
@@ -4505,7 +4980,7 @@ void gen_get_time_ms(
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
     as.movq(outOpnd, X86Opnd(XMM0));
-    st.setOutType(as, instr, Type.FLOAT64);
+    st.setOutTag(as, instr, Tag.FLOAT64);
 }
 
 void gen_get_ast_str(
@@ -4516,8 +4991,7 @@ void gen_get_ast_str(
 )
 {
     extern (C) static refptr op_get_ast_str(
-        VM vm, 
-        IRInstr curInstr, 
+        IRInstr curInstr,
         refptr closPtr
     )
     {
@@ -4551,9 +5025,8 @@ void gen_get_ast_str(
 
     as.saveJITRegs();
 
-    as.mov(cargRegs[0], vmReg);
-    as.ptr(cargRegs[1], instr);
-    as.mov(cargRegs[2].opnd, opnd0);
+    as.ptr(cargRegs[0], instr);
+    as.mov(cargRegs[1].opnd, opnd0);
     as.ptr(scrRegs[0], &op_get_ast_str);
     as.call(scrRegs[0].opnd);
 
@@ -4561,7 +5034,7 @@ void gen_get_ast_str(
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
     as.mov(outOpnd, X86Opnd(RAX));
-    st.setOutType(as, instr, Type.STRING);
+    st.setOutTag(as, instr, Tag.STRING);
 }
 
 void gen_get_ir_str(
@@ -4572,7 +5045,6 @@ void gen_get_ir_str(
 )
 {
     extern (C) static refptr op_get_ir_str(
-        VM vm, 
         IRInstr curInstr,
         refptr closPtr
     )
@@ -4589,9 +5061,14 @@ void gen_get_ir_str(
         // If the function is not yet compiled, compile it now
         if (fun.entryBlock is null)
         {
+            // FIXME: function entry stubs are currently a hack
+            // Need to be specialized to the IRFunction, not assume
+            // that numLocals is the minimum value
+            // Can't have unspecialized stubs for interprocedural BBV anyway!
             auto numLocals = fun.numLocals;
             astToIR(vm, fun.ast, fun);
             fun.numLocals = numLocals;
+            fun.entryBlock = null;
         }
 
         auto str = fun.toString();
@@ -4615,9 +5092,8 @@ void gen_get_ir_str(
 
     as.saveJITRegs();
 
-    as.mov(cargRegs[0], vmReg);
-    as.ptr(cargRegs[1], instr);
-    as.mov(cargRegs[2].opnd, opnd0);
+    as.ptr(cargRegs[0], instr);
+    as.mov(cargRegs[1].opnd, opnd0);
     as.ptr(scrRegs[0], &op_get_ir_str);
     as.call(scrRegs[0].opnd);
 
@@ -4625,7 +5101,7 @@ void gen_get_ir_str(
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
     as.mov(outOpnd, X86Opnd(RAX));
-    st.setOutType(as, instr, Type.STRING);
+    st.setOutTag(as, instr, Tag.STRING);
 }
 
 void gen_get_asm_str(
@@ -4696,7 +5172,7 @@ void gen_get_asm_str(
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
     as.mov(outOpnd, X86Opnd(RAX));
-    st.setOutType(as, instr, Type.STRING);
+    st.setOutTag(as, instr, Tag.STRING);
 }
 
 void gen_load_lib(
@@ -4717,14 +5193,19 @@ void gen_load_lib(
         // Library to load (D string)
         auto libname = extractStr(strPtr);
 
-        // Let the user specify just the lib name
+        // Let the user specify just the lib name without the extension
         if (libname.length > 0 && libname.countUntil('/') == -1)
         {
             if (libname.countUntil('.') == -1)
-                libname ~= ".so";
+            {
+                version (linux) libname ~= ".so";
+                version (OSX) libname ~= ".dylib";
+            }
 
             if (libname[0] != 'l' && libname[1] != 'i' && libname[2] != 'b')
+            {
                 libname = "lib" ~ libname;
+            }
         }
 
         // Filename must be either a zero-terminated string or null
@@ -4739,12 +5220,12 @@ void gen_load_lib(
                 vm,
                 instr,
                 null,
-                "RuntimeError",
+                "ReferenceError",
                 to!string(dlerror())
             );
         }
 
-        vm.push(Word.ptrv(cast(rawptr)lib), Type.RAWPTR);
+        vm.push(Word.ptrv(cast(rawptr)lib), Tag.RAWPTR);
 
         return null;
 
@@ -4777,9 +5258,9 @@ void gen_load_lib(
     // Get the lib handle from the stack
     as.getWord(scrRegs[0], 0);
     as.add(wspReg, Word.sizeof);
-    as.add(tspReg, Type.sizeof);
+    as.add(tspReg, Tag.sizeof);
     as.mov(outOpnd, scrRegs[0].opnd);
-    st.setOutType(as, instr, Type.RAWPTR);
+    st.setOutTag(as, instr, Tag.RAWPTR);
 }
 
 void gen_close_lib(
@@ -4797,7 +5278,7 @@ void gen_close_lib(
         auto libArg = vm.getArgVal(instr, 0);
 
         assert (
-            libArg.type == Type.RAWPTR,
+            libArg.tag == Tag.RAWPTR,
             "invalid rawptr value"
         );
 
@@ -4853,11 +5334,11 @@ void gen_get_sym(
         auto libArg = vm.getArgVal(instr, 0);
 
         assert (
-            libArg.type == Type.RAWPTR,
-            "invalid rawptr value"
+            libArg.tag == Tag.RAWPTR,
+            "get_sym: invalid lib rawptr value"
         );
 
-        // Symbol name (D string)
+        // Symbol name string
         auto strArg = cast(IRString)instr.getArg(1);
         assert (strArg !is null);
         auto symname = to!string(strArg.str);
@@ -4876,7 +5357,7 @@ void gen_get_sym(
             );
         }
 
-        vm.push(Word.ptrv(cast(rawptr)sym), Type.RAWPTR);
+        vm.push(Word.ptrv(cast(rawptr)sym), Tag.RAWPTR);
 
         return null;
     }
@@ -4908,29 +5389,29 @@ void gen_get_sym(
     // Get the sym handle from the stack
     as.getWord(scrRegs[0], 0);
     as.add(wspReg, Word.sizeof);
-    as.add(tspReg, Type.sizeof);
+    as.add(tspReg, Tag.sizeof);
     as.mov(outOpnd, scrRegs[0].opnd);
-    st.setOutType(as, instr, Type.RAWPTR);
+    st.setOutTag(as, instr, Tag.RAWPTR);
 
 }
 
 // TODO: add support for new i types
 // Mappings for arguments/return values
-Type[string] typeMap;
+Tag[string] typeMap;
 size_t[string] sizeMap;
 static this()
 {
     typeMap = [
-        "i8" : Type.INT32,
-        "i16" : Type.INT32,
-        "i32" : Type.INT32,
-        "i64" : Type.INT64,
-        "u8" : Type.INT32,
-        "u16" : Type.INT32,
-        "u32" : Type.INT32,
-        "u64" : Type.INT64,
-        "f64" : Type.FLOAT64,
-        "*" : Type.RAWPTR
+        "i8"  : Tag.INT32,
+        "i16" : Tag.INT32,
+        "i32" : Tag.INT32,
+        "i64" : Tag.INT64,
+        "u8"  : Tag.INT32,
+        "u16" : Tag.INT32,
+        "u32" : Tag.INT32,
+        "u64" : Tag.INT64,
+        "f64" : Tag.FLOAT64,
+        "*"   : Tag.RAWPTR
     ];
 
     sizeMap = [
@@ -4954,8 +5435,6 @@ void gen_call_ffi(
     CodeBlock as
 )
 {
-    auto vm = st.fun.vm;
-
     // Get the function signature
     auto sigStr = cast(IRString)instr.getArg(1);
     assert (sigStr !is null, "null sigStr in call_ffi.");
@@ -4974,7 +5453,10 @@ void gen_call_ffi(
 
     // The number of args actually passed
     auto argCount = cast(uint32_t)instr.numArgs - 2;
-    assert(argTypes.length == argCount, "Incorrect arg count in call_ffi.");
+    assert(
+        argTypes.length == argCount,
+        "incorrect arg count in call_ffi"
+    );
 
     // Spill the values live before this instruction
     st.spillValues(
@@ -4989,7 +5471,7 @@ void gen_call_ffi(
     auto outOpnd = st.getOutOpnd(as, instr, 64);
 
     // Indices of arguments to be pushed on the stack
-    size_t stackArgs[];
+    size_t[] stackArgs;
 
     // Set up arguments
     for (size_t idx = 0; idx < argCount; ++idx)
@@ -5013,7 +5495,7 @@ void gen_call_ffi(
         {
             auto argSize = sizeMap[argTypes[idx]];
             auto argOpnd = st.getWordOpnd(
-                as, 
+                as,
                 instr,
                 idx + 2,
                 argSize,
@@ -5065,6 +5547,11 @@ void gen_call_ffi(
         false
     );
 
+    debug
+    {
+        as.checkStackAlign("stack unaligned before FFI call");
+    }
+
     // call the function
     as.call(scrRegs[0].opnd);
 
@@ -5083,40 +5570,20 @@ void gen_call_ffi(
     if (retType == "f64")
     {
         as.movq(outOpnd, X86Opnd(XMM0));
-        st.setOutType(as, instr, typeMap[retType]);
+        st.setOutTag(as, instr, typeMap[retType]);
     }
     else if (retType == "void")
     {
         as.mov(outOpnd, X86Opnd(UNDEF.word.int8Val));
-        st.setOutType(as, instr, Type.CONST);
+        st.setOutTag(as, instr, Tag.CONST);
     }
     else
     {
         as.mov(outOpnd, X86Opnd(RAX));
-        st.setOutType(as, instr, typeMap[retType]);
+        st.setOutTag(as, instr, typeMap[retType]);
     }
 
-    auto branch = getBranchEdge(
-        instr.getTarget(0),
-        st,
-        true
-    );
-
-    // Jump to the target block directly
-    ver.genBranch(
-        as,
-        branch,
-        null,
-        delegate void(
-            CodeBlock as,
-            VM vm,
-            CodeFragment target0,
-            CodeFragment target1,
-            BranchShape shape
-        )
-        {
-            jmp32Ref(as, vm, target0, 0);
-        }
-    );
+    // Jump directly to the successor block
+    return gen_jump(ver, st, instr, as);
 }
 

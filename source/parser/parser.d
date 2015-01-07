@@ -71,7 +71,7 @@ class ParseError : Error
 
 /**
 Read and consume a separator token. A parse error
-is thrown is the separator is missing.
+is thrown if the separator is missing.
 */
 void readSep(TokenStream input, wstring sep)
 {
@@ -86,7 +86,7 @@ void readSep(TokenStream input, wstring sep)
 
 /**
 Read and consume a keyword token. A parse error
-is thrown is the keyword is missing.
+is thrown if the keyword is missing.
 */
 void readKw(TokenStream input, wstring keyword)
 {
@@ -146,7 +146,40 @@ Parse a source file
 ASTProgram parseFile(string fileName, bool isRuntime = false)
 {
     string src = readText!(string)(fileName);
-    return parseString(src, fileName, isRuntime);
+
+    // Convert the string to UTF-16
+    wstring wSrc = toUTF16(src);
+
+    auto strStream = StrStream(wSrc, fileName);
+
+    // If there is a shebang line at the beginning of the file
+    if (strStream.match("#!"))
+    {
+        // Consume all characters until the end of line
+        for (;;)
+        {
+            auto ch = strStream.peekCh();
+
+            if (ch == '\r' || ch == '\n')
+            {
+                break;
+            }
+
+            if (ch == '\0')
+            {
+                throw new ParseError(
+                    "end of input in shebang line",
+                    strStream.getPos()
+                );
+            }
+
+            strStream.readCh();
+        }
+    }
+
+    auto input = new TokenStream(strStream);
+
+    return parseProgram(input, isRuntime);
 }
 
 /**
@@ -157,7 +190,7 @@ ASTProgram parseString(string src, string fileName = "", bool isRuntime = false)
     // Convert the string to UTF-16
     wstring wSrc = toUTF16(src);
 
-    auto input = new TokenStream(wSrc, fileName);
+    auto input = new TokenStream(StrStream(wSrc, fileName));
 
     return parseProgram(input, isRuntime);
 }
@@ -366,8 +399,7 @@ ASTStmt parseStmt(TokenStream input)
                 if (curStmts is null)
                     throw new ParseError("statement before label", input.getPos());
 
-                curStmts.length += 1;
-                (*curStmts)[curStmts.length-1] = parseStmt(input);
+                (*curStmts).assumeSafeAppend() ~= parseStmt(input);
             }
         }
 
@@ -483,7 +515,7 @@ ASTStmt parseStmt(TokenStream input)
                 input.read(); 
                 initExpr = parseExpr(input, COMMA_PREC+1);
             }
-    
+
             // If this is an assignment of an unnamed function to 
             // a variable, assign the function a name
             if (auto funExpr = cast(FunExpr)initExpr)
@@ -502,13 +534,13 @@ ASTStmt parseStmt(TokenStream input)
     // Function declaration statement
     else if (input.peekKw("function"))
     {
-        auto funStmt = new ExprStmt(parseExpr(input), pos);
+        auto funExpr = parseAtom(input);
 
         // Weed out trailing semicolons
         if (input.peekSep(";"))
             input.read();
 
-        return funStmt;
+        return new ExprStmt(funExpr, pos);
     }
 
     // If this is a labelled statement
@@ -777,7 +809,7 @@ ASTExpr parseExpr(TokenStream input, int minPrec = 0)
                 op = eqOp;
             }
 
-            // If this is an assignment of a function to something, 
+            // If this is an assignment of a function to something,
             // try to assign the function a name
             if (auto funExpr = cast(FunExpr)rhsExpr)
             {
@@ -877,14 +909,14 @@ ASTExpr parseAtom(TokenStream input)
         StringExpr[] names = [];
         ASTExpr[] values = [];
 
+        // For each property
         for (;;)
         {
+            // If this is the end of the literal, stop
             if (input.matchSep("}"))
                 break;
 
-            if (values.length > 0 && input.matchSep(",") == false)
-                throw new ParseError("expected comma", input.getPos());
-
+            // Read a property name
             auto tok = input.read();
             StringExpr stringExpr = null;
             if (tok.type is Token.IDENT ||
@@ -897,7 +929,7 @@ ASTExpr parseAtom(TokenStream input)
                 stringExpr = new StringExpr(to!wstring(tok.intVal), tok.pos);
 
             if (!stringExpr)
-                throw new ParseError("invalid property name", tok.pos);
+                throw new ParseError("expected property name in object literal", tok.pos);
             names ~= [stringExpr];
 
             input.readSep(":");
@@ -905,6 +937,17 @@ ASTExpr parseAtom(TokenStream input)
             // Parse an expression with priority above the comma operator
             auto valueExpr = parseExpr(input, COMMA_PREC+1);
             values ~= [valueExpr];
+
+            // If there is no separating comma
+            if (!input.matchSep(","))
+            {
+                // If this is the end of the literal, stop
+                if (input.matchSep("}"))
+                    break;
+
+                // Comma expected before next property
+                throw new ParseError("expected comma in object literal", input.getPos());
+            }
         }
 
         return new ObjectExpr(names, values, pos);

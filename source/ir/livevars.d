@@ -37,12 +37,13 @@
 
 module ir.livevars;
 
+import core.memory;
 import std.stdio;
 import std.array;
 import std.string;
 import std.stdint;
+import std.algorithm;
 import ir.ir;
-import util.bitset;
 import util.string;
 
 /**
@@ -50,27 +51,97 @@ Liveness information for a given function
 */
 class LiveInfo
 {
-    // Indices for values we track the liveness of
-    private uint32_t valIdxs[IRDstValue];
+    /**
+    Live variable set implementation
+    */
+    struct LiveSet
+    {
+        IRDstValue* arr;
+        uint32_t arrLen;
+        uint32_t numElems;
 
-    // Indices for instructions we may query for liveness at
-    private uint32_t locIdxs[IRInstr];
+        void add(IRDstValue val)
+        {
+            // If the element is already present, stop
+            for (size_t i = 0; i < numElems; ++i)
+                if (arr[i] is val)
+                    return;
 
-    // Internal bitset used to store liveness info
-    private int32_t[] bitSet;
+            if (numElems + 1 > arrLen)
+            {
+                if (arrLen is 0)
+                {
+                    arrLen = 16;
+
+                    arr = cast(IRDstValue*)GC.malloc(
+                        (IRDstValue*).sizeof * arrLen,
+                        GC.BlkAttr.NO_SCAN |
+                        GC.BlkAttr.NO_INTERIOR
+                    );
+                }
+                else
+                {
+                    auto newLen = 2 * arrLen;
+
+                    auto newArr = cast(IRDstValue*)GC.malloc(
+                        (IRDstValue*).sizeof * newLen,
+                        GC.BlkAttr.NO_SCAN |
+                        GC.BlkAttr.NO_INTERIOR
+                    );
+
+                    for (size_t i = 0; i < numElems; ++i)
+                        newArr[i] = arr[i];
+
+                    GC.free(arr);
+
+                    arr = newArr;
+                    arrLen = newLen;
+                }
+            }
+
+            arr[numElems] = val;
+            numElems += 1;
+        }
+
+        bool has(IRDstValue val)
+        {
+            for (size_t i = 0; i < numElems; ++i)
+                if (arr[i] is val)
+                    return true;
+
+            return false;
+        }
+
+        IRDstValue[] elems()
+        {
+            return arr[0..numElems];
+        }
+    }
+
+    /// Live sets indexed by instruction (values live after the instruction)
+    private LiveSet[IRInstr] liveSets;
 
     /**
     Compile a list of all values live before a given instruction
     */
     public IRDstValue[] valsLiveBefore(IRInstr beforeInstr)
     {
-        IRDstValue[] liveVals;
+        // Get the values live after this instruction
+        auto liveSet = valsLiveAfter(beforeInstr);
 
-        foreach (val, idx; valIdxs)
-            if (liveBefore(val, beforeInstr))
-                liveVals ~= val;
+        // Remove the instruction itself from the live set
+        if (beforeInstr.hasUses)
+            liveSet = array(liveSet.filter!(v => v !is beforeInstr)());
 
-        return liveVals;
+        // Add the instruction arguments to the live set
+        for (size_t aIdx = 0; aIdx < beforeInstr.numArgs; ++aIdx)
+        {
+            if (auto dstArg = cast(IRDstValue)beforeInstr.getArg(aIdx))
+                if (!liveSet.canFind(dstArg))
+                    liveSet ~= dstArg;
+        }
+
+        return liveSet;
     }
 
     /**
@@ -78,99 +149,9 @@ class LiveInfo
     */
     public IRDstValue[] valsLiveAfter(IRInstr afterInstr)
     {
-        IRDstValue[] liveVals;
+        assert (afterInstr in liveSets);
 
-        foreach (val, idx; valIdxs)
-            if (liveAfter(val, afterInstr))
-                liveVals ~= val;
-
-        return liveVals;
-    }
-
-    /**
-    Test if a value is live before a given instruction
-    Note: this function is exposed outside of this analysis
-    */
-    public bool liveBefore(IRDstValue val, IRInstr beforeInstr)
-    {
-        // Values with no uses are never live
-        if (val.hasNoUses)
-            return false;
-
-        // If the value is the instruction, it isn't live
-        if (val is beforeInstr)
-            return false;
-
-        // If the value is an argument to the instruction, it is live
-        if (beforeInstr.hasArg(val))
-            return true;
-
-        // If the value is live after the instruction, it is live before
-        return liveAfter(val, beforeInstr);
-    };
-
-    /**
-    Test if a value is live after a given instruction
-    Note: this function is exposed outside of this analysis
-    */
-    public bool liveAfter(IRDstValue val, IRInstr afterInstr)
-    {
-        // Values with no uses are never live
-        if (val.hasNoUses)
-            return false;
-
-        assert (
-            val in valIdxs,
-            "val not in liveness map: " ~ val.toString ~ " (" ~ val.idString ~ ")"
-        );
-
-        assert (
-            afterInstr in locIdxs,
-            "cannot query for liveness at instr:\n" ~
-            afterInstr.toString ~ "\n" ~
-            "in block:\n" ~
-            afterInstr.block.toString ~ "\n" ~
-            "in function:\n" ~
-            afterInstr.block.fun.getName
-        );
-
-        auto x = valIdxs[val];
-        auto y = locIdxs[afterInstr];
-        auto idx = y * valIdxs.length + x;
-
-        auto bitIdx = idx & 31;
-        auto intIdx = idx >> 5;
-        assert (intIdx < bitSet.length);
-
-        return ((bitSet[intIdx] >> bitIdx) & 1) == 1;
-    };
-
-    /**
-    Test if a value is live after the phi nodes of a given block
-    */
-    public bool liveAfterPhi(IRDstValue val, IRBlock block)
-    {
-        assert (
-            val !is null,
-            "value is null in liveAtEntry"
-        );
-
-        assert (
-            block.firstInstr !is null,
-            "block contains no instructions"
-        );
-
-        // If the value is the first instruction, it isn't live
-        if (val is block.firstInstr)
-            return false;
-
-        // If the value is an argument to the first block instruction, it is live
-        for (size_t aIdx = 0; aIdx < block.firstInstr.numArgs; ++aIdx)
-            if (val is block.firstInstr.getArg(aIdx))
-                return true;
-
-        // Test if the value is live after the first instruction
-        return liveAfter(val, block.firstInstr);
+        return liveSets[afterInstr].elems;
     }
 
     /**
@@ -201,22 +182,89 @@ class LiveInfo
     }
 
     /**
+    Test if a value is live after the phi nodes of a given block
+    */
+    public bool liveAfterPhi(IRDstValue val, IRBlock block)
+    {
+        assert (
+            val !is null,
+            "value is null in liveAtEntry"
+        );
+
+        assert (
+            block.firstInstr !is null,
+            "block contains no instructions"
+        );
+
+        // If the value is the first instruction, it isn't live
+        if (val is block.firstInstr)
+            return false;
+
+        // If the value is an argument to the first block instruction, it is live
+        for (size_t aIdx = 0; aIdx < block.firstInstr.numArgs; ++aIdx)
+            if (val is block.firstInstr.getArg(aIdx))
+                return true;
+
+        // Test if the value is live after the first instruction
+        return liveAfter(val, block.firstInstr);
+    }
+
+    /**
+    Test if a value is live before a given instruction
+    Note: this function is exposed outside of this analysis
+    */
+    public bool liveBefore(IRDstValue val, IRInstr beforeInstr)
+    {
+        // Values with no uses are never live
+        if (val.hasNoUses)
+            return false;
+
+        // If the value is the instruction, it isn't live
+        if (val is beforeInstr)
+            return false;
+
+        // If the value is an argument to the instruction, it is live
+        if (beforeInstr.hasArg(val))
+            return true;
+
+        // If the value is live after the instruction, it is live before
+        return liveAfter(val, beforeInstr);
+    }
+
+    /**
+    Test if a value is live after a given instruction
+    Note: this function is exposed outside of this analysis
+    */
+    public bool liveAfter(IRDstValue val, IRInstr afterInstr)
+    {
+        auto liveSet = afterInstr in liveSets;
+
+        assert (
+            liveSet !is null,
+            "no live set for instr: " ~ afterInstr.toString
+        );
+
+        // Values with no uses are never live
+        if (val.hasNoUses)
+            return false;
+
+        return (*liveSet).has(val);
+    }
+
+    /**
     Mark a value as live after a given instruction
     */
     private void markLiveAfter(IRDstValue val, IRInstr afterInstr)
     {
-        assert (val in valIdxs);
-        assert (afterInstr in locIdxs);
+        auto liveSet = afterInstr in liveSets;
 
-        auto x = valIdxs[val];
-        auto y = locIdxs[afterInstr];
-        auto idx = y * valIdxs.length + x;
+        assert (
+            liveSet !is null,
+            "no live set for instr: " ~ afterInstr.toString
+        );
 
-        auto bitIdx = idx & 31;
-        auto intIdx = idx >> 5;
-        assert (intIdx < bitSet.length);
-
-        bitSet[intIdx] |= (1 << bitIdx);
+        // Add the value to the live set
+        (*liveSet).add(val);
     }
 
     /**
@@ -230,36 +278,15 @@ class LiveInfo
             "function has no IR"
         );
 
+        //writeln(fun.getName);
+
+        // Initialize the live sets for each instruction to the empty set
         for (auto block = fun.firstBlock; block !is null; block = block.next)
-        {
-            for (auto phi = block.firstPhi; phi !is null; phi = phi.next)
-            {
-                // We can query for the liveness of this phi node if it has uses
-                if (!phi.hasNoUses)
-                    valIdxs[phi] = cast(uint32_t)valIdxs.length;
-            }
-
             for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
-            {
-                // We can query for the liveness of this instruction if it has uses
-                if (!instr.hasNoUses)
-                    valIdxs[instr] = cast(uint32_t)valIdxs.length;
-
-                // We can query for liveness after any instruction
-                locIdxs[instr] = cast(uint32_t)locIdxs.length;
-            }
-        }
-
-        // Compute the size of the internal bit set
-        auto numBits = valIdxs.length * locIdxs.length;
-        auto numInts = (numBits / 32) + ((numBits % 32)? 1:0);
-
-        // Allocate the internal bit set to store liveness information
-        bitSet = new int32_t[numInts];
-        assert (bitSet !is null || numInts is 0);
+                liveSets[instr] = LiveSet.init;
 
         // Stack of blocks for DFS traversal
-        IRBlock stack[];
+        IRBlock[] stack;
         stack.reserve(32768);
 
         /**
@@ -296,7 +323,9 @@ class LiveInfo
 
             // Queue the predecessor blocks
             for (size_t iIdx = 0; iIdx < block.numIncoming; ++iIdx)
+            {
                 stack.assumeSafeAppend() ~= block.getIncoming(iIdx).branch.block;
+            }
         }
 
         /**
@@ -366,6 +395,8 @@ class LiveInfo
                 for (auto use = instr.getFirstUse; use !is null; use = use.next)
                     liveTraversal(instr, use.owner);
         }
+
+        //writeln("  done");
     }
 }
 

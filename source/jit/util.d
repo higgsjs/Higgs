@@ -47,6 +47,7 @@ import options;
 import ir.ir;
 import runtime.vm;
 import runtime.object;
+import runtime.gc;
 import jit.codeblock;
 import jit.x86;
 import jit.jit;
@@ -57,53 +58,54 @@ Create a relative 32-bit jump to a code fragment
 void writeJcc32Ref(string mnem, opcode...)(
     CodeBlock as,
     VM vm,
+    BlockVersion srcBlock,
     CodeFragment frag,
     size_t targetIdx = size_t.max
 )
 {
     // Write an ASM comment
-    if (opts.jit_genasm)
+    if (opts.genasm)
         as.writeASM(mnem, frag.getName);
 
     as.writeBytes(opcode);
 
-    vm.addFragRef(as.getWritePos(), 32, frag, targetIdx);
+    vm.addFragRef(as.getWritePos(), 32, srcBlock, frag, targetIdx);
 
     as.writeInt(0, 32);
 }
 
 /// 32-bit relative jumps with fragment references
-alias writeJcc32Ref!("ja"  , 0x0F, 0x87) ja32Ref;
-alias writeJcc32Ref!("jae" , 0x0F, 0x83) jae32Ref;
-alias writeJcc32Ref!("jb"  , 0x0F, 0x82) jb32Ref;
-alias writeJcc32Ref!("jbe" , 0x0F, 0x86) jbe32Ref;
-alias writeJcc32Ref!("jc"  , 0x0F, 0x82) jc32Ref;
-alias writeJcc32Ref!("je"  , 0x0F, 0x84) je32Ref;
-alias writeJcc32Ref!("jg"  , 0x0F, 0x8F) jg32Ref;
-alias writeJcc32Ref!("jge" , 0x0F, 0x8D) jge32Ref;
-alias writeJcc32Ref!("jl"  , 0x0F, 0x8C) jl32Ref;
-alias writeJcc32Ref!("jle" , 0x0F, 0x8E) jle32Ref;
-alias writeJcc32Ref!("jna" , 0x0F, 0x86) jna32Ref;
-alias writeJcc32Ref!("jnae", 0x0F, 0x82) jnae32Ref;
-alias writeJcc32Ref!("jnb" , 0x0F, 0x83) jnb32Ref;
-alias writeJcc32Ref!("jnbe", 0x0F, 0x87) jnbe32Ref;
-alias writeJcc32Ref!("jnc" , 0x0F, 0x83) jnc32Ref;
-alias writeJcc32Ref!("jne" , 0x0F, 0x85) jne32Ref;
-alias writeJcc32Ref!("jng" , 0x0F, 0x8E) jng32Ref;
-alias writeJcc32Ref!("jnge", 0x0F, 0x8C) jnge32Ref;
-alias writeJcc32Ref!("jnl" , 0x0F, 0x8D) jnl32Ref;
-alias writeJcc32Ref!("jnle", 0x0F, 0x8F) jnle32Ref;
-alias writeJcc32Ref!("jno" , 0x0F, 0x81) jno32Ref;
-alias writeJcc32Ref!("jnp" , 0x0F, 0x8b) jnp32Ref;
-alias writeJcc32Ref!("jns" , 0x0F, 0x89) jns32Ref;
-alias writeJcc32Ref!("jnz" , 0x0F, 0x85) jnz32Ref;
-alias writeJcc32Ref!("jo"  , 0x0F, 0x80) jo32Ref;
-alias writeJcc32Ref!("jp"  , 0x0F, 0x8A) jp32Ref;
-alias writeJcc32Ref!("jpe" , 0x0F, 0x8A) jpe32Ref;
-alias writeJcc32Ref!("jpo" , 0x0F, 0x8B) jpo32Ref;
-alias writeJcc32Ref!("js"  , 0x0F, 0x88) js32Ref;
-alias writeJcc32Ref!("jz"  , 0x0F, 0x84) jz32Ref;
-alias writeJcc32Ref!("jmp" , 0xE9) jmp32Ref;
+alias ja32Ref = writeJcc32Ref!("ja", 0x0F, 0x87);
+alias jae32Ref = writeJcc32Ref!("jae", 0x0F, 0x83);
+alias jb32Ref = writeJcc32Ref!("jb", 0x0F, 0x82);
+alias jbe32Ref = writeJcc32Ref!("jbe", 0x0F, 0x86);
+alias jc32Ref = writeJcc32Ref!("jc", 0x0F, 0x82);
+alias je32Ref = writeJcc32Ref!("je", 0x0F, 0x84);
+alias jg32Ref = writeJcc32Ref!("jg", 0x0F, 0x8F);
+alias jge32Ref = writeJcc32Ref!("jge", 0x0F, 0x8D);
+alias jl32Ref = writeJcc32Ref!("jl", 0x0F, 0x8C);
+alias jle32Ref = writeJcc32Ref!("jle", 0x0F, 0x8E);
+alias jna32Ref = writeJcc32Ref!("jna", 0x0F, 0x86);
+alias jnae32Ref = writeJcc32Ref!("jnae", 0x0F, 0x82);
+alias jnb32Ref = writeJcc32Ref!("jnb", 0x0F, 0x83);
+alias jnbe32Ref = writeJcc32Ref!("jnbe", 0x0F, 0x87);
+alias jnc32Ref = writeJcc32Ref!("jnc", 0x0F, 0x83);
+alias jne32Ref = writeJcc32Ref!("jne", 0x0F, 0x85);
+alias jng32Ref = writeJcc32Ref!("jng", 0x0F, 0x8E);
+alias jnge32Ref = writeJcc32Ref!("jnge", 0x0F, 0x8C);
+alias jnl32Ref = writeJcc32Ref!("jnl", 0x0F, 0x8D);
+alias jnle32Ref = writeJcc32Ref!("jnle", 0x0F, 0x8F);
+alias jno32Ref = writeJcc32Ref!("jno", 0x0F, 0x81);
+alias jnp32Ref = writeJcc32Ref!("jnp", 0x0F, 0x8b);
+alias jns32Ref = writeJcc32Ref!("jns", 0x0F, 0x89);
+alias jnz32Ref = writeJcc32Ref!("jnz", 0x0F, 0x85);
+alias jo32Ref = writeJcc32Ref!("jo", 0x0F, 0x80);
+alias jp32Ref = writeJcc32Ref!("jp", 0x0F, 0x8A);
+alias jpe32Ref = writeJcc32Ref!("jpe", 0x0F, 0x8A);
+alias jpo32Ref = writeJcc32Ref!("jpo", 0x0F, 0x8B);
+alias js32Ref = writeJcc32Ref!("js", 0x0F, 0x88);
+alias jz32Ref = writeJcc32Ref!("jz", 0x0F, 0x84);
+alias jmp32Ref = writeJcc32Ref!("jmp", 0xE9);
 
 /**
 Move an absolute reference to a fragment's address into a register
@@ -112,15 +114,16 @@ void movAbsRef(
     CodeBlock as,
     VM vm,
     X86Reg dstReg,
+    BlockVersion srcBlock,
     CodeFragment frag,
     size_t targetIdx = size_t.max
 )
 {
-    if (opts.jit_genasm)
+    if (opts.genasm)
         as.writeASM("mov", dstReg, frag.getName);
 
     as.mov(dstReg.opnd(64), X86Opnd(uint64_t.max));
-    vm.addFragRef(as.getWritePos() - 8, 64, frag, targetIdx);
+    vm.addFragRef(as.getWritePos() - 8, 64, srcBlock, frag, targetIdx);
 }
 
 /// Load a pointer constant into a register
@@ -172,29 +175,54 @@ X86Opnd memberOpnd(string fName)(X86Reg baseReg)
     const auto elems = split(fName, ".");
 
     size_t fOffset;
+
+    // x.y.z.w
+    static if (elems.length is 4)
+    {
+        // Get the type of y as a string
+        mixin(format(
+            "const e1Type = typeof(%s.%s).stringof;", elems[0], elems[1]
+        ));
+
+        // Get the type of z as a string
+        mixin(format(
+            "const e2Type = typeof(%s.%s).stringof;", e1Type, elems[2]
+        ));
+
+        mixin(format(
+            "fOffset = %s.%s.offsetof + %s.%s.offsetof + %s.%s.offsetof;",
+            elems[0], elems[1],
+            e1Type, elems[2],
+            e2Type, elems[3],
+        ));
+    }
+
+    // x.y.z
     static if (elems.length is 3)
     {
+        // Get the type of y as a string
         mixin(format(
             "const e1Type = typeof(%s.%s).stringof;", elems[0], elems[1]
         ));
 
         mixin(format(
-            "fOffset = %s.%s.offsetof + %s.%s.offsetof;", 
+            "fOffset = %s.%s.offsetof + %s.%s.offsetof;",
             elems[0], elems[1],
             e1Type, elems[2]
         ));
     }
-    else if (elems.length is 2)
+
+    // x.y
+    static if (elems.length is 2)
     {
         mixin(format(
-            "fOffset = %s.%s.offsetof;", 
+            "fOffset = %s.%s.offsetof;",
             elems[0], elems[1]
         ));
     }
-    else
-    {
-        assert (false);
-    }
+
+    // Unsupported depth
+    static assert (elems.length > 0 && elems.length <= 4);
 
     mixin("auto fSize = " ~ fName ~ ".sizeof;");
 
@@ -217,10 +245,10 @@ auto wordStackOpnd(int32_t idx, size_t numBits = 64)
     return X86Opnd(numBits, wspReg, cast(int32_t)Word.sizeof * idx);
 }
 
-// Get a type stack operand
-auto typeStackOpnd(int32_t idx)
+// Get a type tag stack operand
+auto tagStackOpnd(int32_t idx)
 {
-    return X86Opnd(8, tspReg, cast(int32_t)Type.sizeof * idx);
+    return X86Opnd(8, tspReg, cast(int32_t)Tag.sizeof * idx);
 }
 
 /// Read from the word stack
@@ -232,12 +260,6 @@ void getWord(CodeBlock as, X86Reg dstReg, int32_t idx)
         as.movsd(X86Opnd(dstReg), wordStackOpnd(idx, 64));
     else
         assert (false, "unsupported register type");
-}
-
-/// Read from the type stack
-void getType(CodeBlock as, X86Reg dstReg, int32_t idx)
-{
-    as.mov(X86Opnd(dstReg), typeStackOpnd(idx));
 }
 
 /// Write to the word stack
@@ -255,22 +277,28 @@ void setWord(CodeBlock as, int32_t idx, X86Opnd src)
         assert (false, "unsupported src operand type");
 }
 
-// Write a constant to the word type
+// Write a constant to the word stack
 void setWord(CodeBlock as, int32_t idx, int32_t imm)
 {
     as.mov(wordStackOpnd(idx), X86Opnd(imm));
 }
 
-/// Write to the type stack
-void setType(CodeBlock as, int32_t idx, X86Opnd srcOpnd)
+/// Read from the type tag stack
+void getTag(CodeBlock as, X86Reg dstReg, int32_t idx)
 {
-    as.mov(typeStackOpnd(idx), srcOpnd);
+    as.mov(X86Opnd(dstReg), tagStackOpnd(idx));
 }
 
-/// Write a constant to the type stack
-void setType(CodeBlock as, int32_t idx, Type type)
+/// Write to the type tag stack
+void setTag(CodeBlock as, int32_t idx, X86Opnd srcOpnd)
 {
-    as.mov(typeStackOpnd(idx), X86Opnd(type));
+    as.mov(tagStackOpnd(idx), srcOpnd);
+}
+
+/// Write a constant to the type tag stack
+void setTag(CodeBlock as, int32_t idx, Tag tag)
+{
+    as.mov(tagStackOpnd(idx), X86Opnd(tag));
 }
 
 /// Store/save the JIT state register
@@ -485,7 +513,7 @@ void printStack(CodeBlock as, VM vm, IRInstr curInstr)
             delegate void(
                 IRFunction fun,
                 Word* wsp,
-                Type* tsp,
+                Tag* tsp,
                 size_t depth,
                 size_t frameSize,
                 IRInstr callInstr

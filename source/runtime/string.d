@@ -58,7 +58,7 @@ wstring extractWStr(refptr ptr)
 {
     assert (
         obj_get_header(ptr) == LAYOUT_STR,
-        "invalid string object"
+        "invalid string object in extractWStr, incorrect header"
     );
 
     auto len = str_get_len(ptr);
@@ -95,21 +95,116 @@ string extractStr(refptr ptr)
 }
 
 /**
+Assemble the string represented by a rope
+*/
+wstring ropeToWStr(refptr rope)
+{
+    refptr rightStr = rope_get_right(rope);
+
+    // If the string was already generated and cached
+    if (rightStr is null)
+        return extractWStr(rope_get_left(rope));
+
+    wstring output;
+
+    refptr leftStr;
+
+    // Until we are done traversing the ropes
+    for (auto curRope = rope;;)
+    {
+        output = tempWStr(rightStr) ~ output;
+
+        // Move to the next rope
+        curRope = rope_get_left(curRope);
+
+        // If this is the last string in the chain, stop
+        if (refIsLayout(curRope, LAYOUT_STR))
+        {
+            leftStr = curRope;
+            break;
+        }
+
+        // Get the right-hand string for the current rope
+        rightStr = rope_get_right(curRope);
+
+        // If the rope was already converted to a string
+        if (rightStr is null)
+        {
+            leftStr = rope_get_left(curRope);
+            break;
+        }
+    }
+
+    output = tempWStr(leftStr) ~ output;
+
+    return output;
+}
+
+/**
+Extract a D string from a rope object
+*/
+string ropeToStr(refptr ptr)
+{
+    return to!string(ropeToWStr(ptr));
+}
+
+/**
+MurmurHash2, 64-bit version for 64-but platforms
+All hail Austin Appleby
+*/
+uint64_t murmurHash64A(const void* key, size_t len, uint64_t seed = 1337)
+{
+    const uint64_t m = 0xc6a4a7935bd1e995;
+    const int r = 47;
+
+    uint64_t h = seed ^ (len * m);
+
+    uint64_t* data = cast(uint64_t*)key;
+    uint64_t* end = data + (len/8);
+
+    while (data != end)
+    {
+        uint64_t k = *data++;
+
+        k *= m;
+        k ^= k >> r;
+        k *= m;
+
+        h ^= k;
+        h *= m;
+    }
+
+    ubyte* tail = cast(ubyte*)data;
+
+    switch (len & 7)
+    {
+        case 7: h ^= (cast(uint64_t)tail[6]) << 48;
+        case 6: h ^= (cast(uint64_t)tail[5]) << 40;
+        case 5: h ^= (cast(uint64_t)tail[4]) << 32;
+        case 4: h ^= (cast(uint64_t)tail[3]) << 24;
+        case 3: h ^= (cast(uint64_t)tail[2]) << 16;
+        case 2: h ^= (cast(uint64_t)tail[1]) << 8;
+        case 1: h ^= (cast(uint64_t)tail[0]);
+                h *= m;
+        default:
+    };
+
+    h ^= h >> r;
+    h *= m;
+    h ^= h >> r;
+
+    return h;
+}
+
+/**
 Compute the hash value for a given string object
 */
 uint32 compStrHash(refptr str)
 {
-    // TODO: operate on multiple characters at a time, look at Murmur hash
-
     auto len = str_get_len(str);
+    auto ptr = str + str_ofs_data(null, 0);
 
-    uint32 hashCode = 0;
-
-    for (uint32 i = 0; i < len; ++i)
-    {
-        auto ch = str_get_data(str, i);
-        hashCode = (((hashCode << 8) + ch) & 536870911) % 426870919;
-    }
+    uint32 hashCode = cast(uint32_t)murmurHash64A(ptr, len);
 
     // Store the hash code on the string object
     str_set_hash(str, hashCode);
@@ -130,7 +225,7 @@ bool streq(refptr strA, refptr strB)
 
     auto ptrA = strA + str_ofs_data(strA, 0);
     auto ptrB = strB + str_ofs_data(strB, 0);
-    return memcmp(ptrA, ptrB, uint16_t.sizeof * lenA) == 0;   
+    return memcmp(ptrA, ptrB, uint16_t.sizeof * lenA) == 0;
 }
 
 /**
@@ -193,7 +288,7 @@ refptr getTableStr(VM vm, refptr str)
         tblSize * STR_TBL_MAX_LOAD_NUM)
     {
         // Store the string pointer in a GC root object
-        auto strRoot = GCRoot(vm, str, Type.STRING);
+        auto strRoot = GCRoot(str, Tag.STRING);
 
         // Extend the string table
         extStrTable(vm, strTbl, tblSize, numStrings);
@@ -278,7 +373,7 @@ void extStrTable(VM vm, refptr curTbl, uint32 curSize, uint32 numStrings)
 }
 
 /**
-Get the string object for a given string
+Get the interned string object for a given character string
 */
 refptr getString(VM vm, wstring str)
 {

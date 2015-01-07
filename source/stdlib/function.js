@@ -80,7 +80,7 @@ function Function()
         throw new SyntaxError('Invalid function body');
 
     var fn = 'function(' + argList.join(', ') + '){\n' + body + '\n}';
-    return $ir_eval_str(fn);
+    return eval(fn);
 
     function isValidFunctionBody(body) 
     {
@@ -210,7 +210,8 @@ Function.prototype.apply = function (thisArg, argArray)
     if (!$ir_is_closure(this))
         throw new TypeError('apply on non-function');
 
-    if (argArray === null || argArray === undefined)
+    if (($ir_is_refptr(argArray) && $ir_eq_refptr(argArray, null)) ||
+        ($ir_is_const(argArray) && $ir_eq_const(argArray, $undef)))
         argArray = [];
 
     if (!$ir_is_array(argArray))
@@ -218,11 +219,13 @@ Function.prototype.apply = function (thisArg, argArray)
 
     // If the this argument is null or undefined,
     // make it the global object
-    if (thisArg === null || thisArg === undefined)
+
+    if (($ir_is_refptr(thisArg) && $ir_eq_refptr(thisArg, null)) ||
+        ($ir_is_const(thisArg) && $ir_eq_const(thisArg, $undef)))
         thisArg = $global;
 
     // Get the arguments table from the array
-    var argTable = $rt_arr_get_tbl(argArray);
+    var argTable = $rt_getArrTbl(argArray);
 
     // Get the number of arguments
     var numArgs = argArray.length;
@@ -238,9 +241,57 @@ Function.prototype.apply = function (thisArg, argArray)
 */
 Function.prototype.call = function (thisArg)
 {
-    var argArray = [];
-    for (var i = 1; i < $argc; ++i)
-        argArray.push($ir_get_arg(i));
+    // thisArg + 1 argument
+    if ($ir_eq_i32($argc, 2))
+    {
+        return $ir_call(
+            this,
+            thisArg,
+            $ir_get_arg(1)
+        );
+    }
+
+    // thisArg + 2 arguments
+    if ($ir_eq_i32($argc, 3))
+    {
+        return $ir_call(
+            this,
+            thisArg,
+            $ir_get_arg(1),
+            $ir_get_arg(2)
+        );
+    }
+
+    // thisArg + 3 arguments
+    if ($ir_eq_i32($argc, 4))
+    {
+        return $ir_call(
+            this,
+            thisArg,
+            $ir_get_arg(1),
+            $ir_get_arg(2),
+            $ir_get_arg(3)
+        );
+    }
+
+    // No arguments
+    if ($ir_eq_i32($argc, 1))
+    {
+        return $ir_call(
+            this,
+            thisArg
+        );
+    }
+
+    var numArgs = $argc - 1;
+
+    // Create an array for the arguments
+    var argArray = $rt_newArr(numArgs);
+    argArray.length = numArgs;
+
+    // Copy the arguments into the array
+    for (var i = 0; i < numArgs; ++i)
+        argArray[i] = $ir_get_arg(i+1);
 
     var retVal = this.apply(thisArg, argArray);
 

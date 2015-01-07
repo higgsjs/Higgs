@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2011, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2011-2014, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -43,20 +43,34 @@
 
     function require(identifier)
     {
-        var _exports = exports;
-        var mod;
-
         if (!(/\.js$/).test(identifier))
             identifier += ".js";
 
         if (require.loaded.hasOwnProperty(identifier))
             return require.loaded[identifier];
 
+        var _exports = exports;
+
+        // Set the global exports object before loading the module
         exports = {};
-        load(identifier);
-        mod = exports;
-        exports = _exports;
+
+        // Mark the module as loaded now to avoid circular dependency issues
+        var mod = exports;
         require.loaded[identifier] = mod;
+
+        load(identifier);
+
+        // If a new exports object was defined by the module
+        if (exports !== mod)
+        {
+            print('WARNING: module "', identifier, '" redefines exports object');
+            mod = exports;
+            require.loaded[identifier] = mod;
+        }
+
+        // Restore the value of the exports variable
+        exports = _exports;
+
         return mod;
     }
 

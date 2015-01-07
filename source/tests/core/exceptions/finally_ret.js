@@ -36,7 +36,7 @@ function test()
     str = 'fail';
 }
 
-// foo returns 'abcd'
+// test returns 'abcd'
 
 // str should be 'abcdef'
 

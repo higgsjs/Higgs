@@ -67,16 +67,10 @@ ulong[ulong] numVerBlocks;
 ulong numShapes = 0;
 
 /// Number of shape lookups with a known shape
-ulong numDefShapeKnown = 0;
+ulong numShapeKnown = 0;
 
-/// Number of shape lookups with dynamic dispatches
-ulong numDefShapeDisp = 0;
-
-/// Number of version dispatch updates
-ulong numDefShapeUpd = 0;
-
-/// Number of host version lookups
-ulong numDefShapeHost = 0;
+/// Number of shape tests
+ulong numShapeTests = 0;
 
 /// Number of property writes
 ulong numSetProp = 0;
@@ -84,20 +78,52 @@ ulong numSetProp = 0;
 /// Number of host property writes
 ulong numSetPropHost = 0;
 
+/// Number of cache updates on property writes
+ulong numSetPropCacheUpd = 0;
+
 /// Number of property reads
 ulong numGetProp = 0;
+
+/// Number of host property reads
+ulong numGetPropHost = 0;
+
+/// Number of cache updates on property reads
+ulong numGetPropCacheUpd = 0;
+
+/// Number of shape changes due to type
+ulong numShapeFlips = 0;
 
 /// Number of heap allocations
 ulong numHeapAllocs = 0;
 
-/// Number of dynamic calls
-ulong numCall = 0;
+/// Number of optimized dynamic calls
+ulong numCallFast = 0;
+
+/// Number of unoptimized dynamic calls
+ulong numCallSlow = 0;
+
+/// Number of calls performed using apply
+ulong numCallApply = 0;
+
+/// Number of non-primitive calls by function name
+private ulong*[string] numCalls;
 
 /// Number of primitive calls by primitive name
-private ulong* numPrimCalls[string];
+private ulong*[string] numPrimCalls;
 
 /// Number of type tests executed by test kind
-private ulong* numTypeTests[string];
+private ulong*[string] numTypeTests;
+
+/// Get a pointer to the counter variable associated with a function
+ulong* getCallCtr(string funName)
+{
+    // If there is no counter for this primitive, allocate one
+    if (funName !in numCalls)
+        numCalls[funName] = new ulong;
+
+    // Return the counter for this function
+    return numCalls[funName];
+}
 
 /// Get a pointer to the counter variable associated with a primitive
 ulong* getPrimCallCtr(string primName)
@@ -111,7 +137,7 @@ ulong* getPrimCallCtr(string primName)
 }
 
 /// Get a pointer to the counter variable associated with a type test
-ulong* getTypeTestCtr(string testOp)
+ulong* getTagTestCtr(string testOp)
 {
     // If there is no counter for this op, allocate one
     if (testOp !in numTypeTests)
@@ -127,11 +153,17 @@ private ulong compTimeUsecs = 0;
 /// Total execution time in microseconds
 private ulong execTimeUsecs = 0;
 
+/// Total garbage collection time in microseconds
+private ulong gcTimeUsecs = 0;
+
 /// Compilation timer start
 private ulong compStartUsecs = 0;
 
 /// Execution timer start
 private ulong execStartUsecs = 0;
+
+/// Garbage collection timer start
+private ulong gcStartUsecs = 0;
 
 /// Get the current process time in microseconds
 ulong getTimeUsecs()
@@ -185,26 +217,66 @@ bool execTimeStarted()
     return execStartUsecs != 0;
 }
 
+/// Start recording garbage collection time
+void gcTimeStart()
+{
+    assert (gcStartUsecs is 0, "gc timer already started");
+
+    gcStartUsecs = getTimeUsecs();
+}
+
+/// Stop recording garbage collection time
+void gcTimeStop()
+{
+    assert (gcStartUsecs !is 0);
+
+    auto gcEndUsecs = getTimeUsecs();
+    gcTimeUsecs += gcEndUsecs - gcStartUsecs;
+
+    gcStartUsecs = 0;
+}
+
 /// Static module constructor
 static this()
 {
     // Pre-register type test counters
-    getTypeTestCtr("is_i32");
-    getTypeTestCtr("is_i64");
-    getTypeTestCtr("is_f64");
-    getTypeTestCtr("is_const");
-    getTypeTestCtr("is_refptr");
-    getTypeTestCtr("is_rawptr");
+    getTagTestCtr("is_int32");
+    getTagTestCtr("is_int64");
+    getTagTestCtr("is_float64");
+    getTagTestCtr("is_const");
+    getTagTestCtr("is_refptr");
+    getTagTestCtr("is_rawptr");
 }
 
 /// Static module destructor, log the accumulated stats
 static ~this()
 {
+    /// Print named counts sorted in decreasing order
+    void sortedCounts(ulong*[string] counts, string countKind)
+    {
+        alias CountPair = Tuple!(string, "name", ulong, "cnt");
+        CountPair[] countPairs;
+
+        foreach (name, pCtr; counts)
+            countPairs ~= CountPair(name, *pCtr);
+        countPairs.sort!"a.cnt > b.cnt";
+
+        ulong total = 0;
+        foreach (pair; countPairs)
+        {
+            writefln("%s: %s", pair.name, pair.cnt);
+            total += pair.cnt;
+        }
+
+        writefln("total %s: %s", countKind, total);
+    }
+
     if (opts.stats || opts.perf_stats)
     {
         writeln();
         writefln("comp time (ms): %s", compTimeUsecs / 1000);
         writefln("exec time (ms): %s", execTimeUsecs / 1000);
+        writefln("gc time (ms): %s", gcTimeUsecs / 1000);
         writefln("total time (ms): %s", (compTimeUsecs + execTimeUsecs) / 1000);
         writefln("code size (bytes): %s", genCodeSize);
     }
@@ -214,48 +286,30 @@ static ~this()
         writefln("num blocks: %s", numBlocks);
         writefln("num versions: %s", numVersions);
         writefln("max versions: %s", maxVersions);
-
         writefln("num shapes: %s", numShapes);
-        writefln("num def shape known: %s", numDefShapeKnown);
-        writefln("num def shape dispatch: %s", numDefShapeDisp);
-        writefln("num def shape update: %s", numDefShapeUpd);
-        writefln("num def shape host: %s", numDefShapeHost);
+
+        writefln("num shape known: %s", numShapeKnown);
+        writefln("num shape tests: %s", numShapeTests);
         writefln("num set prop: %s", numSetProp);
         writefln("num set prop host: %s", numSetPropHost);
+        writefln("num set prop cache upd: %s", numSetPropCacheUpd);
         writefln("num get prop: %s", numGetProp);
+        writefln("num get prop host: %s", numGetPropHost);
+        writefln("num get prop cache upd: %s", numGetPropCacheUpd);
+        writefln("num shape flips: %s", numShapeFlips);
         writefln("num heap allocs: %s", numHeapAllocs);
 
-        writefln("num call: %s", numCall);
+        writefln("num call fast: %s", numCallFast);
+        writefln("num call slow: %s", numCallSlow);
+        writefln("num call apply: %s", numCallApply);
 
-        alias Tuple!(string, "name", ulong, "cnt") PrimCallCnt;
-        PrimCallCnt[] primCallCnts;
-        foreach (name, pCtr; numPrimCalls)
-            primCallCnts ~= PrimCallCnt(name, *pCtr);
-        primCallCnts.sort!"a.cnt > b.cnt";
+        //sortedCounts(numCalls, "calls");
 
-        ulong totalPrimCalls = 0;
-        foreach (pair; primCallCnts)
-        {
-            writefln("%s: %s", pair.name, pair.cnt);
-            totalPrimCalls += pair.cnt;
-        }
-        writefln("total prim calls: %s", totalPrimCalls);
+        sortedCounts(numPrimCalls, "prim calls");
 
-        alias Tuple!(string, "test", ulong, "cnt") TypeTestCnt;
-        TypeTestCnt[] typeTestCnts;
-        foreach (test, pCtr; numTypeTests)
-            typeTestCnts ~= TypeTestCnt(test, *pCtr);
-        typeTestCnts.sort!"a.cnt > b.cnt";
+        sortedCounts(numTypeTests, "type tests");
 
-        ulong totalTypeTests = 0;
-        foreach (pair; typeTestCnts)
-        {
-            writefln("%s: %s", pair.test, pair.cnt);
-            totalTypeTests += pair.cnt;
-        }
-        writefln("total type tests: %s", totalTypeTests);
-
-        for (size_t numVers = 1; numVers <= min(opts.jit_maxvers, 10); numVers++)
+        for (size_t numVers = 1; numVers <= min(opts.maxvers, 10); numVers++)
         {
             auto blockCount = numVerBlocks.get(numVers, 0);
             writefln("%s versions: %s", numVers, blockCount);

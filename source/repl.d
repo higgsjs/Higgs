@@ -71,12 +71,12 @@ void repl(VM vm)
 
         catch (ParseError e)
         {
-            writeln("parse error: " ~ e.toString);
+            writeln("parse error: ", e);
         }
 
         catch (RunError e)
         {
-            writeln(e.toString);
+            writeln(e);
         }
     }
 }

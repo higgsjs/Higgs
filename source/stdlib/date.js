@@ -130,7 +130,7 @@ function DayFromMonth (
 
     case 6:
         return 181 + inLeapYear;
-        
+
     case 7:
         return 212 + inLeapYear;
 
@@ -139,10 +139,10 @@ function DayFromMonth (
 
     case 9:
         return 273 + inLeapYear;
-        
+
     case 10:
         return 304 + inLeapYear;
-        
+
     case 11:
         return 334 + inLeapYear;
     }
@@ -203,7 +203,7 @@ function yearFromTime (
     step = Math.floor(offset / (DAYS_PER_100YEARS * MS_PER_DAY));
     year += side * 100 * step;
     offset -= step * DAYS_PER_100YEARS * MS_PER_DAY;
-    
+
     // Step of 4 years chunk.
     step = Math.floor(offset / (DAYS_PER_4YEARS * MS_PER_DAY));
     year += side * 4 * step;

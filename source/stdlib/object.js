@@ -93,7 +93,7 @@ Object.getPrototypeOf = function (obj)
         'non-object value in getPrototypeOf'
     );
 
-    var proto = $ir_shape_get_proto(obj);
+    var proto = $ir_obj_get_proto(obj);
 
     return proto;
 };
@@ -109,28 +109,31 @@ Object.getOwnPropertyDescriptor = function (obj, prop)
     prop = $rt_toString(prop);
 
     // Get the defining shape for the property
-    var defShape = $ir_shape_get_def(obj, prop);
+    var defShape = $ir_obj_prop_shape(obj, prop);
+
+    // If the property doesn't exist
+    if ($ir_eq_rawptr(defShape, $nullptr))
+        return undefined;
 
     var desc = {};
 
     // Extract the current property attributes
-    var attrs = $ir_ne_rawptr(defShape, $nullptr)? $ir_shape_get_attrs(defShape):$rt_ATTR_DEFAULT;
+    var attrs = $ir_shape_get_attrs(defShape);
     desc.writable = !!(attrs & $rt_ATTR_WRITABLE);
     desc.enumerable = !!(attrs & $rt_ATTR_ENUMERABLE);
     desc.configurable = !!(attrs & $rt_ATTR_CONFIGURABLE);
 
     // Get the property value
-    var propVal = $ir_shape_get_prop(obj, defShape);
-
-    // If this property is a getter-setter
-    if ($ir_shape_is_getset(defShape))
+    var propVal;
+    if (propVal = $ir_obj_get_prop(obj, prop))
     {
-        desc.get = propVal.get;
-        desc.set = propVal.set;
+        desc.value = propVal;
     }
     else
     {
-        desc.value = propVal;
+        // This property is a getter-setter
+        desc.get = propVal.get;
+        desc.set = propVal.set;
     }
 
     return desc;
@@ -161,7 +164,7 @@ Object.getOwnPropertyNames = function (O)
 Object.create = function (proto, properties)
 {
     if ($rt_valIsObj(proto) === false && proto !== null)
-        throw TypeError('can only create object from object or null prototype');
+        throw TypeError('can only create object with object or null prototype');
 
     var newObj = $rt_newObj(proto);
 
@@ -176,35 +179,29 @@ Object.create = function (proto, properties)
 */
 Object.defineProperty = function (obj, prop, attribs)
 {
+    // FIXME: use 'in' instead of hasOwnProperty
+
     if (!$rt_valIsObj(obj))
         throw TypeError('non-object value in defineProperty');
 
     if (!$rt_valIsObj(attribs))
         throw TypeError('property descriptor must be an object');
 
-    if ((attribs.hasOwnProperty('value')) &&
-        (attribs.hasOwnProperty('get') || attribs.hasOwnProperty('set')))
+    if ('value' in attribs && ('get' in attribs || 'set' in attribs))
         throw TypeError('property cannot have both a value and accessors');
 
     // Convert the property name to a string if necessary
     prop = $rt_toString(prop);
 
     // Test if accessors were specified
-    var isGS = attribs.hasOwnProperty('get') || attribs.hasOwnProperty('set');
+    var isGS = 'get' in attribs || 'set' in attribs;
 
-    // If a value is specified, try to set it,
-    // this will do nothing if writable is false
-    if (attribs.hasOwnProperty('value'))
-    {
-        obj[prop] = attribs.value;
-    }
-
-    // Otherwise, if accessors are specified
-    else if (isGS)
+    // If accessors are specified
+    if (isGS)
     {
         var defFn = function () {};
-        var get = attribs.hasOwnProperty('get')? attribs.get:defFn;
-        var set = attribs.hasOwnProperty('set')? attribs.set:defFn;
+        var get = ('get' in attribs)? attribs.get:defFn;
+        var set = ('set' in attribs)? attribs.set:defFn;
 
         if (typeof get !== 'function' || typeof set !== 'function')
             throw TypeError('accessors must be functions');
@@ -212,30 +209,41 @@ Object.defineProperty = function (obj, prop, attribs)
         // Create a property descriptor pair
         obj[prop] = { get:get, set:set };
     }
-
-    // Otherwise, no value was specified, create the property if absent
-    else if (!$rt_hasOwnProp(obj, prop))
+    else
     {
-        obj[prop] = undefined;
+        // If this is a new property
+        if (!$rt_hasOwnProp(obj, prop))
+        {
+            var objAttrs = $ir_shape_get_attrs($rt_obj_get_shape(obj));
+            if (!(objAttrs & $rt_ATTR_EXTENSIBLE))
+                throw TypeError("cannot add new property to non-extensible object");
+
+            // Create the new property
+            obj[prop] = undefined;
+        }
+
+        // If a value is specified, try to set it,
+        // this will do nothing if writable is false
+        if ('value' in attribs)
+        {
+            obj[prop] = attribs.value;
+        }
     }
 
+    // Get the defining shape for the property
+    var defShape = $ir_obj_prop_shape(obj, prop);
+    assert ($ir_ne_rawptr(defShape, $nullptr));
+
     // Extract the current property attributes
-    var defShape = $ir_shape_get_def(obj, prop);
-    var oldAttrs = $ir_ne_rawptr(defShape, $nullptr)? $ir_shape_get_attrs(defShape):$rt_ATTR_DEFAULT;
+    var oldAttrs = $ir_shape_get_attrs(defShape);
     var oldWR = !!(oldAttrs & $rt_ATTR_WRITABLE);
     var oldEN = !!(oldAttrs & $rt_ATTR_ENUMERABLE);
     var oldCF = !!(oldAttrs & $rt_ATTR_CONFIGURABLE);
 
-    // Assemble the new property attributes
-    var newWR = attribs.hasOwnProperty('writable')? !!attribs.writable:false;
-    var newEN = attribs.hasOwnProperty('enumerable')? !!attribs.enumerable:false;
-    var newCF = attribs.hasOwnProperty('configurable')? !!attribs.configurable:false;
-    var newAttrs = (
-        (newWR? $rt_ATTR_WRITABLE:0) |
-        (newEN? $rt_ATTR_ENUMERABLE:0) |
-        (newCF? $rt_ATTR_CONFIGURABLE:0) |
-        (isGS? $rt_ATTR_GETSET:0)
-    );
+    // Extract the new property attributes
+    var newWR = !!attribs.writable;
+    var newEN = !!attribs.enumerable;
+    var newCF = !!attribs.configurable;
 
     // If the property is not currently configurable
     if (oldCF === false)
@@ -246,12 +254,22 @@ Object.defineProperty = function (obj, prop, attribs)
             throw TypeError('cannot unset writable flag when configurable is false');
         if (newCF != oldCF)
             throw TypeError('cannot unset configurable flag');
+
+        return obj;
     }
-    else
-    {
-        // Set the new property attributes
-        $ir_shape_set_attrs(obj, prop, newAttrs);
-    }
+
+    // Construct the attribute flag bits and
+    // preserve the current extensible status
+    var newAttrs = (
+        (oldAttrs & $rt_ATTR_EXTENSIBLE) |
+        (newWR? $rt_ATTR_WRITABLE:0) |
+        (newEN? $rt_ATTR_ENUMERABLE:0) |
+        (newCF? $rt_ATTR_CONFIGURABLE:0) |
+        (isGS? $rt_ATTR_GETSET:0)
+    );
+
+    // Set the new property attributes
+    $ir_obj_set_attrs(obj, defShape, newAttrs);
 
     // Return the object
     return obj;
@@ -275,74 +293,136 @@ Object.defineProperties = function (O, Properties)
 
 /**
 15.2.3.8 Object.seal ( O )
-FIXME: noop function for now
+Makes all properties non-configurable and
+makes the object non-extensible
 */
-Object.seal = function (O)
+Object.seal = function (obj)
 {
-    if ($rt_valIsObj(O) === false)
+    if ($rt_valIsObj(obj) === false)
         throw TypeError('invalid object in seal');
 
-    return O;
+    var keys = Object.keys(obj);
+
+    // For each property of the object
+    for (var i = 0; i < keys.length; ++i)
+    {
+        var key = keys[i];
+
+        var desc = Object.getOwnPropertyDescriptor(obj, key);
+
+        Object.defineProperty(
+            obj,
+            key,
+            {
+                configurable: false,
+                writable: desc.writable,
+                enumerable: desc.enumerable
+            }
+        );
+    }
+
+    Object.preventExtensions(obj);
+
+    return obj;
 };
 
 /**
 15.2.3.9 Object.freeze ( O )
-FIXME: noop function for now
 */
-Object.freeze = function (O)
+Object.freeze = function (obj)
 {
-    if ($rt_valIsObj(O) === false)
+    if ($rt_valIsObj(obj) === false)
         throw TypeError('invalid object in freeze');
 
-    return O;
+    var keys = Object.keys(obj);
+
+    // For each property of the object
+    for (var i = 0; i < keys.length; ++i)
+    {
+        var key = keys[i];
+
+        var desc = Object.getOwnPropertyDescriptor(obj, key);
+
+        Object.defineProperty(
+            obj,
+            key,
+            {
+                configurable: false,
+                writable: false,
+                enumerable: desc.enumerable
+            }
+        );
+    }
+
+    Object.preventExtensions(obj);
+
+    return obj;
 };
 
 /**
 15.2.3.10 Object.preventExtensions ( O )
-FIXME: noop function for now
 */
-Object.preventExtensions = function (O)
+Object.preventExtensions = function (obj)
 {
-    if ($rt_valIsObj(O) === false)
+    if ($rt_valIsObj(obj) === false)
         throw TypeError('invalid object in preventExtensions');
 
-    return O;
+    // Get the object shape
+    var objShape = $rt_obj_get_shape(obj);
+
+    // Remove the extensible attribute
+    var attrs = $ir_shape_get_attrs(objShape);
+    var newAttrs = attrs & ~$rt_ATTR_EXTENSIBLE;
+
+    // Set the new property attributes
+    $ir_obj_set_attrs(obj, objShape, newAttrs);
+
+    return obj;
 };
 
 /**
 15.2.3.11 Object.isSealed ( O )
-FIXME: noop function for now
 */
 Object.isSealed = function (O)
 {
     if ($rt_valIsObj(O) === false)
         throw TypeError('invalid object in isSealed');
 
-    return false; 
+    if (Object.isExtensble(obj))
+        return false;
+
+    // TODO: test each property
+
+    return false;
 };
 
 /**
 15.2.3.12 Object.isFrozen ( O )
-FIXME: for now, all objects are extensible
 */
 Object.isFrozen = function (O)
 {
     if ($rt_valIsObj(O) === false)
         throw TypeError('invalid object in isFrozen');
 
+    if (Object.isExtensble(obj))
+        return false;
+
+    // TODO: test each property
+
     return false;
 };
 
 /**
 15.2.3.13 Object.isExtensible ( O )
-FIXME: for now, all objects are extensible
 */
-Object.isExtensible = function (O)
+Object.isExtensible = function (obj)
 {
-    if ($rt_valIsObj(O) === false)
+    if ($rt_valIsObj(obj) === false)
         throw TypeError('invalid object in isExtensible');
 
-    return true;
+    var objShape = $rt_obj_get_shape(obj);
+    var attrs = $ir_shape_get_attrs(objShape);
+    return (attrs & $rt_ATTR_EXTENSIBLE)? true:false;
 };
 
 /**
@@ -414,7 +494,7 @@ Object.prototype.propertyIsEnumerable = function (V)
     if (this.hasOwnProperty(V) === false)
         return false;
 
-    var defShape = $ir_shape_get_def(this, V);
+    var defShape = $ir_obj_prop_shape(this, V);
 
     if ($ir_eq_rawptr(defShape, $nullptr))
         return false;

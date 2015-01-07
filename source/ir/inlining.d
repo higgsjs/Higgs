@@ -67,7 +67,7 @@ void inlinePass(VM vm, IRFunction caller)
     }
 
     // If inlining is disabled, do nothing
-    if (opts.jit_noinline)
+    if (opts.noinline)
         return;
 
     //bool isUnit = caller.isUnit;
@@ -93,9 +93,9 @@ void inlinePass(VM vm, IRFunction caller)
         auto nameStr = strArg.str;
 
         // Get the primitve function from the global object
-        auto closVal = getProp(vm, vm.globalObj, nameStr);
+        auto closVal = getProp(vm.globalObj, nameStr);
         assert (
-            closVal.type is Type.CLOSURE ||
+            closVal.tag is Tag.CLOSURE ||
             (caller.isUnit() && caller.getName.canFind("runtime")),
             format(
                 "cannot inline non-closure \"%s\" in \"%s\"", 
@@ -105,7 +105,7 @@ void inlinePass(VM vm, IRFunction caller)
         );
 
         // If the closure is not available, skip it
-        if (closVal.type !is Type.CLOSURE)
+        if (closVal.tag !is Tag.CLOSURE)
             continue;
 
         assert (closVal.word.ptrVal !is null);
@@ -127,6 +127,7 @@ void inlinePass(VM vm, IRFunction caller)
 
         if (callee.numBlocks > 4
             && !name.startsWith("$rt_valIsObj")
+            && !name.startsWith("$rt_toBool")
             && !name.startsWith("$rt_minus")
             && !name.startsWith("$rt_addInt")
             && !name.startsWith("$rt_addIntFloat")
@@ -147,16 +148,25 @@ void inlinePass(VM vm, IRFunction caller)
             && !name.startsWith("$rt_geIntFloat")
             && !name.startsWith("$rt_eqInt")
             && !name.startsWith("$rt_eqNull")
+            && !name.startsWith("$rt_neNull")
             && !name.startsWith("$rt_getPropField")
-            && !name.startsWith("$rt_getPropMethod")
+            && !name.startsWith("$rt_getStrMethod")
             && !name.startsWith("$rt_getPropElem")
             && !name.startsWith("$rt_getPropLength")
             && !name.startsWith("$rt_setPropField")
             && !name.startsWith("$rt_setPropElem")
             && !name.startsWith("$rt_setArrElemNoCheck")
+            && !name.startsWith("$rt_setProto")
+            && !name.startsWith("$rt_newObj")
+            && !name.startsWith("$rt_newArr")
             && !name.startsWith("$rt_ctorNewThis")
             && !name.startsWith("$rt_getGlobalInl")
             && !name.startsWith("$rt_setGlobalInl")
+            && !name.startsWith("$rt_ropeToStr")
+            && !name.startsWith("$rt_isShadowed")
+            && !name.startsWith("$rt_getEnumKey")
+            && !name.startsWith("$rt_nextEnumObj")
+            && !name.startsWith("$rt_getPropEnum")
         )
             continue;
 
@@ -176,12 +186,12 @@ void inlinePass(VM vm, IRFunction caller)
             // If the property is defined and is a constant
             if (defShape && !defShape.writable && !defShape.configurable)
             {
-                auto val = getProp(vm, vm.globalObj, propName);
+                auto val = getProp(vm.globalObj, propName);
 
                 IRConst newVal;
-                if (val.type is Type.INT32)
+                if (val.tag is Tag.INT32)
                     newVal = IRConst.int32Cst(val.word.int32Val);
-                else if (val.type is Type.FLOAT64)
+                else if (val.tag is Tag.FLOAT64)
                     newVal = IRConst.float64Cst(val.word.floatVal);
                 else if (val is UNDEF)
                     newVal = IRConst.undefCst;
@@ -301,7 +311,7 @@ PhiNode inlineCall(IRInstr callSite, IRFunction callee)
     valMap[callee.argcVal] = IRConst.int32Cst(cast(int32_t)numArgs);
 
     // Map the visible parameters to call site parameters
-    foreach (param; callee.paramMap)
+    foreach (param; callee.paramVals)
     {
         auto argIdx = param.idx - NUM_HIDDEN_ARGS;
         if (argIdx < numArgs)

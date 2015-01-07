@@ -1,36 +1,27 @@
 Wishlist
 --------
 
-TODO: complete WAV output support, test it out with sine wave
+TODO: blog post, Higgs' Fancy New Object System => get started
+- use knightmare image for featured image
+- quick sketching program, online?
+- post to r/compilers, r/higgsjs
+- Typed shapes + BBV a bit of a gamble
+
+TODO: blog post, the future of compilation
+- Logical reasoning, supercompilation
+- JIT compilers, continuous of compilation
+- Lazyness is crucial
+- Definite place for controlled code duplication
+TODO: BBV - Hindsight & Future Directions
+- Check notes
+
+------------------------------------------------------------------------------
 
 TODO: optimize x86 instr encoding based on usage
 - e.g.: reg64 to mem move and vice versa?
 - do profiling first
 
-Idea: global table of property names with type monitoring
-- current index, if always same
-- current type
-- can it be a getter/setter?
-- discuss with Marc
-  - would most probably work well for benchmarks
-- if foobar property always has same offset, don't even care what the map is
-  - fair game?
-- issue: can know that x is always at some index, but doesn't mean that your
-  object has a property x
-- can do monitoring per-map, and get great perf gains on the global object
-- how often are object types monomorphic?
-
-Idea: getters/setters + never used opt?
-- Need to be able to invalidate code depending on this
-- segregate by property name, much more effective
-
 TODO: produce 32-bit offsets/addresses in CodeBlock.toString
-
-TODO: reduce code size by using calls for fallback code,
-eg: global access, call_prim inlining/recompilation, others?
-
-TODO: proper hidden classes, support for property enumeration?
-- Type information in hidden classes too?
 
 TODO: execHeap collection/expansion
 - Marc says: not on critical path for paper
@@ -42,14 +33,6 @@ TODO: arrays, functions, have obj ptr inside, drop object inheritance system
 TODO: typed arrays
 - Will save many many type checks on some benchmarks
   - e.g. : integer, FFT
-
-TODO: think about type representation
-- types need to encode obj vs clos vs array
-- typed arrays: int32 array, float array
-- use one whole word for cst value, encode map idx in there too?
-
-TODO: accelerate getPropObj, make more hosted?
-- generate optimized machine code? inline cache?
 
 TODO: look at https://github.com/dntj/jsfft
 - Do they have a test/benchmark of the FFT?
@@ -65,13 +48,6 @@ FIXME: string concat is very slow right now... can we make it faster?
 
 TODO: block-internal jumps, can they all fit in 8-bit indices? force?
 - can maybe "promise" it will fit
-
-TODO: blog post about draw lib
-- advice: crazy but true titles, skimmable blog posts, skimmable style, pretty pics
-- tutorials, should also list in wiki, or blog wiki tuts?
-
-TODO: not missing global prop opt?
-- observation: if read once, we know its not missing
 
 TODO: val can be both in reg and stack
 
@@ -99,6 +75,108 @@ TODO: implement full eval support
 - PROBLEM: there's no parent pointer in AST nodes
   - can't just run vars analysis on subfunction, need to rerun the whole thing...
 
+TODO: look into jetstream benchmarks
+https://www.webkit.org/blog/3418/introducing-the-jetstream-benchmark-suite/
+
+TODO: complete WAV output support, test it out with sine wave
+
+TODO: take a break, look into sound output
+- work on this in dev-maxime branch ***
+- look at existing code
+  - can write and wait for poll, no callback
+
+TODO: higgs shebang mode?
+- first js file arg has shebang line
+
+TODO: port CSG lib
+http://evanw.github.io/csg.js/
+
+TODO: alloc global VM in 32-bit ptr space?
+- Ask how on D forums, maybe tweet link
+- Look into addressing modes required, mov encodings
+TODO: alloc code heap in 32-bit space?
+- Would this benefit us? where are 64-bit code ptrs?
+
+TODO: think about inlining system further
+- Necessary for acceptable compile times
+- Can fully optimize primitives, avoid needing code-patching
+- Make an exception for units with loops also
+- do it intelligently, don't inline in runtime fns, or if too deep in stack?
+TODO: gather stats about the percentage of functions which are long-running
+- init is almost 2x as fast compile time with noinline
+  - compile time for 3d-raytrace less than half, same for turtle
+- disable inlining first
+- dump text and sort
+  - fn, num calls, num itrs
+
+TODO: make $ runtime/stdlib variables read-only, non-enumerable, non-configurable
+
+TODO: const globals
+const name1 = value1 [, name2 = value2 [, name3 = value3 [, ... [, nameN = valueN]]]];
+- Same structure as var decl
+- In D8, these are enumerable
+- Use it for Turing Turtle
+- Look at current parser code, vars code, ast-to-ir code first ***
+
+TODO: look at eval notes again
+
+When fine-tuning the S9 garbage collector (which also is a constant-space mark-and-sweep collector),
+maintaining 50% of free space turned out to be the sweet spot. Whenever less than
+50% of free space are available after a collection, the heap grows.
+=> grow on next GC
+
+TODO: liveness analysis flipped...?
+- TODO: start by implementing system to measure total liveness analysis time
+  - test on 3d-raytrace, other big benchmarks which don't GC, find slowest
+- Current pathological cases, live sets grow very big everywhere
+  - Many many large sets, independently allocated
+- Idea:
+  - For some values, big live intervals
+  - Most values, vast majority, tiny live intervals
+  - For a given value, store the places where it's live in a set
+- Use custom set data structure to store live interval
+  - small embedded list
+  - associative array, initially empty
+  - For most values, small embedded list will work
+- Values that are never live don't even have a live set
+
+TODO: constant prop in ValType?
+- Don't have to propagate all
+- Would be useful to prop shapes without using a register
+- Propagate booleans
+- Simplify shape_is_null and such
+
+class AstNode: public ZoneObject
+class InstructionOperand : public ZoneObject
+typedef ZoneVector<InstructionOperand*> InstructionOperandVector;
+// The Zone supports very fast allocation of small chunks of
+// memory. The chunks cannot be deallocated individually, but instead
+// the Zone supports deallocating all chunks in one fast
+// operation. The Zone is used to hold temporary data structures like
+// the abstract syntax tree, which is deallocated after compilation.
+std.conv:
+T emplace(T, Args...)(void[] chunk, auto ref Args args) if (is(T == class));
+// AST nodes are allocated in a separate zone, which allows faster
+// allocation and constant-time deallocation of the entire syntax
+// tree.
+- Free list approach: fast reallocation, but still need to allocate many
+  objects. D GC will still prove extremely slow.
+- Seems we really should allocate our own large memory blocks
+  - Must call addRange on the memory range
+  - Free list: maybe use a vector, no need to inherit from PoolObject?
+http://wiki.dlang.org/Memory_Management#Explicit_Class_Instance_Allocation
+- Use @nogc attribute
+
+TODO: synth, right for new synth, up for new melody
+- log the melody
+TODO: try allowing either tri or sine in osc bank
+TODO: grid sequencer, keyboard movement to select current square
+- pentatonic scale a different color but other notes available
+
+TODO: try to implement inline array for instr args, phi args
+
+TODO: Can we free one scr reg to reduce spills? May help nbody
+- who uses scrRegs[2]?
 
 
 
@@ -118,6 +196,19 @@ TODO: implement full eval support
 
 
 
+
+[DONE] TODO: not missing global prop opt?
+- observation: if read once, we know its not missing
+
+[DONE] TODO: accelerate getPropObj, make more hosted?
+- generate optimized machine code? inline cache?
+
+[DONE] TODO: proper hidden classes, support for property enumeration?
+- Type information in hidden classes too?
+
+[DONE] Idea: getters/setters + never used opt?
+- Need to be able to invalidate code depending on this
+- segregate by property name, much more effective
 
 [DONE] TODO: lib/plot using image lib
 - look into terminology

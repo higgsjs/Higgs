@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2011, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2011-2014, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -39,9 +39,8 @@
 Bindings for common c I/O functions
 */
 
-(function()
+(function(exports)
 {
-
     /**
     DEPENDENCIES/SETUP
     */
@@ -345,6 +344,7 @@ Bindings for common c I/O functions
             len = c.fread(this.buffer, 1, max, this.ptr);
             str += ffi.string(this.buffer, len);
         } while (c.feof(this.ptr) === 0);
+
         return str;
     };
 
@@ -382,6 +382,17 @@ Bindings for common c I/O functions
     };
 
     /**
+    Write a int16
+    */
+    File.prototype.writeInt16 = function(data)
+    {
+        var size = 2;
+        $ir_store_i16(this.buffer, 0, data);
+        var r = c.fwrite(this.buffer, size, 1, this.ptr);
+        return r === size;
+    };
+
+    /**
     Write a uint16
     */
     File.prototype.writeUint16 = function(data)
@@ -393,12 +404,12 @@ Bindings for common c I/O functions
     };
 
     /**
-    Write a int16
+    Write a int32
     */
-    File.prototype.writeInt16 = function(data)
+    File.prototype.writeInt32 = function(data)
     {
-        var size = 2;
-        $ir_store_i16(this.buffer, 0, data);
+        var size = 4;
+        $ir_store_i32(this.buffer, 0, data);
         var r = c.fwrite(this.buffer, size, 1, this.ptr);
         return r === size;
     };
@@ -426,16 +437,19 @@ Bindings for common c I/O functions
     };
 
     /**
-    Write to a file.
+    Write text data to a file
     */
     File.prototype.write = function(data)
     {
+        data = String(data);
+
         var max = data.length;
-        var r;
         if (max > this.buf_size)
             this.resizeBuf(max + 1);
+
         ffi.jsstrcpy(this.buffer, data);
-        r = c.fwrite(this.buffer, 1, max, this.ptr);
+        var r = c.fwrite(this.buffer, 1, max, this.ptr);
+
         return r === max;
     };
 
@@ -538,8 +552,9 @@ Bindings for common c I/O functions
         c.free(str);
     };
 
+    // Export all definitions in io
+    for (name in io)
+        exports[name] = io[name];
 
-    // Export
-    exports = io;
-})();
+})(exports);
 

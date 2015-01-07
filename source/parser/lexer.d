@@ -67,7 +67,7 @@ struct OpInfo
     bool nonAssoc = false;
 }
 
-alias const(OpInfo)* Operator;
+alias Operator = const(OpInfo)*;
 
 // Maximum operator precedence
 const int MAX_PREC = 16;
@@ -405,7 +405,7 @@ Source token value
 */
 struct Token
 {
-    alias int Type;
+    alias Type = int;
     enum : Type
     {
         OP,
@@ -512,7 +512,7 @@ struct Token
 /**
 Lexer flags, used to parameterize lexical analysis
 */
-alias uint LexFlags;
+alias LexFlags = uint;
 const LexFlags LEX_MAYBE_RE = 1 << 0;
 
 /**
@@ -863,19 +863,37 @@ Token getToken(ref StrStream stream, LexFlags flags)
         {
             ch = stream.readCh();
 
-            if (ch == '\\' && stream.peekCh() == '/')
+            // Escape sequence
+            // Note: other escape sequences are
+            // handled by the regexp parser
+            if (ch == '\\')
             {
-                stream.readCh();
-                reStr ~= "\\/"w;
-                continue;
+                if (stream.peekCh() == '/')
+                {
+                    stream.readCh();
+                    reStr ~= "\\/"w;
+                    continue;
+                }
+
+                if (stream.peekCh() == '\\')
+                {
+                    stream.readCh();
+                    reStr ~= "\\\\"w;
+                    continue;
+                }
             }
 
+            // End of regexp literal
             if (ch == '/')
+            {
                 break;
+            }
 
             // End of file
             if (ch == '\0')
+            {
                 return Token(Token.ERROR, "EOF in literal", stream.getPos());
+            }
 
             reStr ~= ch;
         }
@@ -890,7 +908,6 @@ Token getToken(ref StrStream stream, LexFlags flags)
                 break;
 
             stream.readCh();
-
             reFlags ~= ch;
         }
 
@@ -946,11 +963,11 @@ class TokenStream
     private LexFlags lexFlags;
 
     /**
-    Constructor to tokenize a string
+    Constructor to tokenize a string stream
     */
-    this(wstring str, string file)
+    this(StrStream strStream)
     {
-        this.preStream = StrStream(str, file);
+        this.preStream = strStream;
 
         this.tokenAvail = false;
         this.nlPresent = false;

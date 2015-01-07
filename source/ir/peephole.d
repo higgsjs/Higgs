@@ -52,7 +52,7 @@ import options;
 void optIR(IRFunction fun)
 {
     // If peephole optimizations are disabled, do nothing
-    if (opts.jit_nopeephole)
+    if (opts.nopeephole)
         return;
 
     //writeln("peephole pass for ", fun.getName);
@@ -278,11 +278,8 @@ void optIR(IRFunction fun)
                 // 0 or more Vi and 1 or more Vj
                 // and the phi node is not a function of
                 // one single value from its own block
-                if ((numVi + numVj == phi.block.numIncoming && numVj > 0) &&
-                    (phi.block.numIncoming !is 1 || phi.block.getIncoming(0).branch.block !is block))
+                if (numVi + numVj == phi.block.numIncoming && numVj > 0)
                 {
-                    //print('Renaming phi: ' + instr);
-
                     // Rename all occurences of Vi to Vj
                     assert (!Vj.hasNoUses);
                     phi.replUses(Vj);
@@ -310,8 +307,22 @@ void optIR(IRFunction fun)
                     continue INSTR_LOOP;
                 }
 
-                // Constant folding on is_i32
-                if (op == &IS_I32)
+                // If this is a shape capture instruction
+                // and shape versioning is disabled
+                if (op == &CAPTURE_SHAPE && opts.shape_novers ||
+                    op == &CAPTURE_TAG && opts.shape_notagspec)
+                {
+                    auto desc = instr.getTarget(1);
+                    auto jumpInstr = block.addInstr(new IRInstr(&JUMP));
+                    auto newDesc = jumpInstr.setTarget(0, desc.target);
+                    foreach (arg; desc.args)
+                        newDesc.setPhiArg(cast(PhiNode)arg.owner, arg.value);
+                    delInstr(instr);
+                    continue INSTR_LOOP;
+                }
+
+                // Constant folding on is_int32
+                if (op == &IS_INT32)
                 {
                     auto arg0 = instr.getArg(0);
                     auto cst0 = cast(IRConst)arg0;
@@ -319,7 +330,7 @@ void optIR(IRFunction fun)
                     if (cst0)
                     {
                         instr.replUses(
-                            (cst0.type is Type.INT32)? 
+                            (cst0.tag is Tag.INT32)? 
                             IRConst.trueCst:IRConst.falseCst
                         );
 
@@ -335,6 +346,7 @@ void optIR(IRFunction fun)
                     auto arg1 = instr.getArg(1);
                     auto cst0 = cast(IRConst)arg0;
                     auto cst1 = cast(IRConst)arg1;
+                    auto ins0 = cast(IRInstr)arg0;
 
                     if (cst0 && cst1 && cst0.isInt32 && cst1.isInt32)
                     {
@@ -362,6 +374,37 @@ void optIR(IRFunction fun)
                         instr.replUses(arg0);
                         delInstr(instr);
                         continue INSTR_LOOP;
+                    }
+
+                    // Add of add folding pattern:
+                    // ins0 = add_i32 arg00, cst01
+                    // instr = add_i32 ins0, cst1
+                    if (ins0 && ins0.opcode == &ADD_I32 && cst1 && cst1.isInt32)
+                    {
+                        auto arg00 = ins0.getArg(0);
+                        auto cst01 = cast(IRConst)ins0.getArg(1);
+
+                        if (cst01 && cst01.isInt32)
+                        {
+                            auto v0 = cast(int64_t)cst01.int32Val;
+                            auto v1 = cast(int64_t)cst1.int32Val;
+                            auto r = v0 + v1;
+
+                            if (r >= int32_t.min && r <= int32_t.max)
+                            {
+                                auto addInstr = block.addInstrAfter(
+                                    new IRInstr(
+                                        &ADD_I32,
+                                        arg00,
+                                        IRConst.int32Cst(cast(int32_t)r)
+                                    ),
+                                    instr
+                                );
+                                instr.replUses(addInstr);
+                                delInstr(instr);
+                                continue INSTR_LOOP;
+                            }
+                        }
                     }
                 }
 
@@ -422,6 +465,19 @@ void optIR(IRFunction fun)
                     */
                 }
 
+                // Constant folding on i32_to_f64
+                if (op == &I32_TO_F64)
+                {
+                    auto cst0 = cast(IRConst)instr.getArg(0);
+
+                    if (cst0 && cst0.isInt32)
+                    {
+                        instr.replUses(IRConst.float64Cst(cst0.int32Val));
+                        delInstr(instr);
+                        continue INSTR_LOOP;
+                    }
+                }
+
                 // If this is a branch instruction
                 if (op.isBranch)
                 {
@@ -476,12 +532,15 @@ void optIR(IRFunction fun)
                         }
 
                         // Phi of phi optimization:
-                        // If the predecessor has a phi and a jump, and the 
-                        // successor has one phi which uses the predecessor phi
-                        if (block.firstInstr is instr && 
+                        // If this block has only a jump and one phi
+                        // and the successor has one phi
+                        // and the arg to the successor phi is this phi
+                        // and this phi is only used by the successor phi
+                        if (block.firstInstr is instr &&
                             block.firstPhi !is null && block.firstPhi.next is null &&
                             succ.firstPhi !is null && succ.firstPhi.next is null &&
-                            branch.getPhiArg(succ.firstPhi) is block.firstPhi)
+                            branch.getPhiArg(succ.firstPhi) is block.firstPhi &&
+                            block.firstPhi.hasOneUse)
                         {
                             // For each predecessor
                             for (size_t pIdx = 0; pIdx < block.numIncoming; ++pIdx)
@@ -633,13 +692,49 @@ void optIR(IRFunction fun)
                             continue INSTR_LOOP;
                         }
                     }
-                }
+
+                } // branch instructions
 
             } // foreach instr
 
         } // foreach block
 
     } // while changed
+
+    // Map of visited/reachable blocks
+    bool[IRBlock] visited;
+
+    // Stack of blocks for recursive traversal
+    IRBlock[] stack = [fun.entryBlock];
+
+    // Until the traversal is done
+    while (!stack.empty)
+    {
+        auto block = stack.back();
+        stack.length--;
+
+        // If this block was already visited, skip it
+        if (block in visited)
+            continue;
+
+        // Mark the block as visited
+        visited[block] = true;
+
+        auto branch = block.lastInstr;
+        for (size_t i = 0; i < IRInstr.MAX_TARGETS; ++i)
+        {
+            auto target = branch.getTarget(i);
+            if (target !is null)
+                stack.assumeSafeAppend() ~= target.target;
+        }
+    }
+
+    // Remove all unreachable blocks
+    for (auto block = fun.firstBlock; block !is null; block = block.next)
+    {
+        if (block !in visited)
+            delBlock(block);
+    }
 
     //writeln("peephole opts completed (", passNo, " passes)");
     //writeln(fun);

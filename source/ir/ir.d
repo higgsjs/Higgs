@@ -62,10 +62,10 @@ import jit.jit;
 const wstring RT_PREFIX = "$rt_";
 
 /// Stack variable index type
-alias int32 StackIdx;
+alias StackIdx = int32;
 
 /// Link table index type
-alias uint32 LinkIdx;
+alias LinkIdx = uint32;
 
 /// Null local constant
 immutable StackIdx NULL_STACK = StackIdx.max;
@@ -81,9 +81,6 @@ IR function
 */
 class IRFunction : IdObject
 {
-    /// VM this function is associated with
-    VM vm;
-
     /// Corresponding Abstract Syntax Tree (AST) node
     FunExpr ast;
 
@@ -106,14 +103,14 @@ class IRFunction : IdObject
     /// Total number of locals, including parameters and temporaries
     uint32_t numLocals = 0;
 
-    /// Hidden argument SSA values
+    /// Hidden parameter SSA values
     FunParam raVal;
     FunParam closVal;
     FunParam thisVal;
     FunParam argcVal;
 
-    /// Map of parameters to SSA values
-    FunParam[IdentExpr] paramMap;
+    /// Visible parameter SSA values
+    FunParam[] paramVals;
 
     /// Map of identifiers to SSA cell values (closure/shared variables)
     IRValue[IdentExpr] cellMap;
@@ -134,12 +131,11 @@ class IRFunction : IdObject
     BlockVersion[][IRBlock] versionMap;
 
     /// Constructor
-    this(VM vm, FunExpr ast)
+    this(FunExpr ast)
     {
         // Register this function in the live function reference set
         vm.funRefs[cast(void*)this] = this;
 
-        this.vm = vm;
         this.ast = ast;
         this.name = ast.getName();
         this.numParams = cast(uint32_t)ast.params.length;
@@ -159,6 +155,12 @@ class IRFunction : IdObject
                 this.name = "anon";
             }
         }
+    }
+
+    /// Destructor
+    ~this()
+    {
+        //writeln("destroying fun");
     }
 
     /// Test if this is a unit-level function
@@ -192,9 +194,9 @@ class IRFunction : IdObject
         output.put("this:" ~ thisVal.getName() ~ ", ");
         output.put("argc:" ~ argcVal.getName());
 
-        foreach (argIdx, var; ast.params)
+        foreach (argIdx, paramVal; paramVals)
         {
-            auto paramVal = paramMap[var];
+            auto var = ast.params[argIdx];
             output.put(", " ~ var.toString() ~ ":" ~ paramVal.getName());
         }
         output.put(")");
@@ -592,7 +594,7 @@ class BranchEdge : IdObject
     IRBlock target;
 
     /// Mapping of incoming phi values (block arguments)
-    Use args[];
+    Use[] args;
 
     this(IRInstr branch, IRBlock target)
     {
@@ -862,11 +864,11 @@ class IRConst : IRValue
         return value;
     }
 
-    auto isInt32 () { return value.type == Type.INT32; }
+    auto isInt32 () { return value.tag == Tag.INT32; }
 
     auto pair() { return value; }
     auto word() { return value.word; }
-    auto type() { return value.type; }
+    auto tag() { return value.tag; }
     auto int32Val() { return value.word.int32Val; }
 
     static IRConst int32Cst(int32_t val)
@@ -874,7 +876,7 @@ class IRConst : IRValue
         if (val in int32Vals)
             return int32Vals[val];
 
-        auto cst = new IRConst(Word.int32v(val), Type.INT32);
+        auto cst = new IRConst(Word.int32v(val), Tag.INT32);
         int32Vals[val] = cst;
         return cst;
     }
@@ -884,18 +886,23 @@ class IRConst : IRValue
         if (val in int64Vals)
             return int64Vals[val];
 
-        auto cst = new IRConst(Word.int64v(val), Type.INT64);
+        auto cst = new IRConst(Word.int64v(val), Tag.INT64);
         int64Vals[val] = cst;
         return cst;
     }
 
     static IRConst float64Cst(float64 val)
     {
-        if (val in float64Vals)
-            return float64Vals[val];
+        // Hash the bit representation which might differ even though
+        // two values compare equal, e.g. 0.0 == -0.0 but 0.0 !is -0.0
+        static assert(uint64_t.sizeof == float64.sizeof);
+        ulong repr = *cast(uint64_t*)&val;
 
-        auto cst = new IRConst(Word.float64v(val), Type.FLOAT64);
-        float64Vals[val] = cst;
+        if (auto p = repr in float64Vals)
+            return *p;
+
+        auto cst = new IRConst(Word.float64v(val), Tag.FLOAT64);
+        float64Vals[repr] = cst;
         return cst;
     }
 
@@ -925,7 +932,7 @@ class IRConst : IRValue
 
     static IRConst nullPtrCst()
     { 
-        if (!nullPtrVal) nullPtrVal = new IRConst(Word.int64v(0), Type.RAWPTR);
+        if (!nullPtrVal) nullPtrVal = new IRConst(Word.int64v(0), Tag.RAWPTR);
         return nullPtrVal;
     }
 
@@ -935,13 +942,17 @@ class IRConst : IRValue
     private static IRConst nullVal = null;
     private static IRConst nullPtrVal = null;
 
+    // Integer constants
     private static IRConst[int32] int32Vals;
     private static IRConst[int64] int64Vals;
-    private static IRConst[float64] float64Vals;
 
-    private this(Word word, Type type)
+    // Floating-point constants
+    // Note: we hash the bit representation, not the float
+    private static IRConst[uint64_t] float64Vals;
+
+    private this(Word word, Tag tag)
     {
-        this.value = ValuePair(word, type);
+        this.value = ValuePair(word, tag);
     }
 
     private this(ValuePair value)
@@ -993,7 +1004,7 @@ class IRRawPtr : IRValue
 
     this(rawptr ptr)
     {
-        this.ptr = ValuePair(Word.ptrv(ptr), Type.RAWPTR);
+        this.ptr = ValuePair(Word.ptrv(ptr), Tag.RAWPTR);
     }
 
     override string toString()
@@ -1401,26 +1412,60 @@ string getCalleeName(IRInstr callInstr)
 {
     assert (callInstr.opcode.isCall);
 
-    // Get the instruction providing the closure being called
-    auto closInstr = cast(IRInstr)callInstr.getArg(0);
-    if (closInstr is null)
-        return null;
-
-    // If the callee is a method we're getting from some object
-    if (closInstr.opcode == &CALL_PRIM)
+    /// Recover the property name for a get instruction
+    string getPropName(IRInstr getInstr)
     {
-        auto primName = cast(IRString)closInstr.getArg(0);
-
-        // Call to get a global function
-        if (primName.str == "$rt_getGlobalInl"w)
+        // If this is a primitive call
+        if (getInstr.opcode == &CALL_PRIM)
         {
-            return to!string(closInstr.getArgStrCst(1));
+            auto primName = cast(IRString)getInstr.getArg(0);
+
+            if (primName.str == "$rt_getGlobalInl"w)
+                return to!string(getInstr.getArgStrCst(1));
+            if (primName.str == "$rt_getGlobal"w)
+                return to!string(getInstr.getArgStrCst(2));
+            if (primName.str == "$rt_getPropField"w)
+                return to!string(getInstr.getArgStrCst(2));
+            if (primName.str == "$rt_getProp"w)
+                return to!string(getInstr.getArgStrCst(2));
         }
 
-        // Call to get a property (method)
-        if (primName.str == "$rt_getPropMethod"w)
+        // If this is an object property read
+        if (getInstr.opcode == &OBJ_GET_PROP)
         {
-            return to!string(closInstr.getArgStrCst(2));
+            return to!string(getInstr.getArgStrCst(1));
+        }
+
+        // Callee name unrecoverable
+        return null;
+    }
+
+    // If this is a regular call instruction
+    if (callInstr.opcode is &CALL)
+    {
+        // Get the closure argument
+        auto closArg = callInstr.getArg(0);
+
+        // If the closure argument is a phi node
+        if (auto closPhi = cast(PhiNode)closArg)
+        {
+            // For each phi argument
+            for (size_t iIdx = 0; iIdx < closPhi.block.numIncoming; ++iIdx)
+            {
+                auto branch = closPhi.block.getIncoming(iIdx);
+                auto arg = branch.getPhiArg(closPhi);
+
+                if (auto instrArg = cast(IRInstr)arg)
+                {
+                    return getPropName(instrArg);
+                }
+            }
+        }
+
+        // If the closure argument is an instruction
+        if (auto closInstr = cast(IRInstr)closArg)
+        {
+            return getPropName(closInstr);
         }
     }
 

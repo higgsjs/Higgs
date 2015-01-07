@@ -87,9 +87,12 @@ function test_getOwnPropertyDescriptor()
     // Test that the method exists
     assert (typeof Object.getOwnPropertyDescriptor === 'function');
 
+    var desc = Object.getOwnPropertyDescriptor({}, 'p');
+    assert (desc === undefined);
+
     var o = { p1: 1 };
     var desc = Object.getOwnPropertyDescriptor(o, 'p1');
-    assert (desc.value === 1);
+    assert (desc.value === 1, 'prop desc missing value');
     assert (desc.writable === true);
     assert (desc.enumerable === true);
     assert (desc.configurable === true);
@@ -187,6 +190,11 @@ function test_defineProperty()
     assert ('x' in obj);
     assert (obj.x === undefined);
 
+    // Cannot delete non-configurable properties
+    var obj = Object.defineProperty({}, 'p', { value:5 });
+    delete obj.p;
+    assert (obj.p === 5);
+
     // Undeleting a property
     var obj = { k:3 }
     delete obj.k;
@@ -203,7 +211,7 @@ function test_defineProperty()
     // Setter accessor test
     var obj = Object.defineProperty({}, 'p', { set: function(v) {this.k=v} });
     obj.p = 5;
-    assert (obj.k === 5);
+    assert (obj.k === 5, 'setter failed');
     obj.p = 7;
     assert (obj.k === 7);
     assert (obj.p === undefined);
@@ -226,7 +234,7 @@ function test_defineProperties()
     var o = {};
 
     var o1 = Object.defineProperties(
-        o, 
+        o,
         {
             p1: { value: 1 },
             p2: { value: 2 }
@@ -248,55 +256,127 @@ function test_defineProperties()
 function test_seal()
 {
     // Test that the method exists
-    if (!Object.seal)
-        return 1;
+    assert (typeof Object.seal === 'function')
 
-    return 0;
+    var o = { p1: 1 };
+    Object.seal(o);
+
+    assert (o.hasOwnProperty('p1'))
+    assert (o.propertyIsEnumerable('p1'));
+    assert (o.p1 === 1);
+
+    var desc = Object.getOwnPropertyDescriptor(o, 'p1');
+    assert (desc.writable === true);
+    assert (desc.configurable === false);
+
+    // Extension should be prevented
+    o.p2 = 1;
+    assert (!o.hasOwnProperty('p2'));
 }
 
 function test_freeze()
 {
     // Test that the method exists
-    if (!Object.freeze)
-        return 1;
+    assert (typeof Object.freeze === 'function')
 
-    return 0;
+    var o = { p1: 1 };
+    Object.freeze(o);
+
+    assert (o.hasOwnProperty('p1'))
+    assert (o.propertyIsEnumerable('p1'));
+    assert (o.p1 === 1);
+
+    var desc = Object.getOwnPropertyDescriptor(o, 'p1');
+    assert (desc.writable === false);
+    assert (desc.configurable === false);
+
+    // Extension should be prevented
+    o.p2 = 1;
+    assert (!o.hasOwnProperty('p2'));
 }
 
 function test_preventExtensions()
 {
     // Test that the method exists
-    if (!Object.preventExtensions)
-        return 1;
+    assert (typeof Object.preventExtensions === 'function')
 
-    return 0;
+    var o = { p1:1, p2:2, p3:3 };
+    Object.preventExtensions(o);
+
+    // Extension prevented
+    o.p4 = 4;
+    assert (!o.hasOwnProperty('p4'));
+    assert (o.p3 === 3);
+
+    // Extension prevented with dynamic key
+    o['p' + 4] = 4;
+    assert (!o.hasOwnProperty('p4'));
+    assert (o.p3 === 3);
+
+    // Deleting last property, can't re-add it
+    delete o.p3;
+    assert (!o.hasOwnProperty('p3'));
+    assert (o.p3 === undefined);
+
+    // Deleting last prop shouldn't make obj re-extensible
+    o.p5 = 5;
+    assert (!o.hasOwnProperty('p5'));
+    o.p4 = 4;
+    assert (!o.hasOwnProperty('p4'));
+    o.p3 = 3;
+    assert (!o.hasOwnProperty('p3'));
+
+    var o = { p1:1, p2:2, p3:3 };
+    Object.preventExtensions(o);
+
+    // Setting some attr on last prop shouldn't make obj re-extensile
+    Object.defineProperty(o, 'p3', { enumerable:false });
+    assert (o.p3 === 3);
+    o.p4 = 4;
+    assert (!o.hasOwnProperty('p4'));
+
+    // Deleting a property in the middle of obj, can't re-add prop
+    delete o.p2;
+    assert (!o.hasOwnProperty('p2'));
+    o.p2 = 2;
+    assert (!o.hasOwnProperty('p2'));
+
+    var o = { p1:1, p2:2, p3:3 };
+    Object.preventExtensions(o);
+
+    // Using defineProperty to add a new property
+    // should throw a TypeError if not extensible
+    assertThrows(function () {
+        Object.defineProperty(o, 'p4', { value: 9 });
+    });
 }
 
 function test_isSealed()
 {
     // Test that the method exists
-    if (!Object.isSealed)
-        return 1;
+    assert (typeof Object.isSealed === 'function')
 
-    return 0;
+    // TODO
 }
 
 function test_isFrozen()
 {
     // Test that the method exists
-    if (!Object.isFrozen)
-        return 1;
+    assert (typeof Object.isFrozen === 'function')
 
-    return 0;
+    // TODO
 }
 
 function test_isExtensible()
 {
     // Test that the method exists
-    if (!Object.isExtensible)
-        return 1;
+    assert (typeof Object.isExtensible === 'function');
 
-    return 0;
+    var o1 = {};
+    assert (Object.isExtensible(o1));
+
+    var o2 = Object.preventExtensions({});
+    assert (!Object.isExtensible(o2));
 }
 
 function test_keys()
@@ -323,6 +403,8 @@ function test_keys()
     var a = Object.create(null);
     a.x = 'foo';
     a.y = 'bar';
+    assert (a.x === 'foo');
+    assert (a.z === undefined);
     var keys = Object.keys(a);
     assert (keys.length === 2)
 }
@@ -440,29 +522,17 @@ function test()
     if (r != 0)
         return 700 + r;
 
-    var r = test_seal();
-    if (r != 0)
-        return 800 + r;
+    test_seal();
 
-    var r = test_freeze();
-    if (r != 0)
-        return 900 + r;
+    test_freeze();
 
-    var r = test_preventExtensions();
-    if (r != 0)
-        return 1000 + r;
+    test_preventExtensions();
 
-    var r = test_isSealed();
-    if (r != 0)
-        return 1100 + r;
+    test_isSealed();
 
-    var r = test_isFrozen();
-    if (r != 0)
-        return 1200 + r;
+    test_isFrozen();
 
-    var r = test_isExtensible();
-    if (r != 0)
-        return 1300 + r;
+    test_isExtensible();
 
     test_keys();
 

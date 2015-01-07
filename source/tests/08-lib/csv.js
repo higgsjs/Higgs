@@ -1,7 +1,6 @@
 var csv = require('lib/csv');
 
 var stdio = require('lib/stdio');
-tmpName = stdio.tmpname();
 
 // Create a new CSV spreadsheet object
 sheet = new csv.CSV();
@@ -21,12 +20,13 @@ sheet.setCell(1, 0, 'Anna');
 sheet.setRow(3, ['John', '35', 'M']);
 
 // Write the data to a CSV file
+tmpName = stdio.tmpname();
 sheet.writeFile(tmpName);
 
 // Read a spreadsheet from a CSV file
 sheet = csv.readFile(tmpName);
 
-assert(sheet.getNumRows() === 4);
+assert(sheet.getNumRows() === 4, 'failed to read all rows');
 
 assert (sheet.getCell(3, 0) === 'John');
 

@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2011-2013, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2011-2014, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -35,9 +35,13 @@
 *
 *****************************************************************************/
 
+import core.sys.posix.signal;
+import core.stdc.signal;
 import core.memory;
+import std.c.string;
 import std.c.stdlib;
 import std.stdio;
+import std.file;
 import std.algorithm;
 import std.conv;
 import std.string;
@@ -48,17 +52,26 @@ import util.os;
 import repl;
 import options;
 
+/**
+Program entry point
+*/
 void main(string[] args)
 {
-    // Reserve 256MB for the D GC, improves allocation performance
-    GC.reserve(256 * 1024 * 1024);
+    // Reserve memory for the D GC, improves allocation performance
+    GC.reserve(1024 * 1024 * 1024);
 
     // Arguments after "--" are passed to JS code
     auto argLimit = countUntil(args, "--");
     string[] hostArgs;
     string[] jsArgs;
 
-    if (argLimit > 0)
+    if (args.length > 1 && args[1] == "--shellscript")
+    {
+        // Shell script invocation (i.e.: called from a shebang line)
+        hostArgs = args[0..1] ~ args[2..3];
+        jsArgs = args[3..$];
+    }
+    else if (argLimit > 0)
     {
         hostArgs = args[0..argLimit];
         jsArgs = args[++argLimit..$];
@@ -75,8 +88,16 @@ void main(string[] args)
     // Get the names of files to execute
     auto fileNames = hostArgs[1..$];
 
-    // Create VM instance
-    auto vm = new VM(!opts.noruntime, !opts.nostdlib);
+    // Register the segmentation fault handler
+    sigaction_t sa;
+    memset(&sa, 0, sa.sizeof);
+    sigemptyset(&sa.sa_mask);
+    sa.sa_sigaction = &segfaultHandler;
+    sa.sa_flags = SA_SIGINFO;
+    sigaction(SIGSEGV, &sa, null);
+
+    // Initialize the VM instance
+    VM.init(!opts.noruntime, !opts.nostdlib);
 
     // Construct the JS arguments array
     if (!opts.noruntime)
@@ -92,7 +113,7 @@ void main(string[] args)
 
     // Check if we need to set stdout to unbuffered
     if (opts.unbuffered)
-        stdout.setvbuf(0, _IONBF); 
+        stdout.setvbuf(0, _IONBF);
 
     // If file arguments were passed or there is
     // a string of code to be executed
@@ -115,7 +136,13 @@ void main(string[] args)
 
         catch (RunError e)
         {
-            writeln("run-time error: ", e);
+            writeln(e);
+            exit(-1);
+        }
+
+        catch (FileException e)
+        {
+            writeln(e.msg);
             exit(-1);
         }
 
@@ -132,5 +159,47 @@ void main(string[] args)
         // Start the REPL
         repl.repl(vm);
     }
+}
+
+import ir.ir;
+IRInstr instrPtr = null;
+
+/**
+Segmentation fault signal handler (SIGSEGV)
+*/
+extern (C) void segfaultHandler(int signal, siginfo_t* si, void* arg)
+{
+    import jit.codeblock;
+
+    // si->si_addr is the instruction pointer
+    auto ip = cast(CodePtr)si.si_addr;
+
+    writeln();
+    writeln("Caught segmentation fault");
+    writeln("IP=", ip);
+
+    auto cb = vm.execHeap;
+    auto startAddr = cb.getAddress(0);
+    auto endAddr = startAddr + cb.getWritePos();
+
+    if (ip >= startAddr && ip < endAddr)
+    {
+        auto offset = ip - startAddr;
+        writeln("IP in jitted code, offset=", offset);
+    }
+
+    if (vm.curInstr !is null)
+    {
+        writeln("vm.curInstr: ", vm.curInstr);
+    }
+
+    if (instrPtr !is null)
+    {
+        writeln("instrPtr: ", instrPtr);
+        writeln("curFun: ", instrPtr.block.fun.getName);
+    }
+
+    writeln("exiting");
+    exit(139);
 }
 

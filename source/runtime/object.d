@@ -43,12 +43,14 @@ import std.algorithm;
 import std.stdint;
 import std.typecons;
 import std.bitmanip;
+import std.conv;
 import ir.ir;
 import runtime.vm;
 import runtime.layout;
 import runtime.string;
 import runtime.gc;
 import util.id;
+import options;
 
 /// Minimum object capacity (number of slots)
 const uint32_t OBJ_MIN_CAP = 8;
@@ -65,21 +67,46 @@ const uint32_t FPTR_SLOT_IDX = 1;
 /// Static offset for the function pointer in a closure object
 const size_t FPTR_SLOT_OFS = clos_ofs_word(null, FPTR_SLOT_IDX);
 
+/// Array table slot index (arrays only)
+const uint32_t ARRTBL_SLOT_IDX = 1;
+
+/// Static offset for the array table (arrays only)
+const size_t ARRTBL_SLOT_OFS = clos_ofs_word(null, ARRTBL_SLOT_IDX);
+
+/// Array length slot index (arrays only)
+const uint32_t ARRLEN_SLOT_IDX = 2;
+
+/// Static offset for the array length (arrays only)
+const size_t ARRLEN_SLOT_OFS = clos_ofs_word(null, ARRLEN_SLOT_IDX);
+
 /// Property attribute type
-alias uint8_t PropAttr;
+alias PropAttr = uint8_t;
 
 /// Property attribute flag bit definitions
 const PropAttr ATTR_CONFIGURABLE    = 1 << 0;
 const PropAttr ATTR_WRITABLE        = 1 << 1;
 const PropAttr ATTR_ENUMERABLE      = 1 << 2;
-const PropAttr ATTR_DELETED         = 1 << 3;
-const PropAttr ATTR_GETSET          = 1 << 4;
+const PropAttr ATTR_EXTENSIBLE      = 1 << 3;
+const PropAttr ATTR_DELETED         = 1 << 4;
+const PropAttr ATTR_GETSET          = 1 << 5;
 
 /// Default property attributes
 const PropAttr ATTR_DEFAULT = (
-    ATTR_CONFIGURABLE |
-    ATTR_WRITABLE |
-    ATTR_ENUMERABLE
+    ATTR_CONFIGURABLE   |
+    ATTR_WRITABLE       |
+    ATTR_ENUMERABLE     |
+    ATTR_EXTENSIBLE
+);
+
+// Enumerable constant attributes
+const PropAttr ATTR_CONST_ENUM = (
+    ATTR_ENUMERABLE     |
+    ATTR_EXTENSIBLE
+);
+
+// Non-enumerable constant attributes
+const PropAttr ATTR_CONST_NOT_ENUM = (
+    ATTR_EXTENSIBLE
 );
 
 /**
@@ -91,13 +118,20 @@ void defObjConsts(VM vm)
 
     vm.defRTConst!(PROTO_SLOT_IDX);
     vm.defRTConst!(FPTR_SLOT_IDX);
+    vm.defRTConst!(ARRTBL_SLOT_IDX)("ARRTBL_SLOT_IDX");
+    vm.defRTConst!(ARRLEN_SLOT_IDX);
+    vm.defRTConst!(ARRTBL_SLOT_OFS);
+    vm.defRTConst!(ARRLEN_SLOT_OFS);
 
     vm.defRTConst!(ATTR_CONFIGURABLE);
     vm.defRTConst!(ATTR_WRITABLE);
     vm.defRTConst!(ATTR_ENUMERABLE);
+    vm.defRTConst!(ATTR_EXTENSIBLE);
     vm.defRTConst!(ATTR_DELETED);
     vm.defRTConst!(ATTR_GETSET);
     vm.defRTConst!(ATTR_DEFAULT);
+    vm.defRTConst!(ATTR_CONST_ENUM);
+    vm.defRTConst!(ATTR_CONST_NOT_ENUM);
 }
 
 /**
@@ -110,62 +144,79 @@ struct ValType
         /// Shape (null if unknown)
         ObjShape shape;
 
-        /// IR function, for function pointers
-        IRFunction fun;
+        /// IR function pointer
+        IRFunction fptr;
     }
 
     /// Bit field for compact encoding
     mixin(bitfields!(
 
         /// Type tag bits, if known
-        Type, "typeTag", 4,
+        Tag, "tag", 4,
 
-        /// Known type flag
-        bool, "typeKnown", 1,
+        /// Known tag flag
+        bool, "tagKnown", 1,
 
         /// Known shape flag
         bool, "shapeKnown", 1,
 
-        /// Padding bits
-        uint, "", 2
+        /// Function pointer known (closures only)
+        bool, "fptrKnown", 1,
+
+        /// Submaximal flag (overflow check elimination)
+        bool, "subMax", 1
     ));
 
     /// Constructor taking a value pair
     this(ValuePair val)
     {
-        this.typeTag = val.type;
-        this.typeKnown = true;
-        this.shapeKnown = false;
+        assert (
+            val.tag < 16,
+            "ValuePair ctor, invalid type tag: " ~ to!string(cast(int)val.tag)
+        );
 
-        if (isObject(this.typeTag))
+        this.tag = val.tag;
+        this.tagKnown = true;
+
+        if (isObject(this.tag))
         {
             // Get the object shape
             this.shape = cast(ObjShape)obj_get_shape(val.ptr);
+            this.shapeKnown = true;
         }
-        else if (this.typeTag is Type.FUNPTR)
+        else if (this.tag is Tag.FUNPTR)
         {
-            this.fun = val.word.funVal;
+            this.fptr = val.word.funVal;
+            this.fptrKnown = true;
         }
-        else
-        {
-            this.shape = null;
-        }
+
+        assert (!this.shapeKnown || !this.fptrKnown);
     }
 
     /// Constructor taking a type tag only
-    this(Type typeTag)
+    this(Tag tag)
     {
-        this.typeTag = typeTag;
-        this.typeKnown = true;
+        assert (
+            tag < 16,
+            "tag ctor, invalid type tag: " ~ to!string(cast(int)tag) ~ " (" ~ to!string(tag) ~ ")"
+        );
+
+        this.tag = tag;
+        this.tagKnown = true;
         this.shape = null;
         this.shapeKnown = false;
     }
 
     /// Constructor taking a type tag and shape
-    this(Type typeTag, ObjShape shape)
+    this(Tag tag, ObjShape shape)
     {
-        this.typeTag = typeTag;
-        this.typeKnown = true;
+        assert (
+            tag < 16,
+            "tag+shape ctor, invalid type tag: " ~ cast(int)tag
+        );
+
+        this.tag = tag;
+        this.tagKnown = true;
         this.shape = shape;
         this.shapeKnown = true;
     }
@@ -175,25 +226,100 @@ struct ValType
     */
     bool isSubType(ValType that)
     {
-        if (that.typeKnown)
+        assert (!this.shapeKnown || !this.fptrKnown);
+        assert (!that.shapeKnown || !that.fptrKnown);
+        assert (!this.fptrKnown || this.fptr);
+        assert (!that.fptrKnown || that.fptr);
+
+        if (that.tagKnown)
         {
-            if (!this.typeKnown)
+            if (!this.tagKnown)
                 return false;
 
-            if (this.typeTag !is that.typeTag)
+            if (this.tag !is that.tag)
                 return false;
 
-            if (that.shapeKnown)
+            if (that.subMax is true)
             {
-                if (!this.shapeKnown)
+                if (this.subMax is false)
+                {
                     return false;
-
-                if (this.shape !is that.shape)
-                    return false;
+                }
             }
         }
 
+        if (that.shapeKnown)
+        {
+            if (!this.shapeKnown)
+                return false;
+
+            if (this.shape !is that.shape)
+                return false;
+        }
+        else if (that.fptrKnown)
+        {
+            if (!this.fptrKnown)
+                return false;
+
+            if (this.fptr !is that.fptr)
+                return false;
+        }
+
         return true;
+    }
+
+    /**
+    Extract information representable in a property type
+    */
+    ValType propType()
+    {
+        ValType that = this;
+
+        // If type tag specialization of shapes is disabled
+        if (opts.shape_notagspec)
+        {
+            // Remove type tag information
+            that.tag = cast(Tag)0;
+            that.tagKnown = false;
+        }
+
+        // Clear the subMax flag
+        that.subMax = false;
+
+        // Remove shape information
+        if (that.shapeKnown)
+        {
+            that.shape = null;
+            that.shapeKnown = false;
+        }
+
+        // If function identity specialization of shapes is disabled
+        if (opts.shape_nofptrspec)
+        {
+            // Remove function pointer information
+            that.fptr = null;
+            that.fptrKnown = false;
+        }
+        else
+        {
+            // If this is a closure with a known shape
+            if (this.tagKnown && this.tag is Tag.CLOSURE && this.shapeKnown)
+            {
+                //writeln("extracting yo");
+
+                // Get the function pointer from the closure
+                auto fptrShape = this.shape.getDefShape("__fptr__");
+                assert (fptrShape !is null);
+                assert (fptrShape.type.fptrKnown);
+                that.fptr = fptrShape.type.fptr;
+                that.fptrKnown = true;
+            }
+        }
+
+        assert (!that.shapeKnown || !that.fptrKnown);
+        assert (!that.fptrKnown || that.fptr);
+
+        return that;
     }
 }
 
@@ -224,8 +350,11 @@ class ObjShape
     /// Index at which this property is stored
     uint32_t slotIdx;
 
+    /// Table of enumerable properties
+    GCRoot enumTbl;
+
     /// Empty shape constructor
-    this(VM vm)
+    this()
     {
         // Increment the number of shapes allocated
         stats.numShapes++;
@@ -234,20 +363,25 @@ class ObjShape
 
         this.propName = null;
         this.type = ValType();
-        this.attrs = 0;
+        this.attrs = ATTR_EXTENSIBLE;
 
         this.slotIdx = uint32_t.max;
+
+        this.enumTbl = GCRoot(NULL);
     }
 
     /// Property definition constructor
     private this(
-        VM vm,
         ObjShape parent,
         wstring propName,
         ValType type,
         PropAttr attrs
     )
     {
+        // Ensure that this is not a temporary string
+        auto strData = cast(rawptr)propName.ptr;
+        assert (!inFromSpace(vm, strData) || !inToSpace(vm, strData));
+
         // Increment the number of shapes allocated
         stats.numShapes++;
 
@@ -258,11 +392,20 @@ class ObjShape
         this.attrs = attrs;
 
         this.slotIdx = parent.slotIdx+1;
+
+        this.enumTbl = GCRoot(NULL);
+    }
+
+    ~this()
+    {
+        //writeln("destroying shape");
     }
 
     /// Test if this shape has a given attribute
     bool writable() const { return (attrs & ATTR_WRITABLE) != 0; }
     bool configurable() const { return (attrs & ATTR_CONFIGURABLE) != 0; }
+    bool enumerable() const { return (attrs & ATTR_ENUMERABLE) != 0; }
+    bool extensible() const { return (attrs & ATTR_EXTENSIBLE) != 0; }
     bool deleted() const { return (attrs & ATTR_DELETED) != 0; }
     bool isGetSet() const { return (attrs & ATTR_GETSET) != 0; }
 
@@ -271,13 +414,16 @@ class ObjShape
     This may fork the shape tree if redefining a property.
     */
     ObjShape defProp(
-        VM vm,
         wstring propName,
         ValType type,
         PropAttr attrs,
         ObjShape defShape
     )
     {
+        // Ensure that this is not a temporary string
+        auto strData = cast(rawptr)propName.ptr;
+        assert (!inFromSpace(vm, strData) || !inToSpace(vm, strData));
+
         // Check if a shape object already exists for this definition
         if (propName in propDefs)
         {
@@ -297,7 +443,6 @@ class ObjShape
         {
             // Create the new shape
             auto newShape = new ObjShape(
-                vm,
                 defShape? defShape:this,
                 propName,
                 type,
@@ -312,46 +457,45 @@ class ObjShape
         }
 
         // This is redefinition of an existing property
-        else
+        // Assemble the list of properties added
+        // after the original definition shape
+        ObjShape[] shapes;
+        for (auto shape = this; shape !is defShape; shape = shape.parent)
         {
-            // Assemble the list of properties added
-            // after the original definition shape
-            ObjShape[] shapes;
-            for (auto shape = this; shape !is defShape; shape = shape.parent)
-                shapes ~= shape;
+            assert (shape !is null);
+            shapes ~= shape;
+        }
 
-            // Define the property with the same parent
-            // as the original shape
-            auto curParent = defShape.parent.defProp(
-                vm,
-                propName,
-                type,
-                attrs,
+        // Define the property with the same parent
+        // as the original shape
+        auto curParent = defShape.parent.defProp(
+            propName,
+            type,
+            attrs,
+            null
+        );
+
+        // Redefine all the intermediate properties
+        foreach_reverse (shape; shapes)
+        {
+            curParent = curParent.defProp(
+                shape.propName,
+                shape.type,
+                shape.attrs,
                 null
             );
-
-            // Redefine all the intermediate properties
-            foreach_reverse (shape; shapes)
-            {
-                curParent = curParent.defProp(
-                    vm,
-                    shape.propName,
-                    shape.type,
-                    shape.attrs,
-                    null
-                );
-            }
-
-            // Add the last added shape to the property definitions
-            propDefs[propName][type] ~= curParent;
-            assert (propDefs[propName][type].length > 0);
-
-            return curParent;
         }
+
+        // Add the last added shape to the property definitions
+        propDefs[propName][type] ~= curParent;
+        assert (propDefs[propName][type].length > 0);
+
+        return curParent;
     }
 
     /**
     Get the shape defining a given property
+    Warning: the input string may be a temporary slice into the JS heap
     */
     ObjShape getDefShape(wstring propName)
     {
@@ -359,6 +503,9 @@ class ObjShape
         auto cached = propCache.get(propName, this);
         if (cached !is this)
            return cached;
+
+        // Copy the string to avoid storing references to the JS heap
+        propName = propName.dup;
 
         // For each shape going down the tree, excluding the root
         for (auto shape = this; shape.parent !is null; shape = shape.parent)
@@ -380,10 +527,71 @@ class ObjShape
         // Root shape reached, property not found
         return null;
     }
+
+    /**
+    Generate a table of names enumerable properties for objects of this shape
+    */
+    refptr genEnumTbl()
+    {
+        assert (enumTbl.ptr is null);
+
+        // Number of enumerable properties
+        auto numEnum = 0;
+
+        // For each shape going down the tree, excluding the root
+        for (auto shape = this; shape.parent !is null; shape = shape.parent)
+        {
+            // If this shape is enumerable
+            if (shape.enumerable)
+                numEnum++;
+        }
+
+        // If there are no enumerable properties
+        if (numEnum is 0)
+        {
+            // Produce an empty property enumeration table
+            enumTbl = ValuePair(arrtbl_alloc(vm, 0), Tag.REFPTR);
+            return enumTbl.ptr;
+        }
+
+        // Allocate the table
+        auto numEntries = 2 * (this.slotIdx + 1);
+        enumTbl = ValuePair(arrtbl_alloc(vm, numEntries), Tag.REFPTR);
+
+        // For each shape going down the tree, excluding the root
+        for (auto shape = this; shape.parent !is null; shape = shape.parent)
+        {
+            ValuePair name = NULL;
+            ValuePair attr = ValuePair(0);
+
+            // If this property is enumerable
+            if (shape.enumerable)
+            {
+                // Get a JS string for the property name
+                name.word.ptrVal = getString(vm, shape.propName);
+                name.tag = Tag.STRING;
+
+                // Get the property attributes
+                attr.word.uint64Val = shape.attrs;
+            }
+
+            // Write the property name
+            auto nameIdx = 2 * shape.slotIdx;
+            arrtbl_set_word(enumTbl.ptr, nameIdx, name.word.uint64Val);
+            arrtbl_set_tag (enumTbl.ptr, nameIdx, name.tag);
+
+            // Write the property attributes
+            auto attrIdx = nameIdx + 1;
+            arrtbl_set_word(enumTbl.ptr, attrIdx, attr.word.uint64Val);
+            arrtbl_set_tag (enumTbl.ptr, attrIdx, attr.tag);
+        }
+
+        assert (vm.inFromSpace(enumTbl.ptr));
+        return enumTbl.ptr;
+    }
 }
 
 ValuePair newObj(
-    VM vm,
     ValuePair proto,
     uint32_t initCap = OBJ_MIN_CAP
 )
@@ -391,40 +599,39 @@ ValuePair newObj(
     assert (initCap >= OBJ_MIN_CAP);
 
     // Create a root for the prototype object
-    auto protoObj = GCRoot(vm, proto);
+    auto protoObj = GCRoot(proto);
 
     // Allocate the object
     auto objPtr = obj_alloc(vm, initCap);
-    auto objPair = ValuePair(objPtr, Type.OBJECT);
+    auto objPair = ValuePair(objPtr, Tag.OBJECT);
 
     obj_set_shape(objPtr, cast(rawptr)vm.emptyShape);
 
-    defConst(vm, objPair, "__proto__"w, protoObj.pair);
+    defConst(objPair, "__proto__"w, protoObj.pair);
 
     return objPair;
 }
 
 ValuePair newClos(
-    VM vm,
     ValuePair proto,
     uint32_t allocNumCells,
     IRFunction fun
 )
 {
     // Create a root for the prototype object
-    auto protoObj = GCRoot(vm, proto);
+    auto protoObj = GCRoot(proto);
 
     // Register this function in the function reference set
     vm.funRefs[cast(void*)fun] = fun;
 
     // Allocate the closure object
     auto objPtr = clos_alloc(vm, OBJ_MIN_CAP, allocNumCells);
-    auto objPair = ValuePair(objPtr, Type.CLOSURE);
+    auto objPair = ValuePair(objPtr, Tag.CLOSURE);
 
     obj_set_shape(objPair.word.ptrVal, cast(rawptr)vm.emptyShape);
 
-    defConst(vm, objPair, "__proto__"w, protoObj.pair);
-    defConst(vm, objPair, "__fptr__"w, ValuePair(fun));
+    defConst(objPair, "__proto__"w, protoObj.pair);
+    defConst(objPair, "__fptr__"w, ValuePair(fun));
 
     return objPair;
 }
@@ -437,20 +644,40 @@ IRFunction getFunPtr(refptr closPtr)
     return cast(IRFunction)cast(refptr)clos_get_word(closPtr, FPTR_SLOT_IDX);
 }
 
+refptr getArrTbl(refptr arrPtr)
+{
+    return cast(refptr)clos_get_word(arrPtr, ARRTBL_SLOT_IDX);
+}
+
+void setArrTbl(refptr arrPtr, refptr tblPtr)
+{
+    clos_set_word(arrPtr, ARRTBL_SLOT_IDX, cast(uint64_t)tblPtr);
+}
+
+uint32_t getArrLen(refptr arrPtr)
+{
+    return cast(uint32_t)clos_get_word(arrPtr, ARRLEN_SLOT_IDX);
+}
+
+void setArrLen(refptr arrPtr, uint32_t len)
+{
+    clos_set_word(arrPtr, ARRLEN_SLOT_IDX, len);
+}
+
 ValuePair getSlotPair(refptr objPtr, uint32_t slotIdx)
 {
     auto pWord = Word.uint64v(obj_get_word(objPtr, slotIdx));
-    auto pType = cast(Type)obj_get_type(objPtr, slotIdx);
+    auto pType = cast(Tag)obj_get_tag(objPtr, slotIdx);
     return ValuePair(pWord, pType);
 }
 
 void setSlotPair(refptr objPtr, uint32_t slotIdx, ValuePair val)
 {
     obj_set_word(objPtr, slotIdx, val.word.uint64Val);
-    obj_set_type(objPtr, slotIdx, val.type);
+    obj_set_tag(objPtr, slotIdx, val.tag);
 }
 
-ValuePair getProp(VM vm, ValuePair obj, wstring propStr)
+ValuePair getProp(ValuePair obj, wstring propStr)
 {
     // Get the shape from the object
     auto objShape = cast(ObjShape)obj_get_shape(obj.word.ptrVal);
@@ -471,7 +698,6 @@ ValuePair getProp(VM vm, ValuePair obj, wstring propStr)
         }
         else
         {
-            slotIdx -= objCap;
             auto extTbl = obj_get_next(obj.word.ptrVal);
             assert (slotIdx < obj_get_cap(extTbl));
             return getSlotPair(extTbl, slotIdx);
@@ -479,7 +705,7 @@ ValuePair getProp(VM vm, ValuePair obj, wstring propStr)
     }
 
     // Get the prototype pointer
-    auto proto = getProp(vm, obj, "__proto__"w);
+    auto proto = getProp(obj, "__proto__"w);
 
     // If the prototype is null, produce the undefined constant
     if (proto is NULL)
@@ -487,20 +713,21 @@ ValuePair getProp(VM vm, ValuePair obj, wstring propStr)
 
     // Do a recursive lookup on the prototype
     return getProp(
-        vm,
         proto,
         propStr
     );
 }
 
-void setProp(
-    VM vm,
+bool setProp(
     ValuePair objPair,
     wstring propStr,
     ValuePair valPair,
     PropAttr defAttrs = ATTR_DEFAULT
 )
 {
+    // A property cannot have no attributes
+    assert (defAttrs !is 0);
+
     static ValuePair allocExtTbl(VM vm, refptr obj, uint32_t extCap)
     {
         // Get the object layout type
@@ -510,24 +737,31 @@ void setProp(
         switch (header)
         {
             case LAYOUT_OBJ:
-            return ValuePair(obj_alloc(vm, extCap), Type.OBJECT);
+            return ValuePair(obj_alloc(vm, extCap), Tag.OBJECT);
 
             case LAYOUT_ARR:
-            return ValuePair(arr_alloc(vm, extCap), Type.ARRAY);
+            return ValuePair(arr_alloc(vm, extCap), Tag.ARRAY);
 
             case LAYOUT_CLOS:
             auto numCells = clos_get_num_cells(obj);
-            return ValuePair(clos_alloc(vm, extCap, numCells), Type.CLOSURE);
+            return ValuePair(clos_alloc(vm, extCap, numCells), Tag.CLOSURE);
 
             default:
             assert (false, "unhandled object type");
         }
     }
 
-    auto obj = GCRoot(vm, objPair);
-    auto val = GCRoot(vm, valPair);
+    auto obj = GCRoot(objPair);
+    auto val = GCRoot(valPair);
 
-    auto valType = ValType(valPair);
+    assert (
+        valPair.tag < 16,
+        "setProp, invalid tag=" ~ to!string(cast(int)val.tag) ~
+        ", propName=" ~ to!string(propStr)
+    );
+
+    // Create a type object for the value
+    auto valType = ValType(valPair).propType;
 
     // Get the shape from the object
     auto objShape = cast(ObjShape)obj_get_shape(obj.word.ptrVal);
@@ -539,9 +773,15 @@ void setProp(
     // If the property is not already defined
     if (defShape is null)
     {
+        // If the object is not extensible, do nothing
+        if (!objShape.extensible)
+        {
+            //writeln("rejecting write for ", propStr);
+            return false;
+        }
+
         // Create a new shape for the property
         defShape = objShape.defProp(
-            vm,
             propStr,
             valType,
             defAttrs,
@@ -557,22 +797,19 @@ void setProp(
         if (!defShape.writable)
         {
             //writeln("redefining constant: ", propStr);
-            return;
+            return false;
         }
 
         // If the value type doesn't match the shape type
         if (!valType.isSubType(defShape.type))
         {
-            /*
-            writeln("redefining shape");
-            writeln("  propName=", defShape.propName);
-            writeln("  oldType=", defShape.type.typeTag);
-            writeln("  slotIdx=", defShape.slotIdx);
-            */
+            // Number of shape changes due to type
+            ++stats.numShapeFlips;
+
+            //writeln(defShape.type.tag, " ==> ", valType.tag);
 
             // Change the defining shape to match the value type
             objShape = objShape.defProp(
-                vm,
                 propStr,
                 valType,
                 defAttrs,
@@ -605,7 +842,7 @@ void setProp(
     else 
     {
         // Get the extension table pointer
-        auto extTbl = GCRoot(vm, obj_get_next(obj.ptr), Type.OBJECT);
+        auto extTbl = GCRoot(obj_get_next(obj.ptr), Tag.OBJECT);
 
         // If the extension table isn't yet allocated
         if (extTbl.ptr is null)
@@ -634,13 +871,15 @@ void setProp(
         // Set the value and its type in the extension table
         setSlotPair(extTbl.ptr, slotIdx, val.pair);
     }
+
+    // Write successful
+    return true;
 }
 
 /**
 Define a constant on an object
 */
 bool defConst(
-    VM vm,
     ValuePair objPair,
     wstring propStr,
     ValuePair valPair,
@@ -661,11 +900,12 @@ bool defConst(
     }
 
     setProp(
-        vm,
         objPair,
         propStr,
         valPair,
-        enumerable? ATTR_ENUMERABLE:0
+        enumerable?
+        ATTR_CONST_ENUM:
+        ATTR_CONST_NOT_ENUM
     );
 
     return true;
@@ -675,9 +915,8 @@ bool defConst(
 Set the attributes for a given property
 */
 bool setPropAttrs(
-    VM vm,
     ValuePair obj,
-    wstring propStr,
+    ObjShape defShape,
     PropAttr attrs
 )
 {
@@ -685,25 +924,11 @@ bool setPropAttrs(
     auto objShape = cast(ObjShape)obj_get_shape(obj.word.ptrVal);
     assert (objShape !is null);
 
-    // Find the shape defining this property (if it exists)
-    auto defShape = objShape.getDefShape(propStr);
-
-    // If the property doesn't exist, do nothing
-    if (defShape is null)
-    {
-        return false;
-    }
-
-    // If the property is not configurable, do nothing
-    if (!defShape.configurable)
-    {
-        return false;
-    }
+    assert (defShape !is null);
 
     // Redefine the property
     auto newShape = objShape.defProp(
-        vm,
-        propStr,
+        defShape.propName,
         defShape.type,
         attrs,
         defShape

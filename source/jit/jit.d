@@ -61,16 +61,16 @@ import jit.moves;
 import jit.ops;
 
 /// R15: VM object pointer (C callee-save) 
-alias R15 vmReg;
+alias vmReg = R15;
 
 /// R14: word stack pointer (C callee-save)
-alias R14 wspReg;
+alias wspReg = R14;
 
 /// R13: type stack pointer (C callee-save)
-alias R13 tspReg;
+alias tspReg = R13;
 
 // RSP: C stack pointer (used for C calls only)
-alias RSP cspReg;
+alias cspReg = RSP;
 
 /// C argument registers
 immutable X86Reg[] cargRegs = [RDI, RSI, RDX, RCX, R8, R9];
@@ -79,7 +79,7 @@ immutable X86Reg[] cargRegs = [RDI, RSI, RDX, RCX, R8, R9];
 immutable X86Reg[] cfpArgRegs = [XMM0, XMM1, XMM2, XMM3, XMM4, XMM5, XMM6, XMM7];
 
 /// C return value register
-alias RAX cretReg;
+alias cretReg = RAX;
 
 /// Scratch registers, these do not conflict with the C arguments
 immutable X86Reg[] scrRegs = [RAX, RBX, RBP];
@@ -88,10 +88,10 @@ immutable X86Reg[] scrRegs = [RAX, RBX, RBP];
 immutable X86Reg[] allocRegs = [RDI, RSI, RCX, RDX, R8, R9, R10, R11, R12];
 
 /// Return word register
-alias RCX retWordReg;
+alias retWordReg = RCX;
 
-/// Return type register
-alias DL retTypeReg;
+/// Return type tag register
+alias retTagReg = DL;
 
 /// Minimum heap space required to compile a block (256KB)
 const size_t JIT_MIN_BLOCK_SPACE = 1 << 18; 
@@ -116,7 +116,7 @@ struct ValState
         Kind, "kind", 2,
 
         /// Type written to stack flag
-        bool, "typeWritten", 1,
+        bool, "tagWritten", 1,
 
         /// Local index, or register number, or constant value
         int, "val", 24,
@@ -133,7 +133,7 @@ struct ValState
     {
         ValState val;
         val.kind = Kind.STACK;
-        val.typeWritten = false;
+        val.tagWritten = false;
         val.val = 0xFFFF;
         return val;
     }
@@ -143,7 +143,7 @@ struct ValState
     {
         ValState val;
         val.kind = Kind.REG;
-        val.typeWritten = false;
+        val.tagWritten = false;
         val.val = reg.regNo;
         return val;
     }
@@ -152,9 +152,15 @@ struct ValState
     bool isReg() const { return kind is Kind.REG; }
     bool isConst() const { return kind is Kind.CONST; }
 
-    bool typeKnown() const { return type.typeKnown; }
-    Type typeTag() const { assert (typeKnown); return type.typeTag; }
-    ObjShape shape() const { return cast(ObjShape)type.shape; }
+    bool tagKnown() const { return type.tagKnown; }
+    Tag tag() const { assert (tagKnown); return type.tag; }
+    bool shapeKnown() const { return type.shapeKnown; }
+
+    ObjShape shape() const 
+    { 
+        assert (!opts.shape_novers || !type.shapeKnown);
+        return cast(ObjShape)type.shape;
+    }
 
     /// Get a word operand for this value
     X86Opnd getWordOpnd(size_t numBits, StackIdx stackIdx = StackIdx.max) const
@@ -174,33 +180,39 @@ struct ValState
         }
     }
 
-    /// Get a type operand for this value
-    X86Opnd getTypeOpnd(StackIdx stackIdx = StackIdx.max) const
+    /// Get a type tag operand for this value
+    X86Opnd getTagOpnd(StackIdx stackIdx = StackIdx.max) const
     {
-        if (type.typeKnown)
-            return X86Opnd(type.typeTag);
+        if (type.tagKnown)
+            return X86Opnd(type.tag);
 
         assert (stackIdx !is StackIdx.max);
-        return typeStackOpnd(stackIdx);
+        return tagStackOpnd(stackIdx);
     }
 
     /// Set the type tag for this value
-    ValState setType(Type typeTag) const
+    ValState setTag(Tag tag) const
     {
         assert (!isConst);
 
         ValState val = cast(ValState)this;
-        val.type = ValType(typeTag);
+        val.type = ValType(tag);
         return val;
     }
 
-    /// Set the type tag and shape for this value
-    ValState setType(Type typeTag, ObjShape shape) const
+    /// Set the shape for this value
+    ValState setShape(ObjShape shape) const
     {
         assert (!isConst);
 
+        if (opts.shape_novers)
+            return cast(ValState)this;
+
         ValState val = cast(ValState)this;
-        val.type = ValType(typeTag, shape);
+        val.type.shape = shape;
+        val.type.shapeKnown = true;
+        val.type.fptrKnown = false;
+
         return val;
     }
 
@@ -211,27 +223,29 @@ struct ValState
 
         ValState val = cast(ValState)this;
         val.type = cast(ValType)type;
+
+        if (opts.shape_novers)
+        {
+            val.type.shape = null;
+            val.type.shapeKnown = false;
+            val.type.fptrKnown = false;
+        }
+
+        if (opts.noovfelim)
+        {
+            val.type.subMax = false;
+        }
+
         return val;
     }
 
-    /// Set the shape for this value
-    ValState setShape(ObjShape shape) const
+    /// Clear the type tag information for this value
+    ValState clearTag() const
     {
         assert (!isConst);
 
         ValState val = cast(ValState)this;
-        val.type.shape = shape;
-        val.type.shapeKnown = true;
-        return val;
-    }
-
-    /// Clear the all type information for this value
-    ValState clearType() const
-    {
-        assert (!isConst);
-
-        ValState val = cast(ValState)this;
-        val.type = ValType();
+        val.type.tagKnown = false;
         return val;
     }
 
@@ -241,8 +255,24 @@ struct ValState
         assert (!isConst);
 
         ValState val = cast(ValState)this;
-        val.type.shape = null;
-        val.type.shapeKnown = false;
+
+        if (type.shapeKnown)
+        {
+            assert (!type.fptrKnown);
+            val.type.shape = null;
+            val.type.shapeKnown = false;
+        }
+
+        return val;
+    }
+
+    /// Clear all type information for this value
+    ValState clearType() const
+    {
+        assert (!isConst);
+
+        ValState val = cast(ValState)this;
+        val.type = ValType();
         return val;
     }
 
@@ -265,10 +295,10 @@ struct ValState
     }
 
     /// Mark the type as written to the stack
-    ValState writeType() const
+    ValState writeTag() const
     {
         ValState val = cast(ValState)this;
-        val.typeWritten = true;
+        val.tagWritten = true;
         return val;
     }
 }
@@ -287,31 +317,40 @@ class CodeGenState
 
     /// Map of general-purpose registers to values
     /// If a register is free, its value is null
-    private IRDstValue[] gpRegMap;
+    private IRDstValue[NUM_REGS] gpRegMap;
 
     /**
     Constructor for a function entry code generation state
     */
-    this(IRFunction fun)
+    this(IRFunction fun, ValType[] argTypes = null)
     {
         this.fun = fun;
-
-        // All registers are initially free
-        gpRegMap.length = 16;
-        for (size_t i = 0; i < gpRegMap.length; ++i)
-            gpRegMap[i] = null;
 
         mapToStack(fun.raVal);
         mapToStack(fun.closVal);
         mapToStack(fun.thisVal);
         mapToStack(fun.argcVal);
 
-        foreach (ident, param; fun.paramMap)
+        foreach (param; fun.paramVals)
             mapToStack(param);
 
-        // Set the types for the closure and argument count values
-        setType(fun.closVal, Type.CLOSURE);
-        setType(fun.argcVal, Type.INT32);
+        // Set the tags for the untagged hidden argument values
+        setTag(fun.raVal, Tag.RETADDR);
+        setTag(fun.closVal, Tag.CLOSURE);
+        setTag(fun.argcVal, Tag.INT32);
+
+        // If argument types were specified
+        if (argTypes !is null)
+        {
+            assert (argTypes.length is fun.paramVals.length);
+
+            // TODO
+
+
+
+
+
+        }
     }
 
     /**
@@ -321,7 +360,7 @@ class CodeGenState
     {
         this.fun = that.fun;
         this.valMap = that.valMap.dup;
-        this.gpRegMap = that.gpRegMap.dup;
+        this.gpRegMap = that.gpRegMap;
     }
 
     /**
@@ -344,8 +383,10 @@ class CodeGenState
             // Get the phi argument
             auto arg = branch.getPhiArg(phi);
             assert (
-                arg !is null, 
-                "missing phi argument for:\n" ~
+                arg !is null,
+                "missing phi argument from:\n" ~
+                branch.branch.block.toString ~
+                "\nto phi:\n" ~
                 phi.toString() ~
                 "\nin block:\n" ~
                 phi.block.toString()
@@ -371,7 +412,7 @@ class CodeGenState
                 // If the argument is in a register which is about to become free
                 if (argOpnd.isReg && liveInfo.liveAfterPhi(dstArg, phi.block) is false)
                 {
-                    // Try to use the phi register for the ph inode
+                    // Try to use the arg register for the phi node
                     phiReg = argOpnd.reg;
                 }
             }
@@ -396,19 +437,15 @@ class CodeGenState
 
             // If the phi value is flowing into itself and the
             // type was previously written to the stack
-            if (arg is phi && predPhiState.typeWritten)
+            if (arg is phi && predPhiState.tagWritten)
             {
                 // Mark the type as written to the stack
-                phiState = phiState.writeType();
+                phiState = phiState.writeTag();
             }
 
-            // If the argument type is known
-            auto argTypeOpnd = predState.getTypeOpnd(arg);
-            if (argTypeOpnd.isImm)
-            {
-                // Set the phi type
-                phiState = phiState.setType(cast(Type)argTypeOpnd.imm.imm);
-            }
+            // Set the phi type to the argument type
+            auto argType = predState.getType(arg);
+            phiState = phiState.setType(argType);
 
             // Set the phi node's new state
             valMap[phi] = phiState;
@@ -429,7 +466,7 @@ class CodeGenState
 
         foreach (val, st; valMap)
         {
-            str ~= format("%s: %s\n", val.getName, st.typeKnown? to!string(st.type):"unknown");
+            str ~= format("%s: %s\n", val.getName, st.tagKnown? to!string(st.type):"unknown");
         }
 
         return str;
@@ -489,7 +526,12 @@ class CodeGenState
         debug
         {
             foreach (value, state; pred.valMap)
-                assert (value in succ.valMap);
+            {
+                assert (
+                    value in succ.valMap,
+                    "value not in succ valMap: " ~ value.toString
+                );
+            }
         }
 
         // For each value in the successor type state map
@@ -502,23 +544,21 @@ class CodeGenState
             if (predSt == succSt)
                 continue;
 
-            // If the successor has a known type
-            if (succSt.typeKnown)
+            // If the types do not match perfectly
+            if (predSt.type != succSt.type)
             {
-                // If the predecessor has no known type, mismatch
-                if (!predSt.typeKnown)
-                    return size_t.max;
-
-                // If the known types do not match, mismatch
-                if (predSt.type != succSt.type)
-                    return size_t.max;
-            }
-            else 
-            {
-                // If the predecessor has a known type, transitioning
-                // would lose us this known type
-                if (predSt.typeKnown)
+                // If the predecessor type is a subtype of the successor
+                if (predSt.type.isSubType(succSt.type))
+                {
+                    // Add a penalty for the inexact type match,
+                    // since information would be lost
                     diff += 1;
+                }
+                else
+                {
+                    // The types are incompatible
+                    return size_t.max;
+                }
             }
         }
 
@@ -536,16 +576,29 @@ class CodeGenState
             "no out slot for value: " ~ value.toString
         );
 
-        // If this value flows into a phi node other than itself
+        // For each use of the value
         for (auto use = value.getFirstUse; use !is null; use = use.next)
         {
-            auto owner = value.getFirstUse.owner;
-            if (!cast(PhiNode)value && cast(PhiNode)owner)
+            // Get the owner of the first use
+            auto owner = use.owner;
+
+            // If the value flows into a phi node other than itself
+            if (cast(PhiNode)owner && !cast(PhiNode)value)
             {
+                // Prefer the register of the destination phi node
                 return getDefReg(owner);
+            }
+
+            // If the value flows into a return instruction
+            auto ownerInstr = cast(IRInstr)owner;
+            if (ownerInstr && ownerInstr.opcode is &ir.ops.RET)
+            {
+                // Prefer the return value register
+                return retWordReg;
             }
         }
 
+        // Choose a register based on the output slot
         auto regIdx = value.outSlot % allocRegs.length;
         auto reg = allocRegs[regIdx];
 
@@ -748,8 +801,6 @@ class CodeGenState
 
         assert (instr in valMap);
 
-        //writeln("outOpnd=", reg);
-
         return reg.opnd;
     }
 
@@ -759,7 +810,7 @@ class CodeGenState
     void mapToStack(IRDstValue value)
     {
         // Map the value and its type to the stack
-        valMap[value] = ValState.stack().writeType();
+        valMap[value] = ValState.stack().writeTag();
     }
 
     /**
@@ -803,23 +854,23 @@ class CodeGenState
         //writefln("spilling: %s (%s)", regVal.toString, reg);
 
         // Spill the value currently in the register
-        if (opts.jit_genasm)
+        if (opts.genasm)
             as.comment("Spilling " ~ regVal.getName);
         as.mov(mem, reg.opnd(64));
 
         // If the type is known, spill it
-        if (state.typeKnown && !state.typeWritten)
+        if (state.tagKnown && !state.tagWritten)
         {
             // Write the type tag to the type stack
-            //if (opts.jit_genasm)
+            //if (opts.genasm)
             //    as.comment("Spilling type for " ~ regVal.getName);
-            as.mov(typeStackOpnd(regVal.outSlot), state.getTypeOpnd());
-            valMap[regVal] = valMap[regVal].writeType();
+            as.mov(tagStackOpnd(regVal.outSlot), state.getTagOpnd());
+            valMap[regVal] = valMap[regVal].writeTag();
         }
     }
 
     /// Spill test function
-    alias bool delegate(LiveInfo liveInfo, IRDstValue value) SpillTestFn;
+    alias SpillTestFn = bool delegate(LiveInfo liveInfo, IRDstValue value);
 
     /**
     Spill a set of values to the stack
@@ -849,14 +900,14 @@ class CodeGenState
                 continue;
 
             // If the value has a known type and is not in a register
-            if (state.typeKnown && !state.typeWritten && !state.isReg)
+            if (state.tagKnown && !state.tagWritten && !state.isReg)
             {
                 // If the value should be spilled
                 if (spillTest(liveInfo, value) is true)
                 {
                     // Spill the type for this value
-                    as.mov(typeStackOpnd(value.outSlot), state.getTypeOpnd());
-                    valMap[value] = state.writeType();
+                    as.mov(tagStackOpnd(value.outSlot), state.getTagOpnd());
+                    valMap[value] = state.writeTag();
                 }
             }
         }
@@ -877,11 +928,24 @@ class CodeGenState
     }
 
     /**
+    Spill the values live after a given instruction
+    */
+    void spillLiveAfter(CodeBlock as, IRInstr instr)
+    {
+        return spillValues(
+            as,
+            delegate bool(LiveInfo liveInfo, IRDstValue value)
+            {
+                return liveInfo.liveAfter(value, instr);
+            }
+        );
+    }
+
+    /**
     Spill live registers from the register save space
     */
     void spillSavedRegs(SpillTestFn spillTest)
     {
-        auto vm = fun.vm;
         auto liveInfo = fun.liveInfo;
 
         // For each allocatable register
@@ -913,12 +977,12 @@ class CodeGenState
             vm.wsp[regVal.outSlot] = vm.regSave[regIdx];
 
             // If the type is known, store it
-            if (state.typeKnown)
+            if (state.tagKnown)
             {
                 //writeln("spilling known type");
 
                 // Write the type tag to the type stack
-                vm.tsp[regVal.outSlot] = state.typeTag;
+                vm.tsp[regVal.outSlot] = state.tag;
             }
         }
     }
@@ -928,7 +992,6 @@ class CodeGenState
     */
     void loadSavedRegs(SpillTestFn spillTest)
     {
-        auto vm = fun.vm;
         auto liveInfo = fun.liveInfo;
 
         // For each allocatable register
@@ -959,8 +1022,11 @@ class CodeGenState
         // For each value in the value map
         foreach (value, state; valMap)
         {
-            if (state.type.shape !is null)
+            if (state.type.shapeKnown)
+            {
+                assert (!state.type.fptrKnown);
                 valMap[value] = state.clearShape();
+            }
         }
     }
 
@@ -1030,21 +1096,23 @@ class CodeGenState
         if (auto argStr = cast(IRString)argVal)
         {
             // Ensure that the string is allocated
-            argStr.getPtr(fun.vm);
+            argStr.getPtr(vm);
 
             // If no temporary register is supplied, free one
             if (tmpReg == X86Opnd.NONE)
                 tmpReg = freeReg(as, instr).opnd;
 
+            // Load the string pointer into the tmp reg
             as.ptr(tmpReg.reg, argStr);
             as.getMember!("IRString.ptr")(tmpReg.reg, tmpReg.reg);
+
             return tmpReg;
         }
 
         // Ensure that the value was previously defined and is live
         assert (
             argDst is null || argDst in valMap,
-            argDst.toString
+            "argument not in val map: " ~ argDst.toString
         );
 
         // Get the current operand for the argument value
@@ -1138,9 +1206,9 @@ class CodeGenState
     }
 
     /**
-    Get an x86 operand for the type of any IR value
+    Get an x86 operand for the type tag of any IR value
     */
-    X86Opnd getTypeOpnd(IRValue value) const
+    X86Opnd getTagOpnd(IRValue value) const
     {
         assert (value !is null);
 
@@ -1152,20 +1220,20 @@ class CodeGenState
             // If the value is a string
             if (auto argStr = cast(IRString)value)
             {
-                return X86Opnd(Type.STRING);
+                return X86Opnd(Tag.STRING);
             }
 
-            return X86Opnd(value.cstValue.type);
+            return X86Opnd(value.cstValue.tag);
         }
 
         // Get the type operand for this value
-        return getState(dstVal).getTypeOpnd(dstVal.outSlot);
+        return getState(dstVal).getTagOpnd(dstVal.outSlot);
     }
 
     /**
     Get an x86 operand for the type of an instruction argument
     */
-    X86Opnd getTypeOpnd(
+    X86Opnd getTagOpnd(
         CodeBlock as,
         IRInstr instr,
         size_t argIdx,
@@ -1182,7 +1250,7 @@ class CodeGenState
 
         // Get an operand for the argument value
         auto argVal = instr.getArg(argIdx);
-        auto curOpnd = getTypeOpnd(argVal);
+        auto curOpnd = getTagOpnd(argVal);
 
         if (acceptImm is true && curOpnd.isImm)
         {
@@ -1199,11 +1267,11 @@ class CodeGenState
         return curOpnd;
     }
 
-    /// Set the output type value for an instruction's output
-    void setOutType(
+    /// Set the type tag value for an instruction's output
+    void setOutTag(
         CodeBlock as,
         IRInstr instr,
-        Type typeTag
+        Tag tag
     )
     {
         assert (
@@ -1211,55 +1279,118 @@ class CodeGenState
             "null instruction"
         );
 
-        // getOutOpnd should be called before setOutType
+        // getOutOpnd should be called before setOutTag
         assert (
             instr in valMap,
-            "setOutType: instr not in valMap:\n" ~
+            "setOutTag: instr not in valMap:\n" ~
             instr.toString
         );
 
         auto state = getState(instr);
 
         // Set a known type for this value
-        valMap[instr] = state.setType(typeTag);
+        valMap[instr] = state.setTag(tag);
     }
 
-    /// Write the output type for an instruction's output to the type stack
-    void setOutType(CodeBlock as, IRInstr instr, X86Reg typeReg)
+    /// Write the type tag for an instruction's output to the type stack
+    void setOutTag(CodeBlock as, IRInstr instr, X86Reg tagReg)
     {
         assert (
             instr !is null,
             "null instruction"
         );
 
-        // getOutOpnd should be called before setOutType
+        // getOutOpnd should be called before setOutTag
         assert (instr in valMap);
 
         auto state = getState(instr);
 
-        // Clear the type information for the value
-        valMap[instr] = state.clearType();
+        // Clear the type tag information for the value
+        valMap[instr] = state.clearTag();
 
         // Write the type to the type stack
-        as.mov(typeStackOpnd(instr.outSlot), X86Opnd(typeReg));
+        as.mov(tagStackOpnd(instr.outSlot), X86Opnd(tagReg));
     }
 
-    /// Add type information for a given value
-    void setType(IRDstValue value, Type type)
+    /// Set the type tag for a given value
+    void setTag(IRDstValue value, Tag tag)
+    {
+        assert (value in valMap, "value not in val map: " ~ value.toString);
+        ValState state = getState(value);
+
+        // Assert that we aren't contradicting existing information
+        assert (!state.tagKnown || tag is state.tag);
+
+        // If the type was previously unknown, it must have
+        // been written on the stack, mark it as such
+        if (!state.tagKnown)
+            state = state.writeTag();
+
+        // Set a known type for this value
+        valMap[value] = state.setTag(tag);
+    }
+
+    /// Set shape information for a given value
+    void setShape(IRDstValue value, ObjShape shape)
+    {
+        assert (
+            value in valMap,
+            "setShape: value not in value map"
+        );
+        ValState state = getState(value);
+
+        // Set a known type for this value
+        valMap[value] = state.setShape(shape);
+    }
+
+    /// Set the type for a given value
+    void setType(IRDstValue value, ValType type)
     {
         assert (value in valMap);
         ValState state = getState(value);
 
         // Assert that we aren't contradicting existing information
-        assert (!state.typeKnown || state.typeTag is type);
-
-        // If the type was previously unknown, it must have
-        // been written on the stack, mark it as such
-        if (!state.typeKnown)
-            state = state.writeType();
+        assert (!type.tagKnown || !state.tagKnown || type.tag is state.tag);
 
         // Set a known type for this value
         valMap[value] = state.setType(type);
+    }
+
+    /// Clear shape information for a given value
+    void clearShape(IRDstValue value)
+    {
+        assert (value in valMap);
+        ValState state = getState(value);
+
+        // Set a known type for this value
+        valMap[value] = state.clearShape();
+    }
+
+    /// Get the type for a given value
+    auto getType(IRValue value)
+    {
+        // If this is a dst value
+        if (auto dstVal = cast(IRDstValue)value)
+        {
+            assert (
+                dstVal.hasUses,
+                "getType: value has no uses: " ~ value.toString
+            );
+            assert (
+                dstVal in valMap,
+                "getType: value not in val map: " ~ value.toString
+            );
+            ValState state = getState(dstVal);
+            return state.type;
+        }
+
+        // If the value is a string
+        if (auto argStr = cast(IRString)value)
+        {
+            return ValType(Tag.STRING);
+        }
+
+        return ValType(value.cstValue.tag);
     }
 
     /// Test if the shape is known for a given value
@@ -1285,26 +1416,6 @@ class CodeGenState
             "shape is not known"
         );
         return state.type.shape;
-    }
-
-    /// Set shape information for a given value
-    void setShape(IRDstValue value, ObjShape shape)
-    {
-        assert (value in valMap);
-        ValState state = getState(value);
-
-        // Set a known type for this value
-        valMap[value] = state.setShape(shape);
-    }
-
-    /// Clear shape information for a given value
-    void clearShape(IRDstValue value)
-    {
-        assert (value in valMap);
-        ValState state = getState(value);
-
-        // Set a known type for this value
-        valMap[value] = state.clearShape();
     }
 
     /// Get the state for a given value
@@ -1340,9 +1451,9 @@ abstract class CodeFragment
     final string getName()
     {
         assert (
-            opts.jit_genasm ||
-            opts.jit_dumpinfo ||
-            opts.jit_trace_instrs
+            opts.genasm ||
+            opts.dumpinfo ||
+            opts.trace_instrs
         );
 
         if (auto ver = cast(BlockVersion)this)
@@ -1395,7 +1506,7 @@ abstract class CodeFragment
     /**
     Store the start position of the code
     */
-    final void markStart(CodeBlock as, VM vm)
+    final void markStart(CodeBlock as)
     {
         assert (
             startIdx is startIdx.max,
@@ -1405,14 +1516,14 @@ abstract class CodeFragment
         startIdx = cast(uint32_t)as.getWritePos();
 
         // Add a label string comment
-        if (opts.jit_genasm)
+        if (opts.genasm)
             as.writeString(this.getName ~ ":");
     }
 
     /**
     Store the end position of the code
     */
-    final void markEnd(CodeBlock as, VM vm)
+    final void markEnd(CodeBlock as)
     {
         assert (
             !ended,
@@ -1422,7 +1533,7 @@ abstract class CodeFragment
         endIdx = cast(uint32_t)as.getWritePos();
 
         // Add this fragment to the back of to the list of compiled fragments
-        vm.fragList ~= this;
+        vm.fragList.assumeSafeAppend ~= this;
 
         // Update the generated code size stat
         stats.genCodeSize += this.length();
@@ -1457,7 +1568,7 @@ abstract class CodeFragment
         // Write a relative 32-bit jump to the instance over the stub code
         auto startPos = as.getWritePos();
         as.setWritePos(this.startIdx);
-        if (opts.jit_genasm)
+        if (opts.genasm)
             as.writeASM("jmp", next.getName);
         as.writeByte(JMP_REL32_OPCODE);
         auto offset = next.startIdx - (as.getWritePos + 4);
@@ -1539,10 +1650,7 @@ class ExitCode : CodeFragment
 }
 
 /// Branch edge prelude code generation delegate
-alias void delegate(
-    CodeBlock as,
-    VM vm
-) PrelGenFn;
+alias PrelGenFn = void delegate(CodeBlock as);
 
 /**
 Branch edge transition code
@@ -1582,13 +1690,13 @@ enum BranchShape
 }
 
 /// Branch code generation delegate
-alias void delegate(
+alias BranchGenFn = void delegate(
     CodeBlock as,
-    VM vm,
+    BlockVersion block,
     CodeFragment target0,
     CodeFragment target1,
     BranchShape shape
-) BranchGenFn;
+);
 
 /**
 Basic block version
@@ -1610,9 +1718,6 @@ class BlockVersion : CodeFragment
     /// Inner code length, excluding final branches
     uint32_t codeLen;
 
-    /// Extended version info
-    ExtVerInfo extInfo = null;
-
     this(IRBlock block, CodeGenState state)
     {
         this.block = block;
@@ -1631,8 +1736,6 @@ class BlockVersion : CodeFragment
     {
         assert (started);
 
-        auto vm = state.fun.vm;
-
         // Store the branch generation function and targets
         assert (target0 !is null);
         this.branchGenFn = genFn;
@@ -1641,43 +1744,36 @@ class BlockVersion : CodeFragment
         // Compute the code length
         codeLen = cast(uint32_t)as.getWritePos - startIdx;
 
-        // If this block doesn't end in a call and there are two targets
-        if (block.lastInstr.opcode.isCall is false && target1 !is null)
-        {
-            // Write the block idx in scrReg[0]
-            size_t blockIdx = vm.fragList.length;
-            as.mov(scrRegs[0].opnd(32), X86Opnd(blockIdx));
-        }
-
         // Determine the branch shape
-        auto shape = (target1 is null)? BranchShape.NEXT0:BranchShape.DEFAULT;
-        assert (
-            (shape !is BranchShape.NEXT0) ||
-            (vm.compQueue.length > 0 && vm.compQueue.back is targets[0])
-        );
+        BranchShape shape = BranchShape.DEFAULT;
+        if (vm.compQueue.length > 0)
+        {
+            if (vm.compQueue.back is targets[0])
+                shape = BranchShape.NEXT0;
+            else if (vm.compQueue.back is targets[1])
+                shape = BranchShape.NEXT1;
+        }
 
         // Generate the final branch code
         branchGenFn(
             as,
-            vm,
+            this,
             target0,
             target1,
             shape
         );
 
         // Store the code end index
-        markEnd(as, vm);
+        markEnd(as);
     }
 
     /**
     Rewrite the final branch of this block
     */
-    void regenBranch(CodeBlock as, size_t blockIdx)
+    void regenBranch(CodeBlock as)
     {
         // Ensure that this block has already been compiled
         assert (started && ended);
-
-        auto vm = state.fun.vm;
 
         // Move to the branch code position
         auto origPos = as.getWritePos();
@@ -1696,13 +1792,6 @@ class BlockVersion : CodeFragment
             !targets[1].started &&
             !vm.compQueue.canFind(targets[1])
         );
-
-        // If this block doesn't end in a call and at least one target is a stub
-        if (!block.lastInstr.opcode.isCall && (stub0 || stub1))
-        {
-            // Write the block idx in scrReg[0]
-            as.mov(scrRegs[0].opnd(32), X86Opnd(blockIdx));
-        }
 
         // Determine the branch shape, whether a target is immediately next
         BranchShape shape = BranchShape.DEFAULT;
@@ -1729,7 +1818,7 @@ class BlockVersion : CodeFragment
         assert (branchGenFn !is null);
         branchGenFn(
             as,
-            vm,
+            this,
             targets[0],
             targets[1],
             shape
@@ -1756,24 +1845,6 @@ class BlockVersion : CodeFragment
 }
 
 /**
-Base class for extended version information
-*/
-class ExtVerInfo
-{
-}
-
-/**
-Shape dispatch information
-*/
-class ShapeDispInfo : ExtVerInfo
-{
-    /// State at the shape dispatch instruction
-    CodeGenState instrSt;
-
-    // TODO: exec counter?
-}
-
-/**
 Produce a string representation of the code generated for a function
 */
 string asmString(IRFunction fun, CodeFragment entryFrag, CodeBlock execHeap)
@@ -1789,11 +1860,16 @@ string asmString(IRFunction fun, CodeFragment entryFrag, CodeBlock execHeap)
         if (target.startIdx < frag.startIdx || target is frag)
             return;
 
+        // Don't queue multiple identical targets
+        if (workList.length > 0 && workList[$-1] is target)
+            return;
+
         workList ~= target;
     }
 
     CodeFragment[] fragList;
 
+    // Until the work list is empty
     while (workList.empty is false)
     {
         // Get a fragment from the work list
@@ -1829,6 +1905,7 @@ string asmString(IRFunction fun, CodeFragment entryFrag, CodeBlock execHeap)
 
     auto str = appender!string;
 
+    // For each fragment queued
     foreach (fIdx, frag; fragList)
     {
         if (frag.length is 0)
@@ -1862,7 +1939,6 @@ BlockVersion getBlockVersion(
 )
 {
     auto fun = state.fun;
-    auto vm = fun.vm;
 
     // Get the list of versions for this block
     auto versions = fun.versionMap.get(block, []);
@@ -1894,11 +1970,11 @@ BlockVersion getBlockVersion(
     }
 
     // If the block version cap is hit
-    if (versions.length >= opts.jit_maxvers)
+    if (versions.length >= opts.maxvers)
     {
         debug
         {
-            if (opts.jit_maxvers > 0)
+            if (opts.maxvers > 0)
                 writefln("version limit hit (%s) in %s", versions.length, fun.getName);
         }
 
@@ -1920,8 +1996,10 @@ BlockVersion getBlockVersion(
             if (val !is fun.closVal &&
                 val !is fun.argcVal &&
                 val !is fun.raVal &&
-                valSt.typeKnown)
+                (valSt.tagKnown || valSt.shapeKnown))
+            {
                 genState.valMap[val] = valSt.clearType();
+            }
         }
 
         // Ensure that the general version matches
@@ -1963,16 +2041,6 @@ BlockVersion getBlockVersion(
         // Increment the total number of block versions generated
         stats.numVersions++;
 
-        /*
-        if (numVersions > stats.maxVersions)
-        {
-            writeln(block.fun.getName);
-            writeln("  ", block.getName);
-            writeln("  ", numVersions);
-            //writeln("  ", block.fun.numBlocks);
-        }
-        */
-
         // Update the maximum version count
         stats.maxVersions = max(stats.maxVersions, numVersions);
     }
@@ -1997,14 +2065,12 @@ BranchCode getBranchEdge(
 {
     // If eager codegen is enabled, force the version
     // to be generated now
-    if (opts.jit_eager)
+    if (opts.bbv_eager)
         noStub = true;
-
-    auto vm = predState.fun.vm;
 
     assert (
         branch !is null,
-        "branch edge is null"
+        "getBranchEdge: branch edge is null"
     );
 
     // Return a branch edge code object for the successor
@@ -2083,9 +2149,9 @@ void genBranchMoves(
         }
 
         // Get the source and destination operands for the phi type
-        X86Opnd srcTypeOpnd = predState.getTypeOpnd(predVal);
-        X86Opnd dstTypeOpnd = succState.getTypeOpnd(succVal);
-        assert (!(opts.jit_maxvers is 0 && !srcTypeOpnd.isImm && dstTypeOpnd.isImm));
+        X86Opnd srcTypeOpnd = predState.getTagOpnd(predVal);
+        X86Opnd dstTypeOpnd = succState.getTagOpnd(succVal);
+        assert (!(opts.maxvers is 0 && !srcTypeOpnd.isImm && dstTypeOpnd.isImm));
 
         if (srcTypeOpnd != dstTypeOpnd &&
             !dstTypeOpnd.isImm &&
@@ -2099,18 +2165,18 @@ void genBranchMoves(
         auto succState = succState.getState(succVal);
 
         // Check if the predecessor is the same value and had its type written
-        auto predWritten = predVal is succVal && predState.getState(succVal).typeWritten;
+        auto predWritten = predVal is succVal && predState.getState(succVal).tagWritten;
 
         // If the successor is not a function parameter and the successor
         // state requires the type be written and the predecessor type was not
         // written to the stack, then write the type
-        if (!succParam && !dstTypeOpnd.isMem && succState.typeWritten && !predWritten)
+        if (!succParam && !dstTypeOpnd.isMem && succState.tagWritten && !predWritten)
         {
-            as.mov(typeStackOpnd(succVal.outSlot), succState.getTypeOpnd());
+            as.mov(tagStackOpnd(succVal.outSlot), succState.getTagOpnd());
             moveAdded = true;
         }
 
-        if (opts.jit_genasm && moveAdded)
+        if (opts.genasm && moveAdded)
         {
             if (succPhi)
                 as.comment(succPhi.getName ~ " = phi " ~ predVal.getName);
@@ -2131,7 +2197,7 @@ void genBranchMoves(
         auto dstOpnd = strDsts[idx];
 
         // Ensure that the string is allocated
-        strVal.getPtr(predState.fun.vm);
+        strVal.getPtr(vm);
 
         as.ptr(scrRegs[0], strVal);
 
@@ -2148,19 +2214,20 @@ void genBranchMoves(
 }
 
 /// Return address entry
-alias Tuple!(
+alias RetEntry = Tuple!(
     IRInstr, "callInstr",
     CodeFragment, "retCode",
     CodeFragment, "excCode"
-) RetEntry;
+);
 
 /// Fragment reference tuple
-alias Tuple!(
-    size_t, "pos",
-    size_t, "size",
-    CodeFragment, "frag",
-    size_t, "targetIdx"
-) FragmentRef;
+alias FragmentRef = Tuple!(
+    BlockVersion, "srcBlock",   // Source block, origin fragment
+    CodeFragment, "frag",       // Referenced/destination code fragment
+    uint32_t, "pos",            // Position of the reference
+    uint16_t, "targetIdx",      // Branch target index at source fragment
+    uint16_t, "size"            // Size of the reference (32-bit rel or 64-bit abs)
+);
 
 /**
 Add a fragment reference to the reference list
@@ -2169,11 +2236,18 @@ void addFragRef(
     VM vm,
     size_t pos,
     size_t size,
+    BlockVersion src,
     CodeFragment frag,
     size_t targetIdx
 )
 {
-    vm.refList ~= FragmentRef(pos, size, frag, targetIdx);
+    vm.refList ~= FragmentRef(
+        src,
+        frag,
+        cast(uint32_t)pos,
+        cast(uint16_t)targetIdx,
+        cast(uint16_t)size
+    );
 }
 
 /**
@@ -2235,7 +2309,7 @@ void compile(VM vm, IRInstr curInstr)
     while (vm.compQueue.length > 0)
     {
         assert (
-            as.getRemSpace() >= JIT_MIN_BLOCK_SPACE,
+            vm.stubStartPos - as.getWritePos >= JIT_MIN_BLOCK_SPACE,
             "insufficient space to compile version"
         );
 
@@ -2264,26 +2338,45 @@ void compile(VM vm, IRInstr curInstr)
 
             // Store the code start index for this fragment
             if (ver.startIdx is ver.startIdx.max)
-                ver.markStart(as, vm);
+                ver.markStart(as);
 
-            if (opts.jit_dumpinfo)
+            if (opts.dumpinfo)
                 writeln("compiling block: ", block.getName);
 
-            if (opts.jit_trace_instrs)
+            if (opts.trace_instrs)
+            {
+                if (block is block.fun.entryBlock)
+                    as.printStr("; entry block for " ~ block.fun.getName);
                 as.printStr(block.getName ~ ":");
+            }
+
+            /*
+            if (opts.stats && block is block.fun.entryBlock && !block.fun.isUnit)
+            {
+                auto nameStr = to!string(block.fun.getName);
+                as.incStatCnt(stats.getCallCtr(nameStr), scrRegs[0]);
+            }
+            */
 
             // For each instruction of the block
             for (auto instr = block.firstInstr; instr !is null; instr = instr.next)
             {
-                if (opts.jit_dumpinfo)
+                if (opts.dumpinfo)
                     writeln("compiling instr: ", instr.toString());
 
                 // If we should generate disassembly strings
-                if (opts.jit_genasm)
+                if (opts.genasm)
                     as.comment(instr.toString());
 
-                if (opts.jit_trace_instrs)
+                if (opts.trace_instrs)
                     as.printStr(instr.toString());
+
+                /*
+                import main;
+                as.ptr(scrRegs[0], &instrPtr);
+                as.ptr(scrRegs[1], instr);
+                as.mov(X86Opnd(64, scrRegs[0]), scrRegs[1].opnd);
+                */
 
                 auto opcode = instr.opcode;
                 assert (opcode !is null);
@@ -2311,7 +2404,18 @@ void compile(VM vm, IRInstr curInstr)
             }
 
             // Ensure that the end of the fragment was marked
-            assert (frag.ended, ver.block.toString);
+            assert (
+                frag.ended,
+                "unterminated code fragment: " ~
+                ver.block.toString
+            );
+
+            // If this is a function entry block
+            if (block is block.fun.entryBlock)
+            {
+                // Set the function entry code pointer
+                block.fun.entryCode = frag.getCodePtr(vm.execHeap);
+            }
         }
 
         // If this is a branch code fragment
@@ -2320,13 +2424,13 @@ void compile(VM vm, IRInstr curInstr)
             assert (branch.predState !is null);
 
             // Store the code start index
-            branch.markStart(as, vm);
+            branch.markStart(as);
 
             //as.printStr("branch code to " ~ branch.branch.target.getName);
 
             // Generate the prelude code, if any
             if (branch.prelGenFn)
-                branch.prelGenFn(as, vm);
+                branch.prelGenFn(as);
 
             // Generate the successor state for this branch
             auto succState = new CodeGenState(
@@ -2355,13 +2459,13 @@ void compile(VM vm, IRInstr curInstr)
             if (branch.target.started)
             {
                 // Encode the final jump and version reference
-                as.jmp32Ref(vm, branch.target);
+                as.jmp32Ref(vm, null, branch.target);
             }
 
             // Store the code end index
-            branch.markEnd(as, vm);
+            branch.markEnd(as);
 
-            if (opts.jit_dumpinfo)
+            if (opts.dumpinfo)
             {
                 writeln("branch code length: ", branch.length);
                 writeln();
@@ -2373,12 +2477,12 @@ void compile(VM vm, IRInstr curInstr)
         {
             auto callInstr = stub.callVer.block.lastInstr;
 
-            stub.markStart(as, vm);
+            stub.markStart(as);
 
-            if (opts.jit_genasm)
+            if (opts.genasm)
                 as.comment("Cont stub for " ~ stub.contBranch.getName);
 
-            if (opts.jit_trace_instrs)
+            if (opts.trace_instrs)
                 as.printStr("Cont stub for " ~ stub.contBranch.getName);
 
             as.saveJITRegs();
@@ -2387,7 +2491,7 @@ void compile(VM vm, IRInstr curInstr)
             if (callInstr.hasUses)
             {
                 as.setWord(callInstr.outSlot, retWordReg.opnd(64));
-                as.setType(callInstr.outSlot, retTypeReg.opnd(8));
+                as.setTag(callInstr.outSlot, retTagReg.opnd(8));
             }
 
             // The first argument is the stub object
@@ -2404,13 +2508,13 @@ void compile(VM vm, IRInstr curInstr)
             if (callInstr.hasUses)
             {
                 as.getWord(retWordReg.reg(64), callInstr.outSlot);
-                as.getType(retTypeReg.reg(8), callInstr.outSlot);
+                as.getTag(retTagReg.reg(8), callInstr.outSlot);
             }
 
             // Jump to the compiled continuation
             as.jmp(X86Opnd(cretReg));
 
-            stub.markEnd(as, vm);
+            stub.markEnd(as);
 
             // Set the return address entry for this stub
             vm.setRetEntry(
@@ -2425,7 +2529,7 @@ void compile(VM vm, IRInstr curInstr)
             assert (false, "invalid code fragment");
         }
 
-        if (opts.jit_dumpasm && frag.length > 0)
+        if (opts.dumpasm && frag.length > 0)
         {
             writeln(frag.genString(as));
             writeln();
@@ -2437,16 +2541,44 @@ void compile(VM vm, IRInstr curInstr)
     // For each fragment reference
     foreach (refr; vm.refList)
     {
-        // If the target is not compiled, substitute it for a branch stub
-        CodeFragment target;
+        // Code position to jump to
+        size_t jumpDstPos;
+
+        // If the target is compiled, get its start index
         if (refr.frag.started)
         {
-            target = refr.frag;
+            jumpDstPos = cast(int32_t)refr.frag.startIdx;
         }
+
+        // The target is not yet compiled
         else
         {
+            // Store the current write position
+            auto startPos = as.getWritePos();
+
+            // Store the code position for the custom branch stub
+            jumpDstPos = vm.stubWritePos;
+
+            // Move the write position to the stub write position
+            as.setWritePos(vm.stubWritePos);
+
+            // Write the block pointer scrRegs[0]
+            assert (refr.srcBlock !is null);
+            as.ptr(scrRegs[0], refr.srcBlock);
+
+            // Get the branch stub corresponding to this target index
             assert (refr.targetIdx < 2);
-            target = getBranchStub(vm, refr.targetIdx);
+            auto branchStub = getBranchStub(vm, refr.targetIdx);
+
+            // Jump to the generic branch stub
+            auto offset = cast(int32_t)(branchStub.startIdx - (as.getWritePos + 5));
+            as.jmp32(offset);
+
+            // Update the stub write position
+            vm.stubWritePos = as.getWritePos;
+
+            // Return to the previous write position
+            as.setWritePos(startPos);
         }
 
         // Set the write position at the reference point
@@ -2457,16 +2589,13 @@ void compile(VM vm, IRInstr curInstr)
         switch (refr.size)
         {
             case 32:
-            auto offset = cast(int32_t)target.startIdx - (cast(int32_t)refr.pos + 4);
+            auto offset = jumpDstPos - (cast(int32_t)refr.pos + 4);
             as.writeInt(offset, 32);
-            if (opts.jit_dumpinfo)
-                writefln("linking ref to %s, offset=%s", target.getName, offset);
             break;
 
             case 64:
-            as.writeInt(cast(int64_t)target.getCodePtr(as), 64);
-            if (opts.jit_dumpinfo)
-                writefln("linking absolute ref to %s", target.getName);
+            auto targetAddr = cast(int64_t)as.getAddress(0) + jumpDstPos;
+            as.writeInt(targetAddr, 64);
             break;
 
             default:
@@ -2480,7 +2609,7 @@ void compile(VM vm, IRInstr curInstr)
     // Clear the reference list
     vm.refList.length = 0;
 
-    if (opts.jit_dumpinfo)
+    if (opts.dumpinfo)
     {
         writeln("write pos: ", as.getWritePos, " / ", as.getRemSpace);
         writeln("num blocks: ", stats.numBlocks);
@@ -2507,7 +2636,7 @@ EntryFn compileUnit(VM vm, IRFunction fun)
 
     assert (fun.isUnit, "compileUnit on non-unit function");
 
-    if (opts.jit_dumpinfo)
+    if (opts.dumpinfo)
         writeln("compiling unit ", fun.getName);
 
     auto as = vm.execHeap;
@@ -2517,9 +2646,9 @@ EntryFn compileUnit(VM vm, IRFunction fun)
     //
 
     auto retEdge = new ExitCode(fun);
-    retEdge.markStart(as, vm);
+    retEdge.markStart(as);
 
-    if (opts.jit_trace_instrs)
+    if (opts.trace_instrs)
         as.printStr("Unit return branch for " ~ fun.getName);
 
     // Push one slot for the return value
@@ -2528,7 +2657,7 @@ EntryFn compileUnit(VM vm, IRFunction fun)
 
     // Place the return value on top of the stack
     as.setWord(0, retWordReg.opnd);
-    as.setType(0, retTypeReg.opnd);
+    as.setTag(0, retTagReg.opnd);
 
     // Store the stack pointers back in the VM
     as.setMember!("VM.wsp")(vmReg, wspReg);
@@ -2553,7 +2682,7 @@ EntryFn compileUnit(VM vm, IRFunction fun)
     // Return to the host
     as.ret();
 
-    retEdge.markEnd(as, vm);
+    retEdge.markEnd(as);
 
     // Get the return code address
     auto retAddr = retEdge.getCodePtr(as);
@@ -2569,7 +2698,7 @@ EntryFn compileUnit(VM vm, IRFunction fun)
     );
 
     // Mark the code start index
-    entryInst.markStart(as, vm);
+    entryInst.markStart(as);
 
     as.comment("unit " ~ fun.getName);
 
@@ -2597,7 +2726,7 @@ EntryFn compileUnit(VM vm, IRFunction fun)
     // Set the "this" argument (global object)
     as.getMember!("VM.globalObj.word")(scrRegs[0], vmReg);
     as.setWord(-2, scrRegs[0].opnd);
-    as.setType(-2, Type.OBJECT);
+    as.setTag(-2, Tag.OBJECT);
 
     // Set the closure argument (null)
     as.setWord(-3, X86Opnd(0));
@@ -2640,12 +2769,10 @@ extern (C) CodePtr compileEntry(EntryStub stub)
     stats.execTimeStop();
     stats.compTimeStart();
 
-    if (opts.jit_dumpinfo)
+    if (opts.dumpinfo)
     {
         writeln("entering compileEntry");
     }
-
-    auto vm = stub.vm;
 
     // Get the closure and IRFunction pointers
     auto argCount = vm.getWord(3).uint32Val;
@@ -2660,17 +2787,8 @@ extern (C) CodePtr compileEntry(EntryStub stub)
         "closure IRFunction is null"
     );
 
-    if (opts.jit_dumpinfo)
+    if (opts.dumpinfo)
         writeln("compiling entry for " ~ fun.getName);
-
-    /*
-    writeln("closPtr=", closPtr);
-    writeln("fun=", cast(ubyte*)fun);
-    writeln("argCount=", argCount);
-    if (argCount > 0)
-        writeln("first arg: ", vm.getWord(4).uint64Val);
-    writeln("orig stack size: ", vm.stackSize());
-    */
 
     // Store the original number of locals for the function
     auto origLocals = fun.numLocals;
@@ -2684,7 +2802,7 @@ extern (C) CodePtr compileEntry(EntryStub stub)
     catch (Error err)
     {
         assert (
-            false, 
+            false,
             "failed to generate IR for: \"" ~ fun.getName ~ "\"\n" ~
             err.toString
         );
@@ -2692,12 +2810,6 @@ extern (C) CodePtr compileEntry(EntryStub stub)
 
     // Add space for the newly allocated locals
     vm.push(fun.numLocals - origLocals);
-
-    /*
-    writeln("fun.numLocals=", fun.numLocals);
-    writeln("origLocals=", origLocals);
-    writeln("new stack size: ", vm.stackSize());
-    */
 
     // Request an instance for the function entry blocks
     auto entryInst = getBlockVersion(
@@ -2708,7 +2820,7 @@ extern (C) CodePtr compileEntry(EntryStub stub)
     /*
     // warning, ctor is first on queue
     auto as = vm.execHeap;
-    entryInst.markStart(as, vm);
+    entryInst.markStart(as);
     as.getMember!"VM.tsp"(scrRegs[0], vmReg);
     as.getMember!"VM.tStack"(scrRegs[1], vmReg);
 
@@ -2727,12 +2839,13 @@ extern (C) CodePtr compileEntry(EntryStub stub)
     */
 
     // Compile the entry versions
+    // Note: the entry code pointer is set in the compile function
     vm.compile(fun.entryBlock.firstInstr);
 
     // Store the entry code pointer on the function
-    fun.entryCode = entryInst.getCodePtr(vm.execHeap);
+    //fun.entryCode = entryInst.getCodePtr(vm.execHeap);
 
-    if (opts.jit_dumpinfo)
+    if (opts.dumpinfo)
     {
         writeln("leaving compileEntry");
     }
@@ -2747,37 +2860,34 @@ extern (C) CodePtr compileEntry(EntryStub stub)
 /**
 Compile the branch code when a branch stub is hit
 */
-extern (C) CodePtr compileBranch(VM vm, uint32_t blockIdx, uint32_t targetIdx)
+extern (C) CodePtr compileBranch(VM vm, BlockVersion srcBlock, uint32_t targetIdx)
 {
     // Stop recording execution time, start recording compilation time
     stats.execTimeStop();
     stats.compTimeStart();
 
-    if (opts.jit_dumpinfo)
+    assert (srcBlock !is null);
+
+    if (opts.dumpinfo)
     {
         writeln("entering compileBranch");
-        writeln("blockIdx=", blockIdx);
+        writeln("srcBlock name: ", srcBlock.getName);
         writeln("targetIdx=", targetIdx);
     }
-
-    // Get the block from which the stub hit originated
-    assert (blockIdx < vm.fragList.length, "invalid block idx");
-    auto srcBlock = cast(BlockVersion)vm.fragList[blockIdx];
-    assert (srcBlock !is null);
 
     // Get the branch edge
     assert (targetIdx < srcBlock.targets.length);
     auto branchCode = cast(BranchCode)srcBlock.targets[targetIdx];
     assert (branchCode !is null);
-    assert (branchCode.started is false);
+    assert (branchCode.started is false, "branchCode already compiled");
     auto predState = branchCode.predState;
     auto targetBlock = branchCode.branch.target;
 
-    if (opts.jit_dumpinfo)
+    if (opts.dumpinfo)
     {
         writefln(
-            "branch from %s to %s", 
-            srcBlock.block.getName, 
+            "branch from %s to %s",
+            srcBlock.block.getName,
             branchCode.branch.target.getName
         );
     }
@@ -2794,7 +2904,7 @@ extern (C) CodePtr compileBranch(VM vm, uint32_t blockIdx, uint32_t targetIdx)
     vm.queue(branchCode);
 
     // Rewrite the final branch of the source block
-    srcBlock.regenBranch(vm.execHeap, blockIdx);
+    srcBlock.regenBranch(vm.execHeap);
 
     // Compile fragments and patch references
     vm.compile(branchCode.branch.target.firstInstr);
@@ -2806,7 +2916,7 @@ extern (C) CodePtr compileBranch(VM vm, uint32_t blockIdx, uint32_t targetIdx)
     stats.compTimeStop();
     stats.execTimeStart();
 
-    if (opts.jit_dumpinfo)
+    if (opts.dumpinfo)
     {
         writeln("leaving compileBranch");
         writeln();
@@ -2825,14 +2935,13 @@ extern (C) CodePtr compileCont(ContStub stub)
     stats.execTimeStop();
     stats.compTimeStart();
 
-    if (opts.jit_dumpinfo)
+    if (opts.dumpinfo)
     {
         writeln("entering compileCont");
     }
 
     auto callVer = stub.callVer;
     auto contBranch = stub.contBranch;
-    auto vm = callVer.state.fun.vm;
 
     // Queue the continuation branch edge to be compiled
     assert (!contBranch.started);
@@ -2842,7 +2951,7 @@ extern (C) CodePtr compileCont(ContStub stub)
     stub.callVer.targets[0] = contBranch;
 
     // Rewrite the final branch of the call block
-    stub.callVer.regenBranch(vm.execHeap, 0);
+    stub.callVer.regenBranch(vm.execHeap);
 
     // Compile fragments and patch references
     vm.compile(contBranch.branch.target.firstInstr);
@@ -2861,7 +2970,7 @@ extern (C) CodePtr compileCont(ContStub stub)
     stats.compTimeStop();
     stats.execTimeStart();
 
-    if (opts.jit_dumpinfo)
+    if (opts.dumpinfo)
     {
         writeln("leaving compileCont");
     }
@@ -2882,7 +2991,7 @@ CodePtr getEntryStub(VM vm, bool ctorCall)
 
     auto stub = new EntryStub(vm, ctorCall);
 
-    stub.markStart(as, vm);
+    stub.markStart(as);
 
     as.saveJITRegs();
 
@@ -2903,7 +3012,7 @@ CodePtr getEntryStub(VM vm, bool ctorCall)
     // Jump to the compiled version
     as.jmp(X86Opnd(RAX));
 
-    stub.markEnd(as, vm);
+    stub.markEnd(as);
 
     vm.entryStub = stub;
 
@@ -2911,7 +3020,8 @@ CodePtr getEntryStub(VM vm, bool ctorCall)
 }
 
 /**
-Get the branch target stub for a given target index
+Get the generic branch target stub for a given target index
+This stub expects the source block pointer to be written in scrRegs[0]
 */
 BranchStub getBranchStub(VM vm, size_t targetIdx)
 {
@@ -2925,7 +3035,7 @@ BranchStub getBranchStub(VM vm, size_t targetIdx)
     vm.branchStubs.length = targetIdx + 1;
     vm.branchStubs[targetIdx] = stub;
 
-    stub.markStart(as, vm);
+    stub.markStart(as);
 
     // Insert the label for this block in the out of line code
     as.comment("Branch stub (target " ~ to!string(targetIdx) ~ ")");
@@ -2941,9 +3051,9 @@ BranchStub getBranchStub(VM vm, size_t targetIdx)
     // The first argument is the VM object
     as.mov(cargRegs[0].opnd, vmReg.opnd);
 
-    // The second argument is the src block index,
+    // The second argument is the src block pointer,
     // which was passed in scrRegs[0]
-    as.mov(cargRegs[1].opnd(32), scrRegs[0].opnd(32));
+    as.mov(cargRegs[1].opnd(64), scrRegs[0].opnd(64));
 
     // The third argument is the branch target index
     as.mov(cargRegs[2].opnd(32), X86Opnd(targetIdx));
@@ -2967,7 +3077,7 @@ BranchStub getBranchStub(VM vm, size_t targetIdx)
     as.jmp(cretReg.opnd);
 
     // Store the code end index
-    stub.markEnd(as, vm);
+    stub.markEnd(as);
 
     return stub;
 }

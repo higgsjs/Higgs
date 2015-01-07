@@ -45,51 +45,29 @@ var map = new Map();
 var keyList = [];
 var valList = [];
 
+// Generate string => int <key,value> pairs
 for (var i = 0; i < 50; ++i)
 {
     keyList.push('k' + i);
     valList.push(i);
 }
 
+// Generate int => string <key,value> pairs
 for (var i = 0; i < 50; ++i)
 {
     keyList.push(i);
     valList.push('v' + i);
 }
 
-/*
-print('num items: ' + map.length);
-print('num slots: ' + map.numSlots);
-print('array length: ' + map.array.length);
-*/
-
 for (var i = 0; i < keyList.length; ++i)
 {
-    /*
-    print('key: ' + keyList[i]);
-    print('val: ' + valList[i]);
-    print('hash: ' + defHashFunc(keyList[i]));
-    */
-
     map.set(keyList[i], valList[i]);
 }
-
-/*
-print('getting items');
-*/
 
 for (var i = 0; i < keyList.length; ++i)
 {
     assert (map.has(keyList[i]));
-
     var val = map.get(keyList[i]);
-
-    /*
-    print('key: ' + keyList[i]);
-    print('val: ' + valList[i]);
-    print('got: ' + val);
-    */
-
     assert (val === valList[i]);
 }
 
@@ -113,4 +91,13 @@ for (var i = 0; i < keyList.length; ++i)
     var val = map.get(keyList[i]);
     assert (val === valList[i]);
 }
+
+// Object keys
+var map = new Map();
+var o1 = {};
+var o2 = {};
+map.set(o1, 1);
+map.set(o2, 2);
+assert (map.get(o1) === 1);
+assert (map.get(o2) === 2);
 

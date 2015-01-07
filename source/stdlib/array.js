@@ -48,8 +48,6 @@ Implementation of ECMAScript 5 array library routines.
 Marc Feeley, Maxime Chevalier-Boisvert
 */
 
-Array = (function () {
-
 /**
 15.4.2 Array constructor function.
 new Array (len)
@@ -59,21 +57,19 @@ Array ([item0 [, item1 [, … ]]])
 function Array(len)
 {
     // Call with length
-    if (typeof len === 'number' && $argc === 1)
+    if ($ir_eq_i32($argc, 1) && ($ir_is_int32(len) || $ir_is_float64(len)))
     {
         // Convert the length to a uint32 value
         len = $rt_toUint32(len);
 
-        // Allocate an array of the desired capacity and set its length
-        var a = $rt_newArr($ir_get_arr_proto(), len);
-        a.length = len;
+        // Allocate an array of the desired length
+        var a = $rt_newArr(len);
 
         return a;
     }
 
-    // Allocate an array of the desired capacity and set its length
-    var a = $rt_newArr($ir_get_arr_proto(), $argc);
-    a.length = $argc;
+    // Allocate an array of the desired length
+    var a = $rt_newArr($argc);
 
     // Copy the arguments into the array
     for (var i = 0; i < $argc; ++i)
@@ -96,6 +92,8 @@ Array.isArray = function (arg)
 //-----------------------------------------------------------------------------
 
 // Operations on Array objects.
+
+(function () {
 
 function array_toObject(x)
 {
@@ -150,44 +148,32 @@ function array_join(separator)
 
     if (separator === undefined)
         separator = ",";
-    else
-        separator = String(separator);
+    else if (!$ir_is_string(separator))
+        separator = $rt_toString(separator);
 
-    var length = 0;
-    var strarray = Array(o.length);
-    for (var i = 0; i < o.length; ++i)
+    var outStr = '';
+
+    var arrLen = o.length;
+
+    if (arrLen > 0)
     {
-        var str;
-        if (o[i] !== undefined)
-            str = String(o[i]);
-        else
-            str = "";
-        length += str.length;
-        strarray[i] = str;
+        var elem = o[0];
+
+        if (!$ir_is_const(elem) || !$ir_eq_const(elem, undefined))
+            outStr += elem;
     }
 
-    length += (o.length - 1) * separator.length;
-
-    if (length > 0)
+    for (var i = 1; i < arrLen; ++i)
     {
-        var s = $rt_str_alloc(length);
+        outStr += separator;
 
-        for (var i = 0, k = 0; i < strarray.length; ++i)
-        {
-            var str = strarray[i];
+        var elem = o[i];
 
-            for (var j = 0; j < str.length; ++j, ++k)
-                $rt_str_set_data(s, k, $rt_str_get_data(str, j));
-
-            if (i < strarray.length - 1)
-                for (var j = 0; j < separator.length; ++j, ++k)
-                    $rt_str_set_data(s, k, $rt_str_get_data(separator, j));
-        }
-
-        return $ir_get_str(s);
+        if (!$ir_is_const(elem) || !$ir_eq_const(elem, undefined))
+            outStr += elem;
     }
 
-    return "";
+    return outStr;
 }
 
 function array_pop()
@@ -541,7 +527,7 @@ function array_lastIndexOf(searchElement, fromIndex)
     return -1;
 }
 
-function array_every (
+function array_every(
     callbackfn,
     thisArg
 )
@@ -555,7 +541,7 @@ function array_every (
     return true;
 }
 
-function array_some (
+function array_some(
     callbackfn,
     thisArg
 )
@@ -608,7 +594,7 @@ function array_filter(callbackfn, thisArg)
     return a;
 }
 
-function array_reduce_generic (callbackfn, initialValue, start, end, step)
+function array_reduce_generic(callbackfn, initialValue, start, end, step)
 {
     var o = array_toObject(this);
     var len = o.length;
@@ -639,14 +625,14 @@ function array_reduce_generic (callbackfn, initialValue, start, end, step)
     return reducedValue;
 }
 
-function array_reduce (callbackfn, initialValue)
+function array_reduce(callbackfn, initialValue)
 {
     return array_reduce_generic.call(this, callbackfn, initialValue, 0, this.length, 1);
 }
 
-function array_reduceRight (callbackfn, initialValue)
+function array_reduceRight(callbackfn, initialValue)
 {
-    return array_reduce_generic.call(this, callbackfn, initialValue, this.length - 1, -1, -1 );
+    return array_reduce_generic.call(this, callbackfn, initialValue, this.length - 1, -1, -1);
 }
 
 // Setup Array.prototype
@@ -682,6 +668,5 @@ for (p in Array.prototype)
     );
 }
 
-return Array;
-
 })();
+

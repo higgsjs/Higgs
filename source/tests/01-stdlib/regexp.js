@@ -40,10 +40,7 @@
  * _________________________________________________________________________
  */
 
-function check_equal_matches (
-    a,
-    b
-)
+function check_equal_matches(a, b)
 {
     if (b instanceof Array)
     {
@@ -69,18 +66,20 @@ function check_equal_matches (
     return true;
 }
 
-function test_char_match ()
+function test_char_match()
 {
-    if (!check_equal_matches(new RegExp("a").exec("a"), ["a"]))
-        return 1;
-    if (!check_equal_matches(new RegExp("a").exec("b"), null))
-        return 2;
-    if (!check_equal_matches(new RegExp("\\t\\n\\v\\f\\r").exec("\t\n\v\f\r"), ["\t\n\v\f\r"]))
-        return 3;
-    return 0;
+    assert (check_equal_matches(new RegExp("a").exec("a"), ["a"]))
+
+    assert (check_equal_matches(new RegExp("a").exec("b"), null))
+
+    assert (check_equal_matches(new RegExp("\\t\\n\\v\\f\\r").exec("\t\n\v\f\r"), ["\t\n\v\f\r"]))
+
+    assert (check_equal_matches((/\\/g).exec("\\"), ["\\"]))
+
+    assert (check_equal_matches((/\x41/g).exec("A"), ["A"]))
 }
 
-function test_char_class_match ()
+function test_char_class_match()
 {
     if (!check_equal_matches(new RegExp("[^a]").exec("b"), ["b"]))
         return 1;
@@ -94,18 +93,32 @@ function test_char_class_match ()
         return 5;
     if (!check_equal_matches(new RegExp("[ab]").exec("c"), null))
         return 6;
-    if (!check_equal_matches(new RegExp("\\d+").exec("foobar42foo"), ["42"]))
-        return 7;
-    if (!check_equal_matches(new RegExp("\\D+").exec("foobar42foo"), ["foobar"]))
-        return 8;
-    if (!check_equal_matches(new RegExp("\\s+").exec("foobar  42foo"), ["  "]))
-        return 9;
-    if (!check_equal_matches(new RegExp("\\S+").exec("foobar  42foo"), ["foobar"]))
-        return 10;
-    if (!check_equal_matches(new RegExp("\\w+").exec("foobar  42foo"), ["foobar"]))
-        return 11;
-    if (!check_equal_matches(new RegExp("\\W+").exec("foobar  ?+=/42foo"), ["  ?+=/"]))
-        return 12;
+
+    // \d (digits) and \D (non-digits)
+    assert (check_equal_matches(/\d+/.exec('foobar42foo'), ['42']))
+    assert (check_equal_matches(/\d+/.exec(':'), null))
+    assert (check_equal_matches(/\D+/.exec('foobar42foo'), ['foobar']))
+    assert (check_equal_matches(/\D+/.exec('/'), ['/']))
+    assert (check_equal_matches(/\D+/.exec(':'), [':']))
+    assert (check_equal_matches(/[^\d]+/.exec('foobar42foo'), ['foobar']))
+    assert (check_equal_matches(/[^\D]+/.exec('foobar42foo'), ['42']))
+
+    // \s (whitespace) and \S (non-whitespace)
+    assert (check_equal_matches(new RegExp("\\s+").exec("foobar  42foo"), ["  "]))
+    assert (check_equal_matches(new RegExp("\\S+").exec("foobar  42foo"), ["foobar"]))
+    assert (check_equal_matches(new RegExp("[\\s+]").exec(" "), [" "]))
+    assert (check_equal_matches(new RegExp("[\\S+]").exec("a"), ["a"]))
+    assert (check_equal_matches(/[\s]/.exec('a'), null))
+    assert (check_equal_matches(/[\S]/.exec(' '), null))
+    assert (check_equal_matches(/[\S]/.exec('a'), ['a']))
+    assert (check_equal_matches(/[\s\S]/.exec('a'), ['a']))
+    assert (check_equal_matches(/[\s\S]/.exec(' '), [' ']))
+
+    // \w is [A-Za-z0-9_] and \W is [^A-Za-z0-9_]
+    assert (check_equal_matches(/[\w]+/.exec('abc_$'), ['abc_']))
+    assert (check_equal_matches(/\w+/.exec('foobar  42foo'), ['foobar']))
+    assert (check_equal_matches(/\W+/.exec('foobar  !?+=/42foo'), ['  !?+=/']))
+
     return 0;
 }
 
@@ -254,9 +267,7 @@ function test ()
 {
     var r;
 
-    r = test_char_match();
-    if (r !== 0)
-        return 100 + r;
+    test_char_match();
 
     r = test_char_class_match();
     if (r !== 0)
@@ -289,7 +300,7 @@ function test ()
     r = test_hyphen_character();
     if (r !== 0)
         return 900 + r;
-    
+
     test_constructor();
 
     r = test_char_class_in_char_class();

@@ -1,5 +1,8 @@
 DC = dmd
-# compilter options
+ifndef PYTHON
+	PYTHON = python
+endif
+# compiler options
 UNAME := $(shell uname)
 ifneq (, $(findstring BSD, $(UNAME)))
 # BSD
@@ -12,8 +15,8 @@ endif
 COPTS := -m64 -O -J./
 TESTOPTS := -m64 -O -J./ -unittest -debug
 DBGOPTS := -m64 -O  -J./ -gc -debug
-RELOPTS := -m64 -O -J./ -release -inline -noboundscheck -version=release
-PROFOPTS := -m64 -O -J./ -release -inline -noboundscheck -profile
+RELOPTS := -m64 -O -J./ -release -inline -boundscheck=off -version=release
+PROFOPTS := -m64 -O -J./ -release -inline -boundscheck=off -profile
 
 BIN_NAME = higgs
 BIN_NAME_TEST = higgs-test
@@ -86,7 +89,7 @@ release: layout
 	$(DC) $(LIBS) $(RELOPTS) -of$(BIN_NAME) $(SRC)
 
 layout:
-	python runtime/layout.py
+	$(PYTHON) runtime/layout.py
 
 clean:
 	rm -f $(BIN_NAME) $(BIN_NAME_TEST) $(BIN_NAME_DEBUG) *.o
@@ -100,4 +103,11 @@ install: release
 	cp ./stdlib/*.js $(LIB_DIR)/stdlib
 	cp -R ./lib/* $(LIB_DIR)/lib
 	cp $(BIN_NAME) $(BIN_DIR)
+
+install-dev: release
+	@if [ ! -d $(LIB_DIR) ] ; then echo "mkdir $(LIB_DIR)" ; mkdir $(LIB_DIR) ; fi
+	ln -s -f "$(CURDIR)/runtime/" $(LIB_DIR)
+	ln -s -f "$(CURDIR)/stdlib/" $(LIB_DIR)
+	ln -s -f "$(CURDIR)/lib/" $(LIB_DIR)
+	ln -s -f "$(CURDIR)/$(BIN_NAME)" $(BIN_DIR)
 

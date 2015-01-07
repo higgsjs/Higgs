@@ -57,7 +57,6 @@ version (FFIdev)
 // Dummy functions used for FFI tests
 version (TestFFI)
 {
-
     // Used to test the low-level FFI ops
     extern (C)
     {
@@ -122,7 +121,7 @@ version (TestFFI)
     extern (C)
     {
         // test struct wrappers
-        struct CustomerStruct { int num; double balance; char name[10]; }
+        struct CustomerStruct { int num; double balance; char[10] name; }
         static CustomerStruct TestCustomer = { num: 6, balance: 2.22, name: "Bob" };
 
         // test union wrappers
@@ -131,7 +130,7 @@ version (TestFFI)
         static NumberUnion TestNumberUnionDouble = { f: 5.50 };
 
         // test arrays
-        static int TestIntArray[3] = [1, 2, 3];
+        static int[3] TestIntArray = [1, 2, 3];
 
         static string HelloWorld = "Hello World!";
 
@@ -140,12 +139,11 @@ version (TestFFI)
             return HelloWorld.ptr;
         }
 
-
         // issue #102
-        alias ulong __uint64_t;
-        alias uint __uint32_t;
-        alias ushort __uint16_t;
-        alias ubyte __uint8_t;
+        alias __uint64_t = ulong;
+        alias __uint32_t = uint;
+        alias __uint16_t = ushort;
+        alias __uint8_t = ubyte;
 
         struct TestDir {
             __uint64_t d_fileno;
@@ -153,7 +151,7 @@ version (TestFFI)
             __uint16_t d_reclen;
             __uint16_t d_namlen;
             __uint8_t  d_type;
-            char       d_name[1024];
+            char[1024]       d_name;
         }
 
         static TestDir TestDirEnt = {
@@ -164,7 +162,6 @@ version (TestFFI)
             d_type: 5,
             d_name: "foo"
         };
-
     }
 }
 
@@ -172,7 +169,7 @@ unittest
 {
     writefln("FFI");
 
-    auto vm = new VM();
+    VM.init();
     vm.load("tests/core/ffi/ffi.js");
 }
 

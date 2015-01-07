@@ -61,7 +61,7 @@ Opcode information
 */
 struct OpInfo
 {
-    alias uint OpFlag;
+    alias OpFlag = uint;
     enum : OpFlag
     {
         VAR_ARG     = 1 << 0,
@@ -105,12 +105,12 @@ Opcode GET_ARG = { "get_arg", true, [OpArg.LOCAL], &gen_get_arg };
 // Word/type manipulation primitives
 Opcode MAKE_VALUE = { "make_value", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_make_value };
 Opcode GET_WORD = { "get_word", true, [OpArg.LOCAL], &gen_get_word };
-Opcode GET_TYPE = { "get_type", true, [OpArg.LOCAL], &gen_get_type };
+Opcode GET_TAG = { "get_tag", true, [OpArg.LOCAL], &gen_get_tag };
 
 // Type tag test
-Opcode IS_I32 = { "is_i32", true, [OpArg.LOCAL], &gen_is_i32, OpInfo.BOOL_VAL };
-Opcode IS_I64 = { "is_i64", true, [OpArg.LOCAL], &gen_is_i64, OpInfo.BOOL_VAL };
-Opcode IS_F64 = { "is_f64", true, [OpArg.LOCAL], &gen_is_f64, OpInfo.BOOL_VAL };
+Opcode IS_INT32 = { "is_int32", true, [OpArg.LOCAL], &gen_is_int32, OpInfo.BOOL_VAL };
+Opcode IS_INT64 = { "is_int64", true, [OpArg.LOCAL], &gen_is_int64, OpInfo.BOOL_VAL };
+Opcode IS_FLOAT64 = { "is_float64", true, [OpArg.LOCAL], &gen_is_float64, OpInfo.BOOL_VAL };
 Opcode IS_CONST  = { "is_const", true, [OpArg.LOCAL], &gen_is_const, OpInfo.BOOL_VAL };
 Opcode IS_RAWPTR = { "is_rawptr", true, [OpArg.LOCAL], &gen_is_rawptr, OpInfo.BOOL_VAL };
 Opcode IS_REFPTR = { "is_refptr", true, [OpArg.LOCAL], &gen_is_refptr, OpInfo.BOOL_VAL };
@@ -118,6 +118,7 @@ Opcode IS_OBJECT = { "is_object", true, [OpArg.LOCAL], &gen_is_object, OpInfo.BO
 Opcode IS_ARRAY = { "is_array", true, [OpArg.LOCAL], &gen_is_array, OpInfo.BOOL_VAL };
 Opcode IS_CLOSURE = { "is_closure", true, [OpArg.LOCAL], &gen_is_closure, OpInfo.BOOL_VAL };
 Opcode IS_STRING = { "is_string", true, [OpArg.LOCAL], &gen_is_string, OpInfo.BOOL_VAL };
+Opcode IS_ROPE = { "is_rope", true, [OpArg.LOCAL], &gen_is_rope, OpInfo.BOOL_VAL };
 
 // Type conversion
 Opcode I32_TO_F64 = { "i32_to_f64", true, [OpArg.LOCAL], &gen_i32_to_f64 };
@@ -202,6 +203,7 @@ Opcode LOAD_I16 = { "load_i16", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_i16 
 Opcode LOAD_I32 = { "load_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_i32 };
 Opcode LOAD_F64 = { "load_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_f64 };
 Opcode LOAD_REFPTR = { "load_refptr", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_refptr };
+Opcode LOAD_STRING = { "load_string", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_string };
 Opcode LOAD_RAWPTR = { "load_rawptr", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_rawptr };
 Opcode LOAD_FUNPTR = { "load_funptr", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_funptr };
 Opcode LOAD_SHAPEPTR = { "load_shapeptr", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_shapeptr };
@@ -259,6 +261,7 @@ Opcode THROW = { "throw", false, [OpArg.LOCAL], &gen_throw, OpInfo.BRANCH };
 Opcode GET_OBJ_PROTO = { "get_obj_proto", true, [], &gen_get_obj_proto };
 Opcode GET_ARR_PROTO = { "get_arr_proto", true, [], &gen_get_arr_proto };
 Opcode GET_FUN_PROTO = { "get_fun_proto", true, [], &gen_get_fun_proto };
+Opcode GET_STR_PROTO = { "get_str_proto", true, [], &gen_get_str_proto };
 Opcode GET_GLOBAL_OBJ = { "get_global_obj", true, [], &gen_get_global_obj };
 Opcode GET_HEAP_SIZE = { "get_heap_size", true, [], &gen_get_heap_size };
 Opcode GET_HEAP_FREE = { "get_heap_free", true, [], &gen_get_heap_free };
@@ -271,6 +274,7 @@ Opcode ALLOC_OBJECT = { "alloc_object", true, [OpArg.LOCAL], &gen_alloc_object, 
 Opcode ALLOC_ARRAY = { "alloc_array", true, [OpArg.LOCAL], &gen_alloc_array, OpInfo.MAY_GC };
 Opcode ALLOC_CLOSURE = { "alloc_closure", true, [OpArg.LOCAL], &gen_alloc_closure, OpInfo.MAY_GC };
 Opcode ALLOC_STRING = { "alloc_string", true, [OpArg.LOCAL], &gen_alloc_string, OpInfo.MAY_GC };
+Opcode ALLOC_ROPE = { "alloc_rope", true, [OpArg.LOCAL], &gen_alloc_rope, OpInfo.MAY_GC };
 
 /// Trigger a garbage collection
 Opcode GC_COLLECT = { "gc_collect", false, [OpArg.LOCAL], &gen_gc_collect, OpInfo.MAY_GC | OpInfo.IMPURE };
@@ -279,48 +283,47 @@ Opcode GC_COLLECT = { "gc_collect", false, [OpArg.LOCAL], &gen_gc_collect, OpInf
 /// try to find the string in the string table
 Opcode GET_STR = { "get_str", true, [OpArg.LOCAL], &gen_get_str, OpInfo.MAY_GC };
 
-// TODO: rename to STATIC_LINK
-/// Create a link table entry associated with this instruction
-Opcode MAKE_LINK = { "make_link", true, [OpArg.LINK], &gen_make_link };
+/// Dummy branch instruction to stop compilation and resumes execution
+Opcode BREAK = { "break", false, [], &gen_break, OpInfo.BRANCH };
 
-/// Set the value of a link table entry
-Opcode SET_LINK = { "set_link", false, [OpArg.LOCAL, OpArg.LOCAL], &gen_set_link, OpInfo.IMPURE };
+/// Capture the type tag of a given value
+Opcode CAPTURE_TAG = { "capture_tag", false, [OpArg.LOCAL], &gen_capture_tag, OpInfo.BRANCH };
 
-/// Get the value of a link table entry
-Opcode GET_LINK = { "get_link", true, [OpArg.LOCAL], &gen_get_link };
+/// Capture the shape of a given object
+Opcode CAPTURE_SHAPE = { "capture_shape", false, [OpArg.LOCAL, OpArg.LOCAL], &gen_capture_shape, OpInfo.BRANCH };
+
+/// Get the shape of an object
+Opcode OBJ_READ_SHAPE = { "obj_read_shape", true, [OpArg.LOCAL], &gen_obj_read_shape };
 
 /// Initialize the shape of an object to the empty shape
-Opcode SHAPE_INIT_EMPTY = { "shape_init_empty", false, [OpArg.LOCAL], &gen_shape_init_empty, OpInfo.IMPURE };
+Opcode OBJ_INIT_SHAPE = { "obj_init_shape", false, [OpArg.LOCAL, OpArg.LOCAL], &gen_obj_init_shape, OpInfo.IMPURE };
 
-/// Get the shape defining a given property
-Opcode SHAPE_GET_DEF = { "shape_get_def", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_shape_get_def, OpInfo.BRANCH };
+/// Initialize the shape of an array
+Opcode ARR_INIT_SHAPE = { "arr_init_shape", false, [OpArg.LOCAL], &gen_arr_init_shape, OpInfo.IMPURE };
 
 /// Set the value of an object property based on its shape
-Opcode SHAPE_SET_PROP = { "shape_set_prop", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_shape_set_prop, OpInfo.MAY_GC | OpInfo.IMPURE };
+Opcode OBJ_SET_PROP = { "obj_set_prop", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_obj_set_prop, OpInfo.MAY_GC | OpInfo.IMPURE | OpInfo.BRANCH };
 
 /// Get the value of an object property based on its shape
-Opcode SHAPE_GET_PROP = { "shape_get_prop", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_shape_get_prop };
+Opcode OBJ_GET_PROP = { "obj_get_prop", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_obj_get_prop, OpInfo.BRANCH };
 
 /// Get the prototype of an object
-Opcode SHAPE_GET_PROTO = { "shape_get_proto", true, [OpArg.LOCAL], &gen_shape_get_proto };
+Opcode OBJ_GET_PROTO = { "obj_get_proto", true, [OpArg.LOCAL], &gen_obj_get_proto };
 
 /// Define a constant property on an object
-Opcode SHAPE_DEF_CONST = { "shape_def_const", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_shape_def_const, OpInfo.MAY_GC | OpInfo.IMPURE };
+Opcode OBJ_DEF_CONST = { "obj_def_const", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_obj_def_const, OpInfo.MAY_GC | OpInfo.IMPURE };
 
 /// Set the attributes for a property
-Opcode SHAPE_SET_ATTRS = { "shape_set_attrs", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_shape_set_attrs, OpInfo.IMPURE };
+Opcode OBJ_SET_ATTRS = { "obj_set_attrs", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_obj_set_attrs, OpInfo.IMPURE };
 
-/// Get the parent shape for a given shape
-Opcode SHAPE_PARENT = { "shape_parent", true, [OpArg.LOCAL], &gen_shape_parent };
-
-/// Get the property name associated with a given shape
-Opcode SHAPE_PROP_NAME = { "shape_prop_name", true, [OpArg.LOCAL], &gen_shape_prop_name, OpInfo.MAY_GC };
+/// Get the shape associated with a given property name
+Opcode OBJ_PROP_SHAPE = { "obj_prop_shape", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_obj_prop_shape };
 
 /// Get the attributes associated with a given shape
 Opcode SHAPE_GET_ATTRS = { "shape_get_attrs", true, [OpArg.LOCAL], &gen_shape_get_attrs };
 
-/// Test if a given shape corresponds to a getter-setter
-Opcode SHAPE_IS_GETSET = { "shape_is_getset", true, [OpArg.LOCAL], &gen_shape_is_getset };
+/// Get a table of enumerable property names for objects of this shape
+Opcode SHAPE_ENUM_TBL = { "shape_enum_tbl", true, [OpArg.LOCAL], &gen_shape_enum_tbl, OpInfo.MAY_GC };
 
 /// Set the value of a global property
 Opcode SET_GLOBAL = { "set_global", false, [OpArg.STRING, OpArg.LOCAL], &gen_set_global, OpInfo.MAY_GC | OpInfo.IMPURE };
@@ -331,6 +334,9 @@ Opcode NEW_CLOS = { "new_clos", true, [OpArg.FUN], &gen_new_clos, OpInfo.MAY_GC 
 
 /// Print a string to standard output
 Opcode PRINT_STR = { "print_str", false, [OpArg.LOCAL], &gen_print_str, OpInfo.IMPURE };
+
+/// Print a pointer value (in hex notation) to standard output
+Opcode PRINT_PTR = { "print_ptr", false, [OpArg.LOCAL], &gen_print_ptr, OpInfo.IMPURE };
 
 /// Get the time in milliseconds since process start
 Opcode GET_TIME_MS = { "get_time_ms", true, [], &gen_get_time_ms };

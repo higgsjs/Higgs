@@ -35,7 +35,7 @@
 *
 *****************************************************************************/
 
-(function()
+(function(exports)
 {
     /// Random number generator (RNG) used
     var rng;
@@ -170,20 +170,14 @@
     /// By default, use the RNG provided by stdlib/math
     setRNG(Math);
 
-    // Exported namespace
-    exports = {
-        setRNG: setRNG,
-        setSeed: setSeed,
+    exports.setRNG = setRNG;
+    exports.setSeed = setSeed;
+    exports.int = randInt;
+    exports.index = randIndex;
+    exports.float = randFloat;
+    exports.normal = randNormal;
+    exports.elem = randElem;
+    exports.arg = randArg;
 
-        int: randInt,
-        index: randIndex,
-
-        float: randFloat,
-        normal: randNormal,
-
-        elem: randElem,
-        arg: randArg
-    };
-
-})();
+})(exports);
 

@@ -40,22 +40,22 @@ import std.getopt;
 
 struct Options
 {
-    /// String of code to execute
+    /// String of code to execute (--e str)
     string execString = null;
 
     /// Force a repl, even after loading files or executing a string
     bool repl = false;
 
-    /// Gather and report various statistics about program execution
-    bool stats = false;
-
-    /// Gather performance statistics
-    bool perf_stats = false;
-
     /// Set stdout to be unbuffered
     bool unbuffered = false;
 
     /* VM options */
+
+    /// Gather and report various statistics about program execution
+    bool stats = false;
+
+    /// Gather performance statistics (without slowing down execution)
+    bool perf_stats = false;
 
     /// Disable loading of the runtime library
     bool noruntime = false;
@@ -63,37 +63,49 @@ struct Options
     /// Disable loading of the standard library
     bool nostdlib = false;
 
-    /* JIT options */
+    /* Compiler options */
 
     /// Enable IR-level type propagation analysis
-    bool jit_typeprop = false;
+    bool typeprop = false;
 
     /// Enable eager generation of block versions
-    bool jit_eager = false;
+    bool bbv_eager = false;
 
     /// Maximum number of specialized versions to compile per basic block
-    uint jit_maxvers = 20;
+    uint maxvers = 20;
+
+    /// Disable shape versioning and dispatch
+    bool shape_novers = false;
+
+    /// Disable type tag specialization in shapes
+    bool shape_notagspec = false;
+
+    /// Disable function pointer specialization in shapes
+    bool shape_nofptrspec = false;
+
+    /// Disable overflow check elimination
+    bool noovfelim = false;
 
     /// Disable peephole optimizations
-    bool jit_nopeephole = false;
+    bool nopeephole = false;
 
     /// Disable inlining in the JIT
-    bool jit_noinline = false;
+    bool noinline = false;
 
     /// Dump information about JIT compilation
-    bool jit_dumpinfo = false;
+    bool dumpinfo = false;
 
     /// Dump the IR of functions compiled by the JIT
-    bool jit_dumpir = false;
+    bool dumpir = false;
 
     /// Store disassembly for the generated machine code
-    bool jit_genasm = false;
+    bool genasm = false;
 
     /// Dump disassembly for all the generated machine code
-    bool jit_dumpasm = false;
+    bool dumpasm = false;
 
     /// Log a trace of the instructions executed
-    bool jit_trace_instrs = false;
+    bool trace_instrs = false;
 }
 
 /// Global options structure
@@ -110,32 +122,43 @@ void parseCmdArgs(ref string[] args)
         config.passThrough,
 
         "e"                 , &opts.execString,
-        "unbuffered"        , &opts.unbuffered,
         "repl"              , &opts.repl,
+        "unbuffered"        , &opts.unbuffered,
         "stats"             , &opts.stats,
         "perf_stats"        , &opts.perf_stats,
 
         "noruntime"         , &opts.noruntime,
         "nostdlib"          , &opts.nostdlib,
 
-        "jit_typeprop"      , &opts.jit_typeprop,
-        "jit_eager"         , &opts.jit_eager,
-        "jit_maxvers"       , &opts.jit_maxvers,
-        "jit_nopeephole"    , &opts.jit_nopeephole,
-        "jit_noinline"      , &opts.jit_noinline,
-        "jit_dumpinfo"      , &opts.jit_dumpinfo,
-        "jit_dumpir"        , &opts.jit_dumpir,
-        "jit_genasm"        , &opts.jit_genasm,
-        "jit_dumpasm"       , &opts.jit_dumpasm,
-        "jit_trace_instrs"  , &opts.jit_trace_instrs
+        "typeprop"          , &opts.typeprop,
+        "bbv_eager"         , &opts.bbv_eager,
+        "maxvers"           , &opts.maxvers,
+        "shape_novers"      , &opts.shape_novers,
+        "shape_notagspec"   , &opts.shape_notagspec,
+        "shape_nofptrspec"  , &opts.shape_nofptrspec,
+        "noovfelim"         , &opts.noovfelim,
+        "nopeephole"        , &opts.nopeephole,
+        "noinline"          , &opts.noinline,
+        "dumpinfo"          , &opts.dumpinfo,
+        "dumpir"            , &opts.dumpir,
+        "genasm"            , &opts.genasm,
+        "dumpasm"           , &opts.dumpasm,
+        "trace_instrs"      , &opts.trace_instrs
     );
 
     // If we don't load the runtime, we can't load the standard library
     if (opts.noruntime)
         opts.nostdlib = true;
 
-    // If dumping the ASM, we must first generate the ASM
-    if (opts.jit_dumpasm)
-        opts.jit_genasm = true;
+    // If dumping the ASM, we must first generate the ASM strings
+    if (opts.dumpasm)
+        opts.genasm = true;
+
+    // If shape versioning is disabled, disable shape specialization
+    if (opts.shape_novers)
+    {
+        opts.shape_notagspec = true;
+        opts.shape_nofptrspec = true;
+    }
 }
 

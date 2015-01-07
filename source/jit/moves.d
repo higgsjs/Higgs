@@ -47,7 +47,7 @@ import jit.x86;
 import jit.util;
 import options;
 
-alias Tuple!(X86Opnd, "dst", X86Opnd, "src") Move;
+alias Move = Tuple!(X86Opnd, "dst", X86Opnd, "src");
 
 /**
 Execute a list of moves as if occurring simultaneously,

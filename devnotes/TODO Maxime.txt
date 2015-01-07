@@ -1,5 +1,7 @@
 Conference deadlines:
+- ECOOP                 December
 - CC 2014               October
+- ESOP                  October (early Oct)
 - PLDI 2014             November
 - VEE 2014              ~November
 - CGO 2014              ~September
@@ -9,6 +11,9 @@ Conference deadlines:
 - DYLA workshop         March
 - ISMM                  Feb
 - Computing Frontier    Jan 2015, notify Feb
+- SPLASH 2015
+
+ACM Transactions on Architecture and Code Optimization: http://taco.acm.org/
 
 List of possible contributions:
 - Type tagging scheme
@@ -19,102 +24,2389 @@ List of possible contributions:
 - Incremental inlining vs classical inlining
 - Typed shapes and basic block versioning
 
+Idea: for thesis, complete system, whole-program analysis is complicated
+- could emulate "perfect analysis" through profiling
+- eliminate all type tests and ovf checks that always go the same way
+- Save profiled data. Use instrs ids. Check that opcode and out slot match.
+"Better than Perfect: Highly Effective Type Check Elimination"
+Type Specialization without Type Analysis
+- Where perfect analysis will do better:
+  - array types, gets all the monomorphic types without testing
+  - array elem types often used in loop itrs
+- BBV does better at polymorphism:
+  - poly function parameter
+  - object field is null or something else
+- Could do some scout work: profile type checks
+  - how many type checks do/don't always go the same way?
+  - 90% always go the same way, weighed for importance, without versioning
+
 ------------------------------------------------------------------------------
 
-TODO: take a break, look into sound output
-- work on this in dev-maxime branch ***
-- look at existing code
-  - can write and wait for poll, no callback
+TODO: Higgs is a Typed Architecture
+- Presentation, argument, angry guy, red face
+  - Photo
+- Link to repr classic paper
+- Drawing
+- Optimization
+- Links to source
+- Reg alloc and future
 
-FIXME: v8bench/regexp segfaults
+TODO: progress update blog post
+- Reddit, HN, Russian coverage, over 50000 blog hits, > 550 github stars
+  http://www.linux.org.ru/news/opensource/11037106
+  - pointersgonewild.com to celebrate
+  https://www.dropbox.com/sh/ncormna8z9wdf0y/AABZatqILwHao1-eCsNW855Xa?n=14349854#/
+- Invited talk at McGill, Northeastern University
+- New in Higgs
+  - Slightly more speed
+  - Shebang line, options parser coming
+  - Turing Drawings port, screenshots, cool wheel shot from turing turtle too
+  - Digging through the FFI, added more docs
+    https://github.com/maximecb/Higgs/wiki/FFI-Library
+  - Object.seal, Object.freeze, Object.preventExtensions
+- In the works
+  - Arrow functions
+  - Options parser
+  - ALSA audio output bindings
+  - Socket bindings
 
-TODO: eliminate overflow checks
-- how many add_i32_ovf with 1 do we have?
-- if less than some other i32, can eliminate
-  - need to prove this is on the path to the current block
-    - can't reach entry without going through the test
-    - must arrive through "true" side
+TODO: look into freeing vmReg
+- where is it used?
+TODO: can we load directly from moffs64?
 
-TODO: look into doc gen, linking up with GitHub
+TODO: getter and setter syntax
+- needed for hash map benchmark
+- Easy to recognize the grammar, but need to modify the AST
+  - Use a struct for object literal property descriptors
+- Probably want some kind of runtime call to define getters and setters
 
-TODO: look into jetstream benchmarks
-https://www.webkit.org/blog/3418/introducing-the-jetstream-benchmark-suite/
+------------------------------------------------------------------------------
 
-TODO: C call conv wrapper for callbacks
-- after new calling conv
+DYLA - typed shapes paper
+- can often know at compile time if obj needs to be extended or not
+  - simplifies spill/GC/bailout issue
+  - show control-flow diagram of work needing to be done for read and write
+- can often know at compile time if obj shape needs to be updated or not
+- our system allows a unified model, global object is a regular object
+- implement the inline cache self_hosted
+  - much easier to debug and optimize, generate compact code
+  - use source-level "ifdef", $ir_get_opt("shape_novers")
+- for global object, can determine prop idx, lower bound on global obj
+  size at compilation time
 
-TODO: approach Moz, Apple, FB wrt internship
-- 4 months, [Jan, April] 2015, spend winter in Cali
-- Marc advises to remain near PhD work, best for CV
-- Marc thinks you can make ~40K pre-tax
-- Ask about salary, lodging options
+Next blog post: mention improved results across the board
+- Title: Better than Perfect?
+- Less versions, less type tests, much bigger speedups
+- Will begin work on interprocedural basic block versioning imminently
+- For thesis, comparison against perfect analysis
 
-FIXME: date-format-tofte
-- keeps using more and more memory
-- some kind of memory leak issue?
+2015-01-XX Meeting:
+- Minor refactorings, now using global VM object, unthreading VM pointer
+- Created ECOOP2015 branch to keep stable version of code for paper
+- Type test branch profiling
+  - 97% of type test instructions always go the same way
+  - 90% of tests executed belong to instructions that always go the same way
+    - earley-boyer is the most dynamic: 61%
+    - 6 simple benchmarks at 100%: recursive, bits-in-byte, 3d-morph, nsieve, 3bits-byte, fannkuch
+  - Right now, 71% eliminated, theoretical upper bound 90% *without versioning*
+- Not strictly obvious that BBV can or will beat perfect analysis
+  - Where perfect analysis will do better:
+    - array types, gets all the monomorphic types without testing
+    - array elem types often used in loop itrs
+  - BBV does better at polymorphism:
+    - polymorphic function parameter
+    - object field is null or something else
+    - array element can have multiple types
+- Discuss graduation timeline
 
-TODO: make $ runtime/stdlib variables read-only, non-enumerable, non-configurable
+TODO: look into improving template strings, completing further
+`string text ${expression} string text`
+tagExpr `string text ${expression} string text`
+function tag(stringArr, ...values)
+- Need to test template strings, nested too
+- For now, could ignore tag, support only expression substitution
+  - Full support at the parsing end, implement semantics partially
+- Implement TempStrExpr class
+- Lexer: dumb lexing possible? template string parts
+  - start at backtick or }???
+  - restarting at } is problematic
+  - possibly need some flag like RE, informing the lexer that we're still
+    in an expression
 
-TODO: const globals
-const name1 = value1 [, name2 = value2 [, name3 = value3 [, ... [, nameN = valueN]]]];
-- Same structure as var decl
-- In D8, these are enumerable
-- Use it for Turing Turtle
-- Look at current parser code, vars code, ast-to-ir code first ***
+TODO: FP machine
+- x and y inputs, in [-1, 1]
+- function to compute an output from input coordinates
+- iterative computation
+- table of operators for each input
 
-TODO: look at eval notes again
+Interp BBV next step: threading global object?
 
-TODO: optimize gen_call to remove type tag test, exc code when known closure?
+TODO: look into McGill benchmarks
 
-TODO: constant prop in ValType?
-- Don't have to propagate all
-- Would be useful to prop shapes without using a register
-- Propagate booleans
-- Simplify shape_is_null and such
+TODO: assess performance with multiple primitive entry points
+- versions, code size, type tests, speed (nocomptime)
 
-TODO: profile comp time on worst benchmark
+TODO: implement entry point spec for call_prim
 
-TODO: blog post, the future of compilation
-- Logical reasoning, supercompilation
-- JIT compilers, continuous of compilation
-- Lazyness is crucial
-- Definite place for controlled code duplication
+TODO: implement a new CodeGenState ctor which takes optional argTypes
 
-TODO: post dconf talk on r/coding
-- Do this when you have time to chat!
-- Wait until Monday
+commit, push to master
+
+
+
+
+
+
+
+
+
+[DONE] TODO: assert num benchs successful > 0 in test runner
+
+[DONE] TODO: add/edit test, fn tostring should contain fun name, param names
+./tests/02-regress/ast-string.js
+
+[DONE] FIXME: irString broken
+- string is generated correctly, fails during execution
+- Fails inside of compile() while compiling branch code
+- Fails in new CodeGenState() to get succ version
+- Could we be appending args twice? Yes
+
+[DONE] FIXME: paramMap in IRFunction, does this make sense?
+- should it be an array? paramVals
+- map not needed in ir/ast.d, nor jit/jit.d
+
+[DONE] TODO: commit, push to master before entry point spec
+
+[DONE] TODO: unthread VM pointer from genBranch delegate
+
+[DONE] TODO: think about multiple entry versions
+- multiple versions of function entry block, already accounted for
+  - need a new CodeGenState ctor which takes argTypes
+- call_prim queues entry block ver directly, no stub
+  - specialized call does the same
+- stub is only applicable to generic version
+
+[DONE] TODO: create interp BBV notes file, move notes
+
+[DONE] TODO: look at tutorials for Python FFI
+- cffi works similarly to luaJIT's FFI
+
+[DONE] TODO: create new FFI notes file
+
+[DONE] TODO: look at tutorials for lua FFI
+- Pointers to pointers? can do ffi.new('int*');
+
+[DONE] TODO: profile the proportion of branches going left and right
+- use static ctor/dtor
+- map of IRInstr to structs
+
+[DONE] TODO: remove VM from all runtime/object.d calls
+
+[DONE] TODO: remove VM member from ObjShape
+
+[DONE] TODO: remove vm field of IRFunction
+
+------------------------------------------------------------------------------
+
+[DONE] ECOOP - Dec 21
+- Invite Baptiste to review
+- Invite Erick to review
+
+[DONE] TODO: create branch for paper code, ecoop2015
+
+[DONE] TODO: re-test benchmarking configurations
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=0"
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=1"
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=5"
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=100"
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=0 --typeprop"
+
+[DONE] TODO: time on nocomptime with and without ovf elim
+./benchmark.py --vm_cmd="./higgs" --bench_list="benchmarks/nocomptime/benchmark-list.csv"
+./benchmark.py --vm_cmd="./higgs --noovfelim" --bench_list="benchmarks/nocomptime/benchmark-list.csv"
+- Very minor difference, if any
+
+[DONE] TODO: --noovfelim flag
+
+[DONE] TODO: re-test benchmarking configurations
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=0"
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=1"
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=5"
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=100"
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=0 --typeprop"
+
+[DONE] TODO: test typeprop on V8, look at comp time
+./higgs --stats --maxvers=0 --typeprop benchmarks/v8bench/base.js benchmarks/v8bench/earley-boyer.js benchmarks/v8bench/drv-earley-boyer.js
+
+[DONE] TODO: look into richards slowness, tweak parameters, cache sizes?
+- not enough get prop cache entries for globals
+
+[DONE] FIXME: need to include analysis time in comp time
+
+[DONE] Meeting:
+- Results gathering is all working
+- Optimized inline caches for global prop access, reduced code size
+- Asthetic fixes on paper
+- Speedups with updated Higgs, nocomptime much more impressive than before
+  - up to 83%, 28% on average
+- Modified analysis to support ovf check elimination
+  - More comparable to Higgs
+  - Makes analysis less incompetent, better comparison point
+  - Analysis still not very successful, i < n case, n could be float,
+    i not guaranteed to be less than int_max then
+  - Possible criticism: your analysis sucks, need a better one
+  - Show what analysis can do for sumVals example, show machine code
+- Ret opt next, for example? May improve speed slightly
+- Remove maxvers=1 bar?
+  - People sometimes confused because maxvers=1 has worse results than baseline
+  - Graphs would be more readable
+  - Interesting data point vs making our case, convincing people
+- DYLA: should publish typed shapes work, even if early
+  - Moz or Truffle people might scoop us
+- Idea: for thesis, complete system, whole-program analysis is complicated
+  - could emulate "perfect analysis" through profiling
+  - eliminate all type tests and ovf checks that always go the same way
+  - use instr instances, hash map, mark collection period programmatically?
+    - doesn't quite work, need to recompile code
+    - also want fresh run
+- Marc says: return, if we have time
+
+[DONE] FIXME: performance bug with bitwise-and, others
+- it's not updateCache
+- seems like a register issue
+- num set prop host randomly goes through the roof
+  - both i and bitwiseAndValue
+- exact machine code matters, heisenbug
+- corrupting slot idx....
+
+[DONE] TODO: re-test benchmarking configurations
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers"
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=0"
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=1"
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=5"
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=0 --typeprop"
+
+[DONE] TODO: verify that analysis still produces ~ 3.75M type tests or less
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=0 --typeprop"
+~3.63M
+
+[DONE] FIXME: loop big incr still 4B tests?
+
+[DONE] FIXME: no ovf checks eliminated?
+- True marked as not max
+- Doesn't flow to add_ovf?
+
+[DONE] TODO: verify that analysis still produces ~ 3.75M type tests or less
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=0 --typeprop"
+
+[DONE] TODO: enable ovf elim based on type prop
+
+[DONE] TODO: check OVF elim with analysis results on loop-big-incr
+./higgs --stats --shape_novers --maxvers=0 --typeprop benchmarks/micro/loop-big-incr.js
+
+[DONE] TODO: make add ovf with 1 not queue both branches in analysis
+
+[DONE] FIXME: argIsType should ignore max int flag for Tag.INT32
+
+[DONE] TODO: Try to implement ovf elim in analysis?
+- use extra tag/bit to say that it could be max int value?
+  - works with union
+- function to test for max, mayBeMaxInt
+
+[DONE] TODO: examine TI results for loop with increment
+./higgs --stats --shape_novers --maxvers=0 --typeprop benchmarks/micro/loop-big-incr.js
+- 4B type tests
+- lack of ovf elimination prevents proper working
+
+[DONE] TODO: review type analysis code
+
+[DONE] TODO: improve set_prop inline cache for global object
+code size (bytes): 545471
+
+[DONE] TODO: cmov, does it always zero out the upper part?
+
+[DONE] TODO: re-test benchmarking configurations
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers"
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=0"
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=1"
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=5"
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=0 --typeprop"
+
+[DONE] TODO: improve get_prop inline cache for global object
+- statically resolve prop idx, avoid capacity checks
+- bitwise-and is all global accesses
+code size before (bytes): 612224
+code size after (bytes): 606382
+
+[DONE] TODO: inform Marc of status
+- type analysis working, but pathologically slow in earley-boyer (10 mins)
+- fixed bug causing slow performance in richards benchmark
+- paper stats gathering
+- BBV flag no longer working, use old graph?
+- speedups up to ~50%
+
+[DONE] TODO: investigate richards benchmark awful slowness
+- scrReg3 could be objOpnd, now fixed
+
+[DONE] TODO: test analysis on benchmark.py
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=0 --typeprop"
+3.71M type tests with analysis
+4.4M tests without
+
+[DONE] TODO: get higgs init working with analysis
+make; ./higgs --maxvers=0 --typeprop
+
+[DONE] FIXME: Assertion failed (ir/typeprop.d@138): type uninf for:
+$0 = is_const $39 in:
+Object_defineProperty(355C)
+- Phi result is uninf
+  - All the args are constants
+- issue from "false" type set
+
+[DONE] TODO: inform Marc of status
+- send sumVals function
+- inline caches pour get_prop et set_prop implementes
+- benchmarks fonctionnent tous avec maxvers=0,1,5,inf
+
+[DONE] TODO: test perf against V8, TM
+- not as awful as expected, except for richards
+
+[DONE] TODO: test higgs with type maxvers=0,1,5
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=0"
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=1"
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=5"
+
+[DONE] TODO: test benchmark.py
+./benchmark.py --vm_cmd="./higgs --stats --shape_novers"
+
+[DONE] FIXME: deltablue fails with set_prop cache only
+- Seg faults on a get prop, invalid obj ptr
+- A set_prop somewhere is causing it
+- Making it so the host set prop is always called doesn't help?
+- getWordOpnd for value allows value to get corrupted
+
+[DONE] FIXME: set_prop, call to non-function, incorrect write?
+
+[DONE] FIXME: set_prop "Object" fails
+- slotIdx 0 seems wrong
+
+[DONE] TODO: enable set_prop cache, but only when shape_novers is set
+
+[DONE] TODO: make sure set_prop updates the object shape when needed
+- need the shape to do this, not just the slot idx
+- for now, just add extra scr reg
+
+[DONE] TODO: set_prop inline cache. analysis needs it
+- does updateCache need the prop val to create the shape?
+- can avoid cache if shape tag versioning is disabled
+  - only use set_prop cache if shape_novers
+- May need to extend obj...
+  - no choice but to call slow path?
+  - GC, spilling?
+- Give this problem more thought
+- Lookup shape, get slot idx
+- Could make it mismatch if obj cap insufficient?
+- Can check if property is new by comparing obj shape slot idx vs idx
+- Idea: compare shape, then slotIdx <= max(obj shape idx, cap) for match
+  - don't retry lookup
+  - do write in updateCache
+  - updateCache does soft spills
+- Can actually compare obj cap in more sophisticated manner?
+  - For simplicity, do match normally
+  - Then check cap, and if mismatch, jump back to updateCache?
+  - or just have two calls***
+- Don't forget to update the object shape if needed
+
+[DONE] TODO: with --shape_novers, disable shape capture codegen
+- disable capture_tag, capture_shape, read_shape (grep for it)
+- test performance
+- code size (bytes): 513785 (capture_tag disabled)
+- code size (bytes): 473918 (capture_shape disabled)
+- code size (bytes): 463485 (all disabled)
+
+[DONE] TODO: with --shape_novers, should prevent shapes from entering ValTypes
+- modify ValState
+- add assertions
+- works, 1.3M type tests as opposed to 675K
+- poor performance, need set_prop cache!
+- code size (bytes): 515782 (novers)
+
+[DONE] TODO: mode to disable shape dispatch, always use inline caches
+- --shape_novers
+- also disable shape tags and fptr spec then
+
+[DONE] TODO: short blog post
+- ds now, worthwhile!
+- Slides, organized ideas, better examples,
+  - explain codegen
+  - recent work
+- Advice for ECOOP from Jan Vitek
+- Jan Vitek, Matthias creator of Racket, Olin Shivers
+- Actors, dependent types, compiler verification
+- PRL, very dynamic team at Northeastern
+
+[DONE] TODO: test get_prop inline cache with benchmark.py
+
+[DONE] FIXME: Assert fail (jit/ops.d@5033): get_sym: invalid lib rawptr value
+make; ./higgs test-runner.js
+- several errors in asm code
+
+[DONE] FIXME: higgs fails to init, segfault
+./higgs --trace_instrs
+- inits with --nostdlib
+- objShape ptr invalid in updateCache
+
+[DONE] TODO: enable use of get_prop inline caches
+
+[DONE] TODO: get_prop inline cache. analysis needs it
+- use data table
+
+[DONE] FIXME: access-binary-trees does slow shape init with no typed shapes
+./higgs --trace_instrs --stats --shape_notagspec --shape_nofptrspec benchmarks/sunspider/access-binary-trees.js
+
+[DONE] TODO: look into binary-trees, why so slow? (with shapes disabled)
+- half the type tests with shapes!
+
+[DONE] TODO: sin, try implementing with sine function
+- Add tests?
+- sin microbenchmark
+- Already almost as fast as TraceMonkey
+
+[DONE] Meeting 2014-11-0X:
+- Completed missing ES5 object model functions
+  - seal, freeze, preventExtensions
+- Started to prepare talk for McGill & Boston
+- Booked plane ticket
+- Updated CGO paper
+  - updated graphs with typed shapes disabled
+  - but still shape dispatch
+- Laurie suggests: do typed shapes for OOPSLA in March
+- Other possibility: do interprocedural BBV first
+  - should improve typed shape results significantly
+  - make Higgs much more competitive
+
+------------------------------------------------------------------------------
+
+[DONE] TODO: Turing Drawings, b to toggle white background and restart
+
+[DONE] TODO: setup paper template for ECOOP
+
+[DONE] FIXME: benchmark performance issue?
+- chrome taking a lot of CPU
+- if perf issue, must have to do with set_prop
+- something is broken
+  - million get prop host on 3d-raytrace
+  - ARRTBL_SLOT_OFS
+- constant attributes are wrong
+
+[DONE] TODO: complete tests for preventExtensions
+
+[DONE] FIXME: version limit hit in defineProperty
+- could also avoid calling, set attrs directly
+
+[DONE] FIXME: deleting last prop makes object re-extensible
+- last prop marked as deleted
+  - but existing shape still found through lookup?
+- probably removing the non-extensible attribute?
+
+[DONE] TODO: modify host setProp to not add a new property when not extensible
+
+[DONE] TODO: test isExtensible
+
+[DONE] TODO: run `make test` and ./benchmark.py
+- if passing, commit
+
+[DONE] FIXME: if configurable is false, you can still set the non-extensible attribute
+- should do checking in jit/ops
+
+[DONE] FIXME: Higgs still won't init
+- error in setProp
+
+[DONE] FIXME: does defineProperty set extensible?
+- no it did not
+
+[DONE] FIXME: Higgs won't init with fast set prop limit
+- We may not have set extensible attr when it was needed
+- May be the work of def const
+  - last prop is indeed a constant
+
+[DONE] TODO: test the preventExtensions behaviors in d8
+
+[DONE] TODO: Object.preventExtension()
+- Unset extensible attr on top-level shape
+- If setProp of new prop, does nothing
+
+[DONE] FIXME: segfault in `make test` with new obj_set_attrs
+
+[DONE] TODO: modify obj_shape_set_attrs to use defShape instead of prop name
+- possibly can just pass the shape to set attrs on, may already be looked up!
+
+[DONE] TODO: add shape EXTENSIBLE attr, set by default
+- Means properties may be added
+- Test that system not broken
+
+[DONE] TODO: read http://cs.stanford.edu/people/widom/paper-writing.html
+- add notes to ECOOP notes
+
+[DONE] TODO: remove VM from GCRoot
+
+[DONE] TODO: Object.freeze
+- sets all props not configurable, not writable
+- calls preventExtensions
+
+[DONE] TODO: Object.seal
+- sets all properties not configurable
+- calls preventExtensions
+
+[DONE] TODO: begin unthreading VM object from jit/ops function calls
+
+[DONE] TODO: abstract & photo for Laurie, reply all
+
+[DONE] TODO: Boston, Marc is willing to finance, look at dates Jan Vitek said
+
+[DONE] TODO: explore gmail mailing lists, calendar notifications
+- inform Marc
+
+[DONE] TODO: blog, technical reports separate
+
+[DONE] Meeting 2014-10-20:
+- optimized for-in
+  - enumerable property table
+  - fastest for-in of all JS engines
+- optimized getProp inside of for-in
+- fixed memory leak issue
+- successful blog post, > 50K views, trending on GitHub, 550 stars
+- optimized Array.prototype.join, about 2x faster
+- more small opts
+  - beating TM on 14/26 benchmarks, more than half
+  - geo avg of Higgs time 5.1, vs TM 5.4
+- compared bitops-3bits-bits-in-byte with manual inlining
+  - more than 3x faster, still 2x slower than TraceMonkey
+  - most overhead is from the function call
+- array performance is another weakness
+  - table fetch, capacity fetch, offset computation
+  - load/store also suboptimal, could use peepholes
+- Good news is there are many things to improve, can surely
+  beat TM very badly within a few months
+- Immediate priority, ECOOP paper, not beating TM ***
+  - Need ECOOP repo ****
+  - log-scale graph, what do you think?
+  - Compilation time table
+  - Should really remove eager graphs!!!
+    - Page limit
+    - Not good results, reviewers have poor reading comprehension sometimes
+- Marc says: do inline caches next
+- Marc says: log scale is good
+  - Remove non-log graph
+
+[DONE] TODO: write runtime fn, getPropEnum(base, shape, slotIdx)
+- make it inlined
+- enumerable or are setters should fall back to getPropElem
+If it's an object, and the property is a string
+Get the shape, get the table, check the attributes :)
+
+[DONE] TODO: rewrite o[k] in for-in
+- Iterate through uses, look for getPropElem
+
+[DONE] FIXME: issue with extended table and arrays
+./higgs --e "a = [0]; a.x = 0; for (k in a) print(k)"
+
+[DONE] TODO: double enumTbl size, add property attribs
+
+[DONE] TODO: get current fasta performance, nocomptime
+make release; ./higgs --perf_stats benchmarks/nocomptime/string-fasta.js
+15ms at best
+code size (bytes): 218761
+num get prop host: 23899483
+
+[DONE] TODO: write for-in-sum test with one non-enum prop
+
+[DONE] TODO: compilation time graph for paper
+
+[DONE] TODO: eliminate strVal in ir/ast.d
+
+[DONE] TODO: is the link table used only for regexes? if so, use a hash table
+- regex engine is ridiculously slow to begin with
+- might save time on avoiding re-parsing on multiple uses
+
+[DONE] TODO: look into organization for Higgs
+github/higgsjs?
+
+[DONE] TODO: destroying VM should destroy all shapes
+- Can't reliably destroy all, but will destroy root shapes
+
+[DONE] TODO: add test to FFI tests, allocating a struct, getting its pointer and size
+- use CustomerStruct
+
+[DONE] TODO: close memory leak issue if fixed, check mem usage now
+
+[DONE] TODO: function to init global vm object
+- Make VM ctor private
+- re-calling initVM will destroy old VM instance
+- 5% memory usage now
+
+[DONE] TODO: add PBM loading to `make test`
+- exercises readLine
+
+[DONE] TODO: draw-image example in its own folder
+- For now, hack quick Window.drawImage call with drawPoint
+CanvasProto.drawImage(x, y, image)
+- Add TODO notes
+
+[DONE] TODO: Image.loadPBM()
+Portable Bit Map - (binary monochrome images)
+- do this on master
+- see D code
+
+[DONE] TODO: try calling destroy(vm) explicitly, see if code blocks and functions freed
+- executable memory is freed but shapes are not
+
+[DONE] TODO: open issue for memory leak
+- mention idea for solving
+
+[DONE] TODO: port Turing Drawings, for fun
+
+[DONE] TODO: check if VM destroyed, CodeBlock destroyed
+- VM and CodeBlock not destroyed during `make test`
+- Do IRFunctions get destroyed outside of our GC? No
+- May want to open an issue on GitHub and post on dlang.org
+http://forum.dlang.org/thread/madbgekdvopdxgwtkocp@forum.dlang.org
+
+[DONE] TODO: could we beat TM on nsieve-bits if we inlined toBool?
+- slight speedup but not quite enough
+
+[DONE] TODO: who calls setProp in crypto-sha1?
+- setPropElem
+
+[DONE] TODO: crypto-sha1, who calls toNumber, toInt32?
+- bitwise or with undefined value
+
+[DONE] TODO: profile functions by name in stats
+- add code to entry, get a named counter!
+- might provide very valuable info
+
+[DONE] FIXME: NaN? 1:0 => 1
+
+[DONE] TODO: --shellscript argument to load just one file
+- In shebang mode, there may be multiple arguments, but only the first
+  must be interpreted as a JS file
+
+[DONE] TODO: shebang line support for Higgs
+- parser needs to ignore this line, but in files only
+- not ignored when parsing strings
+- add a test
+- just pass -- in the shebang line! aha!
+
+[DONE] TODO: upload Air Mozilla talk to youtube, link on blog
+
+[DONE] TODO: blog post, The Fastest For-In Loops
+- post in r/higgsjs
+- post in chat
+- Link to lines of code in fixed revision
+
+[DONE] TODO: numMayEnum is wrong, remove!
+
+[DONE] TODO: catch missing file exception in main.d
+
+[DONE] TODO: look at assembler code for access-nbody
+benchmarks/nocomptime/access-nbody.js
+NBodySystem.prototype.advance
+- Many float adds and muls
+- How inefficient is the code?
+- sqrt_f64, how efficient is that?
+- seems fine, but many spills
+- 3 loop phi nodes are on the stack
+
+[DONE] TODO: email author of jsfft
+https://github.com/dntj/jsfft
+has its own tests
+not quite perfect, multiple files
+
+[DONE] TODO: improve Array.join, inline rope concat?
+- Check time before and after
+- About 10% speed improvement
+
+[DONE] TODO: try manual inlining in bitops-3bits-in-bite, compare performance
+
+[DONE] FIXME: ./tests/00-runtime/es5-cmp.js...
+1,2 <= 1,2 ==> false (expected true)
+Error: wrong result for cmp op <=
+h> [1,2] <= [1,2]
+false
+- toPrim produces rope from Array
+
+[DONE] TODO: email Marc shot of latest perf graph
+
+[DONE] TODO: test fasta perf with substring = ''
+- Improves a bit, but still slow!
+
+[DONE] TODO: array-join-dead microbenchmark
+- Other engines are more than 20x faster
+
+[DONE] TODO: optimize for-in... don't load type tag, do load_string?
+- already do 3 loads, could replace by 2
+
+[DONE] TODO: optimize for-in, prototype slot doesn't need an entry
+
+[DONE] FIXME: 600m is-string tests?
+- var is global.. it's the capture_tag!
+
+[DONE] TODO: try new 100m for-in microbenchmark, try against crankshaft
+- Faster than crankshaft, but not TraceMonkey
+
+[DONE] TODO: run `make test` and benchmark.py
+
+[DONE] TODO: make for-in code inlined
+
+[DONE] TODO: try continue on last itr with proto
+- add to for-in-continue test
+
+[DONE] TODO: write for-in tests with continue, count iterations
+
+[DONE] TODO: implement for-in support for continue, set phi operands
+
+[DONE] FIXME: for-in delete fails
+Running: ./tests/02-regress/for-in-delete.js...
+Error: assertion failed
+$rt_throwExc(4FD16A) ("runtime/runtime.js"@138:1)
+assert(4FD165) ("runtime/runtime.js"@126:31)
+__tests_02_regress_for_in_delete_js(556CC1) ("./tests/02-regress/for-in-delete.js"@14:1)
+Need to get the enum tbl at each iteration, the object shape might change!
+Simplifies loop a bit...
+
+[DONE] FIXME: gc/for-in, not triggering a GC!
+
+[DONE] TODO: benchmark for-in microbenchmark against other engines
+- previously 100x slower than others, now 100ms, less than 2x slower
+
+[DONE] TODO: optimize type tests in prop enum fns
+
+[DONE] FIXME: infinite loop in for-in
+
+[DONE] TODO: generate IR for for-in code
+- can call some getNextTbl(tbl, curObj, ...) fn on each iter
+- then getNextProp
+- goal is to perform decently on fasta benchmark
+- Need curObj and curIdx
+- getNextProp and getNextObj
+
+[DONE] TODO: design $rt_nextEnumProp(curObj, propIdx), $rt_nextEnumObj(curObj), $rt_getEnumTbl(curObj)
+Write enumProps function in runtime.js, try with arrays, strings
+
+[DONE] FIXME: Array.prototype.toString is enumerable ... wtf
+h> d = Object.getOwnPropertyDescriptor(Array.prototype, 'toString')
+object
+h> d.enumerable
+true
+- Add a test to stdlib/array
+
+[DONE] TODO: enum tbl gen should return null if there are no enumerable properties?
+- But then can't know if table was generated
+- Produce a table of length 0***
+- Any better than 3800ms?
+  - Not much speedup, must be closure overhead
+
+[DONE] TODO: add repeated for-in test with shrinkheap to GC tests
+
+[DONE] TODO: test `make test` and ./benchmark.py
+
+[DONE] TODO: eliminate shape_get_parent, shape_prop_name
+
+[DONE] TODO: benchmark for-in microbenchmark against other engines
+- previously 100x slower than others, 9000ms
+- about 2x faster now, 4800ms with --stats
+
+[DONE] FIXME: gc bug with enum tbl
+- Scanning to-space heap
+- A pointer inside an object is already forwarded
+  - It's a pointer in the global object
+  - Points to the empty string
+
+[DONE] FIXME: segfault on VM in init in `make test`
+- GCRoot tries to unregister from the VM when destroyed
+- Order of destruction is unpredictable if GCRoots are not on the stack!
+- Can't really say if GCRoot gets destroyed first or if VM does
+- Touching the VM or any GC root is risky
+- May want some kind of a manual flag, avoid auto-unregistering
+On the other hand, destructor must be called before freeing
+- Might be safe to have the VM unregister all roots itself
+- If the roots were destroyed, they unregistered themselves
+
+[DONE] TODO: modify runtime to use $ir_shape_enum_tbl
+
+[DONE] TODO: getMember with deeper nesting
+
+[DONE] TODO: $ir_shape_enum_tbl instruction
+- Should GCRoot this?
+  - Make it an array table with JS strings inside
+- Check if table pointer is null on the shape, if so call host fn, otherwise return
+- Test the instruction with test function that prints keys
+Problem with property table idea...
+- If a property gets deleted *and* hasn't been enumerated yet, it shouldn't be enumerated
+If we just get the table on the shape every iteration, and a property ahead of us
+gets deleted, it's no issue. If a property behind us is deleted, that seems problematic?
+Simply add null slots for deleted properties and do a null check before enumerating
+There should be as many slots as shapes in the trees
+
+[DONE] TODO: blog post, Pushing Higgs to the Limit
+http://www.reddit.com/r/higgsjs/
+
+[DONE] TODO: GCRoots pointing to null should not add themselves to the list, verify
+
+[DONE] TODO: for-in microbenchmark
+- compare with V8, TM
+- Higgs: 9000ms total
+  - 4M heap allocs, because of closure cells
+  - calls to closure are slow calls
+  - GC time is still a minority, but large, 255ms
+- TM and V8 < 100ms
+
+[DONE] TODO: try log scale for graph
+- Marc has flag for this
+ (define logarithmic? #t)
+
+[DONE] Meeting 2014-10-10:
+- 6 benchmarks using regexps
+  - we do badly at all of these
+  - have a logical reason to exclude them
+  - 26 benchmarks left
+- may want to reverse performance graphs, speedup
+  - allows fitting both V8 and TM in same graph easier
+  - focuses on how much we leave them behind
+  - makes our poor performance look less bad
+  - do we want to do the same for BBV speedups?
+- if we exclude regexp, beat TM on 14 benchmarks to do more than half
+  - just 1 more
+Jan Vitek says:
+- a good idea but lack of credibility.
+- You are being forced to provide more and more evidence
+- expected to compare favorably to commercial systems built by tens of programmers.
+- What has worked for me in the past is to provide drown the reader in data until he or she can’t deny that the proposal actually works.  
+- Maybe add more benchmarks
+
+[DONE] FIXME: throw of TypeError doesn't show error message?
+- add regression test for this
+- also test for var name in unresolved global
+
+[DONE] TODO: ValuePair.toString support for ropes
+- implement in string.d
+- doesn't need to be optimized
+
+[DONE] TODO: exclude benchmarks using regexps
+regexp-dna, string-tagcloud, crypto-aes, string-unpack-code, date-format-xparb
+
+
+[DONE] FIXME: turing-turtle fails
+./higgs ../examples/turing-turtle.js
+$rt_throwExc(2E2D) ("runtime/runtime.js"@138:1)
+CanvasProto_setFont(351B7) ("lib/draw.js"@526:37)
+Canvas(34FDC) ("lib/draw.js"@349:9)
+Window(34FC5) ("lib/draw.js"@130:21)
+
+[DONE] TODO: crypto-md5, many getprops, look at trace
+- Fetching missing array elements
+
+[DONE] TODO: add Marc's stdlib/string opts
+- introduce inline opt first, table second
+
+[DONE] TODO: optimize ropeToStr to use pointer arithmetic
+
+[DONE] TODO: make rt_layout_str and such constants
+- should be easy with def_const syntax
+
+[DONE] FIXME: string-base64 calls ropeToStr 114K times
+- presumably to access the concatenated rope
+- is this fixed now?
+
+[DONE] TODO: optimize charCodeAt for ropes
+- avoid ropeToStr call if possible
+- benchmark crypto-md5 and string-base64 again
+  - currently 17 and 65
+
+[DONE] TODO: implement ir_load_string
+
+[DONE] FIXME: calls to getProp introduced into crypto-md5, why?
+- log the property names
+- getPropLength
+
+[DONE] TODO: test ./benchmark.py to make sure not broken
+
+[DONE] FIXME: 3d-raytrace calls toString 9K times
+
+[DONE] TODO: disable instrPtr code in jit.d once all working
+
+[DONE] FIXME: load doesn't accept ropes
+
+[DONE] TODO: fixup comparison operators ns
+
+[DONE] TODO: add comparison operator tests with concats
+
+[DONE] TODO: rope caching
+- need type tag for left string?
+- can try h4xx
+
+[DONE] TODO: rope concat with lhs rope
+
+[DONE] TODO: get rid of map ptr
+
+[DONE] FIXME: base64 segfaults
+Caught segmentation fault
+IP=C
+instrPtr: $0 = load_u32 $12, 12
+curFun: $rt_ropeToStr(2DB6)
+exiting
+- GC seems to have corrupted the rope
+  - seems it sets the pointer to null
+  - length of curRope is set to zero
+
+[DONE] TODO: would like an ir_print_ptr
+- add on master
+
+[DONE] 2014-11-06 Meeting:
+- ECOOP Paper
+  - Do we want to have the type analysis?
+    - Not sure how to fit shapes into that, doesn't quite compare
+- Should probably focus paper on OO aspects
+  - What are shapes, how are ours different
+  - How our system is better than a simple inline cache
+  - Should we implement an inline cache?
+  - Resolving callee identities effectively, optimized calls
+  - No on-stack replacement needed
+- Sidetracked, more small optimizations, addictive
+  - Optimized .call syntax for few args, previously going through apply
+  - Improved fast calls, now works with argument count mismatch
+  - Optimized string method lookups
+- Looked into splay, worst performing string benchmark
+  - String concat did not explain terrible slowness
+  - Flaw is string hash function, tail problem
+  - Replaced by murmurHash2A, 64-bit
+  - splay 4x faster, all other string benchmarks faster
+- HHVM and tracelets at OOPSLA
+  - Realized it's good we have this on arXiv, put latest paper there too
+- Paper notes:
+  - PLDI: two phase process, 2nd phase response too late for computing frontier
+  - Do we still want the analysis?
+    - analysis can't have typed shapes, versioning based on shapes
+    - needs inline cache, makes comparison more complex
+    - disabling typed shapes loses us some of our advantage against TM
+  - When comparing against BBV & analysis only... compile eagerly?
+    - more like regular method JIT?
+- Good news: TraceMonkey is not a moving target
+  - We can keep beating it more and more
+  - Almost beating TraceMonkey on 3d-cube, fixed that
+Marc says: can't include hidden gains from typed shapes
+- Deactivate typed shapes
+- Deactivate shape versioning, use inline caches
+- Keep analysis for comparison
+
+[DONE] TODO: make $rt_toString and toPrim convert ropes to strings
+
+[DONE] TODO: $rt_ropeToStr()
+
+[DONE] TODO: $ir_is_rope()
+
+[DONE] FIXME: this.queueCount++ seems to call into getProp...
+assgToIR is to blame
+currently 10K host get props
+- Now beating baseline, much of the overhead was property accesses!
+
+[DONE] FIXME: problem for crypto-md5... Integer division produces integer, but we
+convert it into a float. This screws up much of the logic afterwards.
+Could possibly do div i32 and test with a simple multiplication
+
+[DONE] TODO: create vs tracemonkey graph
+
+[DONE] TODO: copy paper into new dir without pushing to repo, remove git metainfo
+
+[DONE] TODO: email Jan Vitek
+- Advice for ECOOP submission
+  - Explain general idea
+  - Structure, contents
+  - Do we have a chance at ECOOP, or go for a workshop like ICOOOLPS
+
+[DONE] TODO: optimize 3d-cube:
+- fair amount of rt_add, why?
+  - i++ on float values
+- many setProp calls
+  - comes from setting array props out of bounds
+
+[DONE] TODO: get latest tracemonkey rev, revision cb5d09b48f03
+http://hg.mozilla.org/mozilla-central/file/cb5d09b48f03/js/src
+- look into how to disable method JIT
+  options -j and -m toggle JITs
+  both disabled by default in 1.8.5
+Version: JavaScript-C 1.8.5+ 2011-04-16
+
+[DONE] TODO: create pldi15 branch
+
+[DONE] TODO: can we get the last working version of tracemonkey?
+https://bugzilla.mozilla.org/show_bug.cgi?id=698201
+
+[DONE] TODO: try optimizing strcat
+
+[DONE] TODO: put BBV paper r3 on arxiv
+
+[DONE] TODO: make hash table use internal string hash, whai not
+
+[DONE] TODO: test key making code of splay, string hash lookups may be super slow
+
+[DONE] TODO: num chars hashed
+base64, 500M chars, 5s, loads of GC
+tagcloud, 372M, 12s, loads of GC
+validate-input, 3B, 30s, loads of GC
+unpack-code, 1.6M, 2.3s
+3d-raytrace, 6.6M, 0.751s
+splay, only 15M, 58s
+
+[DONE] TODO: try bank of sine waves
+- can try approx freq multiples at first, divide amplitude
+
+[DONE] TODO: look into ropes, do some online reading
+http://blog.cdleary.com/2012/01/string-representation-in-spidermonkey/
+- left, right, length
+- when concat'ed, set right ptr to null, left ptr to new string
+  - need to maintain a level of indirection until GC
+- in stdlib/string, make toString return a non-rope string
+
+[DONE] TODO: try triangle wave + steep filter for kick
+
+[DONE] TODO: take a break, filter, stateful closure?
+- see vanalog
+
+[DONE] TODO: add parser test for trailing comma
+
+[DONE] FIXME: parse error: "benchmarks/jetstream/dry.c.js"@1752:11: invalid property name
+./higgs benchmarks/jetstream/dry.c.js
+- make this parse error more specific?
+  - prop name in object literal??
+- Add new parser regression test
+
+[DONE] TODO: regress, gc-new-date
+
+[DONE] TODO: bug signaled by Brett
+- add regression test
+- take a quick look at first
+- segfault happens during GC
+  - stack frame traversal fails
+We get into gcCollect with a null curInstr... Who triggers gcCollect?
+instrPtr: obj_set_prop $253, "__s__", $221 => call_merge(4E4D8), if_join(4E4E2)
+curFun: computeDate(126FE)
+
+[DONE] TODO: add existing arxiv link to blog
+
+[DONE] TODO: optimize string prop access, they result in unknown calls
+- check if prop name exists on string prototype?
+  - no, use pre-established list
+- most unknown calls in base64
+- implement in method call logic, $rt_getStrMethod
+- before:
+    num call fast: 57724
+    num call slow: 9198
+- after
+    num call fast: 61907
+    num call slow: 6865
+  - base64 issue fixed
+  - code very slightly smaller
+
+[DONE] TODO: strProto in VM, get_str_proto instruction
+- need to change stdlib code too
+- grep for String.prototype
+
+[DONE] TODO: support for fast calls with args mismatch
+- Separate loop for missing args?
+- compute numArgsPassed
+- compute frameSize, see VM call
+
+[DONE] FIXME: call to non-function no longer reports fn name
+- did we not test for this !?
+./higgs tests/02-regress/call-non-function.js
+- Primitive not inlined because inside of try block!
+  - Find the primitive call through a phi node...
+
+[DONE] TODO: slow call stat, unknown callee
+- num call unknown
+- look at deltablue and richards
+- in the case of deltablue, only half of slow calls are unknown
+- this is true in earley-boyer as well
+
+[DONE] TODO: look at deltablue
+./higgs benchmarks/nocomptime/deltablue.js => 1.72ms
+- uses .call with 1, 2 or 3 args
+- try implementing small opt
+- after => 1.61
+- unseen benefit is less gc
+
+[DONE] 2014-10-28 Meeting:
+- Submitted rebuttal
+- Implemented out of line branch stubs to eliminate moves
+  - Slightly smaller code
+  - Not much performance impact, ~4% on fibonacci, up to 10%
+  - Register writes are very fast, no latency
+- Optimized host property reads (uncaptured shapes)
+- Added add of add peephole pattern
+- Re-timed with and without shape spec, using nocomptime
+  - Mixed results, not all faster, but 21% faster on average using geo mean
+  - Could possibly try for an ECOOP paper, Dec 21, Jan Vitek is on committee
+  - Type analysis?
+  - Next step: ropes or interp BBV?
+    Marc says: go for ropes, otherwise will keep hindering us
+- Fixed indexed array element called as method bug
+- Fixed regexp parsing bug
+- Fixed bug in object init code
+- Fixed substring bug, fp indices unhandled
+- benchmark-vs-v8 script
+- Looked into V8 allocation memory for AST, IR
+  - "zones", bump allocation, freed all at once
+  - Benchmarked D GC, allocating 10M linked list nodes takes 3 minutes...
+- Tried forcing capture of more functions to reduce "slow calls"
+  - Not much difference
+  - Slow calls result from unorthodox calls or argument count mismatches
+- Added shape test stat
+  - Many more shape tests than known shapes, ~10:1
+  - Interp BBV should help tremendously there
+- Type tests for 3d-raytrace, previously 3.5M (optimized), now 1.4M
+  - 5.2M with maxvers=0, eliminating 73% of type tests
+- Idea for interp BBV returns
+  - Only try to predict return type when fairly sure to avoid mispredicts
+  - Otherwise only predict that no shapes will be changed
+
+[DONE] TODO: try with nospec
+./benchmark.py --vm_cmd="./higgs" --bench_list=benchmarks/nocomptime/benchmark-list.csv
+./benchmark.py --vm_cmd="./higgs --shape_notagspec --shape_nofptrspec" --bench_list=benchmarks/nocomptime/benchmark-list.csv
+- With nocomptime, mixed results, not all faster, but 21% faster on average using geo mean
+
+[DONE] TODO: apply microbenchmark with 1 arg to estimate time
+- can do about 5K apply calls in 1ms
+
+[DONE] TODO: fix codegen space assertion to take stub start pos into account
+
+[DONE] TODO: add block idx to jump reference system
+- Problem: if we regenerate the branch, we do not know the block idx
+- Pass block pointer instead
+
+[DONE] TODO: generate the branch stubs during jump reference linkage
+
+[DONE] TODO: pre-reserve space in the exec heap for the stubs, e.g.: 1/16
+- should jump ahead and not backwards, so space is at end
+- Need a stubStartPos, stubWritePos
+
+[DONE] TODO: measure nocomptime stats, code size
+./benchmark.py --vm_cmd=./higgs --bench_list=benchmarks/nocomptime/benchmark-list.csv
+3bits-byte: 1.58789
+3d-cube: 8.94531
+3d-morph: 12.1797
+3d-raytrace: 62.75
+base64: 4405.0
+binary-trees: 1.80664
+bits-in-byte: 6.58594
+bitwise-and: 1.31934
+cordic: 6.94141
+crypto-aes: 12.5547
+crypto-md5: 25.4375
+crypto-sha1: 6.01562
+date-xparb: 41.875
+deltablue: 2.12109
+earley-boyer: 36.8125
+fannkuch: 10.0547
+fasta: 269.5
+navier-stokes: 23.8594
+nbody: 2.60352
+nsieve: 3.0957
+nsieve-bits: 4.79297
+partial-sums: 9.26562
+recursive: 1.96289
+regexp-dna: 6146.0
+richards: 1.87988
+spectral-norm: 2.50977
+splay: 43301.0
+tagcloud: 2749.0
+unpack-code: 732.5
+v8-crypto: 44.9531
+v8-raytrace: 29.4531
+valid-input: 21983.0
+./higgs --nostdlib --stats benchmarks/micro/loop-global-incr.js
+exec time (ms): 10318
+code size (bytes): 32614
+./higgs --nostdlib --stats benchmarks/micro/fib42.js
+exec time (ms): 5731
+code size (bytes): 33015
+
+[DONE] TODO: are we creating tons of useless phi nodes and then pruning them?
+- unfortunately yes, but seems hard to avoid
+
+[DONE] TODO: benchmark normal vs pool alloc for allocating a long linked list
+- Try 10M objects, how slow is this
+- Try it in C, too
+- Dog slow
+
+[DONE] TODO: try snare/kick again with envelope
+
+[DONE] TODO: are we using assumeSafeAppend when adding to the block list???
+- no we aren't!
+
+[DONE] TODO: look at V8 src wrt IR, phi nodes
+- How do they represent/alloc this efficiently?
+- Probably want pools for instructions and phi nodes
+  - Manually free on function deallocation
+  - Avoid having the D GC ever getting its paws on it
+
+[DONE] TODO: graph sound waves
+- plot single points
+
+[DONE] TODO: try using consonance to build random sequences
+- getNextNote function
+
+[DONE] TODO: try AR envelope with exp release
+
+[DONE] FIXME: gc bug in v8/regexp
+./higgs benchmarks/v8bench/base.js benchmarks/v8bench/regexp.js benchmarks/v8bench/drv-regexp.js
+- entering gcCollect, then segfault
+- String data gets written over one of the source strings, over its next pointer
+- Seems the issue is with FP indexes making it into the substring function
+
+[DONE] TODO: add regression test
+
+[DONE] TODO: substring
+- use $ir_f64_to_i32() to truncate the numbers
+
+[DONE] FIXME: pong example segfaults!
+- using wrong IIR instruction
+
+[DONE] FIXME: many allocs in turing synth? do we realloc arrays for each new element?
+- setting the length does
+- should make GC test for this, see that no GC occurs, or no more than one or two
+./higgs --stats --nostdlib --e "a = []; for (var i = 0; i < 80000; ++i) a.length = i;"
+
+[DONE] TODO: take a break, dust off CPU heatsink and fan
+- turn off machine, remove fan
+- listen to hyperion!
+
+[DONE] TODO: add of add peephole pattern
+$15 = add_i32 $14, 4
+$16 = add_i32 $15, 8
+before, code size (bytes): 346653
+after, code size (bytes): 345944
+
+[DONE] FIXME: maxvers=0 causes segfault on 3d-raytrace
+./higgs --maxvers=0 benchmarks/sunspider/3d-raytrace.js
+- wStack, first word of VM object, gets corrupted
+- Seems obj_init_shape slow path corrupts regs
+
+[DONE] TODO: hack simple drum synth, snare, see synth cookbook
+- for now, source/synth.js
+- produce a new Sound object for now
+
+[DONE] TODO: add shape test stats
+
+[DONE] TODO: num call apply stat
+
+[DONE] FIXME: regexp parsing bug
+/\\/g;
+
+[DONE] TODO: try forcing fn capture in set global?
+- how often do we not know the fn? check
+  - Array ctor is unknown 
+  - v8-raytrace uses weird object system, has many slow calls
+- Does eliminate unknown fptrs, but doesn't make net difference in slow calls!
+
+[DONE] TODO: write simple wav encoding test
+
+[DONE] TODO: complete basic wav encoding, for fun
+
+[DONE] TODO: host get prop, try passing args through fun params
+
+[DONE] TODO: benchmark-vs-v8.py script
+- Work from CSV files, copy CSV column extraction code
+- Use geo mean, compute baseline ratio and crankshaft ratio
+
+[DONE] TODO: Higgs, increase heap size in release mode to 256M
+
+[DONE] TODO: regression test for function call to array element
+
+[DONE] FIXME: turtle segfaults
+./higgs ../examples/turtle.js
+Assertion failed (runtime/vm.d@1042): expected string value for arg 1 of:
+$174 = obj_get_prop $171, $161 => call_merge(77614), if_join(77639)
+h> var draw = require('lib/draw');
+var window = draw.Window(100,100,200,200, "test");
+h> window.onRender(function(canvas) {
+canvas.setColor("#008FCC");
+canvas.fillRect(10,10, 100, 100); });
+// ALL GOOD HERE, UNTIL:
+h>window.show();
+- Add regression
+- Calling an indexed array element as a method
+
+[DONE] TODO: Can we refactor getPropField?
+- If we make it to null proto, then prop val is undef, don't call getProp
+- If proto is not an object, then not found
+
+[DONE] TODO: getPropField, don't call if the property is a number string
+- explain why in comment
+
+[DONE] TODO: add regression test with Array.prototype having property '0'
+d8> Array.prototype['0'] = 7; a = [3]; a['0'];
+- Add under core/Array tests
+
+[DONE] TODO: Rebuttal, complete today, send to Marc
+- to the point, don't argue fine points. Honest and straightforward, simple ***
+
+[DONE] 2014-10-XX Meeting:
+- Return type profiling
+  - Booleans dominate: gt, lt, eq, toBool
+  - closure returns are because of unoptimized method lookups
+  - Other most common types are int, float & string, fairly universal
+- Optimized property lookup as loop
+  - Fixed IR translation bugs
+  - Smaller code size
+  - deltablue 50% faster, v8-raytrace 33% faster
+- Optimized array method lookups
+- Optimized slow get prop path
+- Benchmark harness
+  - Often competitive with V8 baseline, but crankshaft often beats us by a lot
+    - Probably due to inlining
+    - but sometimes less than 2x slower
+  - Seems realistic to beat baseline on most benchmarks
+  - With interp BBV, we may approach crankshaft, but probably won't beat it
+  - Benchmark setup & teardown, run multiple times or exclude? ***
+    - Currently not fully consistent
+  - Higgs, increase heap size in release mode to minimize GC?
+- Doing fairly bad on all benchmarks involving strings
+  - Will probably need ropes to be competitive
+- Lack of collaboration, missed opportunity
+  - Lunches with Baptiste or group lunches, fixed day
+
+[DONE] TODO: make benchmark-list.csv for nocomptime suite, try it out
+
+[DONE] TODO: benchmark.py, optional benchmark list file
+- csv?
+- --bench_list=
+- default should be source/benchmark-list.csv
+
+[DONE] TODO: complete nocomptime benchmark hooks
+load('benchmarks/nocomptime/timebenchmark.js');
+
+[DONE] TODO: timebenchmark.js, adaptive timing
+
+[DONE] TODO: numItrs in timeFun
+- do warmup 0, warmup 1
+- if warmup 1 < 100ms, do more warmup rounds
+  - log supplemental warmup, warmup time
+- compute num itrs to get total time ~ 1s, log it
+- report time divided by num itrs
+
+[DONE] TODO: optimize host get prop to avoid double shape lookup
+
+[DONE] FIXME: nocomptime/3d-cube gets many setprop calls, why?
+
+[DONE] TODO: deltablue has 13.2K get_prop host calls, why?
+- Does not occur through getProp or objGetProp
+- Prop name is known
+- Shape is unknown, failed to capture
+
+[DONE] TODO: remove *quick benchmarks from nocomptime
+
+[DONE] TODO: do we still need the ne_rawptr hack for shapes? no
+- print use
+
+[DONE] TODO: push to master, branches have diverged far enough already!
+
+[DONE] TODO: fix obj_init_shape to account for null prototypes
+- foregoing known prototype tag is annoying
+- could also have two shapes for objects
+- obj_init_shape could take a boolean argument for proto null or not
+- Prototype could be many different things, not just object or null!
+
+[DONE] FIXME: Running: ./tests/02-regress/call-non-function.js
+Error: error string does not specify function name
+./higgs tests/02-regress/call-non-function.js
+
+[DONE] TODO: implement getPropMethod as loop
+- Could try and see how it performs
+- Affects v8/raytrace, 280K get prop host
+- Appears beneficial for performance
+
+[DONE] TODO: can there be arrays with other prototypes besides the array prototype?
+- If not, simplify things, make array tag proto known
+- Seems like not
+
+[DONE] FIXME: initial object shape is wrong
+- Proto is marked as Tag.OBJECT
+- This is inaccurate when the prototype is null
+
+[DONE] FIXME: regression bug wrt getPropField loop
+- Unreachable code remains in the CFG, breaks liveness analysis
+
+[DONE] FIXME: phi of phi opt problem
+- makes no sense that the call to getGlobal would get compiled
+Weirdly doesn't fail if stdlib isn't loaded, suggesting it isn't an IR problem?
+- Modifying the IR removes the failure....
+Fail when compiling the call to new.
+Seemingly trying to use the result of call_prim getGlobal
+As if we'd wrongly removed the inlining phi node?
+We replaced the phi node by the value of getGlobal
+Removing the phi of phi opt eliminates this issue
+- Issue with phi of phi opt, not valid when first phi has more uses
+
+[DONE] TODO: read blog post about V8 baseline JIT
+
+[DONE] TODO: what function returns closure so much in deltablue?
+- objGetProp and getProp often return a closure
+
+[DONE] TODO: profile return types
+- Add code in stats
+- Have an unknown entry for when the ret value type is unknown?
+- Boolean types dominate. gt, lt, se comparisons.
+
+[DONE] TODO: get rid of special defConst treatment of proto
+- Could have an initial object shape with the proto slot
+- Write the proto value directly
+
+[DONE] TODO: get rid of ExtInfo
+- Wait until new capture_shape is implemented
+
+[DONE] 2014-10-16 Meeting:
+- Fixed hard GC bug
+  - JS strings leaking, getting corrupted
+- Fixed parser bug signaled by new contributor
+- With new shape system, code size about 25% smaller than old object system
+  - Even though more versions
+- Added wall clock time measurement to benchmarking script to support V8
+- Higgs vs V8 (***caveat, including V8 compile time***)
+  - Higgs faster on several benchmarks, smaller/faster ones especially (11/32)
+  - Many benchmarks in similar order of magnitude
+  - Higgs has pathological cases on several string benchmarks
+  - Faster on recursive benchmark, this has short compile time
+    - If exec time is made longer, then 2x slower
+  - faster on binary trees, but again short benchmark
+  - In general: faring not too bad, comparable, except on string benchmarks
+    - But only comparable if we exclude Higgs compile time
+- With optimizing JIT, V8 has inlining of user functions, Higgs doesn't
+- Low hanging fruits: probably many inefficiencies in runtime, generated code
+  - Examined specific benchmarks in case studies
+  - Focus on the ones where we do poorly, or where I think we could do better
+- Found many small inefficiencies in Fibonacci machine code
+  - Fixed a few
+- Optimized array property access, now much faster
+- Made various small optimizations in runtime to improve benchmark performance
+- Shape spec, seems we unfortunately still don't win
+  - Smaller code size, less type tests, but not better performance
+- Next step:
+  - Move on to interprocedural BBV or...?
+  - Benchmark-specific micro-optimizations?
+  - Could implement statistical profiler
+  - Could implement code size profiler
+- Example small opt: array and string method access
+  - Can lookup on array proto and string proto at compile time
+  - Right now we do a slow lookup for these
+- Example: bad string concat performance
+  - 3d-raytrace, two third of time taken by string concat
+  - need ropes to perform competitively on this
+- Example: stubs without register write, stub space ***
+- Interprocedural BBV
+  - Implement in steps
+  - Step 1: multiple function entry points
+    - entry contexts track function argument types
+  - Step 2: threading global object as hidden argument to track global shape
+  - Step 3: passing information back through returns
+  - May also want to implement const prop in BBV for specialized purposes
+    - pass argc as constant, for example
+
+[DONE] TODO: what calls getProp in v8bench/raytrace?
+- "initialize" and "isHit", called on a regular object
+- 187K get prop host
+- Also get calls to push and charCodeAt
+
+[DONE] FIXME: v8bench/raytrace has many comparisons of objects vs null
+- most of these coming from se, called in the apply function
+
+[DONE] TODO: could strcat be taking a big chunk of the time in 3d-raytrace?
+- Modify the benchmark and print the times
+- Seems about 2x more time is taken by string concat
+- It's really the concatenation that's slow
+
+[DONE] FIXME: move of 0 has upper bits set?
+
+[DONE] TODO: array benchmark, how do we fare against V8 now?
+- pretty close now
+
+[DONE] TODO: toPrim, toNumber called 58K+ times in 3d-raytrace, why?
+- rt_lt, rt_gt call toNumber of some fp number?
+  - probably compared to undefined or something like that
+
+[DONE] FIXME: array access performance sucks
+- want hidden __arrTbl__ __arrLen__
+  - start with just __arrTbl__
+- look at code size before and after, nsieve benchmark
+- before: code size (bytes): 354046
+./higgs --perf_stats benchmarks/sunspider/access-nsieve.js
+    comp time (ms): 311
+    exec time (ms): 14
+    code size (bytes): 205236
+code size (bytes): 351522
+./higgs --perf_stats benchmarks/sunspider/access-nsieve.js
+    comp time (ms): 241
+    exec time (ms): 13
+    code size (bytes): 204534
+- start simple
+  - write $rt_getArrTbl, $rt_getArrLen
+  - use defConst in constructor for testing
+
+[DONE] TODO: avoid reading function pointer in getProp when possible
+- if fun doesn't use closVal, only one use which is a call
+- need constant propagation to implement this properly (GC-safe)
+
+[DONE] FIXME: no reg reusing for add in fib
+- x operand isn't live after?
+branch_if_true(1E667):
+if_true(1E667):
+; $26 = add_i32_ovf $11, $21 => call_merge(1E658), if_false(1E66E)
+mov rcx, [qword r14 + 88];              498B4E58
+mov rdx, [qword r14 + 168];             498B96A8000000
+mov edi, ecx;                           89CF
+add edi, edx;                           01D7
+mov eax, 9818;                          B85A260000
+jo branch_if_false(1E66E);              0F80D7A4FDFF
+branch_call_merge(1E658):
+call_merge(1E658):
+; ret $24
+- Claiming that $11 is live after the add...
+- addIntFloat is not optimized
+- before: code size (bytes): 354206
+- after: code size (bytes): 354046
+
+[DONE] FIXME: fib, two useless moves in return?
+; ret $24
+mov rcx, r10;                           4C89D1
+mov dl, 1;                              B201
+mov eax, [dword r14 + 272];             418B8610010000
+sub eax, 1;                             83E801
+xor ebx, ebx;                           31DB
+cmp eax, 0;                             83F800
+cmovl eax, ebx;                         0F4CC3
+add eax, 36;                            83C024
+mov rbx, [qword r14 + 248];             498B9EF8000000
+add r13, rax;                           4901C5
+shl rax, 3;                             48C1E003
+add r14, rax;                           4901C6
+jmp rbx;                                FFE3
+- it's the return value!
+- could try to bias ret values towards retWordReg
+- before, avg code size (bytes): 354334
+- after: code size (bytes): 354206
+
+[DONE] FIXME: call, use the global value instead of get_global_obj before call
+- look at fib code size
+./higgs --nostdlib --perf_stats benchmarks/micro/fib42.js
+code size (bytes): 33513
+after: 33490, slightly smaller, tiny bit faster
+
+[DONE] TODO: test if we're faster than V8 on good ole fibonacci
+- not with a large count
+
+[DONE] TODO: test V8 benchmarking
+./benchmark.py --vm_cmd="~/Dropbox/Linux/bin/d8" --num_runs=5
+./benchmark.py --vm_cmd="./higgs --perf_stats" --num_runs=5
+- runs very very fast, even with 5 runs!
+
+[DONE] TODO: benchmark.py, measure wall clock time
+
+[DONE] TODO: return code error detection in benchmark.py
+
+[DONE] TODO: verify if V8 has exec time option
+- doesn't seem like it
+
+[DONE] TODO: numberToString gets called a lot, why?
+- Also, rename to numToStr?
+- Called by toString, seems inefficient, could be optimized?
+  - See if this reduces the count in benchmark.py
+- Also called in Number.toString
+  - Only this needs the full implementation
+
+[DONE] FIXME: parsing error, on two lines
+function x() {} [0, 1]
+- Fix on master, 3rd workspace, take a break
+- The global function x() is not defined
+- It does parse as if an indexing expression, with a comma expression inside!
+- This is not a newline problem. It should work even on one line
+- When parsing an expr stmt, we should behave differently if we have a function declaration.
+- Peek for function.
+- V8 rejects global functions with no name
+
+[DONE] FIXME: splay benchmark segfaults
+- crashes in the setup phase
+- seems it may be a GC bug
+- GC possibly corrupting something during run
+- crashes at a stage where multiple GCs occur in sequence...
+- this may be a flaw in new_clos or something
+  - or a problem in setProp
+Can happen in strcat, with a double GC
+- A second GC happens on the same instruction to expand the heap
+- Work keeps happening for a bit, and then there is a segfault
+Also happens with alloc_object, again with a double GC
+Third occurrence again with heap expansion...
+- What's different on the second GC?
+- Why doesn't it happen on the first heap expansion?
+- Normally, all the junk is gone, result should be exactly the same
+- Flipping the heap twice... Back to the same from space
+- Leaking JS strings into propCache. Strings get corrupted.
+
+[DONE] TODO: to debug splay, try storing curInstr pointer in main
+./higgs --nostdlib splay-fail.js
+instrPtr: $48 = obj_get_prop $7, "key" => call_merge(21425), if_join(2142F)
+curFun: SplayTree_prototype_splay_(1E7FA)
+- This is a host getProp
+- Segfault before leaving host getProp
+- Segfault in getDefShape, but shape appears valid
+- Cache lookup in getDefShape fails
+- TODO: verify that obj shape is referenced
+  - obj shape pointers valid
+  - all obj shapes are referenced all the way to the root
+- At GC expansion, the D GC probably runs...
+  - Either the shape is collected or something writes over it, corrupts it
+- No shape destructor called, pointers valid according to D GC, only propCache corrupted
+  - Seemingly, the shape got corrupted, written over somehow
+We could scan the heap pre and post GC, query the shapes for the "key" property
+- Assume something in the GC heap expansion breaks a shape
+- The shape is not inside the new heap range
+Many shape flips in this program
+- Could verify object shapes after flip ***
+Commenting out fast setProp path seems to prevent this issue...
+- Try enabling all of setProp except for when a shape flip is needed?
+  - Seems to eliminate the problem...
+- Somehow precompiled shape flips are to blame?
+- TODO: try verifying obj shape after fast getProp, do host call
+propCache is corrupted before the last double GC...
+There seems to be a corrupted propCache right after shrinkHeap
+
+[DONE] TODO: add assert(s) in prop code to look for temp strings
+- Never create a shape from a temp string
+- Strings with zeroes in prop cache
+
+[DONE] TODO: try segfault catch hack, global VM ptr
+https://github.com/D-Programming-Language/druntime/blob/master/src/core/sys/posix/signal.d
+- The IP is not within the exec heap
+
+[DONE] TODO: Meet Marc
+- Shape profiling confirmed intuition, first shape in most cases, no exceptions
+- Fixed GC performance bug
+- Worked on new object access primitives
+  - Big refactoring
+  - Bug after bug after bug
+- ir_break
+  compiler makes an observation
+  communication between executed code and compiler
+- New capture_shape, capture_tag
+  - More compact code
+  - No redundant object shape pointer written
+- Fixed a few inefficiencies in machine code
+- One odd GC bug remains
+- Results on microbenchmarks:
+  - loop_global_incr 2x faster than old obj system
+  - 200m-getprop 9x faster than old obj system
+  - 10m-getglobal 2x faster than old obj system
+  - bitwise-and now faster, wasn't before refactoring
+  - recursive benchmark 1ms slower, but faster with longer exec time
+- Jan Vitek encourages us to submit to ECOOP in December
+  - Also invites us to come present at his university in Boston
+
+[DONE] TODO: look at code for 3bit benchmark, obvious inefficiencies?
+./higgs --genasm --e "print(fast3bitlookup.asmString())" benchmarks/sunspider/bitops-3bit-bits-in-byte.js
+- not much
+
+[DONE] FIXME: setProto not inlined
+
+[DONE] TODO: check if 3bits-byte, recursive faster than old object system now? If not, why
+- Run with --nostdlib --perf_stats
+- bitwise-and as fast or faster, but not 3bits-byte, not controlflow-recursive
+- do we win on controlflow-recursive with bigger iteration count? yes
+  - would suggest compilation interruptions make us lose
+  - global obj shape changes may also contribute
+
+[DONE] FIXME: what's going on here?
+; capture_shape $1, $2 => if_true(1E38E), if_join(1E390)
+mov rax, 139762024056576;               48B80007CCE11C7F0000
+cmp rcx, rax;                           4839C1
+mov eax, 9706;                          B8EA250000
+jne branch_if_true(1E38E);              0F85FC8FFDFF
+jmp branch_if_join(1E390);              E900000000
+branch_if_join(1E396):
+- unclear, if_join is the following block...
+- branch code only generated once with DEFAULT ordering?
+but normally, branch code goes to stubs...
+behaving as it targets already generated?
+- Queued target 1 directly, preventing branch code rewrite
+- Optimized branch writing function
+
+[DONE] FIXME:
+; $1 = get_global_obj
+mov rax, [qword r15 + 256];             498B8700010000
+mov rsi, rax;                           4889C6
+
+[DONE] TODO: ensure no code is generated for ir_break()
+- Should only need to generate code for default ordering
+
+[DONE] FIXME: breakage in asmString, probably due to ir_break
+./higgs --genasm --e "print(test.asmString())" benchmarks/micro/loop-global-incr.js
+- Instructions with both branches going to same target
+
+[DONE] TODO: verify that second GC leaves alloc ptr at same offset
+
+[DONE] TODO: add ir_break() before capture_tag as well
+
+[DONE] TODO: undo modification to JumpOp, noStub flag
+
+[DONE] FIXME: property deletion, defineProperty, no way to remove a setter?
+- may be able to change the property attributes, then change the value?
+- look at how V8 behaves
+- add a test for setter deletion and removal with defineProperty
+- write it in a small JS file first, for testing
+
+[DONE] FIXME: Running: ./tests/01-stdlib/global.js... global not defined: "k"
+
+[DONE] FIXME: further object test bugs, setter methods
+./higgs ./tests/01-stdlib/object.js
+
+[DONE] FIXME: Running: ./tests/01-stdlib/object.js... ***** FAILED! *****
+
+[DONE] FIXME: assertion failed, value not in val map in ctx diff
+- Must be error with obj_read_shape?
+
+[DONE] FIXME: higgs init fails
+- seemingly, a property descriptor object has an invalid proto
+- should check that setProto works properly
+  - seems to?
+$74 = obj_get_proto $254
+$0 = is_object $74
+if_true(808C):
+$75 = obj_read_shape $74
+- Proto ptr read from get_proto is wrong
+- Proto set in def_const is right...
+- Must get corrupted by set_prop somewhere
+- object is marked as having emptyShape in state
+  - but doesn't actually have empty shape
+- object "known" to have empty shape after call_prim to setProto... nonsense
+- Idiotic bug with call_prim not clearing shapes
+
+[DONE] TODO: what happens in get_prop when the properties don't exist?
+- Do we take the slow path?
+
+[DONE] FIXME: defineProperty seems to make a property undefined
+Object.defineProperty(Map, 'defHashFn', { writable:false });
+- Maybe reassigns to it, maybe objHasProp fails
+- Not assigning new value, must be obj_set_attrs?
+
+[DONE] FIXME: infinite loop in getGlobal?
+
+[DONE] FIXME: capture_shape needs to be in a different block from get_shape
+- capture_shape, when shape is unknown (dynamic), need to observe it at compile time
+- possibly, can't observe it at compile time because the code hasn't been
+executed yet (still in the compilation queue)
+- Could try to implement a simple ir_break
+  - Try if ($ir_break()); two branches
+  - Execution resumes, jumps to true stub immediately
+  - Seems both targets being the same should work
+
+[DONE] TODO: slow path branching for getProp and setProp
+
+[DONE] TODO: implement get_prop and set_prop branching for "abnormal" cases
+- for get_prop, can check if const tag to know if prop not found
+- what is the performance situation?
+- previously, host calls generally happen when prop name unknown
+- much smaller IR for inlined cases
+
+[DONE] TODO: new capture_shape, if (capture_shape(obj, objShape)); 
+- Generates a branch back into a different version of itself if shape mispredicted
+- Avoid elaborate codegen, multiple slots
+- Can fall through in many cases
+- need to pass both obj and objShape
+
+[DONE] TODO: remove special handling of capture_shape in ir/ast.d
+
+[DONE] TODO: implement obj_get_shape
+
+[DONE] TODO: rename shape_ ops to obj_ when appropriate
+obj_init_shape
+obj_set_prop
+obj_get_prop
+obj_get_proto
+obj_def_const
+obj_set_attrs
+
+[DONE] TODO: don't pass defShape to get_prop
+
+[DONE] FIXME: stdlib init fails
+- defineProperty not defined, call to non-function
+- Problem: shouldn't ever be asked to read a property which doesn't exist
+TODO: construct small scale test, replicate problem with --nostdlib
+- Seems there's an error when fetching the property in the call
+  - uses optimized get_prop
+
+[DONE] TODO: rewrite getProp to not use defShape info
+
+[DONE] TODO: make getProp take prop name
+
+[DONE] TODO: remove captTagSub
+
+[DONE] TODO: IsTypeOp => IsTagOp, getTypeTestCtr => getTagTestCtr
+
+[DONE] TODO: look at code size and performance with new capture_tag
+- slight code size reduction
+- performance difference unnoticeable
+
+[DONE] TODO: new capture_tag, while (capture_tag(x));
+- "Loops" until it captures the tag
+- Assert that no phi nodes to succs, only instr in block
+- No need for version limit with capture_tag, yo
+For fail succ (self), can set tag to value tested. We do this because we need
+a new context. When capture_tag is compiled, it checks if the actual tag value
+is the one from the context. If so, do nothing, go straight to false succ.
+Otherwise, compile a test for the observed tag. If the tag value is actually
+known, the context value can never contradict the obsserved one.
+
+[DONE] TODO: save code size stats pre refactoring
+./benchmark.py --higgs_cmd="./higgs --perf_stats" --csv_file="pre_new_capt.csv"
+code size (bytes): 428353
+comp time (ms): 324
+exec time (ms): 61
+- Code size only slightly bigger than with old object system
+
+[DONE] TODO: investigate bug found by yawnt on dev-maxime branch
+- Fix on master
+- Add test
+- Make it so exports is globally avail, current modules still work
+
+[DONE] TODO: investigate GC slowness in earley-boyer
+- Try not visiting and not collecting IRFunctions
+- Allocation of new heap might be quite slow
+
+[DONE] TODO: profile shape entries
+- Which of 1st, 2nd, ... gets more hits
+  - Do this based on frequency
+- First vs not first?
+- Separate with global obj or not
+- Use codegen on the branch edge
+
+[DONE] TODO: Meet Marc
+- Tested --shape_notags, no type tag spec in shapes
+  - Reduces code size on average, in most cases
+  - Avg reduction in type tests about 33%
+  - Execution time not affected much, no difference on average
+  - A bit more with 2+ versions, but not many, still a small minority
+  - max versions 8 instead of 7
+  - num def shape update is 2x higher
+  - Intuition: about pays for itself, but more branches, more def shape host
+- Overflow check elimination
+  - Not perfect, doesn't do globals
+  - Still used several times in most benchmarks
+  - Tiny reduction in code size, comp time
+  - Tiny reduction in exec time
+- Investigated earley-boyer, slower than master branch (old object system)
+  - Made 1m ctor call microbenchmark, ctor now much faster than old system
+  - Added GC time stat, GC is now much slower
+  - earley-boyer is now very fast, but GC takes 80% of the execution time
+  - difference in v8/raytrace also accounted for by GC
+- Fptr spec
+  - Fixed big bug: shapes and fptr not propagating through phi nodes
+  - Not necessary to capture closure types
+    - Already know in most cases of a.m = function () {}
+  - Big speedup on call microbenchmark
+  - Not enough calls to make a big difference in general
+  - Seems more shape spec leads to more branch misprediction
+- ECOOP, December 21st, 2 days after CC notification
+  - Redirect our typed shapes paper there
+- SPLASH
+
+[DONE] TODO: check how often getProp doesn't know the obj shape but knows the prop name
+- Not very much!
+
+[DONE] FIXME: segfault
+./higgs tests/02-regress/ir-string.js
+- irString works, but the call fails. Why?
+
+[DONE] TODO: num call fast stat
+- could be that only a minority of calls are optimized
+- most calls are optimized
+
+[DONE] TODO: benchmark shape spec vs no spec
+./benchmark.py --csv_file="notags.csv" --num_runs=10 --higgs_cmd="./higgs --shape_notagspec --shape_nofptrspec --perf_stats"; ./benchmark.py --csv_file="spec.csv" --num_runs=10 --higgs_cmd="./higgs --perf_stats"
+- Code size smaller, but exec time slightly slower on everything?
+- Total type tests reduced by more than 33%
+- Could be artifact
+
+[DONE] TODO: implement fptr specialization in gen_call
+- start by checking that the information gets there
+- look at call_prim code
+
+[DONE] FIXME: seems we might be hitting a call stub when the function is already
+compiled. Call stub goes fubar
+- Need to compile the function to be able to properly optimize the call
+- Must set the entryVer pointer appropriately, no longer point to the stub
+- Could potentially do this in the compile function
+
+[DONE] FIXME: often have fptrKnown but null fptr...
+- Probably calling clearShape on everything? No
+
+[DONE] TODO: modify GC to forward closure and this based on liveness
+
+[DONE] TODO: add regression test for setting global clos, then setting different clos
+
+[DONE] FIXME: new_clos should set fptr
+
+[DONE] FIXME: phi nodes don't propagate shapes, fptr? oshi
+
+[DONE] TODO: propagate known fptr in get_prop
+- use setType
+
+[DONE] FIXME: fptrKnown doesn't make it to gen_call
+- Most of the time we do extract the fptr... but it is null!
+  - Probably def const of fptr didn't work?
+- Does increase the count of shapes significantly!
+
+[DONE] TODO: more pretty-printing on host side
+arrays, global object
+
+[DONE] TODO: new cmd arg --shape_nofptrspec
+- implement in propType method
+
+[DONE] TODO: valType, fptrKnown flag
+- for closure types, capture IRFunction
+- do we always want to capture the IRFunction?
+- if we know the shape, we know the fptr
+- but don't want to store closure shape in objects
+- propType should do the conversion to fptr ***
+- assert that we never have both fptrKnown and shapeKnown
+
+[DONE] FIXME: ctxDiff, should use isSubType function and inequality, KISS
+
+[DONE] TODO: try array sum bench with int and fp, compare with V8
+- array performance sucks... probably too many instructions to compute offset
+
+[DONE] TODO: look into oopsla, OOP confs
+- Look at Clark's message
+
+[DONE] TODO: gc time, add to master
+- try with splay
+- earley-boyer, EGMAGHERD! GC TIME 500MS!!!!1
+
+[DONE] TODO: new ctor benchmark, 1M objects
+./higgs --nostdlib --stats benchmarks/micro/1m-ctor-call.js
+- Add on master
+- Only ~30ms, but multiple GCs
+
+[DONE] FIXME: need clearType, but not clearTag
+
+[DONE] TODO: ovf check elimination, for fun?
+- subMax flag
+  - clear this flag in propType
+- Get code size with and without
+
+[DONE] TODO: CodeGenState.setType
+
+[DONE] TODO: try BBV with and without shape_notags
+./benchmark.py --csv_file="notags.csv" --num_runs=5 --higgs_cmd="./higgs --shape_notags --perf_stats"; ./benchmark.py --csv_file="spec.csv" --num_runs=5 --higgs_cmd="./higgs --perf_stats"
+./benchmark.py --csv_file="notags.csv" --higgs_cmd="./higgs --shape_notags --stats"; ./benchmark.py --csv_file="spec.csv" --higgs_cmd="./higgs --stats"
+- Make sure that shape flips is always zero!
+- Try benchmark.py, 10 runs
+- Output two CSV files
+
+[DONE] FIXME: getProp with no type tag fucks up...
+- Probably because type tag is never written...? Doesn't fix it
+- Get proto also had this issue
+
+[DONE] FIXME: use propType and isSubType in set_prop
+
+[DONE] TODO: new cmd arg --shape_notags
+- implement use in propType
+
+[DONE] TODO: rename noShape to propType
+
+Marc says: improve system for one week, wrt typed shapes
 
 ------------------------------------------------------------------------------
 
 Milestone: Equalling Master Branch Performance
 ----------------------------------------------
 
-TODO: profiling phase for shape_get_def?
-- first K=50 or 100 calls could gather shapes
-  - 8 bucket count + last seen
-- if we can fit all in <=4 buckets, might be worth specializing
-- Decide between shape dispatch and an LRU shape inline cache
-- Adapt the size of the dispatch/cache if you want
-- Can also have a hybrid approach, eg: 2 specializations, 2 LRU entries
-- Can have a different strategy for the global object
-  - We know its current shape, can evaluate if probably stable or not
-  - Are we currently executing a unit function?
-- Global obj, could guarantee known prop idx, without cache
-  - Even though type is unknown
-  - Must guarantee prop deletion and readd doesn't change prop idx
-  - Make test for del + add
-TODO: commit and experiment
-- how often do we see only one shape?
-- how do typical global getprops behave wrt shapes? do they stabilize?
-- how many getprops get 50+ execs in benchs?
+[DONE] Meeting:
+- Implemented capture_tag
+  - added code to take into account the implicit type tests
+- Rewrote optimized set_prop
+  - Fast shape switching
+  - Now even more optimized, doesn't write type tag if not needed
+  - global reads and writes in one single instruction
+- Implemented elimination of is_closure test for dynamic calls
+  - Quite effective
+- Fixed bug, forgot to take shape into account into ctx diff, generic version
+- Most benchmarks faster, but there are exceptions
+- binary-trees, null vs object, is solved, now much faster
+  - ~50% less type tests than with old obj system
+  - 4x faster than with previous obj system
+- 3d-raytrace
+  - 33% less type tests
+  - type tests from capture_tag are negligible, definitely pays for itself
+- earley-boyer
+  - ~6% less type tests
+    - 25% less than with old object system
+  - uninlined cons cell constructor
+    - sees very many types
+    - can produce enough shape dispatch to eliminate set prop host calls
+  - code size is currently double
+    - could be reduced with call optimization, known callee
+  - probably cache effects causing slowdown
+- Seemingly no explosion of versions (which I was afraid of)
+- PROBLEM: object tagged property, another reason we can't have shape...
+  - Still possible to have function pointer, specialize method calls
+  - Fptr spec is very useful for interprocedural basic block versioning
+  - Typed shapes help interp BBV, which helps typed shapes
+- Beat V8 on microbenchark, loop to 2 billions
+  - Includes compile time, stdlib init
+  - Not nearly fully-optimized
+  - CGO has rebuttal period... If asked for results, bring this up!
+- Optimization ideas:
+  - for global shape capture, can optimize based on compile
+    time info. Only need one slot
+    - Size of shape dispatches likely have big performance impact
+  - overflow check elimination
+  - can optimize size of heap alloc ops
+  - could write code to get code size usage by instr kind
+    - also frequency of each instr kind
+    - could also put together a profiler, visualize hot asm
+      - look into gprof support
 
-Meeting:
+[DONE] TODO: blog post: Faster than V8 *
+time ~/Dropbox/Linux/bin/d8_dbg --print_opt_code --print_code_verbose loop-global-incr.js 
+- dev-maxime branch, link
+- Moving target
+- Slow compile times and inlining
+- Higgs values unboxed, separate tags
+
+[DONE] TODO: peephole for i32 to f64 conversion
+
+[DONE] TODO: upgrade V8
+
+[DONE] TODO: is_closure opt
+./higgs --perf_stats benchmarks/v8bench/base.js benchmarks/v8bench/earley-boyer.js benchmarks/v8bench/drv-earley-boyer.js 
+./higgs --perf_stats benchmarks/sunspider/access-binary-trees.js
+before:
+    binary-trees code size: 305356
+    earley-boyer code size: 2730222
+after:
+    binary-trees code size: 300043
+    earley-boyer code size: 2559128
+
+[DONE] TODO: modify shape_get_proto to extract type tag info when known
+
+[DONE] TODO: modify def_const, setProp to not save shape info
+
+[DONE] TODO: time 1M calls, 1M prim calls
+1M calls ~ 10ms
+prim calls about 20x faster
+- size of calls may still matter
+  - adds conditional branches
+  - multiplied by shapes
+- boyer has 2200 call sites
+  - 700K of call site bytes out of 3MB
+
+[DONE] TODO: setProp, don't pass defShape
+
+[DONE] TODO: refactorings
+st.setType(type) => st.setTag
+ValState.setType(tag) => setTag
+
+[DONE] TODO: refactorings
+as.setType, as.getType in jit/utils
+
+[DONE] TODO: refactorings
+retTypeReg => retTagReg
+getTypeOpnd => getTagOpnd
+auto typeOpnd = st.getTypeOpnd
+
+[DONE] TODO: refactorings
+- get_type => get_tag
+- type => tag in layouts
+
+[DONE] TODO: refactorings
+- Type => Tag
+- type => tag
+- Type type => Tag tag
+
+[DONE] TODO: refactorings
+typeWritten => tagWritten
+writeType => writeTag
+- ValType.typeKnown => ValType.tagKnown
+- ValType.typeTag => ValType.tag
+
+[DONE] FIXME: set_prop loads capacity but doesn't use it
+
+[DONE] FIXME: in earley-boyer, 660K host dispatch because of "prototype" prop get in new
+- Try inlining specialized getprop code directly in new
+- Otherwise, could h4xx special get_prototype for closure
+  - Doesn't produce type tag
+- in v8/raytrace, also issue with apply ***
+- Fixing this doesn't change much...
+
+[DONE] TODO: add missing type tests from capture_type
+
+[DONE] TODO: look into earley-boyer slowness
+$rt_se: 866002
+$rt_objGetProp: 659438
+- also an issue with v8-raytrace
+num set prop host: 109956
+- car & cdr, val type unknown
+num heap allocs: 324053
+- this is because new now is self-hosted
+
+[DONE] TODO: run ./benchmark.py, compare to master
+./benchmark.py --higgs_cmd="./higgs --perf_stats"
+- earley-boyer 2x slower, should examine why
+- v8-raytrace also slower
+- nothing outrageously bad
+- code size somewhat bigger, 15%
+
+[DONE] FIXME: capture_tag with setGlobal produces errors
+./higgs es5.js
+run-time error: Error: unhandled type in toString
+$rt_toString(293B) ("runtime/runtime.js"@461:5)
+$rt_add(2972) ("runtime/runtime.js"@764:31)
+testOp(16E6F) ("./tests/00-runtime/es5-cmp.js"@115:13)
+A setProp updates the global obj shape...
+According to getProp, the obj shape is unchanged, why?
+Shape dispatch problem?
+getProp relies on shape dispatch to get the object shape...
+Do we even check for compatible shapes in versioning????
+- Forgot to take shapes into account in ctx diff, generic version
+
+[DONE] TODO: add capture_tag to runtime
+
+[DONE] TODO: get rid of set_prop_fast vs set_prop, shape_type_match
+- set_prop should implement whole logic
+- know ahead of time if type matches or not
+- if mismatch, use slow path
+
+[DONE] TODO: implement capture_tag(x)
+- KISS
+
+[DONE] Meeting:
+- CGO deadline extended
+  - Proofread by 3 people, minor proofreading changes
+  - Changed title and abstract on submission website
+- Found issue: making IR for get/set prop "bigger" leads to poor scaling
+- Tried to optimize live vars analysis
+  - Huge memory footprint, up to 8GB
+  - Significant amount of execution time
+  - memory footprint reduced quite a bit
+  - mixed success wrt execution time
+- Blog post, over 18000 views
+  - D co-creator has decided to rewrite the GC
+- Eureka: capture_type(x) vs capture_shape(x)
+  - once again, struggled about how to implement efficient machine code
+  - self-hosted implementation is slow, but makes the logic much simpler
+- Next paper, typed shapes, what will we say?
+  - Need to think about what will be compared against what
+  - Typed shapes w/ dispatch vs inline cache?
+  - Typed shapes w/ dispatch vs no type info propagated? simplest ***
+  - Or do we just want to present the idea?
+
+[DONE] TODO: better live set implementation for liveness analysis?
+- union of small arr with associative array
+- what is the worst case ever found?
+
+[DONE] TODO: think about capture_type(x)
+- Type dispatch
+- If type is known, compiles to nothing
+- Capture type tag and possibly shape as well
+  - Var len encoding??
+  - If simple types, probably need only 2 cmps
+  - If values are known obj, put shape extraction code
+  - Could examine types at compile time
+  - If currently obj/closure, guarded shape extraction
+    - if not expected extobj tag, jump to generic version
+    - then extract shape, test cascade
+    - Will work for current shape_get_def usage
+    - must support null vs obj?
+- Could possibly replace shape_get_def by this
+  - Makes dispatch instrs shorter, no def shape move
+  - Eliminates superfluous moves
+  - set and get can implement their own inline cache
+- 3 code gen modes
+  - found closure, guard then get one shape, otherwise unknown
+    - must check that the value is a closure, then get its shape
+    - set both type tag and shape
+    - only one line of dispatch needed
+  - obj/arr type tag known
+    - shape dispatch with multiple entries, as before
+  - other type tag known
+     - pass through
+  - unknown type
+    - dispatch with up to 3 type tags
+    cmp mem, tag; jmp target
+- No longer care about prop names
+
+[DONE] FIXME: valsLiveBefore, valsLiveAfter misbehaving, breaking GC
+- could we have duplicates?
+
+[DONE] Liveness analysis is much faster, but code gen is slower.
+- May be D GC slowdown
+- Try live set reserve? no effect
+- Try reserve again? 3x faster at 1024MB, but slow again at 2048
+- Try malloc'ing
+
+[DONE] TODO: reimplement faster liveness analysis with list sets
+- Performs more poorly
+
+[DONE] TODO: perf study with dummy benchmark, blog post
+- get global a, does comp time scale linearly?
+./higgs gentest.js -- 6000 > test.js; ./higgs --perf_stats --nostdlib test.js
+5K          100ms
+50K         2828ms
+60K         5848ms              8GB peak mem usage
+100K        mem alloc failed
+ 360041  4021724324  4020121867       11165     pure nothrow ir.ir.IRDstValue[] object._dup!(ir.ir.IRDstValue, ir.ir.IRDstValue)._dup(ir.ir.IRDstValue[])
+     69  3692005953  3244254480    47018180     ir.livevars.LiveInfo ir.livevars.LiveInfo.__ctor(ir.ir.IRFunction)
+- IRDstValue[], where is this used? is this also in LiveInfo?
+  - reg map init, save 25% of time by making it a fixed-size array
+  - two lines of code changed
+    ./higgs gentest.js -- 60000 > test.js; ./higgs --perf_stats --nostdlib test.js
+    comp time (ms): 4538
+    peak mem usage (KB): 8409440
+- Just allocating the big array is super slow...
+  - Maybe try using malloc or something?
+  - array is 8GB in size!
+
+[DONE] TODO: test on earley-boyer, max number of live values at any point
+- max 64, avg around 1-4
+
+[DONE] TODO: look at popen bug signaled by Brett
+- Add test
+- popen is pretty much broken
+var stdlib = require('lib/stdlib');
+var output = stdlib.popen("ls -a", "r");
+
+Recursive type issue
+- Don't want to have an infinite cycle of shapes
+- If too many children with shape ptrs, limit
+  - only allow 1 exact shape ptr, none if null/undef already there
+
+Marc proposes having union types
+- Union on type tags?
+- When adding properties, new shapes are created?
+- Marc would like to have recursive shapes, if possible
+- Building recursive types doesn't seem to work...
+  - Shapes built incrementally, can't refer to self
+
+Meet Marc Friday afternoon *** ~ 2PM
+- Hidden type tests
+- Typed shapes
+  - Implemented separate type check instruction
+    - Code now cleaner
+    - 3d-raytrace, 50% less type tests
+    - issue with initialization to null or undef (e.g.: tree nodes)
+  - optimized property read further
+  - simplest solution: if ctor init to null or undef, can set shape type to unknown
+  - in the case of global write, can predict against undef, in favor of new type
+    - change global obj shape to match new type
+  - alternatively: type dispatcher instruction, similar to shape dispatch ***
+    - use this instead of type check instruction
+    - captures type of value before write, uses small inline cache, generates code paths
+    - basic idea: we *need* the type of the value written at property writes
+    - if the type is already known, compiles to nothing
+    - probably flexible enough, avoids the issue of speculation errors
+    - can optimize shape transitions as well
+- Gathered some numbers about shape changes
+- Linked list paradox
+- Submitted abstract
+- Paper: can we claim fast compilation times? Not measured
+  - Higgs currently has slow compilation times
+
+[DONE] TODO: count how many type changes actually occur in benchmarks
+- add stat for this, shape type change
+- earley boyer has about 53K, out of over 1M set props
+- v8 raytrace and others have very few
+- worst offenders
+    splay       45K shapes  109K shape flips    1.5M setprop    2M getprop
+    boyer       41K shapes  53K shape flips     755K setprop    3.9M getprop
+    richards    4K shapes   8K shape flips      51K setprop     244K getprop
+- earley-boyer, splay and richards flip between null and object
+
+[DONE] FIXME: shape disagreements for functions in stdlib/string
+- types seemingly random
+- other global functions have types seemingly initialized to random values
+- if type is known in state, then it isn't necessarily on the stack!
+
+[DONE] TODO: look at binary-trees, currently slow
+- more set prop host than not
+- seems first TreeNode is constructed with null children, speculation fails
+- also have one unpredicted type in TreeNode, why?
+  property is "right"
+  presumably, prediction fail causes obj type loss
+
+[DONE] TODO: count type tests in shape_test, gen_call
+
+[DONE] TODO: getProp, don't even need capacity in some ext table cases
+- If type known, don't reextract capacity
+
+[DONE] TODO: set_prop_fast, optimized prop write
+- verify that the shape is writable
+
+[DONE] TODO: insert new shape_type_match, verify that tests pass
+- commit once passing
+
+[DONE] TODO: set_prop with host fallback
+
+[DONE] TODO: shape instruction to check if value type matches, shape_type_match
+- problem is property addition? need to speculate
+- could also create prop shape???
+  - requires changing object shape (doable)
+  - obj shape known, prop shape known to be null
+- if the prop shape is unknown (not known null), shape_type_match returns false
+  - slow set prop is taken
+
+[DONE] Meeting:
+- set_prop instruction, many cases to handle, complex code
+  - but all the complexity is in that instruction
+- Got very basic shape type prop working
+  - set_prop only optimized if type tag known, otherwise host call
+  - on simplest benchmark, bitwise-and, produced significant speedup
+  - on other benchmarks, marked slowdown, but not completely terrible
+    - 4x as many getprops as setprops
+- Attempted speculative property writes with fallback
+  - surprisingly few fallbacks, few shape changes needed
+- Global prop reads can be super optimized, no type read, no capacity check
+  - Just one word read
+  - Soon, optimized function calls
+- Could possibly get rid of type array in objects
+  - But GC needs additional complexity when visiting objects
+
+[DONE] TODO: install DMD
+
+[DONE] TODO: use benchmark.py to measure avg host set prop
+num set prop: 28566
+num set prop host: 28566
+
+[DONE] FIXME: gc bug exposed by cube example
+- Issue with Array.prototype.map
+  - simplify further, extract map code?
+- Save regression test
+- Seems like supernumerary arguments might not be getting forwarded
+
+[DONE] TODO: further optimize setProp
+
+[DONE] TODO: specialize getProp for shape type spec
+- Type tag only first
+- Huge potential benefit for bitwise-and and such
+
+[DONE] TODO: change setProp for shape type specialization
+- start with simple case, known type, no host call needed
+
+[DONE] Meeting:
 - ~3x faster on getprop loop microbenchmark
 - Fixed GC bug
 - Fixed static global const resolution bug
 - Identified perf issue with obj and array alloc
   - Now fixed, beating old obj system on most benchmarks (but not all)
 - Improved register allocator, less phi moves, smaller code
+- Ready to attempt shape type spec
 - CGO: committee is very much involved in code gen, performance optimization,
   vectorization, GPGPU
   - One member worked on DynamoRIO, which does tracing
@@ -127,40 +2419,9 @@ Meeting:
   - Working on very similar projects, but competing?
   - Other professors make students collaborate on publications
 
-Shape type spec, try int32 vs not int32 or type tag only first?
-- Huge potential benefit for bitwise-and and such
-
-TODO: blog post, Higgs' Fancy New Object System
-- quick sketching program, online?
-- post to r/compilers, r/higgsjs
-- Typed shapes + BBV a bit of a gamble
-
-TODO: think about inlining system further
-- Necessary for acceptable compile times
-- Can fully optimize primitives, avoid needing code-patching
-- Make an exception for units with loops also
-- do it intelligently, don't inline in runtime fns, or if too deep in stack?
-
-TODO: gather stats about the percentage of functions which are long-running
-- init is almost 2x as fast compile time with noinline
-  - compile time for 3d-raytrace less than half, same for turtle
-- disable inlining first
-- dump text and sort
-  - fn, num calls, num itrs
-
-TODO: profile run of earley-boyer
-- even without inlining, compilation still very slow
-  - how much of this is the shape dispatch?
-- try increasing GC prealloc?
-
-
-
-
-
-
-
-
-
+[DONE] TODO: try porting 3D OpenGL math lib to Higgs
+- tojiro agrees :)
+https://github.com/toji/gl-matrix
 
 [DONE] TODO: try earley-boyer with noinline, nopeephole
 - with noinline, compile time is halved, exec time goes up 8x

@@ -154,6 +154,12 @@ If any tests fail the program exist abnormally (i.e. exit(1);)
     // run tests
     runTests(tests_dir);
 
+    if (tests_run === 0)
+    {
+        console.log("NO TESTS RUN");
+        std.exit(1);
+    }
+
     console.log("test-runner.js results:");
     console.log(" --- ");
     console.log("Tests run:", tests_run);
@@ -161,7 +167,10 @@ If any tests fail the program exist abnormally (i.e. exit(1);)
         console.log("Tests passed:", tests_passed);
     console.log("Tests failed:", tests_failed);
 
-    if (tests_failed)
+    if (tests_failed > 0)
+    {
         std.exit(1);
+    }
+
 })();
 

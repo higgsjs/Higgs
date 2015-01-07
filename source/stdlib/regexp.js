@@ -40,7 +40,7 @@
  * _________________________________________________________________________
  */
 
-RegExp = (function () {
+(function () {
 
 function RegExpParser () {}
 
@@ -64,11 +64,11 @@ RegExpParser.prototype.parse = function (
 
 /**
 Returns current character code.
-*/ 
+*/
 RegExpParser.prototype.current = function ()
 {
     return this.curCharCode;
-} 
+}
 
 /**
 Look ahead one character code.
@@ -103,7 +103,7 @@ RegExpParser.prototype.error = function (
         Alternative | Disjunction
 */
 function RegExpDisjunction (
-    captures, 
+    captures,
     isRoot,
     groupId
 )
@@ -132,10 +132,10 @@ RegExpDisjunction.prototype.pp = function (
 }
 
 /**
-    Parse a disjunction from the current position. 
+    Parse a disjunction from the current position.
 */
 RegExpParser.prototype.parseDisjunction = function (
-    captures, 
+    captures,
     isRoot
 )
 {
@@ -192,7 +192,7 @@ RegExpAlternative.prototype.pp = function (
 }
 
 /**
-    Parse an alternative from the current character. 
+    Parse an alternative from the current character.
 */
 RegExpParser.prototype.parseAlternative = function ()
 {
@@ -236,7 +236,7 @@ RegExpTerm.prototype.pp = function (level)
 }
 
 /**
-    Parse a term from the current character. 
+    Parse a term from the current character.
 */
 RegExpParser.prototype.parseTerm = function ()
 {
@@ -245,7 +245,7 @@ RegExpParser.prototype.parseTerm = function ()
     switch (this.current())
     {
         case null: // EOL
-        return node; 
+        return node;
 
         // Assertion parsing.
         case 94: // '^'
@@ -290,12 +290,12 @@ RegExpParser.prototype.parseTerm = function ()
         case 92: // '\'
         this.advance();
         // \b and \B are word boundary assertion.
-        if (this.current() === 98) // 'b' 
+        if (this.current() === 98) // 'b'
         {
             this.advance();
             node.prefix = new RegExpAssertion(98, true);
         }
-        else if (this.current() === 66) // 'B' 
+        else if (this.current() === 66) // 'B'
         {
             this.advance();
             node.prefix = new RegExpAssertion(98, false);
@@ -469,7 +469,7 @@ RegExpParser.prototype.parseQuantifier = function ()
             this.advance();
 
             if (this.current() >= 48 && this.current() <= 57)
-            {             
+            {
                 node.max = this.parseDecimalDigit();
             }
             else
@@ -480,7 +480,7 @@ RegExpParser.prototype.parseQuantifier = function ()
         else
         {
             node.max = node.min;
-        } 
+        }
 
         // Should be closing }
         if (this.current() === 125)
@@ -512,7 +512,7 @@ RegExpParser.prototype.parseQuantifier = function ()
         ( Disjunction )
         (?: Disjunction )
 
-    @params: {Integer, RegExpDisjunction, RegExpAssertion} value 
+    @params: {Integer, RegExpDisjunction, RegExpAssertion} value
 */
 function RegExpAtom(
     value
@@ -546,7 +546,7 @@ function RegExpPatternCharacter(
 }
 
 /**
-   PatternCharacter pretty print. 
+   PatternCharacter pretty print.
 */
 RegExpPatternCharacter.prototype.pp = function (
     level
@@ -566,7 +566,7 @@ function RegExpBackReference (
 }
 
 /**
-   BackReference pretty print. 
+   BackReference pretty print.
 */
 RegExpBackReference.prototype.pp = function (
     level
@@ -602,16 +602,21 @@ RegExpParser.prototype.parseAtomEscape = function ()
         switch (this.current())
         {
             case 100: // 'd'
-            case 68: // 'D'
             // Decimal digits class.
-            cc = new RegExpCharacterClass(this.current() === 100);
+            cc = new RegExpCharacterClass(true);
             this.advance();
             cc.classAtoms.push(new RegExpClassAtom(new RegExpPatternCharacter(48), new RegExpPatternCharacter(57)));
             return cc;
 
-            case 115: // 's'
-            case 83: // 'S'
-            cc = new RegExpCharacterClass(this.current() === 115);
+            case 68: // 'D' (anything but digits)
+            cc = new RegExpCharacterClass(true);
+            this.advance();
+            cc.classAtoms.push(new RegExpClassAtom(new RegExpPatternCharacter(1), new RegExpPatternCharacter(47)));
+            cc.classAtoms.push(new RegExpClassAtom(new RegExpPatternCharacter(58), new RegExpPatternCharacter(0xFFFF)));
+            return cc;
+
+            case 115: // 's' (whitespace)
+            cc = new RegExpCharacterClass(true);
             this.advance();
             // Whitespace characters.
             cc.classAtoms.push(new RegExpClassAtom(new RegExpPatternCharacter(9)));
@@ -627,14 +632,33 @@ RegExpParser.prototype.parseAtomEscape = function ()
             cc.classAtoms.push(new RegExpClassAtom(new RegExpPatternCharacter(8233)));
             return cc;
 
-            case 119: // 'w'
-            case 87: // 'W'
-            cc = new RegExpCharacterClass(this.current() === 119);
+            case 83: // 'S' (anything but whitespace)
+            cc = new RegExpCharacterClass(true);
+            this.advance();
+            cc.classAtoms.push(new RegExpClassAtom(new RegExpPatternCharacter(1), new RegExpPatternCharacter(8)));
+            cc.classAtoms.push(new RegExpClassAtom(new RegExpPatternCharacter(14), new RegExpPatternCharacter(31)));
+            cc.classAtoms.push(new RegExpClassAtom(new RegExpPatternCharacter(33), new RegExpPatternCharacter(159)));
+            cc.classAtoms.push(new RegExpClassAtom(new RegExpPatternCharacter(161), new RegExpPatternCharacter(8231)));
+            cc.classAtoms.push(new RegExpClassAtom(new RegExpPatternCharacter(8234), new RegExpPatternCharacter(0xFFFF)));
+            return cc;
+
+            case 119: // 'w' [A-Za-z0-9_]
+            cc = new RegExpCharacterClass(true);
             this.advance();
             cc.classAtoms.push(new RegExpClassAtom(new RegExpPatternCharacter(65), new RegExpPatternCharacter(90)));
             cc.classAtoms.push(new RegExpClassAtom(new RegExpPatternCharacter(97), new RegExpPatternCharacter(122)));
             cc.classAtoms.push(new RegExpClassAtom(new RegExpPatternCharacter(48), new RegExpPatternCharacter(57)));
             cc.classAtoms.push(new RegExpClassAtom(new RegExpPatternCharacter(95)));
+            return cc;
+
+            case 87: // 'W' [^A-Za-z0-9_]
+            cc = new RegExpCharacterClass(true);
+            this.advance();
+            cc.classAtoms.push(new RegExpClassAtom(new RegExpPatternCharacter(1), new RegExpPatternCharacter(47)));
+            cc.classAtoms.push(new RegExpClassAtom(new RegExpPatternCharacter(58), new RegExpPatternCharacter(64)));
+            cc.classAtoms.push(new RegExpClassAtom(new RegExpPatternCharacter(91), new RegExpPatternCharacter(94)));
+            cc.classAtoms.push(new RegExpClassAtom(new RegExpPatternCharacter(96)));
+            cc.classAtoms.push(new RegExpClassAtom(new RegExpPatternCharacter(123), new RegExpPatternCharacter(0xFFFF)));
             return cc;
 
             case 99: // 'c'
@@ -646,7 +670,7 @@ RegExpParser.prototype.parseAtomEscape = function ()
                 var c = this.current();
                 this.advance();
                 return new RegExpControlSequence(new RegExpPatternCharacter(c));
-            } 
+            }
             else
             {
                 this.error("invalid control sequence");
@@ -709,15 +733,15 @@ RegExpParser.prototype.parseHexadecimalSequence = function (
     {
         if (this.current() >= 48 && this.current() <= 57) // 0-9
         {
-           value = value * 16 + (this.current() - 48); 
+           value = value * 16 + (this.current() - 48);
         }
         else if (this.current() >= 65 && this.current() <= 70) // A-F
         {
-           value = value * 16 + (this.current() - 55); 
+           value = value * 16 + (this.current() - 55);
         }
         else if (this.current() >= 97 && this.current() <= 102) // a-f
         {
-           value = value * 16 + (this.current() - 87); 
+           value = value * 16 + (this.current() - 87);
         }
         else
         {
@@ -848,14 +872,14 @@ RegExpParser.prototype.parseDecimalDigit = function ()
 
     while (this.current() >= 48 && this.current() <= 57) // 0-9
     {
-       value = (value * 10) + this.current() - 48; 
+       value = (value * 10) + this.current() - 48;
        this.advance();
     }
     return value;
 }
 
 /**
-    Generate level string for pretty print.
+    Generate level string for pretty print
 */
 function genLevel (
     level
@@ -870,13 +894,30 @@ function genLevel (
     return s;
 }
 
+/**
+Cache of patterns and flags to parsed regular expressions
+*/
+var reCache = new Map();
 
 function RegExp (
     pattern,
     flags
 )
 {
-    if (!(this instanceof RegExp)) return new RegExp(pattern, flags);
+    // Try to find a cached regexp object for these arguments
+    var flagsMap = reCache.get(pattern);
+    if (flagsMap !== undefined)
+    {
+        var cached = flagsMap.get(flags);
+        if (cached !== undefined)
+            return cached;
+    }
+
+    if (pattern instanceof RegExp)
+        return pattern;
+
+    if (!(this instanceof RegExp))
+        return new RegExp(pattern, flags);
 
     this.source = (pattern === undefined ? "" : pattern);
     this.global = false;
@@ -884,11 +925,11 @@ function RegExp (
     this.multiline = false;
     this.lastIndex = 0;
 
-    // Extract flags.
+    // Extract flags
     if (flags !== undefined)
     {
         for (var i = 0; i < flags.length; ++i)
-        {        
+        {
             if (flags.charCodeAt(i) === 103) // 'g'
             {
                 this.global = true;
@@ -904,20 +945,30 @@ function RegExp (
         }
     }
 
-    // Parse pattern and compile it to an automata.
-    var ast = new RegExpParser().parse(pattern); 
-    
+    // Parse pattern and compile it to an automata
+    var ast = new RegExpParser().parse(pattern);
+
     var prop = {
-      value: astToAutomata(ast, this.global, this.ignoreCase, this.multiline),
-      writable: false,
-      configurable: false,
-      enumerable: false
+        value: astToAutomata(ast, this.global, this.ignoreCase, this.multiline),
+        writable: false,
+        configurable: false,
+        enumerable: false
     };
+
     Object.defineProperty(this, "_automata", prop);
+
+    // Cache the parsed regular expression object
+    var flagsMap = reCache.get(pattern);
+    if (flagsMap === undefined)
+    {
+        flagsMap = new Map();
+        reCache.set(pattern, flagsMap);
+    }
+    flagsMap.set(flags, this);
 }
 
 /**
-    Execution context.
+    Execution context
 */
 function RegExpContext (
     input,
@@ -932,7 +983,7 @@ function RegExpContext (
 }
 
 /**
-    Advance one character in the input.
+    Advance one character in the input
 */
 RegExpContext.prototype.consume = function ()
 {
@@ -980,7 +1031,7 @@ function RegExpCapture ()
 */
 function RegExpGroup (
     capture
-)    
+)
 {
     this.capture = capture;
     this.subcaptures = [];
@@ -1057,7 +1108,7 @@ RegExpGroup.prototype.clear = function ()
     }
 
     for (var i = 0; i < this.subcaptures.length; ++i)
-        this.subcaptures[i].start = this.subcaptures[i].end = -1; 
+        this.subcaptures[i].start = this.subcaptures[i].end = -1;
 }
 
 /**
@@ -1197,7 +1248,7 @@ RegExpGroupOpenTransition.prototype.exec = function (
     // Save state.
     if (!this.group.capture || this.group.capture !== context.captures[0])
     {
-        var state = new Array(2); 
+        var state = new Array(2);
         state[0] = context.index;
         state[1] = this.group.dumpState();
 
@@ -1607,7 +1658,7 @@ RegExpGroupLoopTransition.prototype.exec = function (
         context.backtrackStack.push(this.destNode);
         this.destNode.contextIndex = context.index;
     }
-    
+
     return this.destNode;
 }
 
@@ -1683,7 +1734,7 @@ RegExpGroupNonGreedyLoopTransition.prototype.exec = function (
     context.backtrackStack.push(this.destNode);
 
     this.destNode.contextIndex = context.index;
-    
+
     return this.destNode;
 }
 
@@ -2095,7 +2146,7 @@ RegExpLookaheadMatchTransition.prototype.exec = function (
 
 function RegExpAutomata (
     headNode,
-    captures 
+    captures
 )
 {
     this.headNode = headNode;
@@ -2200,7 +2251,7 @@ function astToAutomata (
 /**
     Compile a RegExpDisjunction ast node to a sub automata.
 
-                 +---------------+  
+                 +---------------+
                  |  Alternative  |  3.
                  +---------------+ \
       1.     _                      -->  _   5.
@@ -2250,7 +2301,7 @@ function disjunctionToAutomata (
         closeNode.transition = new RegExpTransition(null);
         closeNode._final = true;
     }
-    
+
     return openTransition;
 }
 
@@ -2281,7 +2332,7 @@ function alternativeToAutomata (
     If value is RegExpAtom.
 
                                         3.
-                                    ----------- 
+                                    -----------
                                   /             \
                                  |               |
     +------+     +------+   1.   _   +------+   /
@@ -2410,7 +2461,7 @@ function getRangeFromCharClass(atomAstNode, context)
         else
         {
             var ca = atomAstNode.classAtoms[i];
-            if (ca.min instanceof RegExpCharacterClass) 
+            if (ca.min instanceof RegExpCharacterClass)
             {
                 ranges = ranges.concat(getRangeFromCharClass(ca.min, context));
             }
@@ -2438,12 +2489,12 @@ function atomToAutomata (
     node.transition = nextTransition;
 
     /**
-        RegExpPatternCharacter  
+        RegExpPatternCharacter
 
           1.    _   3.
         -----> |_| ---->
                 2.
-        
+
         1. RegExpCharMatchTransition
         2. RegExpNode
         3. nextTransition
@@ -2451,13 +2502,13 @@ function atomToAutomata (
     if (atomAstNode instanceof RegExpPatternCharacter)
     {
         var charCode = atomAstNode.value;
-       
+
         if (context.ignoreCase)
             if (charCode >= 97 && charCode <= 122) // a-z
                 nextTransition = new RegExpCharSetMatchTransition(node, [[charCode - 32, charCode - 32], [charCode, charCode]]);
             else if (charCode >= 65 && charCode <= 90) // A-Z
                 nextTransition = new RegExpCharSetMatchTransition(node, [[charCode + 32, charCode + 32], [charCode, charCode]]);
-            else 
+            else
                 nextTransition = new RegExpCharMatchTransition(node, charCode);
         else
             nextTransition = new RegExpCharMatchTransition(node, charCode);
@@ -2488,7 +2539,7 @@ function atomToAutomata (
           1.    _   3.
         -----> |_| ---->
                 2.
-        
+
         1. RegExpBackRefMatchTransition
         2. RegExpNode
         3. nextTransition
@@ -2662,10 +2713,22 @@ RegExp.prototype.test = function (
     return null;
 }
 
-/// Private name for the RegExp class
-$rt_RegExp = RegExp;
-
-return RegExp;
+/// Export the RegExp constructor
+this.RegExp = RegExp;
 
 })();
+
+/**
+Private name for the RegExp class
+The global RegExp name may be redefined
+*/
+$ir_obj_def_const(this, '$rt_RegExp', RegExp, false);
+
+/*
+Runtime function to get a regular expresson object
+*/
+function $rt_getRegExp(pattern, flags)
+{
+    return new $rt_RegExp(pattern, flags);
+}
 
