@@ -167,8 +167,9 @@ If any tests fail the program exist abnormally (i.e. exit(1);)
         console.log("Tests passed:", tests_passed);
     console.log("Tests failed:", tests_failed);
 
-    if (tests_failed > 0)
+    if (tests_failed > 0 || tests_passed < 1)
     {
+        console.log("test-runner failed!");
         std.exit(1);
     }
 
