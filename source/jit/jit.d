@@ -344,12 +344,9 @@ class CodeGenState
         {
             assert (argTypes.length is fun.paramVals.length);
 
-            // TODO
-
-
-
-
-
+            // Set the argument value types
+            foreach (argIdx, argType; argTypes)
+                setType(fun.paramVals[argIdx], argType);
         }
     }
 

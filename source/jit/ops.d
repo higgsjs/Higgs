@@ -1782,9 +1782,6 @@ void gen_call_prim(
         }
     );
 
-    // TODO
-    // TODO: analysis to detect possible shape changes
-    // TODO
     // Clear the known shape information
     st.clearShapes();
 
@@ -1792,11 +1789,29 @@ void gen_call_prim(
     as.sub(X86Opnd(tspReg), X86Opnd(fun.numLocals));
     as.sub(X86Opnd(wspReg), X86Opnd(8 * fun.numLocals));
 
+    // Get the argument value type
+    auto argTypes = new ValType[fun.numParams];
+    for (size_t argIdx = 0; argIdx < numArgs; ++argIdx)
+        argTypes[argIdx] = st.getType(instr.getArg(1 + argIdx));
+
+    /*
+    writeln(instr);
+    foreach (idx, type; argTypes)
+    {
+        writefln(
+            "  %s %s %s",
+            fun.ast.params[idx],
+            (type.tagKnown? to!string(type.tag):"unknown"),
+            (type.shapeKnown? "shape_known":"unknown")
+        );
+    }
+    */
+
+    // Create a code gen state taking into account the argument types
+    auto entrySt = new CodeGenState(fun, argTypes);
+
     // Request an instance for the function entry block
-    auto entryVer = getBlockVersion(
-        fun.entryBlock,
-        new CodeGenState(fun)
-    );
+    auto entryVer = getBlockVersion(fun.entryBlock, entrySt);
 
     ver.genCallBranch(
         st,
@@ -3204,7 +3219,8 @@ void gen_obj_read_shape(
     auto outOpnd = st.getOutOpnd(as, instr, 64);
     assert (outOpnd.isReg);
 
-    // TODO: find way to have instr in valMap without getting outOpnd?
+    // TODO: find way to have instr in valMap without allocating outOpnd?
+    // st.noOutOpnd() ?
 
     // If the shape is known, do nothing
     if (st.shapeKnown(objVal))

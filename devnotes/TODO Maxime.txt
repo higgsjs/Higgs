@@ -143,22 +143,48 @@ Interp BBV next step: threading global object?
 
 TODO: look into McGill benchmarks
 
-TODO: assess performance with multiple primitive entry points
+TODO: extract arg types before clearShapes
+- assess performance
+
+TODO: assess performance with multiple primitive entry points for fast calls
+
+TODO: arg type prop for fast calls
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: assess performance with multiple primitive entry points
 - versions, code size, type tests, speed (nocomptime)
+- very small increase in code size (less than 1%)
+- slight increase in compilation time
+- num versions: 7228 => 7302
+- type tests: 675952 => 543337 (-19.7%)
+- slight speedup (~2% on average)
+- version limit hit for setProp, objSetProp (runtime)
+  - value type is extra polymorphic
+  - this polymorphism is fairly useless
+  - also hit once in rt_se, in test of runtime primitives
+- is the version limit ever hit for user code?
+  - no more than before
 
-TODO: implement entry point spec for call_prim
+[DONE] FIXME: higgs init fails
+- compilation of get_prop "toString" segfaults
+  - getDefShape fails
+- object shape shows up as known, but is actually corrupt
+  - on call, don't seem to actually be passing a shape
+    - object shape is actually read by obj_read_shape
+- getArg, argIdx was wrong
 
-TODO: implement a new CodeGenState ctor which takes optional argTypes
+[DONE] TODO: implement entry point spec for call_prim
 
-commit, push to master
-
-
-
-
-
-
-
-
+[DONE] TODO: implement a new CodeGenState ctor which takes optional argTypes
 
 [DONE] TODO: assert num benchs successful > 0 in test runner
 
