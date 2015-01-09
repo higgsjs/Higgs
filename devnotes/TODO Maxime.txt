@@ -96,12 +96,6 @@ DYLA - typed shapes paper
 - for global object, can determine prop idx, lower bound on global obj
   size at compilation time
 
-Next blog post: mention improved results across the board
-- Title: Better than Perfect?
-- Less versions, less type tests, much bigger speedups
-- Will begin work on interprocedural basic block versioning imminently
-- For thesis, comparison against perfect analysis
-
 Interp BBV next step: threading global object?
 
 TODO: e-mail Jan, discuss grad timeline, research interests
@@ -123,6 +117,9 @@ TODO: recontact Laurie, ask for advice, discuss
 - With intra only, eliminate 70% of type tests
 - With intra + typed shapes, eliminate 84% of type tests
 - With inter, this rises to 87%
+- Fixed hacks wrt function entry stubs
+  - tried to have generic entry stubs
+  - now specialized per-function, like branch stubs
 
 DConf: e-mail walter, ask if travel funding possible
 
@@ -137,6 +134,14 @@ TODO: avoid passing/writing type tags when known in specialization
 TODO: remove type for value argument of setProp?
 
 TODO: assess performance with multiple primitive entry points for fast calls
+
+Next blog post: mention improved results across the board
+- Title: Better than Perfect?
+- Less versions, less type tests, much bigger speedups
+- Will begin work on interprocedural basic block versioning imminently
+- For thesis, comparison against perfect analysis
+- After thesis, possibly postdoc
+  - May be able to extend & improve Higgs further after PhD
 
 Reevaluate type tests eliminated in DYLA build
 
@@ -161,17 +166,24 @@ TODO: arg type prop for fast calls
     */
 
     // Create a code gen state taking into account the argument types
-    auto entrySt = new CodeGenState(fun, /*argTypes*/null);
+    auto entrySt = new CodeGenState(fun, argTypes);
 
     // Request an instance for the function entry block
     auto entryVer = getBlockVersion(fun.entryBlock, entrySt);
 
+TODO: remove fun.entryCode = ... from compile()
+- test, commit
 
+FIXME: entryCode pointer must be set in compile(), otherwise we crash, why?
+- stub expects IR to be in stub form, closure ptr on top
+- Stack traversal would be easier if closure ptr was always on top?
+  - but we don't always have a closure ptr
+- Should specialize FN entry stubs per-function. Makes more sense.
+  - can use abridged stubs like branches ***
+  - write in stub space, pass IRFunction ptr in scrRegs[0]
 
-
-
-
-
+TODO: unthread VM arg from compileBranch
+- commit
 
 
 

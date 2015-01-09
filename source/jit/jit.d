@@ -2838,11 +2838,11 @@ extern (C) CodePtr compileEntry(EntryStub stub)
     */
 
     // Compile the entry versions
-    // Note: the entry code pointer is set in the compile function
     vm.compile(fun.entryBlock.firstInstr);
 
     // Store the entry code pointer on the function
-    //fun.entryCode = entryInst.getCodePtr(vm.execHeap);
+    assert (entryInst.ended);
+    fun.entryCode = entryInst.getCodePtr(vm.execHeap);
 
     if (opts.dumpinfo)
     {
@@ -2859,7 +2859,7 @@ extern (C) CodePtr compileEntry(EntryStub stub)
 /**
 Compile the branch code when a branch stub is hit
 */
-extern (C) CodePtr compileBranch(VM vm, BlockVersion srcBlock, uint32_t targetIdx)
+extern (C) CodePtr compileBranch(BlockVersion srcBlock, uint32_t targetIdx)
 {
     // Stop recording execution time, start recording compilation time
     stats.execTimeStop();
@@ -3047,15 +3047,12 @@ BranchStub getBranchStub(VM vm, size_t targetIdx)
 
     as.saveJITRegs();
 
-    // The first argument is the VM object
-    as.mov(cargRegs[0].opnd, vmReg.opnd);
-
-    // The second argument is the src block pointer,
+    // The first argument is the src block pointer,
     // which was passed in scrRegs[0]
-    as.mov(cargRegs[1].opnd(64), scrRegs[0].opnd(64));
+    as.mov(cargRegs[0].opnd(64), scrRegs[0].opnd(64));
 
-    // The third argument is the branch target index
-    as.mov(cargRegs[2].opnd(32), X86Opnd(targetIdx));
+    // The second argument is the branch target index
+    as.mov(cargRegs[1].opnd(32), X86Opnd(targetIdx));
 
     debug
     {
