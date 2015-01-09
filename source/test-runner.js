@@ -151,8 +151,13 @@ If any tests fail the program exist abnormally (i.e. exit(1);)
     console.log("Starting test-runner.js...");
     console.log(" --- ");
 
+    var startTime = new Date().getTime();
+
     // run tests
     runTests(tests_dir);
+
+    var endTime = new Date().getTime();
+    var totalTime = (endTime - startTime) / 1000;
 
     if (tests_run === 0)
     {
@@ -166,6 +171,7 @@ If any tests fail the program exist abnormally (i.e. exit(1);)
     if (tests_run !== tests_passed)
         console.log("Tests passed:", tests_passed);
     console.log("Tests failed:", tests_failed);
+    console.log("Total time: ", totalTime.toFixed(1) + " s");
 
     if (tests_failed > 0)
     {

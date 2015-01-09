@@ -75,7 +75,7 @@ ffidev:
 
 test: layout
 	$(DC) $(LIBS) $(TESTOPTS) -of$(BIN_NAME_TEST) $(SRC)
-	time ./$(BIN_NAME_TEST) test-runner.js
+	./$(BIN_NAME_TEST) test-runner.js
 	rm $(BIN_NAME_TEST)
 
 prof: layout
