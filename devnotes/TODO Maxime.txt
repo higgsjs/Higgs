@@ -166,13 +166,6 @@ TODO: arg type prop for fast calls
     // Request an instance for the function entry block
     auto entryVer = getBlockVersion(fun.entryBlock, entrySt);
 
-test, commit
-
-TODO: get rid of entryBlock=X, numLocals=X hacks
-
-test, commit
-
-TODO: unthread VM arg from astToIR
 
 
 
@@ -184,6 +177,13 @@ TODO: unthread VM arg from astToIR
 
 
 
+
+
+
+[DONE] TODO: get rid of entryBlock=X, numLocals=X hacks
+- test, commit
+
+[DONE] TODO: unthread VM arg from astToIR
 
 [DONE] TODO: spreadsheet of Boston travel expenditures
 - plane + 2 cabs

@@ -2787,26 +2787,28 @@ extern (C) CodePtr compileEntry(EntryStub stub)
     if (opts.dumpinfo)
         writeln("compiling entry for " ~ fun.getName);
 
-    // Store the original number of locals for the function
-    auto origLocals = fun.numLocals;
-
-    // Generate the IR for this function
-    try
+    // If the function is not yet compiled, compile it now
+    if (fun.entryBlock is null)
     {
-        fun.entryBlock = null;
-        astToIR(fun.ast, fun);
-    }
-    catch (Error err)
-    {
-        assert (
-            false,
-            "failed to generate IR for: \"" ~ fun.getName ~ "\"\n" ~
-            err.toString
-        );
-    }
+        // Store the original number of locals for the function stub
+        auto origLocals = fun.numLocals;
 
-    // Add space for the newly allocated locals
-    vm.push(fun.numLocals - origLocals);
+        try
+        {
+            astToIR(fun.ast, fun);
+        }
+        catch (Error err)
+        {
+            assert (
+                false,
+                "failed to generate IR for: \"" ~ fun.getName ~ "\"\n" ~
+                err.toString
+            );
+        }
+
+        // Add space for the newly allocated locals
+        vm.push(fun.numLocals - origLocals);
+    }
 
     // Request an instance for the function entry blocks
     auto entryInst = getBlockVersion(

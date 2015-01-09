@@ -5077,14 +5077,7 @@ void gen_get_ir_str(
         // If the function is not yet compiled, compile it now
         if (fun.entryBlock is null)
         {
-            // FIXME: function entry stubs are currently a hack
-            // Need to be specialized to the IRFunction, not assume
-            // that numLocals is the minimum value
-            // Can't have unspecialized stubs for interprocedural BBV anyway!
-            auto numLocals = fun.numLocals;
             astToIR(fun.ast, fun);
-            fun.numLocals = numLocals;
-            fun.entryBlock = null;
         }
 
         auto str = fun.toString();
