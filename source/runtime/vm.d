@@ -1132,7 +1132,7 @@ class VM
         stats.compTimeStart();
 
         auto ast = parseFile(file, isRuntime);
-        auto ir = astToIR(this, ast, null);
+        auto ir = astToIR(ast, null);
 
         // Stop recording compilation time
         stats.compTimeStop();
@@ -1148,7 +1148,7 @@ class VM
         //writefln("input: %s", input);
 
         auto ast = parseString(input, fileName);
-        auto ir = astToIR(this, ast, null);
+        auto ir = astToIR(ast, null);
 
         return exec(ir);
     }

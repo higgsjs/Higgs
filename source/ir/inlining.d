@@ -120,7 +120,7 @@ void inlinePass(VM vm, IRFunction caller)
 
         if (callee.entryBlock is null)
         {
-            astToIR(vm, callee.ast, callee);
+            astToIR(callee.ast, callee);
         }
 
         auto name = callee.getName();

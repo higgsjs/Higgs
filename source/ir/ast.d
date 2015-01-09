@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2012-2014, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2012-2015, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -341,11 +341,7 @@ class IRGenCtx
 /**
 Compile an AST program or function into an IR function
 */
-IRFunction astToIR(
-    VM vm,
-    FunExpr ast,
-    IRFunction fun = null
-)
+IRFunction astToIR(FunExpr ast, IRFunction fun = null)
 {
     assert (
         cast(FunExpr)ast || cast(ASTProgram)ast,

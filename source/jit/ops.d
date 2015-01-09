@@ -1738,7 +1738,7 @@ void gen_call_prim(
     if (fun.entryBlock is null)
     {
         //writeln(core.memory.GC.addrOf(cast(void*)fun.ast));
-        astToIR(vm, fun.ast, fun);
+        astToIR(fun.ast, fun);
     }
 
     // Copy the function arguments in reverse order
@@ -1873,7 +1873,7 @@ void gen_call(
         {
             try
             {
-                astToIR(vm, fun.ast, fun);
+                astToIR(fun.ast, fun);
             }
 
             catch (Error err)
@@ -2356,7 +2356,7 @@ void gen_load_file(
         {
             // Parse the source file and generate IR
             auto ast = parseFile(fileName);
-            auto fun = astToIR(vm, ast);
+            auto fun = astToIR(ast);
 
             // Create a GC root for the function to prevent it from
             // being collected if the GC runs during its own compilation
@@ -2488,7 +2488,7 @@ void gen_eval_str(
         {
             // Parse the source file and generate IR
             auto ast = parseString(codeStr, "eval_str");
-            auto fun = astToIR(vm, ast);
+            auto fun = astToIR(ast);
 
             // Create a GC root for the function to prevent it from
             // being collected if the GC runs during its own compilation
@@ -5082,7 +5082,7 @@ void gen_get_ir_str(
             // that numLocals is the minimum value
             // Can't have unspecialized stubs for interprocedural BBV anyway!
             auto numLocals = fun.numLocals;
-            astToIR(vm, fun.ast, fun);
+            astToIR(fun.ast, fun);
             fun.numLocals = numLocals;
             fun.entryBlock = null;
         }

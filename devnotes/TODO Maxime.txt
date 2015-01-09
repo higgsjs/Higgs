@@ -51,25 +51,6 @@ TODO: Higgs is a Typed Architecture
 - Links to source
 - Reg alloc and future
 
-TODO: progress update blog post
-- Reddit, HN, Russian coverage, over 50000 blog hits, > 550 github stars
-  http://www.linux.org.ru/news/opensource/11037106
-  - pointersgonewild.com to celebrate
-  https://www.dropbox.com/sh/ncormna8z9wdf0y/AABZatqILwHao1-eCsNW855Xa?n=14349854#/
-- Invited talk at McGill, Northeastern University
-- New in Higgs
-  - Slightly more speed
-  - Shebang line, options parser coming
-  - Turing Drawings port, screenshots, cool wheel shot from turing turtle too
-  - Digging through the FFI, added more docs
-    https://github.com/maximecb/Higgs/wiki/FFI-Library
-  - Object.seal, Object.freeze, Object.preventExtensions
-- In the works
-  - Arrow functions
-  - Options parser
-  - ALSA audio output bindings
-  - Socket bindings
-
 TODO: look into freeing vmReg
 - where is it used?
 TODO: can we load directly from moffs64?
@@ -79,6 +60,27 @@ TODO: getter and setter syntax
 - Easy to recognize the grammar, but need to modify the AST
   - Use a struct for object literal property descriptors
 - Probably want some kind of runtime call to define getters and setters
+
+TODO: FP machine
+- x and y inputs, in [-1, 1]
+- function to compute an output from input coordinates
+- iterative computation, fixed itr count
+- table of operators to compute each variable
+  - input variables are fixed
+
+TODO: look into improving template strings, completing further
+`string text ${expression} string text`
+tagExpr `string text ${expression} string text`
+function tag(stringArr, ...values)
+- Need to test template strings, nested too
+- For now, could ignore tag, support only expression substitution
+  - Full support at the parsing end, implement semantics partially
+- Implement TempStrExpr class
+- Lexer: dumb lexing possible? template string parts
+  - start at backtick or }???
+  - restarting at } is problematic
+  - possibly need some flag like RE, informing the lexer that we're still
+    in an expression
 
 ------------------------------------------------------------------------------
 
@@ -100,7 +102,139 @@ Next blog post: mention improved results across the board
 - Will begin work on interprocedural basic block versioning imminently
 - For thesis, comparison against perfect analysis
 
-2015-01-XX Meeting:
+Interp BBV next step: threading global object?
+
+TODO: e-mail Jan, discuss grad timeline, research interests
+- Extending Higgs & BBV work?
+
+TODO: recontact Laurie, ask for advice, discuss
+- PhD Completion ~Dec 2015
+- NSERC PDF deadline ~Oct 15, can only apply once, notified by end of Jan
+  - How many publications needed?
+- co-direction with Marc?
+  - Marc says: combined funding?
+  - Not possible with PDF, only as backup plan
+- Marc says: big rewrite/refactoring of Higgs?
+  - Lazy IR gen?
+- Marc thinks Boston is better for career
+  - thesis topic?
+
+2015-01-1X Meeting:
+- With intra only, eliminate 70% of type tests
+- With intra + typed shapes, eliminate 84% of type tests
+- With inter, this rises to 87%
+
+DConf: e-mail walter, ask if travel funding possible
+
+TODO: look into McGill benchmarks
+
+TODO: extract arg types before clearShapes
+- assess performance
+
+TODO: avoid passing/writing type tags when known in specialization
+- Must verify that passed types are known in entry version we get
+
+TODO: remove type for value argument of setProp?
+
+TODO: assess performance with multiple primitive entry points for fast calls
+
+Reevaluate type tests eliminated in DYLA build
+
+TODO: arg type prop for fast calls
+
+    // Get the argument value type
+    auto argTypes = new ValType[fun.numParams];
+    for (size_t argIdx = 0; argIdx < numArgs; ++argIdx)
+        argTypes[argIdx] = st.getType(instr.getArg(1 + argIdx));
+
+    /*
+    writeln(instr);
+    foreach (idx, type; argTypes)
+    {
+        writefln(
+            "  %s %s %s",
+            fun.ast.params[idx],
+            (type.tagKnown? to!string(type.tag):"unknown"),
+            (type.shapeKnown? "shape_known":"unknown")
+        );
+    }
+    */
+
+    // Create a code gen state taking into account the argument types
+    auto entrySt = new CodeGenState(fun, /*argTypes*/null);
+
+    // Request an instance for the function entry block
+    auto entryVer = getBlockVersion(fun.entryBlock, entrySt);
+
+test, commit
+
+TODO: get rid of entryBlock=X, numLocals=X hacks
+
+test, commit
+
+TODO: unthread VM arg from astToIR
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: spreadsheet of Boston travel expenditures
+- plane + 2 cabs
+
+[DONE] TODO: verify percentage of tests eliminated with interp BBV on runtime
+- create DYLA dir, update scripts
+- changes proportion eliminated with interprocedural
+- use code from Higgs master
+
+[DONE] TODO: look at NSERC & FQRNT postdoc scholarship deadlines
+- NSERC:
+  - Postdoctoral Fellowships Program (PDF)
+  - $45,000 per year for two years
+  - Deadline is Oct 15
+  - Notified by end of January
+  - Form 201, same as CGS D
+  - Can only apply once!
+  - May not hold with PhD supervisor
+  - Alice Wilson Award winners selected from pool ***
+- FQRNT:
+  - BOURSES DE RECHERCHE POSTDOCTORALE (B3)
+  - 35K
+  - October 2nd ***
+
+Sejour informatique: ven, sam, dim, 8h-9h30, petit dejeuner, cafe informatique
+- placer lunchs, enregistrement, cleanup
+- talks le matin et l'apres midi
+- rester pour lunch, parler aux etudiants
+- pas besoin d'etre la en apres midi
+
+[DONE] Graduation timeline:
+- Objectives:
+  - Intra BBV
+  - Typed shapes
+  - Inter BBV
+- Thesis: simple codegen technique giving good perf for dyn typed languages
+  - Idea: BBV
+    - how much do we need to get good results?
+  - If we can beat perfect analysis, 90%, objective is reached
+- Array element types => depends on performance
+  - how do we fare against perfect analysis without it?
+- Timeline
+  - paper on typed shapes
+  - interprocedural, paper on this?
+    - probably end of summer
+  - Marc thinks you can finish writing by dec 2015
+- Postdoc scholarship?
+
+[DONE] 2015-01-07 Meeting:
+- Marketing: lazy context-driven basic block specialization (instead of versioning)
+  - Not necessarily multiple versions
 - Minor refactorings, now using global VM object, unthreading VM pointer
 - Created ECOOP2015 branch to keep stable version of code for paper
 - Type test branch profiling
@@ -117,55 +251,18 @@ Next blog post: mention improved results across the board
     - polymorphic function parameter
     - object field is null or something else
     - array element can have multiple types
+- Interp BBV
+  - Previously eliminating ~71% of type tests
+    => wrong, not taking typed shapes into account ***
+  - With interp BBV of primitives, type tags only, now at ~76%
 - Discuss graduation timeline
-
-TODO: look into improving template strings, completing further
-`string text ${expression} string text`
-tagExpr `string text ${expression} string text`
-function tag(stringArr, ...values)
-- Need to test template strings, nested too
-- For now, could ignore tag, support only expression substitution
-  - Full support at the parsing end, implement semantics partially
-- Implement TempStrExpr class
-- Lexer: dumb lexing possible? template string parts
-  - start at backtick or }???
-  - restarting at } is problematic
-  - possibly need some flag like RE, informing the lexer that we're still
-    in an expression
-
-TODO: FP machine
-- x and y inputs, in [-1, 1]
-- function to compute an output from input coordinates
-- iterative computation
-- table of operators for each input
-
-Interp BBV next step: threading global object?
-
-TODO: look into McGill benchmarks
-
-TODO: extract arg types before clearShapes
-- assess performance
-
-TODO: assess performance with multiple primitive entry points for fast calls
-
-TODO: arg type prop for fast calls
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: assess performance with multiple primitive entry points
 - versions, code size, type tests, speed (nocomptime)
 - very small increase in code size (less than 1%)
 - slight increase in compilation time
 - num versions: 7228 => 7302
-- type tests: 675952 => 543337 (-19.7%)
+- type tests: 675952 => 543337 (-19.7%, )
 - slight speedup (~2% on average)
 - version limit hit for setProp, objSetProp (runtime)
   - value type is extra polymorphic

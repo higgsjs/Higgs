@@ -2794,7 +2794,7 @@ extern (C) CodePtr compileEntry(EntryStub stub)
     try
     {
         fun.entryBlock = null;
-        astToIR(vm, fun.ast, fun);
+        astToIR(fun.ast, fun);
     }
     catch (Error err)
     {
