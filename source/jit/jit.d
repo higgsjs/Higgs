@@ -1468,6 +1468,11 @@ abstract class CodeFragment
             return "entry_stub";
         }
 
+        if (auto stub = cast(BranchStub)this)
+        {
+            return "branch_stub_" ~ to!string(stub.targetIdx);
+        }
+
         if (auto stub = cast(ContStub)this)
         {
             return "cont_stub_" ~ stub.contBranch.getName;
@@ -1581,6 +1586,20 @@ class EntryStub : CodeFragment
 {
     this()
     {
+    }
+}
+
+/**
+Branch target stub
+*/
+class BranchStub : CodeFragment
+{
+    /// Branch target index
+    size_t targetIdx;
+
+    this(size_t targetIdx)
+    {
+        this.targetIdx = targetIdx;
     }
 }
 
@@ -2968,13 +2987,16 @@ Generate a branch stub. Returns the executable heap position of the stub.
 */
 size_t getBranchStub(BlockVersion srcBlock, size_t targetIdx)
 {
-    // If the generic stub is not already generated
-    if (targetIdx >= vm.branchSubs.length || vm.branchSubs[targetIdx] is null)
-    {
-        auto as = vm.subsHeap;
+    auto as = vm.execHeap;
 
-        vm.branchSubs.length = targetIdx + 1;
-        vm.branchSubs[targetIdx] = as.getAddress(as.getWritePos);
+    // If the generic stub is not already generated
+    if (targetIdx >= vm.branchStubs.length || vm.branchStubs[targetIdx] is null)
+    {
+        auto stub = new BranchStub(targetIdx);
+        vm.branchStubs.length = targetIdx + 1;
+        vm.branchStubs[targetIdx] = stub;
+
+        stub.markStart(as);
 
         // Insert the label for this block in the out of line code
         as.comment("Branch stub (target " ~ to!string(targetIdx) ~ ")");
@@ -3011,9 +3033,10 @@ size_t getBranchStub(BlockVersion srcBlock, size_t targetIdx)
 
         // Jump to the compiled version
         as.jmp(cretReg.opnd);
-    }
 
-    auto as = vm.execHeap;
+        // Store the code end index
+        stub.markEnd(as);
+    }
 
     // Store the current write position
     auto startPos = as.getWritePos();
@@ -3028,10 +3051,13 @@ size_t getBranchStub(BlockVersion srcBlock, size_t targetIdx)
     assert (srcBlock !is null);
     as.ptr(scrRegs[0], srcBlock);
 
-    // Jump to the generic branch stub
+    // Get the branch stub corresponding to this target index
     assert (targetIdx < 2);
-    as.ptr(scrRegs[1], vm.branchSubs[targetIdx]);
-    as.jmp(scrRegs[1].opnd);
+    auto branchStub = vm.branchStubs[targetIdx];
+
+    // Jump to the generic branch stub
+    auto offset = cast(int32_t)(branchStub.startIdx - (as.getWritePos + 5));
+    as.jmp32(offset);
 
     // Update the stub write position
     vm.stubWritePos = as.getWritePos;

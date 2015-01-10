@@ -182,7 +182,7 @@ FIXME: entryCode pointer must be set in compile(), otherwise we crash, why?
   - can use abridged stubs like branches ***
   - write in stub space, pass IRFunction ptr in scrRegs[0]
 
-TODO: move entryStub to sub space?
+TODO: implement specializing getEntryStub
 - get rid of the representing class too
 
 
@@ -191,9 +191,6 @@ TODO: move entryStub to sub space?
 
 
 
-
-[DONE] TODO: move branchStub to the sub space?
-- get rid of the representing class too
 
 [DONE] TODO: getBranchStub, convert to generating custom stubs
 
