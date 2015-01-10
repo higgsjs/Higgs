@@ -182,15 +182,23 @@ FIXME: entryCode pointer must be set in compile(), otherwise we crash, why?
   - can use abridged stubs like branches ***
   - write in stub space, pass IRFunction ptr in scrRegs[0]
 
-TODO: unthread VM arg from compileBranch
+TODO: move entryStub to sub space?
+- get rid of the representing class too
+
+
+
+
+
+
+
+
+[DONE] TODO: move branchStub to the sub space?
+- get rid of the representing class too
+
+[DONE] TODO: getBranchStub, convert to generating custom stubs
+
+[DONE] TODO: unthread VM arg from compileBranch
 - commit
-
-
-
-
-
-
-
 
 [DONE] TODO: get rid of entryBlock=X, numLocals=X hacks
 - test, commit

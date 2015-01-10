@@ -544,11 +544,11 @@ class VM
     /// List of references to code fragments to be linked
     FragmentRef[] refList;
 
-    /// Function entry stub
+    /// Generic function entry stub subroutine
     EntryStub entryStub;
 
-    /// Generic branch target stubs
-    BranchStub[] branchStubs;
+    /// Generic branch target stub subroutines
+    CodePtr[] branchSubs;
 
     /// Get property fallback subroutine
     CodePtr getPropSub;

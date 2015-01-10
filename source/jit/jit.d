@@ -1468,11 +1468,6 @@ abstract class CodeFragment
             return "entry_stub";
         }
 
-        if (auto stub = cast(BranchStub)this)
-        {
-            return "branch_stub_" ~ to!string(stub.targetIdx);
-        }
-
         if (auto stub = cast(ContStub)this)
         {
             return "cont_stub_" ~ stub.contBranch.getName;
@@ -1584,34 +1579,8 @@ Function entry stub
 */
 class EntryStub : CodeFragment
 {
-    /// Associated VM
-    VM vm;
-
-    /// Constructor call flag
-    bool ctorCall;
-
-    this(VM vm, bool ctorCall)
+    this()
     {
-        this.vm = vm;
-        this.ctorCall = ctorCall;
-    }
-}
-
-/**
-Branch target stub
-*/
-class BranchStub : CodeFragment
-{
-    /// Associated VM
-    VM vm;
-
-    /// Branch target index
-    size_t targetIdx;
-
-    this(VM vm, size_t targetIdx)
-    {
-        this.vm = vm;
-        this.targetIdx = targetIdx;
     }
 }
 
@@ -2550,32 +2519,8 @@ void compile(VM vm, IRInstr curInstr)
         // The target is not yet compiled
         else
         {
-            // Store the current write position
-            auto startPos = as.getWritePos();
-
             // Store the code position for the custom branch stub
-            jumpDstPos = vm.stubWritePos;
-
-            // Move the write position to the stub write position
-            as.setWritePos(vm.stubWritePos);
-
-            // Write the block pointer scrRegs[0]
-            assert (refr.srcBlock !is null);
-            as.ptr(scrRegs[0], refr.srcBlock);
-
-            // Get the branch stub corresponding to this target index
-            assert (refr.targetIdx < 2);
-            auto branchStub = getBranchStub(vm, refr.targetIdx);
-
-            // Jump to the generic branch stub
-            auto offset = cast(int32_t)(branchStub.startIdx - (as.getWritePos + 5));
-            as.jmp32(offset);
-
-            // Update the stub write position
-            vm.stubWritePos = as.getWritePos;
-
-            // Return to the previous write position
-            as.setWritePos(startPos);
+            jumpDstPos = getBranchStub(refr.srcBlock, refr.targetIdx);
         }
 
         // Set the write position at the reference point
@@ -2979,16 +2924,16 @@ extern (C) CodePtr compileCont(ContStub stub)
 }
 
 /**
-Get a function entry stub
+Get the generic function entry stub
 */
-CodePtr getEntryStub(VM vm, bool ctorCall)
+CodePtr getEntryStub()
 {
     auto as = vm.execHeap;
 
     if (vm.entryStub)
         return vm.entryStub.getCodePtr(as);
 
-    auto stub = new EntryStub(vm, ctorCall);
+    auto stub = new EntryStub();
 
     stub.markStart(as);
 
@@ -3019,62 +2964,81 @@ CodePtr getEntryStub(VM vm, bool ctorCall)
 }
 
 /**
-Get the generic branch target stub for a given target index
-This stub expects the source block pointer to be written in scrRegs[0]
+Generate a branch stub. Returns the executable heap position of the stub.
 */
-BranchStub getBranchStub(VM vm, size_t targetIdx)
+size_t getBranchStub(BlockVersion srcBlock, size_t targetIdx)
 {
-    auto as = vm.execHeap;
-
-    // If this stub was already generated, return it
-    if (targetIdx < vm.branchStubs.length && vm.branchStubs[targetIdx] !is null)
-        return vm.branchStubs[targetIdx];
-
-    auto stub = new BranchStub(vm, targetIdx);
-    vm.branchStubs.length = targetIdx + 1;
-    vm.branchStubs[targetIdx] = stub;
-
-    stub.markStart(as);
-
-    // Insert the label for this block in the out of line code
-    as.comment("Branch stub (target " ~ to!string(targetIdx) ~ ")");
-
-    //as.printStr("hit branch stub (target " ~ to!string(targetIdx) ~ ")");
-    //as.printUint(scrRegs[0].opnd);
-
-    // Save the allocatable registers
-    as.saveAllocRegs();
-
-    as.saveJITRegs();
-
-    // The first argument is the src block pointer,
-    // which was passed in scrRegs[0]
-    as.mov(cargRegs[0].opnd(64), scrRegs[0].opnd(64));
-
-    // The second argument is the branch target index
-    as.mov(cargRegs[1].opnd(32), X86Opnd(targetIdx));
-
-    debug
+    // If the generic stub is not already generated
+    if (targetIdx >= vm.branchSubs.length || vm.branchSubs[targetIdx] is null)
     {
-        as.checkStackAlign("stack unaligned before compileBranch");
+        auto as = vm.subsHeap;
+
+        vm.branchSubs.length = targetIdx + 1;
+        vm.branchSubs[targetIdx] = as.getAddress(as.getWritePos);
+
+        // Insert the label for this block in the out of line code
+        as.comment("Branch stub (target " ~ to!string(targetIdx) ~ ")");
+
+        //as.printStr("hit branch stub (target " ~ to!string(targetIdx) ~ ")");
+        //as.printUint(scrRegs[0].opnd);
+
+        // Save the allocatable registers
+        as.saveAllocRegs();
+
+        as.saveJITRegs();
+
+        // The first argument is the src block pointer,
+        // which was passed in scrRegs[0]
+        as.mov(cargRegs[0].opnd(64), scrRegs[0].opnd(64));
+
+        // The second argument is the branch target index
+        as.mov(cargRegs[1].opnd(32), X86Opnd(targetIdx));
+
+        debug
+        {
+            as.checkStackAlign("stack unaligned before compileBranch");
+        }
+
+        // Call the JIT compilation function,
+        auto compileFn = &compileBranch;
+        as.ptr(scrRegs[0], compileFn);
+        as.call(scrRegs[0]);
+
+        as.loadJITRegs();
+
+        // Restore the allocatable registers
+        as.loadAllocRegs();
+
+        // Jump to the compiled version
+        as.jmp(cretReg.opnd);
     }
 
-    // Call the JIT compilation function,
-    auto compileFn = &compileBranch;
-    as.ptr(scrRegs[0], compileFn);
-    as.call(scrRegs[0]);
+    auto as = vm.execHeap;
 
-    as.loadJITRegs();
+    // Store the current write position
+    auto startPos = as.getWritePos();
 
-    // Restore the allocatable registers
-    as.loadAllocRegs();
+    // Store the code position for the custom branch stub
+    auto stubPos = vm.stubWritePos;
 
-    // Jump to the compiled version
-    as.jmp(cretReg.opnd);
+    // Move the write position to the stub write position
+    as.setWritePos(vm.stubWritePos);
 
-    // Store the code end index
-    stub.markEnd(as);
+    // Write the block pointer scrRegs[0]
+    assert (srcBlock !is null);
+    as.ptr(scrRegs[0], srcBlock);
 
-    return stub;
+    // Jump to the generic branch stub
+    assert (targetIdx < 2);
+    as.ptr(scrRegs[1], vm.branchSubs[targetIdx]);
+    as.jmp(scrRegs[1].opnd);
+
+    // Update the stub write position
+    vm.stubWritePos = as.getWritePos;
+
+    // Return to the previous write position
+    as.setWritePos(startPos);
+
+    return stubPos;
 }
 
