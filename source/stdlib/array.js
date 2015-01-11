@@ -159,6 +159,7 @@ function array_join(separator)
     {
         var elem = o[0];
 
+        // Use the += operator to do concatenation lazily using ropes
         if (!$ir_is_const(elem) || !$ir_eq_const(elem, undefined))
             outStr += elem;
     }
@@ -169,6 +170,7 @@ function array_join(separator)
 
         var elem = o[i];
 
+        // Use the += operator to do concatenation lazily using ropes
         if (!$ir_is_const(elem) || !$ir_eq_const(elem, undefined))
             outStr += elem;
     }

@@ -172,12 +172,6 @@ function string_fromCharCode(c)
                 $rt_arrtbl_get_tag($rt_char_str_table, c)
             );
         }
-
-        /*
-        var str = $rt_str_alloc(1);
-        $rt_str_set_data(str, 0, c);
-        return $ir_get_str(str);
-        */
     }
 
     var str = $rt_str_alloc($argc);
@@ -286,23 +280,13 @@ function string_charCodeAt(pos)
 */
 function string_concat()
 {
-    var l = this.length;
+    var outStr = this;
 
-    for (var i = 0; i < arguments.length; ++i)
-        l += arguments[i].length;
+    // Use the += operator to do concatenation lazily using ropes
+    for (var i = 0; i < $argc; ++i)
+        outStr += $ir_get_arg(i);
 
-    var s = $rt_str_alloc(l);
-    var k = 0;
-
-    for (var i = 0; i < this.length; ++i, ++k)
-        $rt_str_set_data(s, k, this.charCodeAt(i));
-
-    for (var i = 0; i < arguments.length; ++i)
-        for (var j = 0; j < arguments[i].length; ++j, ++k)
-            $rt_str_set_data(s, k, arguments[i].charCodeAt(j));
-
-    // Attempt to find the string in the string table
-    return $ir_get_str(s);
+    return outStr;
 }
 
 /**

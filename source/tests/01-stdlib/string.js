@@ -8,7 +8,7 @@
  *  http://github.com/Tachyon-Team/Tachyon
  *
  *
- *  Copyright (c) 2011, Universite de Montreal
+ *  Copyright (c) 2011-2015, Universite de Montreal
  *  All rights reserved.
  *
  *  This software is licensed under the following license (Modified BSD
@@ -241,22 +241,17 @@ function test_substr()
 
 function test_concat()
 {
-    if (''.concat() !== '')
-        return 1;
+    assert (''.concat() === '');
 
-    if ('foo'.concat() !== 'foo')
-        return 2;
+    assert ('foo'.concat() === 'foo');
 
-    if ('foo'.concat('') !== 'foo')
-        return 3;
+    assert ('foo'.concat('') === 'foo');
 
-    if ('foo'.concat('bar') !== 'foobar')
-        return 4;
+    assert ('foo'.concat('bar') === 'foobar');
 
-    if ('foo'.concat('bar', 'bif') !== 'foobarbif')
-        return 5;
+    assert ('foo'.concat('bar', 'bif') === 'foobarbif');
 
-    return 0;
+    assert ('f'.concat(2) === 'f2');
 }
 
 function test_replace()
@@ -433,9 +428,7 @@ function test()
     if (r != 0)
         return 1400 + r;
 
-    var r = test_concat();
-    if (r != 0)
-        return 1500 + r;
+    test_concat();
 
     test_replace();
 
