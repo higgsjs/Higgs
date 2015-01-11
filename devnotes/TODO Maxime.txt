@@ -171,26 +171,23 @@ TODO: arg type prop for fast calls
     // Request an instance for the function entry block
     auto entryVer = getBlockVersion(fun.entryBlock, entrySt);
 
-TODO: remove fun.entryCode = ... from compile()
-- test, commit
 
-FIXME: entryCode pointer must be set in compile(), otherwise we crash, why?
+
+
+
+
+
+
+[DONE] FIXME: entryCode pointer must be set in compile(), otherwise we crash, why?
 - stub expects IR to be in stub form, closure ptr on top
-- Stack traversal would be easier if closure ptr was always on top?
-  - but we don't always have a closure ptr
 - Should specialize FN entry stubs per-function. Makes more sense.
   - can use abridged stubs like branches ***
   - write in stub space, pass IRFunction ptr in scrRegs[0]
 
-TODO: implement specializing getEntryStub
+[DONE] FIXME: specialized entry stub not working
+
+[DONE] TODO: implement specializing getEntryStub
 - get rid of the representing class too
-
-
-
-
-
-
-
 
 [DONE] TODO: getBranchStub, convert to generating custom stubs
 

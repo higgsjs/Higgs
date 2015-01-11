@@ -4858,7 +4858,7 @@ void gen_new_clos(
         if (fun.entryCode is null)
         {
             // Store the entry code pointer
-            fun.entryCode = getEntryStub();
+            fun.entryCode = getEntryStub(fun);
         }
 
         // Allocate the closure object

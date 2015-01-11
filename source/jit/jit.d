@@ -2394,13 +2394,6 @@ void compile(VM vm, IRInstr curInstr)
                 "unterminated code fragment: " ~
                 ver.block.toString
             );
-
-            // If this is a function entry block
-            if (block is block.fun.entryBlock)
-            {
-                // Set the function entry code pointer
-                block.fun.entryCode = frag.getCodePtr(vm.execHeap);
-            }
         }
 
         // If this is a branch code fragment
@@ -2724,32 +2717,19 @@ EntryFn compileUnit(VM vm, IRFunction fun)
 /**
 Compile an entry block instance for a function
 */
-extern (C) CodePtr compileEntry(EntryStub stub)
+extern (C) CodePtr compileEntry(IRFunction fun)
 {
     // Stop recording execution time, start recording compilation time
     stats.execTimeStop();
     stats.compTimeStart();
 
+    assert (fun !is null);
+
     if (opts.dumpinfo)
     {
         writeln("entering compileEntry");
-    }
-
-    // Get the closure and IRFunction pointers
-    auto argCount = vm.getWord(3).uint32Val;
-    auto closPtr = vm.getWord(1).ptrVal;
-    assert (
-        closPtr !is null,
-        "closure pointer is null in compileEntry"
-    );
-    auto fun = getFunPtr(closPtr);
-    assert (
-        fun !is null,
-        "closure IRFunction is null"
-    );
-
-    if (opts.dumpinfo)
         writeln("compiling entry for " ~ fun.getName);
+    }
 
     // If the function is not yet compiled, compile it now
     if (fun.entryBlock is null)
@@ -2945,41 +2925,68 @@ extern (C) CodePtr compileCont(ContStub stub)
 /**
 Get the generic function entry stub
 */
-CodePtr getEntryStub()
+CodePtr getEntryStub(IRFunction fun)
 {
     auto as = vm.execHeap;
 
-    if (vm.entryStub)
-        return vm.entryStub.getCodePtr(as);
-
-    auto stub = new EntryStub();
-
-    stub.markStart(as);
-
-    as.saveJITRegs();
-
-    debug
+    // If the generic stub is not already compiled
+    if (vm.entryStub is null)
     {
-        as.checkStackAlign("stack unaligned before compileEntry");
+        auto stub = new EntryStub();
+
+        stub.markStart(as);
+
+        as.saveJITRegs();
+
+        debug
+        {
+            as.checkStackAlign("stack unaligned before compileEntry");
+        }
+
+        // The first argument is the IRFunction pointer,
+        // which was passed in scrRegs[0]
+        as.mov(cargRegs[0].opnd(64), scrRegs[0].opnd(64));
+
+        // Call the JIT compile function,
+        // passing it a pointer to the stub
+        auto compileFn = &compileEntry;
+        as.ptr(scrRegs[0], compileFn);
+        as.call(scrRegs[0]);
+
+        as.loadJITRegs();
+
+        // Jump to the compiled version
+        as.jmp(cretReg.opnd);
+
+        stub.markEnd(as);
+
+        vm.entryStub = stub;
     }
 
-    // Call the JIT compile function,
-    // passing it a pointer to the stub
-    auto compileFn = &compileEntry;
-    as.ptr(scrRegs[0], compileFn);
-    as.ptr(cargRegs[0], stub);
-    as.call(scrRegs[0]);
+    // Store the current write position
+    auto startPos = as.getWritePos();
 
-    as.loadJITRegs();
+    // Store the code position for the custom branch stub
+    auto stubPos = vm.stubWritePos;
 
-    // Jump to the compiled version
-    as.jmp(X86Opnd(RAX));
+    // Move the write position to the stub write position
+    as.setWritePos(vm.stubWritePos);
 
-    stub.markEnd(as);
+    // Write the IRFunction pointer in scrRegs[0]
+    as.ptr(scrRegs[0], fun);
 
-    vm.entryStub = stub;
+    // Jump to the generic entry stub
+    auto offset = cast(int32_t)(vm.entryStub.startIdx - (as.getWritePos + 5));
+    as.jmp32(offset);
 
-    return stub.getCodePtr(as);
+    // Update the stub write position
+    vm.stubWritePos = as.getWritePos;
+
+    // Return to the previous write position
+    as.setWritePos(startPos);
+
+    // Return the address of the specialized entry stub
+    return as.getAddress(stubPos);
 }
 
 /**
@@ -3047,7 +3054,7 @@ size_t getBranchStub(BlockVersion srcBlock, size_t targetIdx)
     // Move the write position to the stub write position
     as.setWritePos(vm.stubWritePos);
 
-    // Write the block pointer scrRegs[0]
+    // Write the block pointer in scrRegs[0]
     assert (srcBlock !is null);
     as.ptr(scrRegs[0], srcBlock);
 
