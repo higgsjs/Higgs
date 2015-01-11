@@ -1987,11 +1987,34 @@ void gen_call(
         as.sub(X86Opnd(tspReg), X86Opnd(frameSize));
         as.sub(X86Opnd(wspReg), X86Opnd(8 * frameSize));
 
+        // Get the argument value type
+        auto argTypes = new ValType[fun.numParams];
+        for (size_t argIdx = 0; argIdx < argTypes.length; ++argIdx)
+        {
+            if (argIdx < numArgs)
+                argTypes[argIdx] = st.getType(instr.getArg(2 + argIdx));
+            else
+                argTypes[argIdx] = ValType(UNDEF);
+        }
+
+        /*
+        writeln(instr);
+        foreach (idx, type; argTypes)
+        {
+            writefln(
+                "  %s %s %s",
+                fun.ast.params[idx],
+                (type.tagKnown? to!string(type.tag):"unknown"),
+                (type.shapeKnown? "shape_known":"unknown")
+            );
+        }
+        */
+
+        // Create a code gen state taking into account the argument types
+        auto entrySt = new CodeGenState(fun, argTypes);
+
         // Request an instance for the function entry block
-        auto entryVer = getBlockVersion(
-            fun.entryBlock,
-            new CodeGenState(fun)
-        );
+        auto entryVer = getBlockVersion(fun.entryBlock, entrySt);
 
         ver.genCallBranch(
             st,

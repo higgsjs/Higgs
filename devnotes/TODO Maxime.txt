@@ -113,14 +113,6 @@ TODO: recontact Laurie, ask for advice, discuss
 - Marc thinks Boston is better for career
   - thesis topic?
 
-2015-01-1X Meeting:
-- With intra only, eliminate 70% of type tests
-- With intra + typed shapes, eliminate 84% of type tests
-- With inter, this rises to 87%
-- Fixed hacks wrt function entry stubs
-  - tried to have generic entry stubs
-  - now specialized per-function, like branch stubs
-
 DConf: e-mail walter, ask if travel funding possible
 
 TODO: look into McGill benchmarks
@@ -128,12 +120,13 @@ TODO: look into McGill benchmarks
 TODO: extract arg types before clearShapes
 - assess performance
 
+TODO: remove type for value argument of setProp?
+- also hitting limit in rt_se
+  - but this is actually useful?
+  - not so useful, only the most common types make a real difference
+
 TODO: avoid passing/writing type tags when known in specialization
 - Must verify that passed types are known in entry version we get
-
-TODO: remove type for value argument of setProp?
-
-TODO: assess performance with multiple primitive entry points for fast calls
 
 Next blog post: mention improved results across the board
 - Title: Better than Perfect?
@@ -143,33 +136,27 @@ Next blog post: mention improved results across the board
 - After thesis, possibly postdoc
   - May be able to extend & improve Higgs further after PhD
 
-Reevaluate type tests eliminated in DYLA build
+FIXME: "123".replace("456", "789"); => 7893
+- Fix on master, add test
 
-TODO: arg type prop for fast calls
+TODO: assess performance with multiple entry points for fast calls
+- num versions, code size
+- perf on nocomptime
 
-    // Get the argument value type
-    auto argTypes = new ValType[fun.numParams];
-    for (size_t argIdx = 0; argIdx < numArgs; ++argIdx)
-        argTypes[argIdx] = st.getType(instr.getArg(1 + argIdx));
+2015-01-11 Meeting:
+- With intra only, eliminate 70% of type tests
+- With intra + typed shapes, eliminate 84% of type tests
+- With inter, this rises to 87%
+- Fixed hacks wrt function entry stubs
+  - tried to have generic entry stubs
+  - now specialized per-function, like branch stubs
+- Type test effect of interp BBV for dynamic calls:
 
-    /*
-    writeln(instr);
-    foreach (idx, type; argTypes)
-    {
-        writefln(
-            "  %s %s %s",
-            fun.ast.params[idx],
-            (type.tagKnown? to!string(type.tag):"unknown"),
-            (type.shapeKnown? "shape_known":"unknown")
-        );
-    }
-    */
+TODO: reevaluate type tests eliminated in DYLA build
 
-    // Create a code gen state taking into account the argument types
-    auto entrySt = new CodeGenState(fun, argTypes);
+Try benchmark.py
 
-    // Request an instance for the function entry block
-    auto entryVer = getBlockVersion(fun.entryBlock, entrySt);
+commit
 
 
 
@@ -177,6 +164,16 @@ TODO: arg type prop for fast calls
 
 
 
+
+
+[DONE] TODO: arg type prop for fast calls
+- Undef args missing
+
+[DONE] FIXME: issue with concat, fix on master, add test
+hw = "h".concat(2);
+hw.length
+- add concat test
+- test replace
 
 [DONE] FIXME: entryCode pointer must be set in compile(), otherwise we crash, why?
 - stub expects IR to be in stub form, closure ptr on top
