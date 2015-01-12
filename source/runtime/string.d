@@ -201,7 +201,7 @@ Compute the hash value for a given string object
 */
 uint32 compStrHash(refptr str)
 {
-    auto len = str_get_len(str);
+    auto len = str_get_len(str) * uint16_t.sizeof;
     auto ptr = str + str_ofs_data(null, 0);
 
     uint32 hashCode = cast(uint32_t)murmurHash64A(ptr, len);
