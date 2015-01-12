@@ -56,16 +56,13 @@ function test_lit()
 
 function test_ctor()
 {
-    if (String(5) != '5')
-        return 1;
+    assert (String(5) === '5')
 
-    if (String('foo') !== 'foo')
-        return 2;
+    assert (String('foo') === 'foo')
 
-    if (String(new String('foo')) !== 'foo')
-        return 3;
+    assert (String(new String('foo')) === 'foo')
 
-    return 0;
+    assert (String(new String()) === '')
 }
 
 function test_toString()
@@ -380,9 +377,7 @@ function test()
     if (r != 0)
         return 100 + r;
 
-    var r = test_ctor();
-    if (r != 0)
-        return 200 + r;
+    test_ctor();
 
     var r = test_toString();
     if (r != 0)
