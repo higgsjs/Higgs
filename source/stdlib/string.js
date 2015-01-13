@@ -436,12 +436,15 @@ function string_replace(searchValue, replaceValue)
     {
         var pos = this.indexOf(searchValue);
 
+        if (pos === -1)
+            return this;
+
         if (typeof replaceValue === "function")
         {
             var ret = replaceValue(searchValue, pos, this.toString());
 
             return this.substring(0, pos).concat(
-                new String(ret).toString(),
+                String(ret),
                 this.substring(pos + $rt_str_get_len(searchValue))
             );
         }

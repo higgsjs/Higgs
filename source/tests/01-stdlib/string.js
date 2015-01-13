@@ -255,6 +255,8 @@ function test_replace()
 {
     assert ('foobif'.replace('oo', 'oobar') === 'foobarbif')
 
+    assert ('123'.replace('456', '789') === '123');
+
     assert ('foobar'.replace(/(.)\1/, '$1') === 'fobar')
 
     assert ('foobar'.replace(/(.)/g, '$1$1') === 'ffoooobbaarr')
