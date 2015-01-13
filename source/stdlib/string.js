@@ -389,10 +389,10 @@ function string_match(regexp)
 {
     var re;
 
-    if (regexp instanceof RegExp)
+    if (regexp instanceof $rt_RegExp)
         re = regexp;
     else
-        re = new RegExp(regexp);
+        re = new $rt_RegExp(regexp);
 
     if (re.global)
     {
@@ -622,10 +622,10 @@ function string_search(regexp)
     var globalSave;
     var lastIndexSave;
 
-    if (regexp instanceof RegExp)
+    if (regexp instanceof $rt_RegExp)
         re = regexp;
     else
-        re = new RegExp(regexp);
+        re = new $rt_RegExp(regexp);
 
     globalSave = re.global;
     lastIndexSave = re.lastIndex;
@@ -664,7 +664,7 @@ function string_split(separator, limit)
         return res;
     }
 
-    if (separator instanceof RegExp)
+    if (separator instanceof $rt_RegExp)
     {
         var start  = 0,
             string = this;
