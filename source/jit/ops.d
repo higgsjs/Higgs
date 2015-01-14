@@ -1741,6 +1741,21 @@ void gen_call_prim(
         astToIR(fun.ast, fun);
     }
 
+    // Get the argument value type
+    auto argTypes = new ValType[fun.numParams];
+    for (size_t argIdx = 0; argIdx < numArgs; ++argIdx)
+        argTypes[argIdx] = st.getType(instr.getArg(1 + argIdx));
+
+    // Create a code gen state taking into account the argument types
+    auto entrySt = new CodeGenState(
+        fun,
+        ValType(),
+        argTypes
+    );
+
+    // Request an instance for the function entry block
+    auto entryVer = getBlockVersion(fun.entryBlock, entrySt);
+
     // Copy the function arguments in reverse order
     for (size_t i = 0; i < numArgs; ++i)
     {
@@ -1788,21 +1803,6 @@ void gen_call_prim(
     // Push space for the callee arguments and locals
     as.sub(X86Opnd(tspReg), X86Opnd(fun.numLocals));
     as.sub(X86Opnd(wspReg), X86Opnd(8 * fun.numLocals));
-
-    // Get the argument value type
-    auto argTypes = new ValType[fun.numParams];
-    for (size_t argIdx = 0; argIdx < numArgs; ++argIdx)
-        argTypes[argIdx] = st.getType(instr.getArg(1 + argIdx));
-
-    // Create a code gen state taking into account the argument types
-    auto entrySt = new CodeGenState(
-        fun,
-        ValType(),
-        argTypes
-    );
-
-    // Request an instance for the function entry block
-    auto entryVer = getBlockVersion(fun.entryBlock, entrySt);
 
     ver.genCallBranch(
         st,
@@ -1888,6 +1888,26 @@ void gen_call(
 
         // Compute the number of locals in this frame
         auto frameSize = fun.numLocals + numExtra;
+
+        // Get the argument value type
+        auto argTypes = new ValType[fun.numParams];
+        for (size_t argIdx = 0; argIdx < argTypes.length; ++argIdx)
+        {
+            if (argIdx < numArgs)
+                argTypes[argIdx] = st.getType(instr.getArg(2 + argIdx));
+            else
+                argTypes[argIdx] = ValType(UNDEF);
+        }
+
+        // Create a code gen state taking into account the argument types
+        auto entrySt = new CodeGenState(
+            fun,
+            st.getType(instr.getArg(1)),
+            argTypes
+        );
+
+        // Request an instance for the function entry block
+        auto entryVer = getBlockVersion(fun.entryBlock, entrySt);
 
         // Copy the function arguments supplied
         for (int32_t i = 0; i < numArgs; ++i)
@@ -1977,26 +1997,6 @@ void gen_call(
         // Push space for the callee arguments and locals
         as.sub(X86Opnd(tspReg), X86Opnd(frameSize));
         as.sub(X86Opnd(wspReg), X86Opnd(8 * frameSize));
-
-        // Get the argument value type
-        auto argTypes = new ValType[fun.numParams];
-        for (size_t argIdx = 0; argIdx < argTypes.length; ++argIdx)
-        {
-            if (argIdx < numArgs)
-                argTypes[argIdx] = st.getType(instr.getArg(2 + argIdx));
-            else
-                argTypes[argIdx] = ValType(UNDEF);
-        }
-
-        // Create a code gen state taking into account the argument types
-        auto entrySt = new CodeGenState(
-            fun,
-            st.getType(instr.getArg(1)),
-            argTypes
-        );
-
-        // Request an instance for the function entry block
-        auto entryVer = getBlockVersion(fun.entryBlock, entrySt);
 
         ver.genCallBranch(
             st,

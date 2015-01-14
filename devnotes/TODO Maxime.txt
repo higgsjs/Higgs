@@ -98,6 +98,7 @@ TODO: e-mail Jan, discuss grad timeline, research interests
   - could also resubmit original BBV paper if necessary
 - Which type tests are not eliminated with 5 versions in large benchmarks?
 - Almost no slow calls left? Verify
+- Passing shapes across function calls, not too effective
 - Next steps:
   - threading global obj
   - argc const prop? may need to rework reg alloc
@@ -107,8 +108,6 @@ TODO: look at entry points generated, frequency of calls to each
 TODO: look at benchmarks like earley-boyer, splay, where 5 versions is not
 enough. Where are we losing precision? Why is maxvers=20 working better?
 - log type tests not eliminated and frequency
-
-TODO: look at CSV output, almost no slow calls left?
 
 Next blog post: mention improved results across the board
 - Title: Better than Perfect?
@@ -134,17 +133,24 @@ TODO: try to remove FunParam from tag spilling and phi move handling
 TODO: look into McGill JavaScript benchmarks
 https://github.com/Sable/Ostrich
 
-TODO: extract arg types before clearShapes
+TODO: create microbenchmark for passing of shapes interprocedurally
+- should only do one shape test
+
+TODO: look at CSV output, almost no slow calls left?
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: extract arg types before clearShapes
 - will give us shapes and fptrs
-- assess performance, fast and slow calls
-
-commit
-
-
-
-
-
-
+- code size up to 292085 from 286K
+- num shape test is still quite high somehow
 
 [DONE] TODO: pass this value type to CodeGenState
 - before:
