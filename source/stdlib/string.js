@@ -8,7 +8,7 @@
  *  http://github.com/Tachyon-Team/Tachyon
  *
  *
- *  Copyright (c) 2011-2014, Universite de Montreal
+ *  Copyright (c) 2011-2015, Universite de Montreal
  *  All rights reserved.
  *
  *  This software is licensed under the following license (Modified BSD
@@ -41,34 +41,23 @@
  */
 
 /**
-@fileOverview
-Implementation of ECMAScript 5 string string routines.
-
-@author
-Bruno Dufour, Maxime Chevalier-Boisvert, Olivier Matz
-
-@copyright
-Copyright (c) 2010-2011 Tachyon Javascript Engine, All Rights Reserved
-*/
-
-/**
 @class 15.5.2 String constructor
 new String(value)
 String(value)
 */
 function String(value)
 {
+    // Convert the argument value to a string
+    var strVal = ($argc > 0)? $rt_toString(value):'';
+
     // If this is not a constructor call (new String)
     if ($rt_isGlobalObj(this))
     {
-        // Convert the value to a string
-        return $rt_toString(value);
+        // Return the string value
+        return strVal;
     }
     else
     {
-        // Convert the value to a string
-        var strVal = $rt_toString(value);
-
         // Store the value in the new object
         // TODO: this should be a hidden/internal property
         this.value = strVal;
@@ -400,10 +389,10 @@ function string_match(regexp)
 {
     var re;
 
-    if (regexp instanceof RegExp)
+    if (regexp instanceof $rt_RegExp)
         re = regexp;
     else
-        re = new RegExp(regexp);
+        re = new $rt_RegExp(regexp);
 
     if (re.global)
     {
@@ -447,12 +436,15 @@ function string_replace(searchValue, replaceValue)
     {
         var pos = this.indexOf(searchValue);
 
+        if (pos === -1)
+            return this;
+
         if (typeof replaceValue === "function")
         {
             var ret = replaceValue(searchValue, pos, this.toString());
 
             return this.substring(0, pos).concat(
-                new String(ret).toString(),
+                String(ret),
                 this.substring(pos + $rt_str_get_len(searchValue))
             );
         }
@@ -630,10 +622,10 @@ function string_search(regexp)
     var globalSave;
     var lastIndexSave;
 
-    if (regexp instanceof RegExp)
+    if (regexp instanceof $rt_RegExp)
         re = regexp;
     else
-        re = new RegExp(regexp);
+        re = new $rt_RegExp(regexp);
 
     globalSave = re.global;
     lastIndexSave = re.lastIndex;
@@ -672,7 +664,7 @@ function string_split(separator, limit)
         return res;
     }
 
-    if (separator instanceof RegExp)
+    if (separator instanceof $rt_RegExp)
     {
         var start  = 0,
             string = this;
