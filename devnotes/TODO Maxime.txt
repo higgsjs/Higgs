@@ -95,22 +95,18 @@ TODO: e-mail Jan, discuss grad timeline, research interests
 
 2015-01-1X Meeting:
 - Passing shapes across calls, makes only small difference in shape tests
+  - Works for set prop just before call
+  - If in a loop with a call, lose shapes for each call, test each iteration
 - Fixed issue with slow calls in string and array libs affecting fasta benchmark
 - Very few calls with unknown targets
   - Interprocedural BBV cut them down by more than half
   - v8-raytrace has many because of apply calls
-- TODO: Which type tests are not eliminated with 5 versions in large benchmarks?
+- *** TODO: Which type tests are not eliminated with 5 versions in large benchmarks? ***
 - May not have DYLA this year, but there is OOPSLA, March 25th
   - could also resubmit original BBV paper if necessary
 - Next steps:
   - threading global obj
   - argc const prop? may need to rework reg alloc
-
-TODO: look at entry points generated, frequency of calls to each
-
-TODO: look at benchmarks like earley-boyer, splay, where 5 versions is not
-enough. Where are we losing precision? Why is maxvers=20 working better?
-- log type tests not eliminated and frequency
 
 Next blog post: mention improved results across the board
 - Title: Better than Perfect?
@@ -124,6 +120,12 @@ Next blog post: mention improved results across the board
     - Overcoming some performance limitations, suboptimal design choices
   - Image-based system, more self-hosted, compilation time less relevant
   - Postdoc goals, to publish, need to think in terms of publications
+
+TODO: look at entry points generated, frequency of calls to each
+
+TODO: look at benchmarks like earley-boyer, splay, where 5 versions is not
+enough. Where are we losing precision? Why is maxvers=20 working better?
+- log type tests not eliminated and frequency
 
 TODO: look at GC, can we make it deal with visible arg values like all other values?
 - if so, fix and commit
@@ -139,15 +141,16 @@ https://github.com/Sable/Ostrich
 TODO: create microbenchmark for passing of shapes interprocedurally
 - should only do one shape test
 
+FIXME: why doesn't getProp get us a shape to pass?
+- shape prop on get seems broken! doesn't ever get us any shapes
 
 
 
 
 
 
-
-
-
+[DONE] FIXME: asmString prints nothing
+- add test that string length is above zero in 02-regress
 
 [DONE] TODO: string-fasta has many slow calls, why is that?
 ./higgs --stats benchmarks/sunspider/string-fasta.js

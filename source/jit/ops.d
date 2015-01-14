@@ -5140,20 +5140,8 @@ void gen_get_asm_str(
 
         auto fun = getFunPtr(closPtr);
 
-        string str;
-
-        // If this function has compiled code
-        if (fun.versionMap.length > 0)
-        {
-            // Request an instance for the function entry block
-            auto entryVer = getBlockVersion(
-                fun.entryBlock,
-                new CodeGenState(fun)
-            );
-
-            // Generate a string representation of the code
-            str ~= asmString(fun, entryVer, vm.execHeap);
-        }
+        // Generate a string representation of the code
+        string str = asmString(fun);
 
         // Get a string object for the output
         auto strObj = getString(vm, to!wstring(str));

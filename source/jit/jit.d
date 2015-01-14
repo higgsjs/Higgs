@@ -1839,9 +1839,15 @@ class BlockVersion : CodeFragment
 /**
 Produce a string representation of the code generated for a function
 */
-string asmString(IRFunction fun, CodeFragment entryFrag, CodeBlock execHeap)
+string asmString(IRFunction fun)
 {
-    auto workList = [entryFrag];
+    auto execHeap = vm.execHeap;
+
+    // List of fragments to be visited, initially all entry points
+    auto workList = cast(CodeFragment[])fun.versionMap.get(fun.entryBlock, []);
+
+    // List of visited fragments
+    CodeFragment[] fragList;
 
     void queue(CodeFragment frag, CodeFragment target)
     {
@@ -1858,8 +1864,6 @@ string asmString(IRFunction fun, CodeFragment entryFrag, CodeBlock execHeap)
 
         workList ~= target;
     }
-
-    CodeFragment[] fragList;
 
     // Until the work list is empty
     while (workList.empty is false)
