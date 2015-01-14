@@ -78,7 +78,7 @@ Internal string functions
 
 function string_internal_toCharCodeArray(x)
 {
-    var s = x.toString();
+    var s = $rt_toString(x);
 
     var a = [];
     a.length = s.length;
@@ -444,14 +444,15 @@ function string_replace(searchValue, replaceValue)
             var ret = replaceValue(searchValue, pos, this.toString());
 
             return this.substring(0, pos).concat(
-                String(ret),
+                $rt_toString(ret),
                 this.substring(pos + $rt_str_get_len(searchValue))
             );
         }
         else
         {
-            return this.substring(0, pos).concat(
-                replaceValue.toString(),
+            return (
+                this.substring(0, pos) +
+                $rt_toString(replaceValue) +
                 this.substring(pos + $rt_str_get_len(searchValue))
             );
         }
@@ -731,7 +732,7 @@ function string_split(separator, limit)
 */
 function string_substring(start, end)
 {
-    var source = this.toString();
+    var source = $rt_toString(this);
     var length = $rt_str_get_len(source);
 
     if (!$ir_is_int32(start))
@@ -822,12 +823,13 @@ function string_toLowerCase()
     for (var i = 0; i < a.length; i++)
     {
         var c = a[i];
+
         // FIXME: support full Unicode
         if (c > 255) error("Only ASCII characters are currently supported");
 
-        if ((c >= 65 && c <= 90)
-                || (c >= 192 && c <= 214)
-                || (c >= 216 && c <= 222))
+        if ((c >= 65 && c <= 90) ||
+            (c >= 192 && c <= 214) ||
+            (c >= 216 && c <= 222))
         {
             a[i] = c + 32;
         }

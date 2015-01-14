@@ -95,21 +95,16 @@ Array.isArray = function (arg)
 
 (function () {
 
-function array_toObject(x)
-{
-    return x;
-}
-
 function array_toString()
 {
-    var o = array_toObject(this);
+    var o = this;
 
     return o.join(',');
 }
 
 function array_concat()
 {
-    var o = array_toObject(this);
+    var o = this;
     var len = o.length;
 
     for (var i=arguments.length-1; i>=0; i--)
@@ -144,7 +139,7 @@ function array_concat()
 
 function array_join(separator)
 {
-    var o = array_toObject(this);
+    var o = this;
 
     if (separator === undefined)
         separator = ",";
@@ -180,7 +175,7 @@ function array_join(separator)
 
 function array_pop()
 {
-    var o = array_toObject(this);
+    var o = this;
     var len = o.length;
 
     if (len === 0)
@@ -195,7 +190,7 @@ function array_pop()
 
 function array_push()
 {
-    var o = array_toObject(this);
+    var o = this;
     var len = o.length;
 
     for (var i = 0; i < $argc; i++)
@@ -209,7 +204,7 @@ function array_reverse()
     // This implementation of reverse assumes that no element of the
     // array is deleted.
 
-    var o = array_toObject(this);
+    var o = this;
     var len = o.length;
     var lo = 0;
     var hi = len - 1;
@@ -231,7 +226,7 @@ function array_shift()
     // This implementation of shift assumes that no element of the
     // array is deleted.
 
-    var o = array_toObject(this);
+    var o = this;
     var len = o.length;
 
     if (len === 0)
@@ -250,7 +245,7 @@ function array_shift()
 
 function array_slice(start, end)
 {
-    var o = array_toObject(this);
+    var o = this;
     var len = o.length;
 
     if (start === undefined)
@@ -304,7 +299,7 @@ function array_slice(start, end)
 
 function array_sort(comparefn)
 {
-    var o = array_toObject(this);
+    var o = this;
     var len = o.length;
 
     if (comparefn === undefined)
@@ -416,7 +411,7 @@ function array_sort_comparefn_default(x, y)
 
 function array_splice(start, deleteCount)
 {
-    var o = array_toObject(this);
+    var o = this;
     var len = o.length;
 
     if (start === undefined)
@@ -473,7 +468,7 @@ function array_splice(start, deleteCount)
 
 function array_unshift()
 {
-    var o = array_toObject(this);
+    var o = this;
     var len = o.length;
     var argCount = arguments.length;
 
@@ -490,7 +485,7 @@ function array_unshift()
 
 function array_indexOf(searchElement, fromIndex)
 {
-    var o = array_toObject(this);
+    var o = this;
     var len = o.length;
 
     if ($argc <= 1)
@@ -514,7 +509,7 @@ function array_indexOf(searchElement, fromIndex)
 
 function array_lastIndexOf(searchElement, fromIndex)
 {
-    var o = array_toObject(this);
+    var o = this;
     var len = o.length;
 
     if (arguments.length <= 1 || fromIndex >= len)
@@ -534,7 +529,7 @@ function array_every(
     thisArg
 )
 {
-    var o = array_toObject(this);
+    var o = this;
     var len = o.length;
 
     for (var i = 0; i < len; i++)
@@ -548,7 +543,7 @@ function array_some(
     thisArg
 )
 {
-    var o = array_toObject(this);
+    var o = this;
     var len = o.length;
 
     for (var i = 0; i < len; i++)
@@ -559,7 +554,7 @@ function array_some(
 
 function array_forEach(callbackfn, thisArg)
 {
-    var o = array_toObject(this);
+    var o = this;
     var len = o.length;
 
     for (var i=0; i<len; i++)
@@ -568,7 +563,7 @@ function array_forEach(callbackfn, thisArg)
 
 function array_map(callbackfn, thisArg)
 {
-    var o = array_toObject(this);
+    var o = this;
     var len = o.length;
 
     var a = new Array(len);
@@ -581,7 +576,7 @@ function array_map(callbackfn, thisArg)
 
 function array_filter(callbackfn, thisArg)
 {
-    var o = array_toObject(this);
+    var o = this;
     var len = o.length;
 
     var a = [];
@@ -598,7 +593,7 @@ function array_filter(callbackfn, thisArg)
 
 function array_reduce_generic(callbackfn, initialValue, start, end, step)
 {
-    var o = array_toObject(this);
+    var o = this;
     var len = o.length;
     var i = start;
     var initVal = initialValue;
