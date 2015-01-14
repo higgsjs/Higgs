@@ -7,6 +7,9 @@ Multiple entry points per function:
   - When going to specialized entry, could we compile immediately?
   - What do we do right now, for specialized calls?
 
+TODO: think about argc const prop
+- would need const spilling system, unless special-casing just for argc?
+
 Global object threading:
 - Should wait before doing this, multiple entry points first
 - Needs to be phi-like or a pseudo-argument so the input ctx can provide it

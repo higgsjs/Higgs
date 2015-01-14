@@ -178,7 +178,27 @@ TODO: try to implement inline array for instr args, phi args
 TODO: Can we free one scr reg to reduce spills? May help nbody
 - who uses scrRegs[2]?
 
+TODO: getter and setter syntax
+- needed for hash map benchmark
+- Easy to recognize the grammar, but need to modify the AST
+  - Use a struct for object literal property descriptors
+- Probably want some kind of runtime call to define getters and setters
 
+TODO: FP machine
+- x and y inputs, in [-1, 1]
+- function to compute an output from input coordinates
+- iterative computation, fixed itr count
+- table of operators to compute each variable
+  - input variables are fixed
+
+TODO: Higgs is a Typed Architecture
+- Presentation, argument, angry guy, red face
+  - Photo
+- Link to repr classic paper
+- Drawing
+- Optimization
+- Links to source
+- Reg alloc and future
 
 
 

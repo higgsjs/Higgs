@@ -42,31 +42,9 @@ Type Specialization without Type Analysis
 
 ------------------------------------------------------------------------------
 
-TODO: Higgs is a Typed Architecture
-- Presentation, argument, angry guy, red face
-  - Photo
-- Link to repr classic paper
-- Drawing
-- Optimization
-- Links to source
-- Reg alloc and future
-
 TODO: look into freeing vmReg
 - where is it used?
 TODO: can we load directly from moffs64?
-
-TODO: getter and setter syntax
-- needed for hash map benchmark
-- Easy to recognize the grammar, but need to modify the AST
-  - Use a struct for object literal property descriptors
-- Probably want some kind of runtime call to define getters and setters
-
-TODO: FP machine
-- x and y inputs, in [-1, 1]
-- function to compute an output from input coordinates
-- iterative computation, fixed itr count
-- table of operators to compute each variable
-  - input variables are fixed
 
 TODO: look into improving template strings, completing further
 `string text ${expression} string text`
@@ -84,6 +62,7 @@ function tag(stringArr, ...values)
 
 ------------------------------------------------------------------------------
 
+OOPSLA - March 25th
 DYLA - typed shapes paper
 - can often know at compile time if obj needs to be extended or not
   - simplifies spill/GC/bailout issue
@@ -96,11 +75,6 @@ DYLA - typed shapes paper
 - for global object, can determine prop idx, lower bound on global obj
   size at compilation time
 
-Interp BBV next step: threading global object?
-
-TODO: e-mail Jan, discuss grad timeline, research interests
-- Extending Higgs & BBV work?
-
 TODO: recontact Laurie, ask for advice, discuss
 - PhD Completion ~Dec 2015
 - NSERC PDF deadline ~Oct 15, can only apply once, notified by end of Jan
@@ -109,52 +83,60 @@ TODO: recontact Laurie, ask for advice, discuss
   - Marc says: combined funding?
   - Not possible with PDF, only as backup plan
 - Marc says: big rewrite/refactoring of Higgs?
-  - Lazy IR gen?
+  - Lazy IR gen, incremental inlining, good for self-hosting
 - Marc thinks Boston is better for career
   - thesis topic?
+Postdoc topic woes: ES6 is coming. Need to think in terms of publications?
+- what do you actually want to achieve?
+- self-hosted system with image may be more interesting
 
-DConf: e-mail walter, ask if travel funding possible
+TODO: e-mail Jan, discuss grad timeline, research interests
+- Extending Higgs and BBV work? Implement BBV for R?
 
-TODO: look into McGill benchmarks
+2015-01-1X Meeting:
+- May not have DYLA this year, but there is OOPSLA, March 25th
+  - could also resubmit original BBV paper if necessary
+- Which type tests are not eliminated with 5 versions in large benchmarks?
+- Almost no slow calls left? Verify
+- Next steps:
+  - threading global obj
+  - argc const prop? may need to rework reg alloc
 
-TODO: extract arg types before clearShapes
-- assess performance
+TODO: look at entry points generated, frequency of calls to each
 
-TODO: remove type for value argument of setProp?
-- also hitting limit in rt_se
-  - but this is actually useful?
-  - not so useful, only the most common types make a real difference
+TODO: look at benchmarks like earley-boyer, splay, where 5 versions is not
+enough. Where are we losing precision? Why is maxvers=20 working better?
+- log type tests not eliminated and frequency
 
-TODO: avoid passing/writing type tags when known in specialization
-- Must verify that passed types are known in entry version we get
+TODO: look at CSV output, almost no slow calls left?
 
 Next blog post: mention improved results across the board
 - Title: Better than Perfect?
 - Less versions, less type tests, much bigger speedups
-- Will begin work on interprocedural basic block versioning imminently
 - For thesis, comparison against perfect analysis
+- Beginning work on interprocedural basic block versioning
+  - Great results!
 - After thesis, possibly postdoc
   - May be able to extend & improve Higgs further after PhD
+    - Lazy IR gen, incremental compilation
+    - Overcoming some performance limitations, suboptimal design choices
+  - Image-based system, more self-hosted, compilation time less relevant
+  - Postdoc goals, to publish, need to think in terms of publications
 
-FIXME: "123".replace("456", "789"); => 7893
-- Fix on master, add test
+TODO: look at GC, can we make it deal with visible arg values like all other values?
+- if so, fix and commit
+- test with different maxvers parameters
 
-TODO: assess performance with multiple entry points for fast calls
-- num versions, code size
-- perf on nocomptime
+TODO: try to remove FunParam from tag spilling and phi move handling
+- tagWritten flag should be sufficient
+- code size should remain the same ***
 
-2015-01-11 Meeting:
-- With intra only, eliminate 70% of type tests
-- With intra + typed shapes, eliminate 84% of type tests
-- With inter, this rises to 87%
-- Fixed hacks wrt function entry stubs
-  - tried to have generic entry stubs
-  - now specialized per-function, like branch stubs
-- Type test effect of interp BBV for dynamic calls:
+TODO: look into McGill JavaScript benchmarks
+https://github.com/Sable/Ostrich
 
-TODO: reevaluate type tests eliminated in DYLA build
-
-Try benchmark.py
+TODO: extract arg types before clearShapes
+- will give us shapes and fptrs
+- assess performance, fast and slow calls
 
 commit
 
@@ -164,7 +146,62 @@ commit
 
 
 
+[DONE] TODO: pass this value type to CodeGenState
+- before:
+    code size (bytes): 286970
+    max versions: 21
+    num blocks: 6418
+    num versions: 7557
+    total type tests: 261836
+- after:
+    code size (bytes): 286625
+    num blocks: 6417
+    num versions: 7560
+    total type tests: 232911
 
+[DONE] 2015-01-13 Meeting Marc & Baptiste:
+- Baptiste:
+  - working on completing compiler to support benchmarks
+  - discussing table of function entry point type signatures
+- Higgs progress:
+  - Added tag prop to "this"
+  - Started work on not writing tags when calling
+    - May need to refactor register allocator
+- Who is the new student? Working on obj alloc in JS?
+
+[DONE] FIXME: "123".replace("456", "789"); => 7893
+- Fix on master, add test
+
+[DONE] TODO: fast calls, pass along type tag for thisArg when known
+- should create entrySt, request entryVer before copying args
+type tests before: 261836
+type tests after: 234719
+- code size increase a tiny bit more
+
+[DONE] TODO: assess nocomptime performance with multiple entry points for fast calls
+./benchmark.py --vm_cmd="./higgs" --bench_list="benchmarks/nocomptime/benchmark-list.csv"
+- a few percent faster
+
+[DONE] 2015-01-11 Meeting:
+- With intra only, eliminate 70% of type tests
+- With intra + typed shapes, eliminate 84% of type tests
+- With inter, this rises to 87%
+- Fixed hacks wrt function entry stubs
+  - tried to have generic entry stubs
+  - now specialized per-function, like branch stubs
+- Interp BBV for dynamic calls working, tags only for now:
+  - Type tests less than 50% of without interp
+  - Eliminating 93% of type tag tests on average
+    - already 100% on some benchmarks!
+  - Num versions increases by 4.6%
+  - Code size increases by 2.7%
+    => but not passing type tags will help
+    => probably largely due to explosion in few specific functions
+  - Limit of 5 versions is not quite enough to reach maximum potential
+
+[DONE] TODO: reevaluate type tests eliminated in DYLA build
+- Eliminating 93% of type tag tests on average
+- Already 100% on some benchmarks!
 
 [DONE] TODO: arg type prop for fast calls
 - Undef args missing

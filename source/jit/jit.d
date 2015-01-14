@@ -322,7 +322,11 @@ class CodeGenState
     /**
     Constructor for a function entry code generation state
     */
-    this(IRFunction fun, ValType[] argTypes = null)
+    this(
+        IRFunction fun,
+        ValType thisType = ValType(),
+        ValType[] argTypes = null
+    )
     {
         this.fun = fun;
 
@@ -334,10 +338,13 @@ class CodeGenState
         foreach (param; fun.paramVals)
             mapToStack(param);
 
-        // Set the tags for the untagged hidden argument values
+        // Set type tags for the untagged hidden argument values
         setTag(fun.raVal, Tag.RETADDR);
         setTag(fun.closVal, Tag.CLOSURE);
         setTag(fun.argcVal, Tag.INT32);
+
+        // Set the type for the "this" value
+        setType(fun.thisVal, thisType);
 
         // If argument types were specified
         if (argTypes !is null)

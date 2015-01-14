@@ -1794,21 +1794,12 @@ void gen_call_prim(
     for (size_t argIdx = 0; argIdx < numArgs; ++argIdx)
         argTypes[argIdx] = st.getType(instr.getArg(1 + argIdx));
 
-    /*
-    writeln(instr);
-    foreach (idx, type; argTypes)
-    {
-        writefln(
-            "  %s %s %s",
-            fun.ast.params[idx],
-            (type.tagKnown? to!string(type.tag):"unknown"),
-            (type.shapeKnown? "shape_known":"unknown")
-        );
-    }
-    */
-
     // Create a code gen state taking into account the argument types
-    auto entrySt = new CodeGenState(fun, argTypes);
+    auto entrySt = new CodeGenState(
+        fun,
+        ValType(),
+        argTypes
+    );
 
     // Request an instance for the function entry block
     auto entryVer = getBlockVersion(fun.entryBlock, entrySt);
@@ -1997,21 +1988,12 @@ void gen_call(
                 argTypes[argIdx] = ValType(UNDEF);
         }
 
-        /*
-        writeln(instr);
-        foreach (idx, type; argTypes)
-        {
-            writefln(
-                "  %s %s %s",
-                fun.ast.params[idx],
-                (type.tagKnown? to!string(type.tag):"unknown"),
-                (type.shapeKnown? "shape_known":"unknown")
-            );
-        }
-        */
-
         // Create a code gen state taking into account the argument types
-        auto entrySt = new CodeGenState(fun, argTypes);
+        auto entrySt = new CodeGenState(
+            fun,
+            st.getType(instr.getArg(1)),
+            argTypes
+        );
 
         // Request an instance for the function entry block
         auto entryVer = getBlockVersion(fun.entryBlock, entrySt);
