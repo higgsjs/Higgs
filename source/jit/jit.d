@@ -381,7 +381,7 @@ class CodeGenState
         // in a way that best matches the predecessor state
         for (auto phi = branch.target.firstPhi; phi !is null; phi = phi.next)
         {
-            if (branch.branch is null || phi.hasNoUses)
+            if (phi.hasNoUses)
                 continue;
 
             // Get the phi argument

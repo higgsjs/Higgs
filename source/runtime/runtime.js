@@ -2282,6 +2282,9 @@ function $rt_getPropField(base, propStr)
     {
         var obj = base;
 
+        // FIXME: BBV cannot get object shape from loop construct
+        // shape is found for phi node inside loop but not propagated
+
         // Until we reach the end of the prototype chain
         for (;;)
         {
