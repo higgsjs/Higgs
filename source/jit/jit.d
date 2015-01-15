@@ -2108,11 +2108,16 @@ void genBranchMoves(
         assert (succVal !is null);
         assert (predVal !is null);
 
-        bool moveAdded = false;
+        auto predSt = predState.getState(succVal);
+
+        // Check if the predecessor is the same value and had its tag written
+        auto predWritten = predVal is succVal && predSt.tagWritten;
 
         // Test if the successor value is a parameter
         // We don't need to move parameter values to the stack
         bool succParam = cast(FunParam)succVal !is null;
+
+        bool moveAdded = false;
 
         // If the pred value is a string
         if (auto predStr = cast(IRString)predVal)
@@ -2145,14 +2150,11 @@ void genBranchMoves(
 
         if (srcTagOpnd != dstTagOpnd &&
             !dstTagOpnd.isImm &&
-            !(succParam && dstTagOpnd.isMem)) // not a memory operand with succParam (tag written)
+            !(dstTagOpnd.isMem && predWritten))
         {
             moveList ~= Move(dstTagOpnd, srcTagOpnd);
             moveAdded = true;
         }
-
-        // Check if the predecessor is the same value and had its type written
-        auto predWritten = predVal is succVal && predState.getState(succVal).tagWritten;
 
         // If the successor state requires the type be written and the
         // predecessor type was not written to the stack, then write the type

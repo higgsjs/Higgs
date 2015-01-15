@@ -148,22 +148,18 @@ TODO: look at GC, can we make it deal with visible arg values like all other val
 - if so, fix and commit
 - test with different maxvers parameters
 
-TODO: remove FunParam from tag spilling and phi move handling
+
+
+
+
+
+
+
+[DONE] TODO: remove FunParam from tag spilling and phi move handling
 - tagWritten flag should be sufficient
-- code size should remain the same ***
+- code size should remain the same
     before: 290301
-
-
-
-
-
-
-
-
-
-
-
-
+    after : 290283
 
 [DONE] TODO: create microbenchmark for passing of shapes interprocedurally
 - should only do one shape test
