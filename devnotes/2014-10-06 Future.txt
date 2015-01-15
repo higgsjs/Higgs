@@ -11,6 +11,12 @@ for many simple cases. Booleans come to mind. Constant shapes.
 
 Memory allocation of AST & IR nodes should be thought of from the beginning
 - Either zones or pools. Pools probably more flexible/safe.
+- Want representation as "flat" as possible, less pointer chasing
+  - Large flat array of instruction and label objects?
+- No blocks?
+  - Two branches possible, one means go straight to the next instr
+- Type tags, reg/slot alloc, metainf, should be encoded in the IR if possible
+  - instr output can specify reg,slot,tag
 
 Should do transformations at the IR level.
 - IR needs new constructs to integrate versioning
@@ -26,5 +32,15 @@ Incremental inlining at the IR level
 - If more stack slots are needed, could resize stack frame
   - Remap slots and invalidate all compiled blocks for the function
 
+Garbage collector, may want GC maps, live variables at GC-ing points along
+with known type tags so these don't need to be spilled.
+
 Should use the C stack, match call and return instructions
 - CPUs are optimized for this
+- Use full words for type tags, for speed and simplicity
+  - Reuse words in on-the-fly stack slot allocation
+- Want proper calling convention with registers for visible args
+  - Can assume that most fns do not use clos argument
+  - Pass argc in a reg, even though not used most of the time
+    - If not used, not touched
+  - Regs for words and types of first 3 args, maybe "this"

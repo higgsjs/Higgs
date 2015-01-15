@@ -591,7 +591,6 @@ Word gcForward(VM vm, Word word, Tag tag)
         case Tag.SHAPEPTR:
         auto shape = word.shapeVal;
         assert (shape !is null);
-        //visitShape(vm, shape);
         return word;
 
         // Return address
@@ -745,14 +744,6 @@ void visitStackRoots(VM vm)
             );
         }
 
-        bool valLive(IRDstValue val)
-        {
-            if (depth is 0)
-                return fun.liveInfo.liveBefore(val, curInstr);
-            else
-                return fun.liveInfo.liveAfter(val, curInstr);
-        }
-
         //writeln("visiting frame for: ", fun.getName(), " ", fun.ast.pos);
         //writeln(fun);
         //writeln("frame size: ", frameSize);
@@ -775,38 +766,34 @@ void visitStackRoots(VM vm)
             if (val is curInstr)
                 continue;
 
-            // Hidden argument values will be forwarded later
-            if (val is fun.closVal ||
-                val is fun.thisVal ||
-                val is fun.raVal   ||
-                val is fun.argcVal)
+            if (val is fun.closVal)
+            {
+                // Forward the closure pointer
+                // Note: the closure pointer is not type tagged
+                auto closIdx = fun.closVal.outSlot;
+                wsp[closIdx] = gcForward(vm, wsp[closIdx], Tag.CLOSURE);
                 continue;
+            }
+
+            if (val is fun.raVal)
+            {
+                // Forward the return address
+                // Note: the return address is not type tagged
+                auto raIdx = fun.raVal.outSlot;
+                wsp[raIdx] = gcForward(vm, wsp[raIdx], Tag.RETADDR);
+                continue;
+            }
+
+            if (val is fun.argcVal)
+            {
+                // The argument count doesn't need forwarding
+                continue;
+            }
 
             // Forward the value
             //writeln(val);
             forward(val.outSlot);
         }
-
-        // Forward the closure pointer
-        // Note: the closure pointer is not type tagged
-        if (valLive(fun.closVal))
-        {
-            //writeln("forwarding clos val");
-            auto closIdx = fun.closVal.outSlot;
-            wsp[closIdx] = gcForward(vm, wsp[closIdx], Tag.CLOSURE);
-        }
-
-        // Forward the "this" pointer
-        if (valLive(fun.thisVal))
-        {
-            //writeln("forwarding this val");
-            forward(fun.thisVal.outSlot);
-        }
-
-        // Forward the return address
-        // Note: the return address is not type tagged
-        auto raIdx = fun.raVal.outSlot;
-        wsp[raIdx] = gcForward(vm, wsp[raIdx], Tag.RETADDR);
 
         // Forward supernumerary arguments, if any
         size_t extraArgs = frameSize - fun.numLocals;

@@ -42,10 +42,6 @@ Type Specialization without Type Analysis
 
 ------------------------------------------------------------------------------
 
-TODO: look into freeing vmReg
-- where is it used?
-TODO: can we load directly from moffs64?
-
 TODO: look into improving template strings, completing further
 `string text ${expression} string text`
 tagExpr `string text ${expression} string text`
@@ -104,6 +100,9 @@ TODO: e-mail Jan, discuss grad timeline, research interests
 - Now very few calls with unknown targets
   - Interprocedural BBV cut them down by more than half
   - v8-raytrace has many because of apply calls
+- Refactored spills so function parameter types are written when needed
+  - Realization: GC should use GC maps, store known types, but this refactoring
+    may be problematic at the moment
 - *** TODO: Which type tests are not eliminated with 5 versions in large benchmarks? ***
 - May not have DYLA this year, but there is OOPSLA, March 25th
   - could also resubmit original BBV paper if necessary
@@ -127,11 +126,21 @@ Next blog post: mention improved results across the board
   - Postdoc goals, to publish, need to think in terms of publications
 
 Global object threading:
+- would be useful to have a pseudo-argument
 - do we want to actually pass it as a parameter?
   - right now, in functions using global obj, we extract it from the VM ptr
     at the function start
-- would be useful to have a pseudo-argument
+  - for runtime & known calls, can avoid passing when not used
+    - issue: any known call with normal calls inside will use the global obj
+- could fix a global object register, no need for a type tag
+  - also corresponding stack slot, but not spilled by default?
+  - get rid of vm reg first
 TODO: look at notes wrt global obj threading
+
+TODO: look into freeing vmReg
+- where is it used?
+
+TODO: can we load directly from moffs64 on x86-64?
 
 TODO: look at entry points generated, frequency of calls to each
 
@@ -142,18 +151,24 @@ enough. Where are we losing precision? Why is maxvers=20 working better?
 TODO: look into McGill JavaScript benchmarks
 https://github.com/Sable/Ostrich
 
-TODO: second attempt at not writing tags on calls?
+TODO: second attempt at not writing tags on calls, runtime calls only
+- runtime calls first, no worrying about arg mismatch or get_arg
 
-TODO: look at GC, can we make it deal with visible arg values like all other values?
+commit
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: look at GC, can we handle visible arg values like all other values?
 - if so, fix and commit
+- there is no special handling, arg tags expected to be spilled if live
 - test with different maxvers parameters
-
-
-
-
-
-
-
 
 [DONE] TODO: remove FunParam from tag spilling and phi move handling
 - tagWritten flag should be sufficient
