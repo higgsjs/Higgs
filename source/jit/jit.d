@@ -844,25 +844,22 @@ class CodeGenState
         // Mark the register as free
         gpRegMap[reg.regNo] = null;
 
-        // If the value is a function parameter,
-        // we don't actually need to spill it
-        if (cast(FunParam)regVal)
-            return;
+        // If the value is a function parameter, we don't need to
+        // spill the word value because it's already on the stack
+        if (!cast(FunParam)regVal)
+        {
+            // Spill the value currently in the register
+            if (opts.genasm)
+                as.comment("Spilling " ~ regVal.getName);
 
-        //writeln("spilling: ", regVal);
+            //as.printStr("spilling " ~ regVal.toString);
+            //as.printStr("spilling " ~ reg.toString);
+            //writefln("spilling: %s (%s)", regVal, reg);
+            auto mem = wordStackOpnd(regVal.outSlot);
+            as.mov(mem, reg.opnd(64));
+        }
 
-        auto mem = wordStackOpnd(regVal.outSlot);
-
-        //as.printStr("spilling " ~ regVal.toString);
-        //as.printStr("spilling " ~ reg.toString);
-        //writefln("spilling: %s (%s)", regVal.toString, reg);
-
-        // Spill the value currently in the register
-        if (opts.genasm)
-            as.comment("Spilling " ~ regVal.getName);
-        as.mov(mem, reg.opnd(64));
-
-        // If the type is known, spill it
+        // If the type is known and not written on the stack, spill it
         if (state.tagKnown && !state.tagWritten)
         {
             // Write the type tag to the type stack
@@ -900,16 +897,13 @@ class CodeGenState
         // For each value in the value map
         foreach (value, state; valMap)
         {
-            if (cast(FunParam)value)
-                continue;
-
             // If the value has a known type and is not in a register
             if (state.tagKnown && !state.tagWritten && !state.isReg)
             {
                 // If the value should be spilled
                 if (spillTest(liveInfo, value) is true)
                 {
-                    // Spill the type for this value
+                    // Spill the type tag for this value
                     as.mov(tagStackOpnd(value.outSlot), state.getTagOpnd());
                     valMap[value] = state.writeTag();
                 }
@@ -2145,30 +2139,26 @@ void genBranchMoves(
         }
 
         // Get the source and destination operands for the phi type
-        X86Opnd srcTypeOpnd = predState.getTagOpnd(predVal);
-        X86Opnd dstTypeOpnd = succState.getTagOpnd(succVal);
-        assert (!(opts.maxvers is 0 && !srcTypeOpnd.isImm && dstTypeOpnd.isImm));
+        X86Opnd srcTagOpnd = predState.getTagOpnd(predVal);
+        X86Opnd dstTagOpnd = succState.getTagOpnd(succVal);
+        assert (!(opts.maxvers is 0 && !srcTagOpnd.isImm && dstTagOpnd.isImm));
 
-        if (srcTypeOpnd != dstTypeOpnd &&
-            !dstTypeOpnd.isImm &&
-            !(succParam && dstTypeOpnd.isMem))
+        if (srcTagOpnd != dstTagOpnd &&
+            !dstTagOpnd.isImm &&
+            !(succParam && dstTagOpnd.isMem)) // not a memory operand with succParam (tag written)
         {
-            moveList ~= Move(dstTypeOpnd, srcTypeOpnd);
+            moveList ~= Move(dstTagOpnd, srcTagOpnd);
             moveAdded = true;
         }
-
-        // Get the successor value state
-        auto succState = succState.getState(succVal);
 
         // Check if the predecessor is the same value and had its type written
         auto predWritten = predVal is succVal && predState.getState(succVal).tagWritten;
 
-        // If the successor is not a function parameter and the successor
-        // state requires the type be written and the predecessor type was not
-        // written to the stack, then write the type
-        if (!succParam && !dstTypeOpnd.isMem && succState.tagWritten && !predWritten)
+        // If the successor state requires the type be written and the
+        // predecessor type was not written to the stack, then write the type
+        if (!dstTagOpnd.isMem && succSt.tagWritten && !predWritten)
         {
-            as.mov(tagStackOpnd(succVal.outSlot), succState.getTagOpnd());
+            as.mov(tagStackOpnd(succVal.outSlot), dstTagOpnd);
             moveAdded = true;
         }
 

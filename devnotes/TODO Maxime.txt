@@ -110,6 +110,8 @@ TODO: e-mail Jan, discuss grad timeline, research interests
 - Next steps:
   - threading global obj
   - argc const prop? may need to rework reg alloc
+  - shape-preserving calls
+  - since shape paper comes next, should prioritize shape opts
 
 Next blog post: mention improved results across the board
 - Title: Better than Perfect?
@@ -124,6 +126,13 @@ Next blog post: mention improved results across the board
   - Image-based system, more self-hosted, compilation time less relevant
   - Postdoc goals, to publish, need to think in terms of publications
 
+Global object threading:
+- do we want to actually pass it as a parameter?
+  - right now, in functions using global obj, we extract it from the VM ptr
+    at the function start
+- would be useful to have a pseudo-argument
+TODO: look at notes wrt global obj threading
+
 TODO: look at entry points generated, frequency of calls to each
 
 TODO: look at benchmarks like earley-boyer, splay, where 5 versions is not
@@ -133,26 +142,31 @@ enough. Where are we losing precision? Why is maxvers=20 working better?
 TODO: look into McGill JavaScript benchmarks
 https://github.com/Sable/Ostrich
 
+TODO: second attempt at not writing tags on calls?
+
 TODO: look at GC, can we make it deal with visible arg values like all other values?
 - if so, fix and commit
 - test with different maxvers parameters
 
-TODO: try to remove FunParam from tag spilling and phi move handling
+TODO: remove FunParam from tag spilling and phi move handling
 - tagWritten flag should be sufficient
 - code size should remain the same ***
+    before: 290301
 
-TODO: create microbenchmark for passing of shapes interprocedurally
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: create microbenchmark for passing of shapes interprocedurally
 - should only do one shape test
-
-
-
-
-
-
-
-
-
-
 
 [DONE] FIXME: why doesn't getProp get us a shape to pass?
 - shape prop on get seems broken! doesn't ever get us any shapes
