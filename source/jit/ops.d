@@ -98,11 +98,9 @@ void gen_get_arg(
     // Zero-extend the index to 64-bit
     as.mov(idxReg32, idxReg32);
 
-    // TODO: optimize for immediate idx, register opndOut
     // Copy the word value
     auto wordSlot = X86Opnd(64, wspReg, 8 * argSlot, 8, idxReg64.reg);
-    as.mov(scrRegs[1].opnd(64), wordSlot);
-    as.mov(opndOut, scrRegs[1].opnd(64));
+    as.genMove(opndOut, wordSlot, scrRegs[1].opnd(64));
 
     // Copy the type value
     auto typeSlot = X86Opnd(8, tspReg, 1 * argSlot, 1, idxReg64.reg);
@@ -1931,15 +1929,21 @@ void gen_call(
             );
             as.setWord(dstIdx, argOpnd);
 
-            // Copy the argument type
-            auto tagOpnd = st.getTagOpnd(
-                as,
-                instr,
-                instrArgIdx,
-                scrRegs[1].opnd(8),
-                true
-            );
-            as.setTag(dstIdx, tagOpnd);
+            // If the entry state doesn't know the type tag
+            if (i >= fun.numParams || 
+                fun.paramVals[i].hasNoUses ||
+                !entryVer.state.getType(fun.paramVals[i]).tagKnown)
+            {
+                // Copy the argument type
+                auto tagOpnd = st.getTagOpnd(
+                    as,
+                    instr,
+                    instrArgIdx,
+                    scrRegs[1].opnd(8),
+                    true
+                );
+                as.setTag(dstIdx, tagOpnd);
+            }
         }
 
         // Write undefined values for the missing arguments

@@ -151,13 +151,27 @@ enough. Where are we losing precision? Why is maxvers=20 working better?
 TODO: look into McGill JavaScript benchmarks
 https://github.com/Sable/Ostrich
 
-TODO: fix get_arg to take known types into account
+TODO: don't write tag for "this" when possible
 
-TODO: attempt not writing arg tags for dynamic calls
+FIXME: segfault on string test
+./higgs tests/01-stdlib/string.js
+- Issue with get_arg... arg can become not live, can't know which function entry
+  state we came from in get_arg
+- Force discipline of not using get_arg to access named args?
+  risky!... or impossible
+- Must mark function as using var args... special-casing needed
 
 
 
 
+
+
+
+
+
+[DONE] TODO: fix get_arg to take known types into account
+
+[DONE] TODO: attempt not writing arg tags for dynamic calls
 
 [DONE] TODO: second attempt at not writing tags on calls, runtime calls only
 - runtime calls first, no worrying about arg mismatch or get_arg
