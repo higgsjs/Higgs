@@ -151,19 +151,22 @@ enough. Where are we losing precision? Why is maxvers=20 working better?
 TODO: look into McGill JavaScript benchmarks
 https://github.com/Sable/Ostrich
 
-TODO: second attempt at not writing tags on calls, runtime calls only
+TODO: fix get_arg to take known types into account
+
+TODO: attempt not writing arg tags for dynamic calls
+
+
+
+
+
+[DONE] TODO: second attempt at not writing tags on calls, runtime calls only
 - runtime calls first, no worrying about arg mismatch or get_arg
-
-commit
-
-
-
-
-
-
-
-
-
+- no "this" arg to care about
+- code size before: 290283
+- code size after: code size (bytes): 290424
+- doesn't pay for itself with primitive calls only
+  - increased type tag spills
+- controlflow-recursive actually seems slower
 
 [DONE] TODO: look at GC, can we handle visible arg values like all other values?
 - if so, fix and commit

@@ -1756,11 +1756,11 @@ void gen_call_prim(
     // Request an instance for the function entry block
     auto entryVer = getBlockVersion(fun.entryBlock, entrySt);
 
-    // Copy the function arguments in reverse order
+    // Copy the function arguments
     for (size_t i = 0; i < numArgs; ++i)
     {
-        auto instrArgIdx = instr.numArgs - (1+i);
-        auto dstIdx = -(cast(int32_t)i + 1);
+        auto instrArgIdx = 1 + i;
+        auto dstIdx = -numArgs + cast(int32_t)i;
 
         // Copy the argument word
         auto argOpnd = st.getWordOpnd(
@@ -1774,15 +1774,19 @@ void gen_call_prim(
         );
         as.setWord(dstIdx, argOpnd);
 
-        // Copy the argument type
-        auto tagOpnd = st.getTagOpnd(
-            as,
-            instr,
-            instrArgIdx,
-            scrRegs[1].opnd(8),
-            true
-        );
-        as.setTag(dstIdx, tagOpnd);
+        // If the entry state doesn't know the type tag
+        if (!entryVer.state.getType(fun.paramVals[i]).tagKnown)
+        {
+            // Copy the argument type
+            auto tagOpnd = st.getTagOpnd(
+                as,
+                instr,
+                instrArgIdx,
+                scrRegs[1].opnd(8),
+                true
+            );
+            as.setTag(dstIdx, tagOpnd);
+        }
     }
 
     // Write the argument count

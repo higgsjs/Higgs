@@ -335,9 +335,6 @@ class CodeGenState
         mapToStack(fun.thisVal);
         mapToStack(fun.argcVal);
 
-        foreach (param; fun.paramVals)
-            mapToStack(param);
-
         // Set type tags for the untagged hidden argument values
         setTag(fun.raVal, Tag.RETADDR);
         setTag(fun.closVal, Tag.CLOSURE);
@@ -347,13 +344,24 @@ class CodeGenState
         setType(fun.thisVal, thisType);
 
         // If argument types were specified
-        if (argTypes !is null)
+        if (argTypes)
         {
             assert (argTypes.length is fun.paramVals.length);
 
             // Set the argument value types
             foreach (argIdx, argType; argTypes)
-                setType(fun.paramVals[argIdx], argType);
+            {
+                auto paramVal = fun.paramVals[argIdx];
+                mapToStack(paramVal, !argType.tagKnown);
+                setType(paramVal, argType);
+            }
+        }
+        else
+        {
+            // Map all arguments to the stack
+            // and mark their type tags as written
+            foreach (param; fun.paramVals)
+                mapToStack(param);
         }
     }
 
@@ -811,10 +819,12 @@ class CodeGenState
     /**
     Map a value to its stack location
     */
-    void mapToStack(IRDstValue value)
+    void mapToStack(IRDstValue value, bool tagWritten = true)
     {
-        // Map the value and its type to the stack
-        valMap[value] = ValState.stack().writeTag();
+        if (tagWritten)
+            valMap[value] = ValState.stack().writeTag();
+        else
+            valMap[value] = ValState.stack();
     }
 
     /**

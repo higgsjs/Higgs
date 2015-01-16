@@ -17,6 +17,7 @@ Memory allocation of AST & IR nodes should be thought of from the beginning
   - Two branches possible, one means go straight to the next instr
 - Type tags, reg/slot alloc, metainf, should be encoded in the IR if possible
   - instr output can specify reg,slot,tag
+  - design so no hashing on instructions is necessary, no extra data structures
 
 Should do transformations at the IR level.
 - IR needs new constructs to integrate versioning

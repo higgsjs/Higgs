@@ -2526,7 +2526,6 @@ function $rt_extArrTbl(
     arr,
     curTbl,
     curLen,
-    curSize,
     newSize
 )
 {
@@ -2575,7 +2574,7 @@ function $rt_setArrElem(arr, index, val)
                 newSize = newLen;
 
             // Extend the internal table
-            tbl = $rt_extArrTbl(arr, tbl, len, cap, newSize);
+            tbl = $rt_extArrTbl(arr, tbl, len, newSize);
         }
 
         // Update the array length
@@ -2613,7 +2612,7 @@ function $rt_setArrLength(arr, newLen)
                 newSize = newLen;
 
             // Extend the internal table
-            $rt_extArrTbl(arr, tbl, len, cap, newSize);
+            $rt_extArrTbl(arr, tbl, len, newSize);
         }
     }
     else
