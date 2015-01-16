@@ -418,6 +418,9 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
     // If the function uses the arguments object
     if (ast.usesArguments)
     {
+        // The function must access arguments variadically
+        fun.usesVarArg = true;
+
         // Create the "arguments" array
         auto argObjVal = genRtCall(
             bodyCtx,
@@ -2612,6 +2615,11 @@ IRValue genIIR(IRGenCtx ctx, ASTExpr expr)
             "wrong iir argument count for \"" ~ instrName ~ "\"",
             callExpr.pos
         );
+    }
+
+    if (opcode is &GET_ARG)
+    {
+        ctx.fun.usesVarArg = true;
     }
 
     // Create the IR instruction

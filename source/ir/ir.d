@@ -112,6 +112,9 @@ class IRFunction : IdObject
     /// Visible parameter SSA values
     FunParam[] paramVals;
 
+    /// Flag indicating this function reads arguments variadically
+    bool usesVarArg;
+
     /// Map of identifiers to SSA cell values (closure/shared variables)
     IRValue[IdentExpr] cellMap;
 

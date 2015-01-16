@@ -56,6 +56,21 @@ function tag(stringArr, ...values)
   - possibly need some flag like RE, informing the lexer that we're still
     in an expression
 
+Global object threading:
+- would be useful to have a pseudo-argument
+- do we want to actually pass it as a parameter?
+  - right now, in functions using global obj, we extract it from the VM ptr
+    at the function start
+  - for runtime & known calls, can avoid passing when not used
+    - issue: any known call with normal calls inside will use the global obj
+- could fix a global object register, no need for a type tag
+  - also corresponding stack slot, but not spilled by default?
+  - get rid of vm reg first
+TODO: look at notes wrt global obj threading
+TODO: look into freeing vmReg
+- where is it used?
+TODO: can we load directly from moffs64 on x86-64?
+
 ------------------------------------------------------------------------------
 
 OOPSLA - March 25th
@@ -89,6 +104,9 @@ Postdoc topic woes: ES6 is coming. Need to think in terms of publications?
 TODO: e-mail Jan, discuss grad timeline, research interests
 - Extending Higgs and BBV work? Implement BBV for R?
 
+TODO: look into McGill JavaScript benchmarks
+https://github.com/Sable/Ostrich
+
 2015-01-1X Meeting:
 - Passing shapes across calls, makes only small difference in shape tests
   - Works for set prop just before call
@@ -100,7 +118,10 @@ TODO: e-mail Jan, discuss grad timeline, research interests
 - Now very few calls with unknown targets
   - Interprocedural BBV cut them down by more than half
   - v8-raytrace has many because of apply calls
-- Refactored spills so function parameter types are written when needed
+- No longer writing type tags on calls when unnecessary
+  - Refactored spills so function parameter types are written when needed
+  - Slight code size reduction
+  - Doesn't make much speed difference
   - Realization: GC should use GC maps, store known types, but this refactoring
     may be problematic at the moment
 - *** TODO: Which type tests are not eliminated with 5 versions in large benchmarks? ***
@@ -111,6 +132,7 @@ TODO: e-mail Jan, discuss grad timeline, research interests
   - argc const prop? may need to rework reg alloc
   - shape-preserving calls
   - since shape paper comes next, should prioritize shape opts
+    - shape-preserving calls probably the most useful
 
 Next blog post: mention improved results across the board
 - Title: Better than Perfect?
@@ -125,22 +147,10 @@ Next blog post: mention improved results across the board
   - Image-based system, more self-hosted, compilation time less relevant
   - Postdoc goals, to publish, need to think in terms of publications
 
-Global object threading:
-- would be useful to have a pseudo-argument
-- do we want to actually pass it as a parameter?
-  - right now, in functions using global obj, we extract it from the VM ptr
-    at the function start
-  - for runtime & known calls, can avoid passing when not used
-    - issue: any known call with normal calls inside will use the global obj
-- could fix a global object register, no need for a type tag
-  - also corresponding stack slot, but not spilled by default?
-  - get rid of vm reg first
-TODO: look at notes wrt global obj threading
+TODO: think about shape-preserving calls, return tag/type prediction
 
-TODO: look into freeing vmReg
-- where is it used?
-
-TODO: can we load directly from moffs64 on x86-64?
+TODO: evaluate type-tag stability of function returns
+- index by function
 
 TODO: look at entry points generated, frequency of calls to each
 
@@ -148,12 +158,19 @@ TODO: look at benchmarks like earley-boyer, splay, where 5 versions is not
 enough. Where are we losing precision? Why is maxvers=20 working better?
 - log type tests not eliminated and frequency
 
-TODO: look into McGill JavaScript benchmarks
-https://github.com/Sable/Ostrich
-
 TODO: don't write tag for "this" when possible
+code size before: 289558
 
-FIXME: segfault on string test
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: segfault on string test
 ./higgs tests/01-stdlib/string.js
 - Issue with get_arg... arg can become not live, can't know which function entry
   state we came from in get_arg
@@ -161,17 +178,10 @@ FIXME: segfault on string test
   risky!... or impossible
 - Must mark function as using var args... special-casing needed
 
-
-
-
-
-
-
-
-
 [DONE] TODO: fix get_arg to take known types into account
 
 [DONE] TODO: attempt not writing arg tags for dynamic calls
+code size after: 289558
 
 [DONE] TODO: second attempt at not writing tags on calls, runtime calls only
 - runtime calls first, no worrying about arg mismatch or get_arg

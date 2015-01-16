@@ -1930,7 +1930,8 @@ void gen_call(
             as.setWord(dstIdx, argOpnd);
 
             // If the entry state doesn't know the type tag
-            if (i >= fun.numParams || 
+            if (fun.usesVarArg ||
+                i >= fun.numParams ||
                 fun.paramVals[i].hasNoUses ||
                 !entryVer.state.getType(fun.paramVals[i]).tagKnown)
             {
@@ -1971,6 +1972,7 @@ void gen_call(
                 false
             );
             as.setWord(-numPassed - 2, thisReg);
+
             auto tagOpnd = st.getTagOpnd(
                 as,
                 instr,
