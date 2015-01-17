@@ -158,17 +158,18 @@ TODO: look at benchmarks like earley-boyer, splay, where 5 versions is not
 enough. Where are we losing precision? Why is maxvers=20 working better?
 - log type tests not eliminated and frequency
 
-TODO: don't write tag for "this" when possible
+commit
+
+
+
+
+
+
+
+
+[DONE] TODO: don't write tag for "this" when possible
 code size before: 289558
-
-
-
-
-
-
-
-
-
+code size after: 289402
 
 [DONE] FIXME: segfault on string test
 ./higgs tests/01-stdlib/string.js

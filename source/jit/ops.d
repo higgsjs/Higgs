@@ -1973,14 +1973,18 @@ void gen_call(
             );
             as.setWord(-numPassed - 2, thisReg);
 
-            auto tagOpnd = st.getTagOpnd(
-                as,
-                instr,
-                1,
-                scrRegs[1].opnd(8),
-                true
-            );
-            as.setTag(-numPassed - 2, tagOpnd);
+            // If the entry state doesn't know the type tag
+            if (!entryVer.state.getType(fun.thisVal).tagKnown)
+            {
+                auto tagOpnd = st.getTagOpnd(
+                    as,
+                    instr,
+                    1,
+                    scrRegs[1].opnd(8),
+                    true
+                );
+                as.setTag(-numPassed - 2, tagOpnd);
+            }
         }
 
         // Write the closure argument

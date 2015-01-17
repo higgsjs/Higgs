@@ -332,13 +332,14 @@ class CodeGenState
 
         mapToStack(fun.raVal);
         mapToStack(fun.closVal);
-        mapToStack(fun.thisVal);
         mapToStack(fun.argcVal);
 
-        // Set type tags for the untagged hidden argument values
         setTag(fun.raVal, Tag.RETADDR);
         setTag(fun.closVal, Tag.CLOSURE);
         setTag(fun.argcVal, Tag.INT32);
+
+        // The tag of the "this" value is written only if unknown
+        mapToStack(fun.thisVal, !thisType.tagKnown);
 
         // Set the type for the "this" value
         setType(fun.thisVal, thisType);
