@@ -2018,6 +2018,19 @@ BlockVersion getBlockVersion(
     // Add the new version to the list for this block
     fun.versionMap[block] ~= ver;
 
+    /*
+    if (block is fun.entryBlock && block.fun.getName.canFind("_Pair"))
+    {
+        writeln(block.fun.getName, " (", fun.versionMap[block].length, ")");
+
+        writeln("  ", state.getType(block.fun.thisVal));
+        foreach (arg; block.fun.paramVals)
+            writeln("  ", state.getType(arg));
+
+        writeln();
+    }
+    */
+
     // If block version stats should be computed
     if (opts.stats)
     {

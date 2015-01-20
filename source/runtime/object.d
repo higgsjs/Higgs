@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2012-2014, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2012-2015, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -219,6 +219,21 @@ struct ValType
         this.tagKnown = true;
         this.shape = shape;
         this.shapeKnown = true;
+    }
+
+    string toString() const
+    {
+        if (this.tagKnown)
+            if (isObject(this.tag))
+                return format(
+                    "%s (%s)",
+                    this.tag,
+                    this.shapeKnown? to!string(cast(void*)this.shape):"---"
+                );
+            else
+                return to!string(this.tag);
+        else
+            return "---";
     }
 
     /**

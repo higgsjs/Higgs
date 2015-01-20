@@ -104,35 +104,18 @@ Postdoc topic woes: ES6 is coming. Need to think in terms of publications?
 TODO: e-mail Jan, discuss grad timeline, research interests
 - Extending Higgs and BBV work? Implement BBV for R?
 
-TODO: look into McGill JavaScript benchmarks
-https://github.com/Sable/Ostrich
-
 2015-01-1X Meeting:
-- Passing shapes across calls, makes only small difference in shape tests
-  - Works for set prop just before call
-  - If in a loop with a call, lose shapes for each call, test each iteration
-  - shape-preserving calls will be very useful
-  - Discovered BBV weakness: can't gain info about value feeding into loop
-    phi node from inside the loop
-- Fixed issue with slow calls in string and array libs affecting fasta benchmark
 - Now very few calls with unknown targets
   - Interprocedural BBV cut them down by more than half
   - v8-raytrace has many because of apply calls
-- No longer writing type tags on calls when unnecessary
-  - Refactored spills so function parameter types are written when needed
-  - Slight code size reduction
-  - Doesn't make much speed difference
-  - Realization: GC should use GC maps, store known types, but this refactoring
-    may be problematic at the moment
-- *** TODO: Which type tests are not eliminated with 5 versions in large benchmarks? ***
 - May not have DYLA this year, but there is OOPSLA, March 25th
   - could also resubmit original BBV paper if necessary
 - Next steps:
   - threading global obj
   - argc const prop? may need to rework reg alloc
-  - shape-preserving calls
-  - since shape paper comes next, should prioritize shape opts
+  - since shape paper comes next, should prioritize shape opts ***
     - shape-preserving calls probably the most useful
+    - biggest effect expected, losing shapes in calls happens very often
 
 Next blog post: mention improved results across the board
 - Title: Better than Perfect?
@@ -148,24 +131,63 @@ Next blog post: mention improved results across the board
   - Postdoc goals, to publish, need to think in terms of publications
 
 TODO: think about shape-preserving calls, return tag/type prediction
+- need to make a prediction about the function's behavior
+- predicted changed flag is evaluated in caller when compiling return(s)
+  - set on IRFunction (changed, not changed)
+- predicted tag is determined when compiling call continuation edge
+  - set on callee IRFunction (known tag is T, unknown tag)
+- need some cont/ret block which can handle dispatching, RA and (RA - ptrsize)
+  - triggers compilation of call cont with correct prediction or predict fail
+  - branch gets rewritten as all other blocks, fall through to cont
+  - still need cont stub separately, may want to convert it to stub space
+    and a generic stub
+- Full uniformity of return state is not strictly required, just heavy bias
+
+TODO: evaluate whether shape-changingness is stable for functions?
+- what percentage of functions change shapes
 
 TODO: evaluate type-tag stability of function returns
 - index by function
 
-TODO: look at entry points generated, frequency of calls to each
+TODO: look into McGill JavaScript benchmarks
+https://github.com/Sable/Ostrich
 
-TODO: look at benchmarks like earley-boyer, splay, where 5 versions is not
-enough. Where are we losing precision? Why is maxvers=20 working better?
+
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: set_prop inline cache not used much by splay?
+- 0 updates, same for 3d-raytrace => stat updated wrong?
+  - seems updated correctly!
+  - set prop cache is never used => might not be needed!
+- normal, only works when typed shapes are disabled
+
+[DONE] TODO: log where type tests happen in earley-boyer when maxvers=5
+
+[DONE] TODO: look at entry points generated for splay function
+make; ./higgs --maxvers=5 --stats benchmarks/v8bench/base.js benchmarks/v8bench/splay.js benchmarks/v8bench/drv-splay.js
+- expecting lots of shapes, is this the case?
+- version limit most hit in splay, but not because of entry points (only 2)
+  - seems to be a result of shapes largely
+- boyer, 20 entry points for pair!
+
+[DONE] TODO: look at benchmarks earley-boyer, splay, where 5 versions is not enough.
+- Where are we losing precision?
+- Why is maxvers=20 working better?
 - log type tests not eliminated and frequency
-
-commit
-
-
-
-
-
-
-
+- splay:
+  - type tests don't monotonically decrease as version limit increases
+  - values likely highly polymorphic in shape
+  - shapes dwarf tag polymorphism
 
 [DONE] TODO: don't write tag for "this" when possible
 code size before: 289558

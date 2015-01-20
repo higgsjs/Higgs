@@ -3781,6 +3781,8 @@ void gen_obj_set_prop(
     if (!st.shapeKnown(objVal))
     {
         // If shape versioning is disabled, use an inline cache
+        // Note: the set_prop inline cache only works when typed
+        // shapes are disabled, because it doesn't handle prop types
         if (opts.shape_novers)
             return gen_cache_path(ver, st, instr, as);
 
