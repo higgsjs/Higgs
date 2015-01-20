@@ -1,0 +1,8 @@
+Uint32Array = Array;
+
+// Should be a power of 2
+PAGE_SIZE = "65536"
+NB_PAGES = "128"
+NB_REPETITIONS = "150"
+
+runCRC(NB_PAGES, PAGE_SIZE, NB_REPETITIONS)
