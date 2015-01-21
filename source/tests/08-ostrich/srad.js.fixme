@@ -1,0 +1,14 @@
+load('benchmarks/ostrich/common_rand.js');
+load('benchmarks/ostrich/srad.js');
+
+Int32Array = Array;
+Uint8Array = Array;
+Uint32Array = Array;
+Float32Array = Array;
+Float64Array = Array;
+console = { log: function () {} }
+
+NB_REPETITIONS = 500
+LAMBDA = 1
+runSRAD(NB_REPETITIONS, LAMBDA)
+

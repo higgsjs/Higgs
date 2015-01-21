@@ -702,6 +702,7 @@ class VM
                 load("stdlib/json.js");
                 load("stdlib/regexp.js");
                 load("stdlib/global.js");
+                load("stdlib/typedarrays.js");
                 load("stdlib/commonjs.js");
             }
         }
