@@ -691,7 +691,7 @@ Token getToken(ref StrStream stream, LexFlags flags)
             }
         }
 
-        enum fpRegex = ctRegex!(`^[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?`w);
+        enum fpRegex = ctRegex!(`^[0-9]*\.?[0-9]*([eE][-+]?[0-9]+)?`w);
 
         auto m = stream.match(fpRegex);
         assert (m.empty == false);
