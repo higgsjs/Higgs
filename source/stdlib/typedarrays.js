@@ -35,20 +35,24 @@
 *
 *****************************************************************************/
 
-Int8Array = Array;
-Uint8Array = Array;
-Uint32Array = Array;
-Float32Array = Array;
-Float64Array = Array;
-
-function Int32Array(x)
+(function ()
 {
-    if (x instanceof Array)
+    // Save the original Array constructor in case of redefinition
+    var Array = this.Array;
+
+    function TypedArrayCtor(x)
     {
-        return x;
+        var a = (x instanceof Array)? x:Array(x);
+        a.subarray = Array.prototype.slice;
+        return a;
     }
 
-    return Array(x);
-}
-Int32Array.prototype = Array.prototype;
+    Int8Array = TypedArrayCtor;
+    Int32Array = TypedArrayCtor;
+    Uint8Array = TypedArrayCtor;
+    Uint32Array = TypedArrayCtor;
+    Float32Array = TypedArrayCtor;
+    Float64Array = TypedArrayCtor;
+
+}());
 
