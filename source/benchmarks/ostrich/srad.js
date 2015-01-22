@@ -183,6 +183,7 @@ function runSRAD(niter,lambda) {
     writeImage();
 
     for (i=0; i<Nr; i++) {
+        print(i);
         output = output + data[i];
     }
 
