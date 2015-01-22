@@ -35,11 +35,20 @@
 *
 *****************************************************************************/
 
-// For now, placeholders so code using basic typed array features will run
 Int8Array = Array;
-Int32Array = Array;
 Uint8Array = Array;
 Uint32Array = Array;
 Float32Array = Array;
 Float64Array = Array;
+
+function Int32Array(x)
+{
+    if (x instanceof Array)
+    {
+        return x;
+    }
+
+    return Array(x);
+}
+Int32Array.prototype = Array.prototype;
 
