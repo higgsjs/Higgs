@@ -310,8 +310,16 @@ function test ()
     return 0;
 }
 
+function test_regex_test()
+{
+    assert(!/abc/.test('d'));
+    assert(!/[0-9]/.test('a'));
+    assert(/.*/.test(''));
+}
+
+test_regex_test();
+
 // TODO: convert this test to use assertions &
 // exceptions instead of return codes 
 var r = test();
 assert (r === 0, r);
-
