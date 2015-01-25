@@ -2710,7 +2710,7 @@ RegExp.prototype.test = function (
     } while (this.lastIndex + padding < input.length);
 
     this.lastIndex = 0;
-    return null;
+    return false;
 }
 
 /// Export the RegExp constructor
@@ -2731,4 +2731,3 @@ function $rt_getRegExp(pattern, flags)
 {
     return new $rt_RegExp(pattern, flags);
 }
-

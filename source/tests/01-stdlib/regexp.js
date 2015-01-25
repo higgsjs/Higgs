@@ -8,7 +8,7 @@
  *  http://github.com/Tachyon-Team/Tachyon
  *
  *
- *  Copyright (c) 2011, Universite de Montreal
+ *  Copyright (c) 2011-2015, Universite de Montreal
  *  All rights reserved.
  *
  *  This software is licensed under the following license (Modified BSD
@@ -263,55 +263,34 @@ function test_char_class_in_char_class ()
     return 0;
 }
 
-function test ()
+function test_regex_test()
 {
-    var r;
-
-    test_char_match();
-
-    r = test_char_class_match();
-    if (r !== 0)
-        return 200 + r;
-
-    r = test_assertion();
-    if (r !== 0)
-        return 300 + r;
-
-    r = test_quantifier();
-    if (r !== 0)
-        return 400 + r;
-
-    r = test_disjunction();
-    if (r !== 0)
-        return 500 + r;
-
-    r = test_capture();
-    if (r !== 0)
-        return 600 + r;
-
-    r = test_backreference();
-    if (r !== 0)
-        return 700 + r;
-
-    r = test_null_charcter();
-    if (r !== 0)
-        return 800 + r;
-
-    r = test_hyphen_character();
-    if (r !== 0)
-        return 900 + r;
-
-    test_constructor();
-
-    r = test_char_class_in_char_class();
-    if (r !== 0)
-         return 1000 + r;
-
-    return 0;
+    assert(/abc/.test('d') === false);
+    assert(/[0-9]/.test('a') === false);
+    assert(/.*/.test('') === true);
 }
 
-// TODO: convert this test to use assertions &
-// exceptions instead of return codes 
-var r = test();
-assert (r === 0, r);
+test_char_match();
+
+assert (test_char_class_match() === 0);
+
+assert (test_assertion() === 0);
+
+assert (test_quantifier() === 0);
+
+assert (test_disjunction() === 0);
+
+assert (test_capture() === 0);
+
+assert (test_backreference() === 0);
+
+assert (test_null_charcter() === 0);
+
+assert (test_hyphen_character() === 0);
+
+test_constructor()
+
+assert (test_char_class_in_char_class() === 0);
+
+test_regex_test();
 
