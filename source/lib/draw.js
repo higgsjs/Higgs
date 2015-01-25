@@ -356,7 +356,9 @@ lib/draw - provides basic drawing API using xlib
     */
     CanvasProto.clear = function(color, g, b)
     {
-        if (arguments.length === 1)
+        if (arguments.length === 0)
+            this.setColor('#000000');
+        else if (arguments.length === 1)
             this.setColor(color);
         else
             this.setColor(color, g, b);
