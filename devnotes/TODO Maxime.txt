@@ -56,16 +56,6 @@ function tag(stringArr, ...values)
   - possibly need some flag like RE, informing the lexer that we're still
     in an expression
 
-Global object threading:
-- would be useful to have a pseudo-argument
-- do we want to actually pass it as a parameter?
-  - right now, in functions using global obj, we extract it from the VM ptr
-    at the function start
-  - for runtime & known calls, can avoid passing when not used
-    - issue: any known call with normal calls inside will use the global obj
-- could fix a global object register, no need for a type tag
-  - also corresponding stack slot, but not spilled by default?
-  - get rid of vm reg first
 TODO: look at notes wrt global obj threading
 TODO: look into freeing vmReg
 - where is it used?
@@ -90,6 +80,7 @@ TODO: recontact Laurie, ask for advice, discuss
 - PhD Completion ~Dec 2015
 - NSERC PDF deadline ~Oct 15, can only apply once, notified by end of Jan
   - How many publications needed?
+  - Jan Vitek says "grant acceptance rate" about 25%
 - co-direction with Marc?
   - Marc says: combined funding?
   - Not possible with PDF, only as backup plan
@@ -100,22 +91,6 @@ TODO: recontact Laurie, ask for advice, discuss
 Postdoc topic woes: ES6 is coming. Need to think in terms of publications?
 - what do you actually want to achieve?
 - self-hosted system with image may be more interesting
-
-TODO: e-mail Jan, discuss grad timeline, research interests
-- Extending Higgs and BBV work? Implement BBV for R?
-
-2015-01-1X Meeting:
-- Now very few calls with unknown targets
-  - Interprocedural BBV cut them down by more than half
-  - v8-raytrace has many because of apply calls
-- May not have DYLA this year, but there is OOPSLA, March 25th
-  - could also resubmit original BBV paper if necessary
-- Next steps:
-  - threading global obj
-  - argc const prop? may need to rework reg alloc
-  - since shape paper comes next, should prioritize shape opts ***
-    - shape-preserving calls probably the most useful
-    - biggest effect expected, losing shapes in calls happens very often
 
 Next blog post: mention improved results across the board
 - Title: Better than Perfect?
@@ -130,7 +105,108 @@ Next blog post: mention improved results across the board
   - Image-based system, more self-hosted, compilation time less relevant
   - Postdoc goals, to publish, need to think in terms of publications
 
-TODO: think about shape-preserving calls, return tag/type prediction
+TODO: think about "perfect" analysis
+- capture_tag... must disable typed shapes when not using analysis
+  - count them anyways, slight disadvantage for typed shapes
+- recording mode vs "playback" mode
+  - save an entry for all IsTypeOps, with serial idNo and function name
+  --save_type_tests
+  --load_type_tests
+
+TODO: mark IRFunction if any shape changed anywhere
+
+2015-02-0X Meeting:
+- May not have DYLA this year, but there is OOPSLA, March 25th
+  - could also resubmit original BBV paper if necessary
+
+TODO: use options parser in FP machine and/or turing turtle
+
+TODO: FP machine
+
+TODO: mark RA entries with known callees?
+- allows more precise RA invalidation
+
+TODO: implement basic return tag prediction, call cont invalidation
+
+TODO: implement return type prediction in IRFunction, based on ret compilation
+- ValType retType
+- Use caller list to determine if invalidation is required
+- Need to modify call cont compilation
+  - need info as to whether callee is known or not
+
+FIXME: ContStub takes an already created branch edge
+- May want to request a new version later?
+- Set call instr type before requesting version
+
+TODO: remove bbv_eager crap
+
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: implement ValType.join
+
+[DONE] TODO: think about workings of call cont invalidation
+- Goals: should be fast, shallow, lazily recompiled
+- Trigger: compile a return statement, find assumption is invalidated
+- There must be specific call continuations known to depend on this callee
+- Must be return addresses (plural) pushed on the stack
+- Updating RAs on the stack should not be a big problem
+- If invalidating a call continuation:
+  - generate a new call cont stub that will trigger compilation of the proper call cont
+  - update RAs pointing to the call cont (or to the old stub?)
+- Scan stack, look at RAs, see which function they correspond to
+  - Could simply invalidate all RAs from all callers
+  - May have RAs that are not currently on the stack but need to be invalidated
+
+[DONE] 2015-01-27 Meeting:
+- May not have DYLA this year, but there is OOPSLA, March 25th
+  - could also resubmit original BBV paper if necessary
+- Now very few calls with unknown targets
+  - Interprocedural BBV cut them down by more than half
+  - v8-raytrace has many because of apply calls
+- Added McGill ostrich benchmark suite to Higgs tests, fixed bugs
+- Measured return tag stability, weighed by number of returns
+  - varies widely, 64% to 90%
+  - no easily discernable pattern of more stable tags
+- Reimbursement signature?
+- Router fried itself
+- Next steps:
+  - threading global obj
+  - argc const prop? may need to rework reg alloc
+  - since shape paper comes next, should prioritize shape opts ***
+    - shape-preserving calls probably the most useful
+    - biggest effect expected, losing shapes in calls happens very often
+
+[DONE] TODO: evaluate type-tag stability of function returns
+- static ctor, index by function
+- call into host fn from gen_ret
+- ret tag only 64% stable in 3d-raytrace...
+- Hard to predict which tags will be stable just by looking at tags
+- Important: can we statically determine type of all rets?
+  - trivial when returning undefined
+- Important: does the caller even care?
+- Trivial example: fibonacci
+  - can't tell ret type just by looking at IR
+  - might actually overflow into FP later on
+- Efficient tag prediction probably requires first assuming stability, then
+  recompiling return targets for callers if no longer stable
+- Wait a second... If we can't determine ret type in caller when compiling ret,
+  what do we even do then?
+  - uninstall
+- Hence, there is no prediction needed?
+  - IRFunction assumes ret tag and no shapes changed
+  - If proven otherwise, kill return sites from callers, reinstate ret stubs!
+
+[DONE] TODO: think about shape-preserving calls, return tag/type prediction
 - need to make a prediction about the function's behavior
 - predicted changed flag is evaluated in caller when compiling return(s)
   - set on IRFunction (changed, not changed)
@@ -143,27 +219,25 @@ TODO: think about shape-preserving calls, return tag/type prediction
     and a generic stub
 - Full uniformity of return state is not strictly required, just heavy bias
 
-TODO: evaluate whether shape-changingness is stable for functions?
-- what percentage of functions change shapes
+[DONE] TODO: e-mail Jan, discuss grad timeline, research interests
+- Extending Higgs and BBV work? Implement BBV for R?
 
-TODO: evaluate type-tag stability of function returns
-- index by function
+[DONE] FIXME: Error: ERROR n_limit: false w_limit: false traceback: NaN
+./higgs benchmarks/ostrich/common_rand.js needle.js
+$rt_throwExc(2E75) ("runtime/runtime.js"@138:1)
+runNeedle(233C9) ("benchmarks/ostrich/needle.js"@305:17)
+tests_08_ostrich_needle_js(22605) ("tests/08-ostrich/needle.js"@8:1)
+- Issue with Int32Array ctor not accepting array input properly
 
-TODO: look into McGill JavaScript benchmarks
+[DONE] FIXME: SyntaxError: "benchmarks/ostrich/lavamd.js"@234:28: invalid member identifier "operator:*"
+./higgs benchmarks/ostrich/lavamd.js
+- Add parser test
+- Enable lavamd test
+fs = 2.*vij
+- 2. should apparently parse as a number
+
+[DONE] TODO: look into McGill JavaScript benchmarks
 https://github.com/Sable/Ostrich
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 [DONE] FIXME: set_prop inline cache not used much by splay?
 - 0 updates, same for 3d-raytrace => stat updated wrong?

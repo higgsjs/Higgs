@@ -1,3 +1,4 @@
+
 Plan:
 - First, get multiple entry points working, passing of arg types only
 
@@ -7,22 +8,37 @@ Multiple entry points per function:
   - When going to specialized entry, could we compile immediately?
   - What do we do right now, for specialized calls?
 
+Global object threading:
+- would be useful to have a pseudo-argument
+- do we want to actually pass it as a parameter?
+  - right now, in functions using global obj, we extract it from the VM ptr
+    at the function start
+  - for runtime & known calls, can avoid passing when not used
+    - issue: any known call with normal calls inside will use the global obj
+- could fix a global object register, no need for a type tag
+  - also corresponding stack slot, but not spilled by default?
+  - get rid of vm reg first
+
 TODO: think about argc const prop
 - would need const spilling system, unless special-casing just for argc?
-
-Global object threading:
-- Should wait before doing this, multiple entry points first
-- Needs to be phi-like or a pseudo-argument so the input ctx can provide it
-  - get global obj instruction won't quite work
-- Pseudo-arg might work, but we don't want to count this in hidden args, do we?
-  - Would like to avoid copying this on the stack
-  - Could use special handling, it's a hidden arg but we don't write it?
-  - Or swap vmReg for a global obj reg?
 
 Version explosion:
 - Probably won't have explosion, many of the types of input args already exposed
 - If problem, can have smarter versioning scheme
   - Limit per-value polymorphism, refuse versions or return a compromise
+
+Ret info propagation:
+- need to make a prediction about the function's behavior
+- predicted changed flag is evaluated in caller when compiling return(s)
+  - set on IRFunction (changed, not changed)
+- predicted tag is determined when compiling call continuation edge
+  - set on callee IRFunction (known tag is T, unknown tag)
+- need some cont/ret block which can handle dispatching, RA and (RA - ptrsize)
+  - triggers compilation of call cont with correct prediction or predict fail
+  - branch gets rewritten as all other blocks, fall through to cont
+  - still need cont stub separately, may want to convert it to stub space
+    and a generic stub
+- Full uniformity of return state is not strictly required, just heavy bias
 
 Return info propagation:
 - Return info: try to predict what the function will return

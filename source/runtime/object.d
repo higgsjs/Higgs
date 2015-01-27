@@ -139,6 +139,8 @@ Value type representation
 */
 struct ValType
 {
+    static const ValType ANY = ValType();
+
     union
     {
         /// Shape (null if unknown)
@@ -237,50 +239,58 @@ struct ValType
     }
 
     /**
-    Test if this type fits within (is more specific than) another type
+    Compute the union with another type
     */
-    bool isSubType(ValType that)
+    ValType join(ValType that)
     {
         assert (!this.shapeKnown || !this.fptrKnown);
         assert (!that.shapeKnown || !that.fptrKnown);
         assert (!this.fptrKnown || this.fptr);
         assert (!that.fptrKnown || that.fptr);
 
-        if (that.tagKnown)
+        ValType join;
+
+        if (this.tagKnown && that.tagKnown && this.tag is that.tag)
         {
-            if (!this.tagKnown)
-                return false;
-
-            if (this.tag !is that.tag)
-                return false;
-
-            if (that.subMax is true)
-            {
-                if (this.subMax is false)
-                {
-                    return false;
-                }
-            }
+            join.tag = this.tag;
+            join.tagKnown = true;
+        }
+        else
+        {
+            join.tagKnown = false;
         }
 
-        if (that.shapeKnown)
-        {
-            if (!this.shapeKnown)
-                return false;
+        join.subMax = that.subMax && this.subMax;
 
-            if (this.shape !is that.shape)
-                return false;
+        if (this.shapeKnown && that.shapeKnown && this.shape is that.shape)
+        {
+            join.shape = this.shape;
+            join.shapeKnown = true;
         }
-        else if (that.fptrKnown)
+        else
         {
-            if (!this.fptrKnown)
-                return false;
-
-            if (this.fptr !is that.fptr)
-                return false;
+            join.shapeKnown = false;
         }
 
-        return true;
+        if (this.fptrKnown && that.fptrKnown && this.fptr is that.fptr)
+        {
+            join.fptr = this.fptr;
+            join.fptrKnown = true;
+        }
+        else
+        {
+            join.fptrKnown = false;
+        }
+
+        return join;
+    }
+
+    /**
+    Test if this type fits within (is more specific than) another type
+    */
+    bool isSubType(ValType that)
+    {
+        return this.join(that) == that;
     }
 
     /**

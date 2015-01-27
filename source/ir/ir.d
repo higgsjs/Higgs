@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2011-2014, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2011-2015, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -132,6 +132,12 @@ class IRFunction : IdObject
 
     /// Map of blocks to lists of existing versions
     BlockVersion[][IRBlock] versionMap;
+
+    /// Return type, if known
+    ValType retType;
+
+    /// Direct callers relying on the return type
+    IRFunction[IRFunction] callers;
 
     /// Constructor
     this(FunExpr ast)
