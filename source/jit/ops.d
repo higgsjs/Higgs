@@ -1585,38 +1585,20 @@ void genCallBranch(
     // Map the return value to its stack location
     st.mapToStack(instr);
 
-    BranchCode contBranch;
-    BranchCode excBranch = null;
-
-    // Create a branch object for the continuation
-    contBranch = getBranchEdge(
-        instr.getTarget(0),
-        st,
-        false,
-        delegate void(CodeBlock as)
-        {
-            // If eager compilation is enabled
-            if (opts.bbv_eager)
-            {
-                // Set the return address entry when compiling the
-                // continuation block
-                vm.setRetEntry(
-                    instr,
-                    contBranch,
-                    excBranch
-                );
-            }
-
-            // Move the return value into the instruction's output slot
-            if (instr.hasUses)
-            {
-                as.setWord(instr.outSlot, retWordReg.opnd(64));
-                as.setTag(instr.outSlot, retTagReg.opnd(8));
-            }
-        }
+    // TODO: pass callee arg
+    // Create a call continuation stub with a copy of the current state
+    auto contStub = new ContStub(
+        ver,
+        new CodeGenState(st),
+        null
     );
 
-    // Create the continuation branch object
+    // Queue the stub for compilation
+    vm.queue(contStub);
+
+    BranchCode excBranch = null;
+
+    // Create the exception branch object
     if (instr.getTarget(1))
     {
         excBranch = getBranchEdge(
@@ -1662,31 +1644,13 @@ void genCallBranch(
         as.label(Label.SKIP);
     }
 
-    // If eager compilation is enabled
-    if (opts.bbv_eager)
-    {
-        // Generate the call branch code
-        ver.genBranch(
-            as,
-            contBranch,
-            excBranch,
-            genFn
-        );
-    }
-    else
-    {
-        // Create a call continuation stub
-        auto contStub = new ContStub(ver, contBranch);
-        vm.queue(contStub);
-
-        // Generate the call branch code
-        ver.genBranch(
-            as,
-            contStub,
-            excBranch,
-            genFn
-        );
-    }
+    // Generate the call's final branch code
+    ver.genBranch(
+        as,
+        contStub,
+        excBranch,
+        genFn
+    );
 
     //writeln("call block length: ", ver.length);
 }

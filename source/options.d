@@ -68,9 +68,6 @@ struct Options
     /// Enable IR-level type propagation analysis
     bool typeprop = false;
 
-    /// Enable eager generation of block versions
-    bool bbv_eager = false;
-
     /// Maximum number of specialized versions to compile per basic block
     uint maxvers = 20;
 
@@ -131,7 +128,6 @@ void parseCmdArgs(ref string[] args)
         "nostdlib"          , &opts.nostdlib,
 
         "typeprop"          , &opts.typeprop,
-        "bbv_eager"         , &opts.bbv_eager,
         "maxvers"           , &opts.maxvers,
         "shape_novers"      , &opts.shape_novers,
         "shape_notagspec"   , &opts.shape_notagspec,

@@ -1487,7 +1487,7 @@ abstract class CodeFragment
 
         if (auto stub = cast(ContStub)this)
         {
-            return "cont_stub_" ~ stub.contBranch.getName;
+            return "cont_stub_" ~ stub.callVer.getName;
         }
 
         if (auto exit = cast(ExitCode)this)
@@ -1623,13 +1623,17 @@ class ContStub : CodeFragment
     /// Block version containing the call instruction
     BlockVersion callVer;
 
-    /// Call continuation branch
-    BranchCode contBranch;
+    /// State at call instruction
+    CodeGenState callState;
 
-    this(BlockVersion callVer, BranchCode contBranch)
+    /// Callee function, may be unknown
+    IRFunction callee;
+
+    this(BlockVersion callVer, CodeGenState callState, IRFunction callee)
     {
         this.callVer = callVer;
-        this.contBranch = contBranch;
+        this.callState = callState;
+        this.callee = callee;
     }
 }
 
@@ -1884,11 +1888,6 @@ string asmString(IRFunction fun)
             queue(frag, branch.target);
         }
 
-        if (auto cont = cast(ContStub)frag)
-        {
-            queue(frag, cont.contBranch);
-        }
-
         else if (auto inst = cast(BlockVersion)frag)
         {
             foreach (target; inst.targets)
@@ -2064,11 +2063,6 @@ BranchCode getBranchEdge(
     PrelGenFn prelGenFn = null
 )
 {
-    // If eager codegen is enabled, force the version
-    // to be generated now
-    if (opts.bbv_eager)
-        noStub = true;
-
     assert (
         branch !is null,
         "getBranchEdge: branch edge is null"
@@ -2472,10 +2466,10 @@ void compile(VM vm, IRInstr curInstr)
             stub.markStart(as);
 
             if (opts.genasm)
-                as.comment("Cont stub for " ~ stub.contBranch.getName);
+                as.comment("Cont stub for " ~ stub.callVer.getName);
 
             if (opts.trace_instrs)
-                as.printStr("Cont stub for " ~ stub.contBranch.getName);
+                as.printStr("Cont stub for " ~ stub.callVer.getName);
 
             as.saveJITRegs();
 
@@ -2897,8 +2891,27 @@ extern (C) CodePtr compileCont(ContStub stub)
         writeln("entering compileCont");
     }
 
-    auto callVer = stub.callVer;
-    auto contBranch = stub.contBranch;
+    auto callInstr = stub.callVer.block.lastInstr;
+
+    auto contSt = new CodeGenState(stub.callState);
+
+    // TODO: if callee known, set return type
+
+    // Create a branch object for the continuation
+    auto contBranch = getBranchEdge(
+        callInstr.getTarget(0),
+        contSt,
+        false,
+        delegate void(CodeBlock as)
+        {
+            // Move the return value into the instruction's output slot
+            if (callInstr.hasUses)
+            {
+                as.setWord(callInstr.outSlot, retWordReg.opnd(64));
+                as.setTag(callInstr.outSlot, retTagReg.opnd(8));
+            }
+        }
+    );
 
     // Queue the continuation branch edge to be compiled
     assert (!contBranch.started);
@@ -2918,9 +2931,9 @@ extern (C) CodePtr compileCont(ContStub stub)
 
     // Set the return entry for the call continuation
     vm.setRetEntry(
-        callVer.block.lastInstr,
+        callInstr,
         contBranch,
-        callVer.targets[1]
+        stub.callVer.targets[1]
     );
 
     // Stop recording compilation time, resume recording execution time

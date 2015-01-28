@@ -59,7 +59,6 @@ function tag(stringArr, ...values)
 TODO: look at notes wrt global obj threading
 TODO: look into freeing vmReg
 - where is it used?
-TODO: can we load directly from moffs64 on x86-64?
 
 ------------------------------------------------------------------------------
 
@@ -119,38 +118,50 @@ TODO: mark IRFunction if any shape changed anywhere
 - May not have DYLA this year, but there is OOPSLA, March 25th
   - could also resubmit original BBV paper if necessary
 
-TODO: use options parser in FP machine and/or turing turtle
+TODO: use options parser in turing turtle
+- show SBSTP
+TODO: add escape key support in Turing Turtle
+- do this on master
 
-TODO: FP machine
+TODO: test perf of return type passing on fib benchmark
 
-TODO: mark RA entries with known callees?
-- allows more precise RA invalidation
+TODO: make compileCont take advantage of return type info
 
-TODO: implement basic return tag prediction, call cont invalidation
+TODO: make gen_ret call undoConts as appropriate
 
-TODO: implement return type prediction in IRFunction, based on ret compilation
-- ValType retType
-- Use caller list to determine if invalidation is required
-- Need to modify call cont compilation
-  - need info as to whether callee is known or not
+TODO: implement undoConts() function in jit.d, after compileCont
+- Scan through RA entries for all callers
+  - need to know if entry refers to this callee
+- ISSUE: call pushes baked RA, need to rewrite its branch during invalidation
 
-FIXME: ContStub takes an already created branch edge
+Octree rendering, CSG carving?
+- Once you get small enough you can draw simple points
+- How fast could we make this, how little code?
+- All axis-aligned
+- Add volume (color), subtract volume
+- Reuse GL matrix/camera code
+
+TODO: can we load directly from moffs64 on x86-64?
+
+TODO: pass callee arg to genCallBranch, ContStub
+
+
+
+
+
+
+
+
+[DONE] FIXME: ContStub takes an already created branch edge
 - May want to request a new version later?
-- Set call instr type before requesting version
+  - Set call instr type before requesting version
+  - Need CodeGenState before call instr
+- ContStub needs:
+  - call instruction
+  - copy of CodeGenState at call time
+  - the callee fun if known
 
-TODO: remove bbv_eager crap
-
-
-
-
-
-
-
-
-
-
-
-
+[DONE] TODO: remove bbv_eager crap
 
 [DONE] TODO: implement ValType.join
 
