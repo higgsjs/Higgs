@@ -2950,6 +2950,43 @@ extern (C) CodePtr compileCont(ContStub stub)
 }
 
 /**
+Invalidate call continuations going to a specific known callee
+*/
+void removeConts(IRFunction callee)
+{
+    // Note: no need to remove RA entries
+    // For now, just make it work!
+    // Once it works, then try to remove old RAs and optimize
+ 
+
+    // TODO:
+    // Scan through RA entries for all callers
+    // - need to know if entry refers to this callee
+
+
+
+
+    // TODO: call pushes baked RA, need to rewrite its branch during invalidation
+
+
+
+
+
+    // TODO: recreate stub for each continuation
+
+
+
+
+    // TODO: scan through stack?
+    // - yes, must go to new stub instead of old RAs
+
+
+
+
+
+}
+
+/**
 Get the generic function entry stub
 */
 CodePtr getEntryStub(IRFunction fun)

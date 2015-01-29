@@ -1579,9 +1579,17 @@ void genCallBranch(
     IRInstr instr,
     CodeBlock as,
     BranchGenFn genFn,
+    IRFunction callee,
     bool mayThrow
 )
 {
+    // If the callee is known (if this is a direct call)
+    if (callee)
+    {
+        // Register this call site on the callee
+        callee.callSites[ver] = ver;
+    }
+
     // Map the return value to its stack location
     st.mapToStack(instr);
 
@@ -1590,7 +1598,7 @@ void genCallBranch(
     auto contStub = new ContStub(
         ver,
         new CodeGenState(st),
-        null
+        callee
     );
 
     // Queue the stub for compilation
@@ -1793,6 +1801,7 @@ void gen_call_prim(
             // Jump to the function entry block
             jmp32Ref(as, vm, block, entryVer, 0);
         },
+        fun,
         false
     );
 }
@@ -1999,6 +2008,7 @@ void gen_call(
                 // Jump to the function entry block
                 jmp32Ref(as, vm, block, entryVer, 0);
             },
+            fun,
             false
         );
 
@@ -2189,6 +2199,7 @@ void gen_call(
             as.getMember!("IRFunction.entryCode")(scrRegs[0], scrRegs[1]);
             as.jmp(scrRegs[0].opnd(64));
         },
+        null,
         mayThrow
     );
 }
@@ -2302,6 +2313,7 @@ void gen_call_apply(
             // Jump to the address returned by the host function
             as.jmp(cretReg.opnd);
         },
+        null,
         false
     );
 }
@@ -2434,6 +2446,7 @@ void gen_load_file(
             // Jump to the address returned by the host function
             as.jmp(cretReg.opnd);
         },
+        null,
         false
     );
 }
@@ -2555,6 +2568,7 @@ void gen_eval_str(
             // Jump to the address returned by the host function
             as.jmp(cretReg.opnd);
         },
+        null,
         false
     );
 }
@@ -2576,8 +2590,8 @@ void gen_ret(
     // Get type information about the return value
     auto retType = st.getType(instr.getArg(0)).propType;
 
-    // If no callers yet rely on this information
-    if (fun.callers.length is 0)
+    // If there is only one caller (return not yet executed)
+    if (fun.numRets is 0)
     {
         fun.retType = retType;
     }
@@ -2586,20 +2600,16 @@ void gen_ret(
         // If this is not a subtype of the function's known return type
         if (!retType.isSubType(fun.retType))
         {
-            // TODO: invalidate call continuations
-            foreach (caller; fun.callers)
-            {
-            }
-
-            writeln(fun.getName);
-            writeln("  ", fun.retType);
+            // Invalidate call continuations
+            removeConts(fun);
 
             // Update the known return type
             fun.retType = fun.retType.join(retType);
-
-            writeln("  ", fun.retType);
         }
     }
+
+    // Increment the number of returns compiled
+    fun.numRets++;
 
     // Get the return value word operand
     auto retOpnd = st.getWordOpnd(

@@ -136,8 +136,11 @@ class IRFunction : IdObject
     /// Return type, if known
     ValType retType;
 
-    /// Direct callers relying on the return type
-    IRFunction[IRFunction] callers;
+    /// Number of return compiled
+    size_t numRets = 0;
+
+    /// Direct call sites (possibly relying on the return type)
+    BlockVersion[BlockVersion] callSites;
 
     /// Constructor
     this(FunExpr ast)

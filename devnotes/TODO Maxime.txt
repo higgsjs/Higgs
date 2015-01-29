@@ -42,6 +42,13 @@ Type Specialization without Type Analysis
 
 ------------------------------------------------------------------------------
 
+Octree rendering, CSG carving?
+- Once you get small enough you can draw simple points
+- How fast could we make this, how little code?
+- All axis-aligned
+- Add volume (color), subtract volume
+- Reuse GL matrix/camera code
+
 TODO: look into improving template strings, completing further
 `string text ${expression} string text`
 tagExpr `string text ${expression} string text`
@@ -123,27 +130,18 @@ TODO: use options parser in turing turtle
 TODO: add escape key support in Turing Turtle
 - do this on master
 
+TODO: can we load directly from moffs64 on x86-64?
+
 TODO: test perf of return type passing on fib benchmark
 
 TODO: make compileCont take advantage of return type info
 
-TODO: make gen_ret call undoConts as appropriate
+TODO: make gen_ret call removeConts as appropriate
 
-TODO: implement undoConts() function in jit.d, after compileCont
+TODO: implement removeConts() function in jit.d, after compileCont
 - Scan through RA entries for all callers
   - need to know if entry refers to this callee
-- ISSUE: call pushes baked RA, need to rewrite its branch during invalidation
-
-Octree rendering, CSG carving?
-- Once you get small enough you can draw simple points
-- How fast could we make this, how little code?
-- All axis-aligned
-- Add volume (color), subtract volume
-- Reuse GL matrix/camera code
-
-TODO: can we load directly from moffs64 on x86-64?
-
-TODO: pass callee arg to genCallBranch, ContStub
+- Call pushes baked RA, need to rewrite its branch during invalidation
 
 
 
@@ -151,6 +149,12 @@ TODO: pass callee arg to genCallBranch, ContStub
 
 
 
+
+
+[DONE] TODO: register known callers on callee in genCallBranch
+- Should be registering specific call sites, by CallVer
+
+[DONE] TODO: pass callee arg to genCallBranch, ContStub
 
 [DONE] FIXME: ContStub takes an already created branch edge
 - May want to request a new version later?
