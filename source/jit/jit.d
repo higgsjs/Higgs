@@ -2208,6 +2208,7 @@ void genBranchMoves(
 
 /// Return address entry
 alias RetEntry = Tuple!(
+    BlockVersion, "callVer",
     IRInstr, "callInstr",
     CodeFragment, "retCode",
     CodeFragment, "excCode"
@@ -2275,13 +2276,14 @@ Set the return address entry for a call instruction
 */
 void setRetEntry(
     VM vm,
+    BlockVersion callVer,
     IRInstr callInstr,
     CodeFragment retCode,
     CodeFragment excCode
 )
 {
     auto retAddr = retCode.getCodePtr(vm.execHeap);
-    vm.retAddrMap[retAddr] = RetEntry(callInstr, retCode, excCode);
+    vm.retAddrMap[retAddr] = RetEntry(callVer, callInstr, retCode, excCode);
 }
 
 /**
@@ -2504,6 +2506,7 @@ void compile(VM vm, IRInstr curInstr)
 
             // Set the return address entry for this stub
             vm.setRetEntry(
+                stub.callVer,
                 callInstr,
                 stub,
                 stub.callVer.targets[1]
@@ -2710,7 +2713,7 @@ EntryFn compileUnit(VM vm, IRFunction fun)
     vm.compile(null);
 
     // Set the return address entry for this call
-    vm.setRetEntry(null, retEdge, null);
+    vm.setRetEntry(null, null, retEdge, null);
 
     // Get a pointer to the entry block version's code
     auto entryFn = cast(EntryFn)entryInst.getCodePtr(vm.execHeap);
@@ -2931,6 +2934,7 @@ extern (C) CodePtr compileCont(ContStub stub)
 
     // Set the return entry for the call continuation
     vm.setRetEntry(
+        stub.callVer,
         callInstr,
         contBranch,
         stub.callVer.targets[1]
@@ -2957,33 +2961,80 @@ void removeConts(IRFunction callee)
     // Note: no need to remove RA entries
     // For now, just make it work!
     // Once it works, then try to remove old RAs and optimize
- 
 
-    // TODO:
-    // Scan through RA entries for all callers
-    // - need to know if entry refers to this callee
+    // For each call site block version
+    foreach (callVer; callee.callSites)
+    {
+        // Get the current call continuation
+        auto contBranch = cast(BranchCode)callVer.targets[0];
 
+        // If the current continuation is a stub, skip it
+        if (contBranch is null)
+            continue;
 
+        writeln("invalidating cont");
 
+        // Get the state at the call
+        auto callSt = new CodeGenState(contBranch.target.state);
 
-    // TODO: call pushes baked RA, need to rewrite its branch during invalidation
+        // Recreate a continuation stub for each continuation
+        auto contStub = new ContStub(
+            callVer,
+            callSt,
+            callee
+        );
 
+        // Queue the stub for compilation
+        vm.queue(contStub);
 
+        // Update the continuation branch
+        callVer.targets[0] = contStub;
 
+        // The call pushed a fixed return address,
+        // need to rewrite its branch during invalidation
+        callVer.regenBranch(vm.execHeap);
+    }
 
+    // Visit each stack frame
+    auto visitFrame = delegate void(
+        IRFunction fun,
+        Word* wsp,
+        Tag* tsp,
+        size_t depth,
+        size_t frameSize,
+        IRInstr curInstr
+    )
+    {
+        writeln("visiting stack frame for ", fun.getName);
 
-    // TODO: recreate stub for each continuation
+        // Get the return address for this stack frame
+        auto oldRA = wsp[fun.raVal.outSlot].ptrVal;
+        assert (oldRA !is null);
 
+        writeln("getting ret entry");
 
+        auto retEntry = oldRA in vm.retAddrMap;
+        assert (retEntry !is null);
+        auto callVer = retEntry.callVer;
 
+        // If this is a call site whose continuation was invalidated
+        if (callVer in callee.callSites)
+        {
+            writeln("getting new cont");
 
-    // TODO: scan through stack?
-    // - yes, must go to new stub instead of old RAs
+            auto newCont = callVer.targets[0];
+            assert (newCont !is null);
+            auto newRA = newCont.getCodePtr(vm.execHeap);
 
+            writeln("updating RA");
 
+            wsp[fun.raVal.outSlot].ptrVal = cast(rawptr)newRA;
+        }
+    };
 
+    vm.visitStack(visitFrame);
 
-
+    writeln("leaving removeConts");
 }
 
 /**

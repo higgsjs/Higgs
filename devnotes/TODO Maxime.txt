@@ -98,8 +98,9 @@ Postdoc topic woes: ES6 is coming. Need to think in terms of publications?
 - what do you actually want to achieve?
 - self-hosted system with image may be more interesting
 
+Blog post: Better than Perfect?
+
 Next blog post: mention improved results across the board
-- Title: Better than Perfect?
 - Less versions, less type tests, much bigger speedups
 - For thesis, comparison against perfect analysis
 - Beginning work on interprocedural basic block versioning
@@ -125,31 +126,38 @@ TODO: mark IRFunction if any shape changed anywhere
 - May not have DYLA this year, but there is OOPSLA, March 25th
   - could also resubmit original BBV paper if necessary
 
-TODO: use options parser in turing turtle
-- show SBSTP
-TODO: add escape key support in Turing Turtle
-- do this on master
-
 TODO: can we load directly from moffs64 on x86-64?
 
 TODO: test perf of return type passing on fib benchmark
 
 TODO: make compileCont take advantage of return type info
 
-TODO: make gen_ret call removeConts as appropriate
+TODO: use options parser in turing turtle
+- show SBSTP
+- recommend min parameter
 
-TODO: implement removeConts() function in jit.d, after compileCont
+TODO: add escape key support in Turing Turtle
+- do this on master
+
+test and commit
+
+FIXME: stdlib/global test fails
+
+
+
+
+
+
+
+
+[DONE] TODO: test higgs init
+
+[DONE] TODO: implement removeConts() function in jit.d, after compileCont
 - Scan through RA entries for all callers
   - need to know if entry refers to this callee
 - Call pushes baked RA, need to rewrite its branch during invalidation
 
-
-
-
-
-
-
-
+[DONE] TODO: add callVer to RetEntry
 
 [DONE] TODO: register known callers on callee in genCallBranch
 - Should be registering specific call sites, by CallVer

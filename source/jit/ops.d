@@ -1593,7 +1593,6 @@ void genCallBranch(
     // Map the return value to its stack location
     st.mapToStack(instr);
 
-    // TODO: pass callee arg
     // Create a call continuation stub with a copy of the current state
     auto contStub = new ContStub(
         ver,
