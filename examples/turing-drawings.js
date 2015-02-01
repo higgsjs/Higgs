@@ -17,6 +17,7 @@ Maxime Chevalier-Boisvert
 */
 
 // Import required libraries
+var std = require('lib/stdlib');
 var draw = require('lib/draw');
 var image = require('lib/image');
 var rnd = require('lib/random');
@@ -308,6 +309,10 @@ window.onKeypress(function(canvas, key)
     else if (key === 'space')
     {
         paused = !paused;
+    }
+    else if (key === 'Escape')
+    {
+        std.exit(0);
     }
 });
 

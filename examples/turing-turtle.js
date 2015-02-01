@@ -12,9 +12,11 @@ Maxime Chevalier-Boisvert
 */
 
 // Import required libraries
+var std = require('lib/stdlib');
 var draw = require('lib/draw');
 var image = require('lib/image');
 var rnd = require('lib/random');
+var Options = require('lib/options').Options;
 
 // ===========================================================================
 
@@ -264,14 +266,20 @@ Machine.prototype.update = function (numItrs)
 
 // ===========================================================================
 
-/// Canvas dimensions
-var canvasWidth  = arguments[0]? Math.max(parseInt(arguments[0]), 400):600;
-var canvasHeight = arguments[1]? Math.max(parseInt(arguments[1]), 400):600;
+// Parse the command line arguments
+var o = Options()
+    .autoHelp()
+    .autoVersion()
+    .add('width' , 600, '+int', 'canvas width', 'w')
+    .add('height', 600, '+int', 'canvas height', 'h');
+var args = o.parse(arguments);
+var canvasWidth  = args.width;
+var canvasHeight = args.height;
 
 /// Current Turing machine
 var machine;
 
-// Last machine position
+/// Last machine position
 var lastPosX;
 var lastPosY;
 
@@ -339,6 +347,10 @@ window.onKeypress(function(canvas, key)
         // Reset the machine
         window.canvas.clear(bgColor);
         machine.reset();
+    }
+    else if (key === 'Escape')
+    {
+        std.exit(0);
     }
 });
 
