@@ -568,14 +568,28 @@ struct X86Opnd
 
     string toString() const
     {
-        switch (kind)
+        with (Kind) final switch (kind)
         {
-            case Kind.REG: return reg.toString();
-            case Kind.IMM: return imm.toString();
-            case Kind.MEM: return mem.toString();
+            case REG: return reg.toString();
+            case IMM: return imm.toString();
+            case MEM: return mem.toString();
+            case NONE, IPREL: assert(false);
+        }
+    }
 
-            default:
-            assert (false);
+    /// Comparison operator
+    bool opEquals(immutable X86Opnd that) const
+    {
+        if (kind != that.kind)
+            return false;
+
+        with (Kind) final switch (kind)
+        {
+            case NONE: return true;
+            case REG: return reg == that.reg;
+            case IMM: return imm == that.imm;
+            case MEM: return mem == that.mem;
+            case IPREL: assert(false);
         }
     }
 
