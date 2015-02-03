@@ -550,6 +550,9 @@ class VM
     /// Generic branch target stubs
     BranchStub[] branchStubs;
 
+    /// Generic call continuation stub
+    ContStub contStub;
+
     /// Get property fallback subroutine
     CodePtr getPropSub;
 
@@ -674,6 +677,9 @@ class VM
 
             // Define the object-related constants
             defObjConsts(vm);
+
+            // Generate the generic JIT stubs
+            genStubs(vm);
 
             // If the runtime library should be loaded
             if (loadRuntime)

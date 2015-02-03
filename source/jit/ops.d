@@ -1593,16 +1593,6 @@ void genCallBranch(
     // Map the return value to its stack location
     st.mapToStack(instr);
 
-    // Create a call continuation stub with a copy of the current state
-    auto contStub = new ContStub(
-        ver,
-        new CodeGenState(st),
-        callee
-    );
-
-    // Queue the stub for compilation
-    vm.queue(contStub);
-
     BranchCode excBranch = null;
 
     // Create the exception branch object
@@ -1625,6 +1615,9 @@ void genCallBranch(
             }
         );
     }
+
+    // Create a call continuation stub
+    auto contStub = getContStub(ver, excBranch, st, callee);
 
     // If the call may throw an exception
     if (mayThrow)
@@ -2599,8 +2592,9 @@ void gen_ret(
         // If this is not a subtype of the function's known return type
         if (!retType.isSubType(fun.retType))
         {
+            // TODO: re-enable
             // Invalidate call continuations
-            removeConts(fun);
+            //removeConts(fun);
 
             // Update the known return type
             fun.retType = fun.retType.join(retType);

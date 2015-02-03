@@ -42,13 +42,6 @@ Type Specialization without Type Analysis
 
 ------------------------------------------------------------------------------
 
-Octree rendering, CSG carving?
-- Once you get small enough you can draw simple points
-- How fast could we make this, how little code?
-- All axis-aligned
-- Add volume (color), subtract volume
-- Reuse GL matrix/camera code
-
 TODO: look into improving template strings, completing further
 `string text ${expression} string text`
 tagExpr `string text ${expression} string text`
@@ -64,13 +57,25 @@ function tag(stringArr, ...values)
     in an expression
 
 TODO: look at notes wrt global obj threading
+=> do we need this for thesis or publications?
 TODO: look into freeing vmReg
 - where is it used?
 
+TODO: think about "perfect" analysis
+=> this goes under 3rd publication, thesis subgoal
+- capture_tag... must disable typed shapes when not using analysis
+  - count them anyways, slight disadvantage for typed shapes
+- recording mode vs "playback" mode
+  - save an entry for all IsTypeOps, with serial idNo and function name
+  --save_type_tests
+  --load_type_tests
+
 ------------------------------------------------------------------------------
 
-OOPSLA - March 25th
-DYLA - typed shapes paper
+OOPSLA - March 25th - typed shapes paper
+----------------------------------------
+
+Typed shapes paper: important points
 - can often know at compile time if obj needs to be extended or not
   - simplifies spill/GC/bailout issue
   - show control-flow diagram of work needing to be done for read and write
@@ -82,49 +87,27 @@ DYLA - typed shapes paper
 - for global object, can determine prop idx, lower bound on global obj
   size at compilation time
 
-TODO: recontact Laurie, ask for advice, discuss
-- PhD Completion ~Dec 2015
-- NSERC PDF deadline ~Oct 15, can only apply once, notified by end of Jan
-  - How many publications needed?
-  - Jan Vitek says "grant acceptance rate" about 25%
-- co-direction with Marc?
-  - Marc says: combined funding?
-  - Not possible with PDF, only as backup plan
-- Marc says: big rewrite/refactoring of Higgs?
-  - Lazy IR gen, incremental inlining, good for self-hosting
-- Marc thinks Boston is better for career
-  - thesis topic?
-Postdoc topic woes: ES6 is coming. Need to think in terms of publications?
-- what do you actually want to achieve?
-- self-hosted system with image may be more interesting
-
 Blog post: Better than Perfect?
 
-Next blog post: mention improved results across the board
-- Less versions, less type tests, much bigger speedups
-- For thesis, comparison against perfect analysis
-- Beginning work on interprocedural basic block versioning
-  - Great results!
-- After thesis, possibly postdoc
-  - May be able to extend & improve Higgs further after PhD
-    - Lazy IR gen, incremental compilation
-    - Overcoming some performance limitations, suboptimal design choices
-  - Image-based system, more self-hosted, compilation time less relevant
-  - Postdoc goals, to publish, need to think in terms of publications
+------------------------------------------------------------------------------
 
-TODO: think about "perfect" analysis
-- capture_tag... must disable typed shapes when not using analysis
-  - count them anyways, slight disadvantage for typed shapes
-- recording mode vs "playback" mode
-  - save an entry for all IsTypeOps, with serial idNo and function name
-  --save_type_tests
-  --load_type_tests
+Goal: return info propagation, shapes changed flag
+--------------------------------------------------
+- useful for shapes paper, improves results
 
 TODO: mark IRFunction if any shape changed anywhere
+- bool shapeChg
+- If flag goes to true, must call removeConts
+- Recompiling continuations may invalidate callers as well
 
 2015-02-0X Meeting:
 - May not have DYLA this year, but there is OOPSLA, March 25th
   - could also resubmit original BBV paper if necessary
+- Refactorings for ret type propagation
+  - Made return continuation generation lazy
+    - So type info could be extracted when continuation is compiled
+  - Made it so return cont stub code is compiled immediately in stub space
+    - No compile queue
 
 TODO: can we load directly from moffs64 on x86-64?
 
@@ -132,23 +115,54 @@ TODO: test perf of return type passing on fib benchmark
 
 TODO: make compileCont take advantage of return type info
 
-TODO: use options parser in turing turtle
+test and commit
+
+FIXME: failing test
+./higgs --e "parseInt(10)
+visiting stack frame for string_charCodeAt(D118)
+getting ret entry
+getting new cont
+Assertion failed (jit/codeblock.d@212): invalid index in getAddress: 4294967295
+- Topmost stack frame failing
+- Problem... Want to get address for new cont stub, but it isn't compiled yet
+  while in removeCont()
+  - only queued for later compilation
+  - may have to patch old ret code to jump to new cont stubs?
+  - if we do that, we must ensure that this code is never legitimately reused
+
+TODO: re-enable removeConts in jit/ops.d
+
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: stub pointer invalid in compileCont
+- Problem: generic cont stub code is inserted in random place!
+
+[DONE] FIXME: higgs fails to init
+- hypothesis: faults during compilation of cont stub
+
+[DONE] TODO: move cont stubs to the cont space?
+- Can then generate code immediately
+- Similar to branch stubs
+- BlockVersion.targets pointer still goes to ContStub
+  - can track its code position in the stub space, so getCodePtr works
+- need a getContStub function
+  - creates ContStub object
+  - immediately writes code in stub space
+
+[DONE] TODO: use options parser in turing turtle
 - show SBSTP
 - recommend min parameter
 
-TODO: add escape key support in Turing Turtle
+[DONE] TODO: add escape key support in Turing Turtle
 - do this on master
-
-test and commit
-
-FIXME: stdlib/global test fails
-
-
-
-
-
-
-
 
 [DONE] TODO: test higgs init
 

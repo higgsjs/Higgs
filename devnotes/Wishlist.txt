@@ -184,12 +184,19 @@ TODO: getter and setter syntax
   - Use a struct for object literal property descriptors
 - Probably want some kind of runtime call to define getters and setters
 
-TODO: FP machine
+FP machine
 - x and y inputs, in [-1, 1]
 - function to compute an output from input coordinates
 - iterative computation, fixed itr count
 - table of operators to compute each variable
   - input variables are fixed
+
+Octree rendering, CSG carving?
+- Once you get small enough you can draw simple points
+- How fast could we make this, how little code?
+- All axis-aligned
+- Add volume (color), subtract volume
+- Reuse GL matrix/camera code
 
 TODO: Higgs is a Typed Architecture
 - Presentation, argument, angry guy, red face

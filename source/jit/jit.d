@@ -2460,62 +2460,9 @@ void compile(VM vm, IRInstr curInstr)
             }
         }
 
-        // If this is a call continuation stub
-        else if (auto stub = cast(ContStub)frag)
-        {
-            auto callInstr = stub.callVer.block.lastInstr;
-
-            stub.markStart(as);
-
-            if (opts.genasm)
-                as.comment("Cont stub for " ~ stub.callVer.getName);
-
-            if (opts.trace_instrs)
-                as.printStr("Cont stub for " ~ stub.callVer.getName);
-
-            as.saveJITRegs();
-
-            // Save the return value
-            if (callInstr.hasUses)
-            {
-                as.setWord(callInstr.outSlot, retWordReg.opnd(64));
-                as.setTag(callInstr.outSlot, retTagReg.opnd(8));
-            }
-
-            // The first argument is the stub object
-            as.ptr(cargRegs[0], stub);
-
-            // Call the JIT compilation function,
-            auto compileFn = &compileCont;
-            as.ptr(scrRegs[0], compileFn);
-            as.call(scrRegs[0]);
-
-            as.loadJITRegs();
-
-            // Restore the return value
-            if (callInstr.hasUses)
-            {
-                as.getWord(retWordReg.reg(64), callInstr.outSlot);
-                as.getTag(retTagReg.reg(8), callInstr.outSlot);
-            }
-
-            // Jump to the compiled continuation
-            as.jmp(X86Opnd(cretReg));
-
-            stub.markEnd(as);
-
-            // Set the return address entry for this stub
-            vm.setRetEntry(
-                stub.callVer,
-                callInstr,
-                stub,
-                stub.callVer.targets[1]
-            );
-        }
-
         else
         {
-            assert (false, "invalid code fragment");
+            assert (false, "invalid code fragment queued for compilation");
         }
 
         if (opts.dumpasm && frag.length > 0)
@@ -2894,6 +2841,9 @@ extern (C) CodePtr compileCont(ContStub stub)
         writeln("entering compileCont");
     }
 
+    //writeln("callVer=", cast(void*)stub.callVer);
+    //writeln("callState=", cast(void*)stub.callState);
+
     auto callInstr = stub.callVer.block.lastInstr;
 
     auto contSt = new CodeGenState(stub.callState);
@@ -2974,18 +2924,13 @@ void removeConts(IRFunction callee)
 
         writeln("invalidating cont");
 
-        // Get the state at the call
-        auto callSt = new CodeGenState(contBranch.target.state);
-
         // Recreate a continuation stub for each continuation
-        auto contStub = new ContStub(
+        auto contStub = getContStub(
             callVer,
-            callSt,
+            callVer.targets[1],
+            contBranch.target.state,
             callee
         );
-
-        // Queue the stub for compilation
-        vm.queue(contStub);
 
         // Update the continuation branch
         callVer.targets[0] = contStub;
@@ -3038,45 +2983,149 @@ void removeConts(IRFunction callee)
 }
 
 /**
-Get the generic function entry stub
+Generate the generic JIT stubs
 */
-CodePtr getEntryStub(IRFunction fun)
+void genStubs(VM vm)
 {
     auto as = vm.execHeap;
 
-    // If the generic stub is not already compiled
-    if (vm.entryStub is null)
+    //
+    // Generic entry stub
+    //
+
+    assert (vm.entryStub is null);
+
+    vm.entryStub = new EntryStub();
+
+    vm.entryStub.markStart(as);
+
+    as.saveJITRegs();
+
+    debug
     {
-        auto stub = new EntryStub();
+        as.checkStackAlign("stack unaligned before compileEntry");
+    }
+
+    // The first argument is the IRFunction pointer,
+    // which was passed in scrRegs[0]
+    as.mov(cargRegs[0].opnd(64), scrRegs[0].opnd(64));
+
+    // Call the JIT compile function,
+    // passing it a pointer to the stub
+    auto cmpEntryFn = &compileEntry;
+    as.ptr(scrRegs[0], cmpEntryFn);
+    as.call(scrRegs[0]);
+
+    as.loadJITRegs();
+
+    // Jump to the compiled version
+    as.jmp(cretReg.opnd);
+
+    vm.entryStub.markEnd(as);
+
+    //
+    // Generic branch stubs
+    //
+
+    void genBranchStub(size_t targetIdx)
+    {
+        auto stub = new BranchStub(targetIdx);
+        vm.branchStubs.length = targetIdx + 1;
+        vm.branchStubs[targetIdx] = stub;
 
         stub.markStart(as);
 
+        as.comment("Generic branch stub (target " ~ to!string(targetIdx) ~ ")");
+
+        //as.printStr("hit branch stub (target " ~ to!string(targetIdx) ~ ")");
+        //as.printUint(scrRegs[0].opnd);
+
+        // Save the allocatable registers
+        as.saveAllocRegs();
+
         as.saveJITRegs();
 
-        debug
-        {
-            as.checkStackAlign("stack unaligned before compileEntry");
-        }
-
-        // The first argument is the IRFunction pointer,
+        // The first argument is the src block pointer,
         // which was passed in scrRegs[0]
         as.mov(cargRegs[0].opnd(64), scrRegs[0].opnd(64));
 
-        // Call the JIT compile function,
-        // passing it a pointer to the stub
-        auto compileFn = &compileEntry;
-        as.ptr(scrRegs[0], compileFn);
+        // The second argument is the branch target index
+        as.mov(cargRegs[1].opnd(32), X86Opnd(targetIdx));
+
+        debug
+        {
+            as.checkStackAlign("stack unaligned before compileBranch");
+        }
+
+        // Call the JIT compilation function,
+        auto cmpBranchFn = &compileBranch;
+        as.ptr(scrRegs[0], cmpBranchFn);
         as.call(scrRegs[0]);
 
         as.loadJITRegs();
 
+        // Restore the allocatable registers
+        as.loadAllocRegs();
+
         // Jump to the compiled version
         as.jmp(cretReg.opnd);
 
+        // Store the code end index
         stub.markEnd(as);
-
-        vm.entryStub = stub;
     }
+
+    genBranchStub(0);
+    genBranchStub(1);
+
+    //
+    // Generic continuation stub
+    //
+
+    assert (vm.contStub is null);
+
+    vm.contStub = new ContStub(null, null, null);
+
+    vm.contStub.markStart(as);
+
+    as.comment("Generic continuation stub");
+
+    as.saveJITRegs();
+
+    // Save the return value
+    as.push(retWordReg.reg(64));
+    as.push(retTagReg.reg(64));
+
+    debug
+    {
+        as.checkStackAlign("stack unaligned before compileBranch");
+    }
+
+    // Call the JIT compilation function,
+    auto cmpContFn = &compileCont;
+    as.ptr(scrRegs[0], cmpContFn);
+    as.call(scrRegs[0]);
+
+    // Restore the return value
+    as.pop(retTagReg.reg(64));
+    as.pop(retWordReg.reg(64));
+
+    as.loadJITRegs();
+
+    // Jump to the compiled continuation
+    as.jmp(cretReg.opnd);
+
+    // Store the code end index
+    vm.contStub.markEnd(as);
+}
+
+/**
+Generate a function entry stub
+*/
+CodePtr getEntryStub(IRFunction fun)
+{
+    assert (vm.entryStub !is null);
+
+    auto as = vm.execHeap;
 
     // Store the current write position
     auto startPos = as.getWritePos();
@@ -3109,56 +3158,13 @@ Generate a branch stub. Returns the executable heap position of the stub.
 */
 size_t getBranchStub(BlockVersion srcBlock, size_t targetIdx)
 {
+    assert (
+        vm.branchStubs.length is 2 &&
+        vm.branchStubs[0] !is null &&
+        vm.branchStubs[1] !is null
+    );
+
     auto as = vm.execHeap;
-
-    // If the generic stub is not already generated
-    if (targetIdx >= vm.branchStubs.length || vm.branchStubs[targetIdx] is null)
-    {
-        auto stub = new BranchStub(targetIdx);
-        vm.branchStubs.length = targetIdx + 1;
-        vm.branchStubs[targetIdx] = stub;
-
-        stub.markStart(as);
-
-        // Insert the label for this block in the out of line code
-        as.comment("Branch stub (target " ~ to!string(targetIdx) ~ ")");
-
-        //as.printStr("hit branch stub (target " ~ to!string(targetIdx) ~ ")");
-        //as.printUint(scrRegs[0].opnd);
-
-        // Save the allocatable registers
-        as.saveAllocRegs();
-
-        as.saveJITRegs();
-
-        // The first argument is the src block pointer,
-        // which was passed in scrRegs[0]
-        as.mov(cargRegs[0].opnd(64), scrRegs[0].opnd(64));
-
-        // The second argument is the branch target index
-        as.mov(cargRegs[1].opnd(32), X86Opnd(targetIdx));
-
-        debug
-        {
-            as.checkStackAlign("stack unaligned before compileBranch");
-        }
-
-        // Call the JIT compilation function,
-        auto compileFn = &compileBranch;
-        as.ptr(scrRegs[0], compileFn);
-        as.call(scrRegs[0]);
-
-        as.loadJITRegs();
-
-        // Restore the allocatable registers
-        as.loadAllocRegs();
-
-        // Jump to the compiled version
-        as.jmp(cretReg.opnd);
-
-        // Store the code end index
-        stub.markEnd(as);
-    }
 
     // Store the current write position
     auto startPos = as.getWritePos();
@@ -3188,5 +3194,66 @@ size_t getBranchStub(BlockVersion srcBlock, size_t targetIdx)
     as.setWritePos(startPos);
 
     return stubPos;
+}
+
+/**
+Generate a continuation stub. Returns the executable heap position of the stub.
+*/
+ContStub getContStub(
+    BlockVersion callVer,
+    CodeFragment excTarget,
+    CodeGenState callSt,
+    IRFunction callee
+)
+{
+    assert (vm.contStub !is null);
+
+    //writeln("entering getContStub");
+
+    auto as = vm.execHeap;
+
+    // Create a call continuation stub with a copy of the call state
+    assert (callVer !is null);
+    auto stub = new ContStub(
+        callVer,
+        new CodeGenState(callSt),
+        callee
+    );
+
+    // Store the current write position
+    auto startPos = as.getWritePos();
+
+    // Move the write position to the stub write position
+    as.setWritePos(vm.stubWritePos);
+
+    stub.markStart(as);
+
+    // The first argument is the stub object
+    as.ptr(cargRegs[0], stub);
+
+    // Jump to the generic continuation stub
+    auto offset = cast(int32_t)(vm.contStub.startIdx - (as.getWritePos + 5));
+    as.jmp32(offset);
+
+    stub.markEnd(as);
+
+    // Update the stub write position
+    vm.stubWritePos = as.getWritePos;
+
+    // Return to the previous write position
+    as.setWritePos(startPos);
+
+    // Set the return address entry for this stub
+    vm.setRetEntry(
+        callVer,
+        callVer.block.lastInstr,
+        stub,
+        excTarget
+    );
+
+    //writeln("leaving getContStub");
+
+    // Return the continuation stub object
+    return stub;
 }
 
