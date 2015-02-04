@@ -2260,8 +2260,6 @@ Must set the current instruction to null when returning from host code.
 */
 void setCurInstr(VM vm, IRInstr curInstr)
 {
-    //writeln("curInstr=", curInstr);
-
     // Ensure proper usage
     assert (
         !(vm.curInstr !is null && curInstr !is null),
@@ -2283,7 +2281,13 @@ void setRetEntry(
 )
 {
     auto retAddr = retCode.getCodePtr(vm.execHeap);
-    vm.retAddrMap[retAddr] = RetEntry(callVer, callInstr, retCode, excCode);
+
+    vm.retAddrMap[retAddr] = RetEntry(
+        callVer,
+        callInstr,
+        retCode,
+        excCode
+    );
 }
 
 /**
@@ -2841,12 +2845,12 @@ extern (C) CodePtr compileCont(ContStub stub)
         writeln("entering compileCont");
     }
 
-    //writeln("callVer=", cast(void*)stub.callVer);
-    //writeln("callState=", cast(void*)stub.callState);
-
     auto callInstr = stub.callVer.block.lastInstr;
 
     auto contSt = new CodeGenState(stub.callState);
+
+    // Map the return value to its stack location
+    contSt.mapToStack(callInstr);
 
     // TODO: if callee known, set return type
 
@@ -3212,6 +3216,8 @@ ContStub getContStub(
 
     auto as = vm.execHeap;
 
+    auto callInstr = callVer.block.lastInstr;
+
     // Create a call continuation stub with a copy of the call state
     assert (callVer !is null);
     auto stub = new ContStub(
@@ -3246,7 +3252,7 @@ ContStub getContStub(
     // Set the return address entry for this stub
     vm.setRetEntry(
         callVer,
-        callVer.block.lastInstr,
+        callInstr,
         stub,
         excTarget
     );

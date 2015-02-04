@@ -100,47 +100,48 @@ TODO: mark IRFunction if any shape changed anywhere
 - If flag goes to true, must call removeConts
 - Recompiling continuations may invalidate callers as well
 
-2015-02-0X Meeting:
+TODO: can we load directly from moffs64 on x86-64?
+
+TODO: test perf of return type passing on fib benchmark
+
+Don't worry about perfection right now. The important part is getting this working
+This is prototyping!
+
+TODO: make compileCont take advantage of return type info
+
+test and commit
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: callInstr not in val map
+leaving removeConts
+value not in val map: $72 = call_prim "$rt_add", $71, $69 => call_merge(56E402)
+- not found in the CodeGenState of the old call continuation (before invalidation)
+- gets removed from state when first compiling the continuation block... why?
+  - not life after the phi nodes, this is normal
+
+[DONE] 2015-02-03 Meeting:
 - May not have DYLA this year, but there is OOPSLA, March 25th
   - could also resubmit original BBV paper if necessary
+  - Marc agrees
 - Refactorings for ret type propagation
   - Made return continuation generation lazy
     - So type info could be extracted when continuation is compiled
   - Made it so return cont stub code is compiled immediately in stub space
     - No compile queue
 
-TODO: can we load directly from moffs64 on x86-64?
-
-TODO: test perf of return type passing on fib benchmark
-
-TODO: make compileCont take advantage of return type info
-
-test and commit
-
-FIXME: failing test
-./higgs --e "parseInt(10)
-visiting stack frame for string_charCodeAt(D118)
-getting ret entry
-getting new cont
-Assertion failed (jit/codeblock.d@212): invalid index in getAddress: 4294967295
-- Topmost stack frame failing
-- Problem... Want to get address for new cont stub, but it isn't compiled yet
-  while in removeCont()
-  - only queued for later compilation
-  - may have to patch old ret code to jump to new cont stubs?
-  - if we do that, we must ensure that this code is never legitimately reused
-
-TODO: re-enable removeConts in jit/ops.d
-
-
-
-
-
-
-
-
-
-
+[DONE] TODO: re-enable removeConts in jit/ops.d
 
 [DONE] FIXME: stub pointer invalid in compileCont
 - Problem: generic cont stub code is inserted in random place!

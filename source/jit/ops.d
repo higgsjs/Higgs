@@ -2592,9 +2592,8 @@ void gen_ret(
         // If this is not a subtype of the function's known return type
         if (!retType.isSubType(fun.retType))
         {
-            // TODO: re-enable
             // Invalidate call continuations
-            //removeConts(fun);
+            removeConts(fun);
 
             // Update the known return type
             fun.retType = fun.retType.join(retType);
