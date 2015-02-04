@@ -2852,7 +2852,12 @@ extern (C) CodePtr compileCont(ContStub stub)
     // Map the return value to its stack location
     contSt.mapToStack(callInstr);
 
-    // TODO: if callee known, set return type
+    // If the callee is known
+    if (stub.callee)
+    {
+        // Propagate the callee's return type
+        contSt.setType(callInstr, stub.callee.retType);
+    }
 
     // Create a branch object for the continuation
     auto contBranch = getBranchEdge(
@@ -2912,10 +2917,6 @@ Invalidate call continuations going to a specific known callee
 */
 void removeConts(IRFunction callee)
 {
-    // Note: no need to remove RA entries
-    // For now, just make it work!
-    // Once it works, then try to remove old RAs and optimize
-
     // For each call site block version
     foreach (callVer; callee.callSites)
     {
@@ -2926,7 +2927,7 @@ void removeConts(IRFunction callee)
         if (contBranch is null)
             continue;
 
-        writeln("invalidating cont");
+        //writeln("invalidating cont");
 
         // Recreate a continuation stub for each continuation
         auto contStub = getContStub(
@@ -2954,13 +2955,11 @@ void removeConts(IRFunction callee)
         IRInstr curInstr
     )
     {
-        writeln("visiting stack frame for ", fun.getName);
+        //writeln("visiting stack frame for ", fun.getName);
 
         // Get the return address for this stack frame
         auto oldRA = wsp[fun.raVal.outSlot].ptrVal;
         assert (oldRA !is null);
-
-        writeln("getting ret entry");
 
         auto retEntry = oldRA in vm.retAddrMap;
         assert (retEntry !is null);
@@ -2969,21 +2968,16 @@ void removeConts(IRFunction callee)
         // If this is a call site whose continuation was invalidated
         if (callVer in callee.callSites)
         {
-            writeln("getting new cont");
-
             auto newCont = callVer.targets[0];
             assert (newCont !is null);
             auto newRA = newCont.getCodePtr(vm.execHeap);
-
-            writeln("updating RA");
-
             wsp[fun.raVal.outSlot].ptrVal = cast(rawptr)newRA;
         }
     };
 
     vm.visitStack(visitFrame);
 
-    writeln("leaving removeConts");
+    //writeln("leaving removeConts");
 }
 
 /**

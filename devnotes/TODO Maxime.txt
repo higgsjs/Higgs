@@ -95,6 +95,10 @@ Goal: return info propagation, shapes changed flag
 --------------------------------------------------
 - useful for shapes paper, improves results
 
+Meeting 2015-02-03:
+- Interp ret propagation working
+  - fib(42) in 0 type tests, instead of 866M
+
 TODO: mark IRFunction if any shape changed anywhere
 - bool shapeChg
 - If flag goes to true, must call removeConts
@@ -102,14 +106,15 @@ TODO: mark IRFunction if any shape changed anywhere
 
 TODO: can we load directly from moffs64 on x86-64?
 
-TODO: test perf of return type passing on fib benchmark
+TODO: improve ret, map to ret word reg
+- change ret reg if necessary to be part of alloc regs
+  - current moving from reg to stack to reg is silly!
+- should help fib42 benchmark a little bit
 
 Don't worry about perfection right now. The important part is getting this working
 This is prototyping!
 
-TODO: make compileCont take advantage of return type info
-
-test and commit
+FIXME: string-fasta benchmark fails in benchmark.py
 
 
 
@@ -123,6 +128,11 @@ test and commit
 
 
 
+[DONE] TODO: test perf of return type passing on fib benchmark
+- fib(42) in 0 type tests, instead of 866M
+- Time difference not significant
+
+[DONE] TODO: make compileCont take advantage of return type info
 
 [DONE] FIXME: callInstr not in val map
 leaving removeConts
