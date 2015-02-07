@@ -2206,7 +2206,7 @@ void genBranchMoves(
     }
 }
 
-/// Return address entry
+/// Return address metainformation entry
 alias RetEntry = Tuple!(
     BlockVersion, "callVer",
     IRInstr, "callInstr",
@@ -2443,9 +2443,6 @@ void compile(VM vm, IRInstr curInstr)
                 branch.target.state,
                 branch.branch
             );
-
-            // The predecessor state is no longer needed
-            branch.predState = null;
 
             // If the target was already compiled before
             if (branch.target.started)
@@ -2933,7 +2930,7 @@ void removeConts(IRFunction callee)
         auto contStub = getContStub(
             callVer,
             callVer.targets[1],
-            contBranch.target.state,
+            contBranch.predState,
             callee
         );
 

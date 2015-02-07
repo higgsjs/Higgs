@@ -25,8 +25,11 @@ Should do transformations at the IR level.
 - IR needs new constructs to integrate versioning
 - Guards? Child sub-versions of other blocks with preconditions?
 - Incremental generation, need branch edge "stubs"
-- May be possible to completely eliminate the context with annotations/guards
+- May be possible to completely eliminate the context with
+  annotations/guards/metainfo
+  - encode all context info in the IR
   - save memory, context lookups are espensive, context objects are big
+  - avoid the mutability problem, shared pointers to a mutated context
 
 Incremental inlining at the IR level
 - Could try to reg alloc inlined code

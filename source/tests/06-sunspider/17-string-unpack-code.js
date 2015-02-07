@@ -1,1 +1,1 @@
-load('benchmarks/sunspider/string-unpack-code-quick.js');
+load('benchmarks/sunspider/string-unpack-code.js');

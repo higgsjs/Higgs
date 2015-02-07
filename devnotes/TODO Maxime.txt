@@ -106,17 +106,26 @@ TODO: mark IRFunction if any shape changed anywhere
 
 TODO: can we load directly from moffs64 on x86-64?
 
+TODO: rename CodeGenState to CodeGenCtx
+
+TODO: load and draw gates from JSON
+- add readJSON function to stdio?
+  - or directly load as JS, use new? more problematic to serialize back
+  - look further into JSON processing function
+- In and Out objects with optional names
+- function that traverses the objects and draws them
+- KISS
+
+TODO: don't write ret type reg to stak if ret tag known
 TODO: improve ret, map to ret word reg
 - change ret reg if necessary to be part of alloc regs
   - current moving from reg to stack to reg is silly!
 - should help fib42 benchmark a little bit
 
-Don't worry about perfection right now. The important part is getting this working
-This is prototyping!
-
-FIXME: string-fasta benchmark fails in benchmark.py
-
-
+TODO: begin work on blog post: Look Ma, No Type Tests!
+- Optimizations that go into fib(42)
+- Specifics of Higgs
+- Machine code with and without type spec
 
 
 
@@ -127,6 +136,33 @@ FIXME: string-fasta benchmark fails in benchmark.py
 
 
 
+
+
+
+[DONE] FIXME: string-fasta benchmark fails in benchmark.py
+leaving compileCont
+forin_entry(23A88):
+$0 = is_object $20
+if_true(23E26):
+$0 = load_shapeptr $20, 16
+Caught segmentation fault
+- Try reducing benchmark to shorter, simpler failing test case
+- It's a phi issue... Need to store the state at the call
+- Ideally, call branch would do this... Could try inheriting from it
+  - But this is annoying for requesting a branch?
+
+[DONE] FIXME: need to store callState somewhere, ideally on call branch?
+- The return entry is necessary, can't be eliminated
+- compileCont triggers the call branch generation, so the stub needs to
+  know the call state, and this is already the case
+- ISSUE: when "re-stubbing" the call cont, we no longer have the call state
+- Would like to attach the callState to the callVer or ContBranch somehow...
+  - Normally, branches do store a pred state
+  - Just don't null the pred state in the case of calls preds
+
+[DONE] TODO: try not nulling pred state in BranchCode
+- check see effect on peak mem usage in earley-boyer
+- slightly less memory usage !?
 
 [DONE] TODO: test perf of return type passing on fib benchmark
 - fib(42) in 0 type tests, instead of 866M

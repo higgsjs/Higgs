@@ -1,1 +1,1 @@
-load('benchmarks/sunspider/string-fasta-quick.js');
+load('benchmarks/sunspider/string-fasta.js');
