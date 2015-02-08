@@ -98,6 +98,11 @@ Goal: return info propagation, shapes changed flag
 Meeting 2015-02-03:
 - Interp ret propagation working
   - fib(42) in 0 type tests, instead of 866M
+- Eliminating 98% of type tag tests with 5 version limit
+- More than 700% faster than TraceMonkey on some benchmarks
+- Beating V8 baseline on all but 2 benchmarks
+- Faster than before on sunspider/recursive benchmark
+- Fibonacci machine code still shows many inefficiencies
 
 TODO: mark IRFunction if any shape changed anywhere
 - bool shapeChg
@@ -116,8 +121,12 @@ TODO: load and draw gates from JSON
 - function that traverses the objects and draws them
 - KISS
 
-TODO: don't write ret type reg to stak if ret tag known
+TODO: don't write ret type reg to stack if ret tag known
+- then need different strategy for exc path
+
 TODO: improve ret, map to ret word reg
+make release; ./higgs benchmarks/nocomptime/controlflow-recursive.js
+=> 1.98 ms, best of 5
 - change ret reg if necessary to be part of alloc regs
   - current moving from reg to stack to reg is silly!
 - should help fib42 benchmark a little bit
@@ -126,6 +135,7 @@ TODO: begin work on blog post: Look Ma, No Type Tests!
 - Optimizations that go into fib(42)
 - Specifics of Higgs
 - Machine code with and without type spec
+./higgs --genasm --e "print(fib.asmString())" benchmarks/micro/fib42.js
 
 
 
@@ -137,7 +147,8 @@ TODO: begin work on blog post: Look Ma, No Type Tests!
 
 
 
-
+[DONE] TODO: evaluate percentage of type tests eliminated
+- 98% with 5 version limit!
 
 [DONE] FIXME: string-fasta benchmark fails in benchmark.py
 leaving compileCont

@@ -1593,6 +1593,24 @@ void genCallBranch(
     // Map the return value to its stack location
     st.mapToStack(instr);
 
+
+
+    /*
+    // FIXME: somehow mapReg doesn't work... says value is not mapped to a reg
+
+    In some cases, values are still mapped to regs
+    These values are possibly not live
+    Need to unmap whatever is mapped to retWordReg
+
+
+
+    auto freedReg = st.freeReg(as, instr, retWordReg);
+    assert (freedReg == retWordReg);
+    st.mapReg(retWordReg, instr, 64);
+    */
+
+
+
     BranchCode excBranch = null;
 
     // Create the exception branch object
@@ -1755,13 +1773,7 @@ void gen_call_prim(
     as.setWord(-numArgs - 1, numArgs);
 
     // Spill the values that are live after the call
-    st.spillValues(
-        as,
-        delegate bool(LiveInfo liveInfo, IRDstValue value)
-        {
-            return liveInfo.liveAfter(value, instr);
-        }
-    );
+    st.spillLiveAfter(as, instr);
 
     // Clear the known shape information
     st.clearShapes();
@@ -1968,7 +1980,7 @@ void gen_call(
         }
 
         // Spill the values that are live after the call
-        st.spillLiveBefore(as, instr);
+        st.spillLiveAfter(as, instr);
 
         // Clear the known shape information
         st.clearShapes();
@@ -2151,13 +2163,7 @@ void gen_call(
     as.label(Label.FALSE2);
 
     // Spill the values that are live after the call
-    st.spillValues(
-        as,
-        delegate bool(LiveInfo liveInfo, IRDstValue value)
-        {
-            return liveInfo.liveAfter(value, instr);
-        }
-    );
+    st.spillLiveAfter(as, instr);
 
     // Clear the known shape information
     st.clearShapes();
@@ -2263,14 +2269,8 @@ void gen_call_apply(
         return fun.entryCode;
     }
 
-    // Spill the values that are live after the call
-    st.spillValues(
-        as,
-        delegate bool(LiveInfo liveInfo, IRDstValue value)
-        {
-            return liveInfo.liveBefore(value, instr);
-        }
-    );
+    // Spill the values that are live before the call
+    st.spillLiveBefore(as, instr);
 
     // Clear the known shape information
     st.clearShapes();
@@ -2399,13 +2399,7 @@ void gen_load_file(
     }
 
     // Spill the values that are live before the call
-    st.spillValues(
-        as,
-        delegate bool(LiveInfo liveInfo, IRDstValue value)
-        {
-            return liveInfo.liveBefore(value, instr);
-        }
-    );
+    st.spillLiveBefore(as, instr);
 
     ver.genCallBranch(
         st,
@@ -2521,13 +2515,7 @@ void gen_eval_str(
     }
 
     // Spill the values that are live before the call
-    st.spillValues(
-        as,
-        delegate bool(LiveInfo liveInfo, IRDstValue value)
-        {
-            return liveInfo.liveBefore(value, instr);
-        }
-    );
+    st.spillLiveBefore(as, instr);
 
     ver.genCallBranch(
         st,

@@ -1487,7 +1487,10 @@ abstract class CodeFragment
 
         if (auto stub = cast(ContStub)this)
         {
-            return "cont_stub_" ~ stub.callVer.getName;
+            if (stub.callVer)
+                return "cont_stub_" ~ stub.callVer.getName;
+            else
+                return "cont_stub";
         }
 
         if (auto exit = cast(ExitCode)this)
@@ -2845,9 +2848,6 @@ extern (C) CodePtr compileCont(ContStub stub)
     auto callInstr = stub.callVer.block.lastInstr;
 
     auto contSt = new CodeGenState(stub.callState);
-
-    // Map the return value to its stack location
-    contSt.mapToStack(callInstr);
 
     // If the callee is known
     if (stub.callee)
