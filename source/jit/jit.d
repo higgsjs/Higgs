@@ -1037,6 +1037,9 @@ class CodeGenState
                 valMap[value] = state.clearShape();
             }
         }
+
+        // Mark this function as possibly changing shapes
+        markShapeChange(fun);
     }
 
     /**
@@ -1373,6 +1376,9 @@ class CodeGenState
 
         // Set a known type for this value
         valMap[value] = state.clearShape();
+
+        // Mark this function as possibly changing shapes
+        markShapeChange(fun);
     }
 
     /// Get the type for a given value
@@ -2910,10 +2916,30 @@ extern (C) CodePtr compileCont(ContStub stub)
 }
 
 /**
+Mark a function as potentially causing shape changes
+and invalidate call continuations
+*/
+void markShapeChange(IRFunction fun)
+{
+    // If the function is not already known to cause shape changes
+    if (fun.shapeChg is false)
+    {
+        fun.shapeChg = true;
+
+        // Invalidate call continuations
+        removeConts(fun);
+    }
+}
+
+/**
 Invalidate call continuations going to a specific known callee
 */
 void removeConts(IRFunction callee)
 {
+    // If there are no direct call sites, return early
+    if (callee.callSites.length is 0)
+        return;
+
     // For each call site block version
     foreach (callVer; callee.callSites)
     {

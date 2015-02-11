@@ -1184,6 +1184,7 @@ class VM
         auto tsp = this.tsp;
 
         // Current instruction
+        assert (curInstr !is null);
         auto curInstr = this.curInstr;
 
         // For each stack frame, starting from the topmost

@@ -95,20 +95,6 @@ Goal: return info propagation, shapes changed flag
 --------------------------------------------------
 - useful for shapes paper, improves results
 
-Meeting 2015-02-03:
-- Interp ret propagation working
-  - fib(42) in 0 type tests, instead of 866M
-- Eliminating 98% of type tag tests with 5 version limit
-- More than 700% faster than TraceMonkey on some benchmarks
-- Beating V8 baseline on all but 2 benchmarks
-- Faster than before on sunspider/recursive benchmark
-- Fibonacci machine code still shows many inefficiencies
-
-TODO: mark IRFunction if any shape changed anywhere
-- bool shapeChg
-- If flag goes to true, must call removeConts
-- Recompiling continuations may invalidate callers as well
-
 TODO: can we load directly from moffs64 on x86-64?
 
 TODO: rename CodeGenState to CodeGenCtx
@@ -125,18 +111,34 @@ TODO: don't write ret type reg to stack if ret tag known
 - then need different strategy for exc path
 
 TODO: improve ret, map to ret word reg
-make release; ./higgs benchmarks/nocomptime/controlflow-recursive.js
-=> 1.98 ms, best of 5
-- change ret reg if necessary to be part of alloc regs
-  - current moving from reg to stack to reg is silly!
+- current moving from reg to stack to reg is silly!
 - should help fib42 benchmark a little bit
+make release; ./higgs benchmarks/nocomptime/controlflow-recursive.js
+    1.98 ms, best of 5
+./higgs --nostdlib --stats benchmarks/sunspider/controlflow-recursive.js
+    code size (bytes): 36599
+    num shape known: 28
+    num shape tests: 245491
 
-TODO: begin work on blog post: Look Ma, No Type Tests!
+TODO: work on blog post: Look Ma, No Type Tests!
 - Optimizations that go into fib(42)
 - Specifics of Higgs
 - Machine code with and without type spec
 ./higgs --genasm --e "print(fib.asmString())" benchmarks/micro/fib42.js
 
+TODO: check speed of fib(42) in c, because Marc is curious
+gcc -O0 benchmarks/micro/fib42.c; time ./a.out => 2.274
+gcc -O4 benchmarks/micro/fib42.c; time ./a.out => 1.426
+
+TODO: use shapeChg flag to optimize runtime calls
+
+TODO: enable recursive markShapeChange in call continuation compilation
+- in continuation, check if callee has shapeChg set to true
+  - if so, call markShapeChange on the caller?
+  - maybe should be calling clearShapes???
+- call clearShapes if the callee is unknown or if known and shapeChg set
+
+test and commit
 
 
 
@@ -145,7 +147,27 @@ TODO: begin work on blog post: Look Ma, No Type Tests!
 
 
 
+[DONE] FIXME: markShapeChange fails, curInstr isn't set before stack traversal
+- currently called by clearShape
+- Happens inside gen_call
+- Seems we're compiling a unit function!
+  - There really is no stack traversal to be done
+  - Could check if the stack size is 0?
+- removeConts, if no call conts, return early!
 
+[DONE] TODO: mark IRFunction if any shape changed anywhere
+- bool shapeChg
+- If flag goes to true, must call removeConts
+- Recompiling continuations may invalidate callers as well
+
+[DONE] Meeting 2015-02-03 w/ Baptiste
+- Interp ret propagation working
+  - fib(42) in 0 type tests, instead of 866M
+- Eliminating 98% of type tag tests with 5 version limit
+- More than 700% faster than TraceMonkey on some benchmarks
+- Beating V8 baseline on all but 2 benchmarks
+- Faster than before on sunspider/recursive benchmark
+- Fibonacci machine code still shows many inefficiencies
 
 [DONE] TODO: evaluate percentage of type tests eliminated
 - 98% with 5 version limit!

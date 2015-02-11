@@ -1593,23 +1593,17 @@ void genCallBranch(
     // Map the return value to its stack location
     st.mapToStack(instr);
 
-
-
     /*
-    // FIXME: somehow mapReg doesn't work... says value is not mapped to a reg
+    // FIXME: mapReg doesn't work, says value is not mapped to a reg
 
     In some cases, values are still mapped to regs
     These values are possibly not live
     Need to unmap whatever is mapped to retWordReg
 
-
-
     auto freedReg = st.freeReg(as, instr, retWordReg);
     assert (freedReg == retWordReg);
     st.mapReg(retWordReg, instr, 64);
     */
-
-
 
     BranchCode excBranch = null;
 

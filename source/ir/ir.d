@@ -136,6 +136,9 @@ class IRFunction : IdObject
     /// Return type, if known
     ValType retType;
 
+    /// Shapes changed flag, initially false
+    bool shapeChg = false;
+
     /// Number of return compiled
     size_t numRets = 0;
 
