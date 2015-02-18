@@ -55,7 +55,7 @@ function graphSum(root)
 
         //iir.trace_print('leaving visit');
     }
-    
+
     visit(root);
 
     //iir.trace_print('leaving graphSum');

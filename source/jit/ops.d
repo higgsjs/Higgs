@@ -1769,9 +1769,6 @@ void gen_call_prim(
     // Spill the values that are live after the call
     st.spillLiveAfter(as, instr);
 
-    // Clear the known shape information
-    st.clearShapes();
-
     // Push space for the callee arguments and locals
     as.sub(X86Opnd(tspReg), X86Opnd(fun.numLocals));
     as.sub(X86Opnd(wspReg), X86Opnd(8 * fun.numLocals));
@@ -1976,9 +1973,6 @@ void gen_call(
         // Spill the values that are live after the call
         st.spillLiveAfter(as, instr);
 
-        // Clear the known shape information
-        st.clearShapes();
-
         // Push space for the callee arguments and locals
         as.sub(X86Opnd(tspReg), X86Opnd(frameSize));
         as.sub(X86Opnd(wspReg), X86Opnd(8 * frameSize));
@@ -2159,9 +2153,6 @@ void gen_call(
     // Spill the values that are live after the call
     st.spillLiveAfter(as, instr);
 
-    // Clear the known shape information
-    st.clearShapes();
-
     ver.genCallBranch(
         st,
         instr,
@@ -2265,9 +2256,6 @@ void gen_call_apply(
 
     // Spill the values that are live before the call
     st.spillLiveBefore(as, instr);
-
-    // Clear the known shape information
-    st.clearShapes();
 
     ver.genCallBranch(
         st,

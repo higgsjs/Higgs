@@ -23,22 +23,7 @@ List of possible contributions:
 - Interprocedural versioning
 - Incremental inlining vs classical inlining
 - Typed shapes and basic block versioning
-
-Idea: for thesis, complete system, whole-program analysis is complicated
-- could emulate "perfect analysis" through profiling
-- eliminate all type tests and ovf checks that always go the same way
-- Save profiled data. Use instrs ids. Check that opcode and out slot match.
-"Better than Perfect: Highly Effective Type Check Elimination"
-Type Specialization without Type Analysis
-- Where perfect analysis will do better:
-  - array types, gets all the monomorphic types without testing
-  - array elem types often used in loop itrs
-- BBV does better at polymorphism:
-  - poly function parameter
-  - object field is null or something else
-- Could do some scout work: profile type checks
-  - how many type checks do/don't always go the same way?
-  - 90% always go the same way, weighed for importance, without versioning
+- Doing IPA, at very little cost. Little overhead over the intraprocedural.
 
 ------------------------------------------------------------------------------
 
@@ -70,31 +55,6 @@ TODO: think about "perfect" analysis
   --save_type_tests
   --load_type_tests
 
-------------------------------------------------------------------------------
-
-OOPSLA - March 25th - typed shapes paper
-----------------------------------------
-
-Typed shapes paper: important points
-- can often know at compile time if obj needs to be extended or not
-  - simplifies spill/GC/bailout issue
-  - show control-flow diagram of work needing to be done for read and write
-- can often know at compile time if obj shape needs to be updated or not
-- our system allows a unified model, global object is a regular object
-- implement the inline cache self_hosted
-  - much easier to debug and optimize, generate compact code
-  - use source-level "ifdef", $ir_get_opt("shape_novers")
-- for global object, can determine prop idx, lower bound on global obj
-  size at compilation time
-
-Blog post: Better than Perfect?
-
-------------------------------------------------------------------------------
-
-Goal: return info propagation, shapes changed flag
---------------------------------------------------
-- useful for shapes paper, improves results
-
 TODO: can we load directly from moffs64 on x86-64?
 
 TODO: rename CodeGenState to CodeGenCtx
@@ -109,7 +69,6 @@ TODO: load and draw gates from JSON
 
 TODO: don't write ret type reg to stack if ret tag known
 - then need different strategy for exc path
-
 TODO: improve ret, map to ret word reg
 - current moving from reg to stack to reg is silly!
 - should help fib42 benchmark a little bit
@@ -120,32 +79,155 @@ make release; ./higgs benchmarks/nocomptime/controlflow-recursive.js
     num shape known: 28
     num shape tests: 245491
 
-TODO: work on blog post: Look Ma, No Type Tests!
-- Optimizations that go into fib(42)
-- Specifics of Higgs
-- Machine code with and without type spec
-./higgs --genasm --e "print(fib.asmString())" benchmarks/micro/fib42.js
-
 TODO: check speed of fib(42) in c, because Marc is curious
 gcc -O0 benchmarks/micro/fib42.c; time ./a.out => 2.274
 gcc -O4 benchmarks/micro/fib42.c; time ./a.out => 1.426
+- Mini blog post, Fibonacci in C - Higgs vs GCC, microbenchmark
+- Show machine code output for Higgs, GCC, V8
+TODO: look at machine code for fib42, ensure OK
 
-TODO: use shapeChg flag to optimize runtime calls
+------------------------------------------------------------------------------
 
-TODO: enable recursive markShapeChange in call continuation compilation
-- in continuation, check if callee has shapeChg set to true
-  - if so, call markShapeChange on the caller?
-  - maybe should be calling clearShapes???
-- call clearShapes if the callee is unknown or if known and shapeChg set
+DLS - June 7, 2015
+------------------
+
+http://www.dynamic-languages-symposium.org/dls-15/cfp/index.html
+
+Intra vs inter?
+
+TODO: re-submit BBV apper to Onward, april 2
+http://2015.splashcon.org/track/onward2015-papers
+
+------------------------------------------------------------------------------
+
+OOPSLA - March 25th - typed shapes paper
+----------------------------------------
+
+Faster JS Objects with Typed Shapes
+
+Typed shapes paper: important points
+- can often know at compile time if obj needs to be extended or not
+  - simplifies spill/GC/bailout issue
+  - show control-flow diagram of work needing to be done for read and write
+- can often know at compile time if obj shape needs to be updated or not
+- our system allows a unified model, global object is a regular object
+- implement the inline cache self_hosted
+  - much easier to debug and optimize, generate compact code
+  - use source-level "ifdef", $ir_get_opt("shape_novers")
+- for global object, can determine prop idx, lower bound on global obj
+  size at compilation time
+
+TODO: if paper ECOOP is rejected, put it on citeseer immediately
+
+TODO: look at previously accepted OOPSLA papers
+
+------------------------------------------------------------------------------
+
+Goal: return info propagation, shapes changed flag
+--------------------------------------------------
+
+Gotta begin work on typed shapes right away if you want to submit this!
+- Paper structure, results needed
+
+TODO: compare times, code size vs master branch
+
+TODO: stat for number of call site invalidations
+- output CSV, look at numbers for each benchmark
 
 test and commit
 
+FIXME: Global function redefinition fails
+./higgs --nostdlib ./tests/02-regress/redef-fun.js
+Error: assertion failed
+$rt_throwExc(52C35C) ("runtime/runtime.js"@138:1)
+assert(52C357) ("runtime/runtime.js"@126:31)
+__tests_02_regress_redef_fun_js(593A3F) ("./tests/02-regress/redef-fun.js"@7:1)
+- Seemingly, the shape of the global "this" (global object) is not correctly updated
+- The second this.foo = fn should clear the "this" shape but it does not
+- Bug doesn't happen without the first call
+- You're defining through this.foo but accessing as a global variable!
+  - This is an aliasing problem
+
+
+
+TODO: asm comment in shapeChg, log shapes cleared
+
+Is clearShapes still useful?
+
+Revise markShapeChg, clearShape, setShape uses
+
+
+
+
+FIXME: clearShape vs clearShapes and aliasing
+- If changing the shape of some object, must clear other known shapes, unless
+  we know other objects do not alias
+- Could potentially have a CodeGenState.shapeChg function
+- CodeGenState.shapeChg(IRValue objVal, ObjShape newShape)
+  - curShape is already known by CodeGenState
+  - If other vals do not have the same srcShape, do not need to kill their shape
+    - If srcShape is unknown, must kill all shapes
+  - If dstShape is null (unknown), we clear the shape
+  - If src value is unknown, we kill all shapes
+- Examine the code, assess whether this idea makes sense or not
+  - uses of setShape, clearShape
+  - clearShapes: used only as contSt.clearShapes()
+  - makeShapeChange: used only in jit.d
 
 
 
 
 
 
+
+
+
+
+[DONE] TODO: ask Luke Wagner, is moz hybrid TI removed from SpiderMonkey
+- Vyacheslav Egorov said this
+
+[DONE] TODO: thesis notes document
+
+[DONE] Meeting 2014-02-17:
+- Remboursement Boston
+- Bourse DIRO
+- Recursive invalidation of call conts on shape changes
+- Compilation of the continuation clears the known shapes before the call
+- Shapes vs aliasing issue
+- Vyacheslav Egorov @mraleph
+  "V8's opt compiler is really intraprocedural, so each time it sees a call
+   it essentially gives up and assumes arbitrary effects"
+  "I think you achieve comparable precision with method local type feedback
+   (which is what V8 always did) and method local type feedback is
+   much-much-much simpler."
+  => count on doing a lot of inlining, but can't inline very much without
+     interp analysis?
+  - Claims most of moz TI was removed from SpiderMonkey (should verify)
+- Don't miss the boat on typed shapes
+  - Scooping! At least get a TR out of it, put it on citeseer
+- Marc agrees on typed shapes for OOPSLA
+
+[DONE] TODO: complete short blog post, add links, proofread, post! KISS
+- graph you a graph quickly!
+
+[DONE] FIXME: gc/graph bugs out
+runtime.vm.RunError@(0): TypeError: undefined base in read of property "push"
+./higgs --nostdlib graph.js
+- Presumably, we have an incorrect shape somewhere
+- Simplify the benchmark
+- We're never calling clearShapes in compileCont
+- Problem seems to be, if you change an object shape knowingly, you should
+  call clearShapes
+  - Too drastic? Only need to kill known shapes that are the same as our obj
+  - If you know some obj to be of some other shape, it can't possibly alias
+
+[DONE] TODO: adversarial tests, two fn params with same obj val, shape change in one
+shape-chg-alias
+- already seems to pass
+
+[DONE] TODO: enable recursive markShapeChange in call continuation compilation
+- call clearShapes if the callee is unknown or if known and shapeChg set
+- remove clearShapes from gen_call, gen_call_prim
 
 [DONE] FIXME: markShapeChange fails, curInstr isn't set before stack traversal
 - currently called by clearShape

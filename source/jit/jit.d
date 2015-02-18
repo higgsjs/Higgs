@@ -1342,19 +1342,6 @@ class CodeGenState
         valMap[value] = state.setTag(tag);
     }
 
-    /// Set shape information for a given value
-    void setShape(IRDstValue value, ObjShape shape)
-    {
-        assert (
-            value in valMap,
-            "setShape: value not in value map"
-        );
-        ValState state = getState(value);
-
-        // Set a known type for this value
-        valMap[value] = state.setShape(shape);
-    }
-
     /// Set the type for a given value
     void setType(IRDstValue value, ValType type)
     {
@@ -1366,6 +1353,22 @@ class CodeGenState
 
         // Set a known type for this value
         valMap[value] = state.setType(type);
+    }
+
+    /// Set shape information for a given value
+    void setShape(IRDstValue value, ObjShape shape)
+    {
+        assert (
+            value in valMap,
+            "setShape: value not in value map"
+        );
+        ValState state = getState(value);
+
+        // Set a known type for this value
+        valMap[value] = state.setShape(shape);
+
+        // Mark this function as possibly changing shapes
+        markShapeChange(fun);
     }
 
     /// Clear shape information for a given value
@@ -2853,6 +2856,13 @@ extern (C) CodePtr compileCont(ContStub stub)
 
     auto callInstr = stub.callVer.block.lastInstr;
 
+    /*
+    writeln("compileCont");
+    writeln("  ", stub.callee.getName);
+    writeln("  (", callInstr.block.fun.getName, ")");
+    */
+
+    // Clone the state at the call site
     auto contSt = new CodeGenState(stub.callState);
 
     // If the callee is known
@@ -2860,6 +2870,18 @@ extern (C) CodePtr compileCont(ContStub stub)
     {
         // Propagate the callee's return type
         contSt.setType(callInstr, stub.callee.retType);
+    }
+
+    // If the callee may change shapes
+    if (stub.callee is null || stub.callee.shapeChg)
+    {
+        //writeln("clearing shapes in cont");
+        //if (stub.callee) writeln("  ", stub.callee.getName);
+
+        // Clear all known shapes
+        vm.setCurInstr(callInstr.getTarget(0).target.firstInstr);
+        contSt.clearShapes();
+        vm.setCurInstr(null);
     }
 
     // Create a branch object for the continuation
@@ -2917,7 +2939,7 @@ extern (C) CodePtr compileCont(ContStub stub)
 
 /**
 Mark a function as potentially causing shape changes
-and invalidate call continuations
+and invalidate its call continuations
 */
 void markShapeChange(IRFunction fun)
 {

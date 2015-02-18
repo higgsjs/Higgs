@@ -1176,7 +1176,7 @@ class VM
     void visitStack(VisitFrameFn visitFrame)
     {
         // If the stack is empty, stop
-        if (this.stackSize() == 0)
+        if (this.stackSize() is 0)
             return;
 
         // Get the current stack pointers
@@ -1184,7 +1184,10 @@ class VM
         auto tsp = this.tsp;
 
         // Current instruction
-        assert (curInstr !is null);
+        assert (
+            curInstr !is null,
+            "VM.curInstr is null"
+        );
         auto curInstr = this.curInstr;
 
         // For each stack frame, starting from the topmost
