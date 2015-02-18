@@ -3100,7 +3100,7 @@ void gen_capture_shape(
     // Mark the object shape as known on the false branch,
     // and queue this branch for immediate compilation (fall through)
     auto falseSt = new CodeGenState(st);
-    falseSt.setShape(objVal, cast(ObjShape)shapeWord.shapeVal);
+    falseSt.shapeChg(objVal, cast(ObjShape)shapeWord.shapeVal);
     auto branchF = getBranchEdge(instr.getTarget(1), falseSt, true);
 
     // Generate the branch code
@@ -3221,7 +3221,7 @@ void gen_obj_init_shape(
         as.setField(objOpnd.reg, obj_ofs_shape(null), scrRegs[0]);
 
         // Propagate the object shape
-        st.setShape(cast(IRDstValue)instr.getArg(0), shape);
+        st.shapeChg(cast(IRDstValue)instr.getArg(0), shape);
 
         return;
     }
@@ -3242,7 +3242,7 @@ void gen_obj_init_shape(
         as.setField(objOpnd.reg, obj_ofs_shape(null), scrRegs[0]);
 
         // Propagate the object shape
-        st.setShape(cast(IRDstValue)instr.getArg(0), shape);
+        st.shapeChg(cast(IRDstValue)instr.getArg(0), shape);
 
         return;
     }
@@ -3262,7 +3262,7 @@ void gen_obj_init_shape(
     as.loadJITRegs();
 
     // Clear any known shape for this object
-    st.clearShape(cast(IRDstValue)instr.getArg(0));
+    st.shapeChg(cast(IRDstValue)instr.getArg(0));
 }
 
 /// Initializes an array to the initial shape
@@ -3285,7 +3285,7 @@ void gen_arr_init_shape(
     as.setField(opnd0.reg, obj_ofs_shape(null), scrRegs[0]);
 
     // Propagate the array shape
-    st.setShape(cast(IRDstValue)instr.getArg(0), vm.arrayShape);
+    st.shapeChg(cast(IRDstValue)instr.getArg(0), vm.arrayShape);
 }
 
 /// Sets the value of a property
@@ -3353,7 +3353,7 @@ void gen_obj_set_prop(
         as.loadJITRegs();
 
         // Clear any known shape for this object
-        st.clearShape(objVal);
+        st.shapeChg(objVal);
 
         // Check the success flag
         as.cmp(cretReg.opnd(8), X86Opnd(1));
@@ -3833,7 +3833,7 @@ void gen_obj_set_prop(
             as.setField(objOpnd.reg, obj_ofs_shape(null), scrRegs[2]);
 
             // Set the new object shape
-            st.setShape(objVal, objShape);
+            st.shapeChg(objVal, objShape);
 
             // Increment the number of shape changes due to type
             as.incStatCnt(&stats.numShapeFlips, scrRegs[0]);
@@ -3870,7 +3870,7 @@ void gen_obj_set_prop(
         as.setField(objOpnd.reg, obj_ofs_shape(null), scrRegs[0].reg);
 
         // Set the new object shape
-        st.setShape(objVal, defShape);
+        st.shapeChg(objVal, defShape);
 
         // Property successfully set, jump to the true branch
         return gen_jump(ver, st, instr, as);
@@ -4512,7 +4512,7 @@ void gen_obj_def_const(
     as.loadJITRegs();
 
     // Clear any known shape for this object
-    st.clearShape(objDst);
+    st.shapeChg(objDst);
 }
 
 /// Sets the attributes for a property
@@ -4552,7 +4552,7 @@ void gen_obj_set_attrs(
     as.loadJITRegs();
 
     // Clear any known shape for this object
-    st.clearShape(cast(IRDstValue)instr.getArg(0));
+    st.shapeChg(cast(IRDstValue)instr.getArg(0));
 }
 
 /// Inputs: obj, propName
@@ -4606,7 +4606,7 @@ void gen_obj_prop_shape(
 
         // Set the output type and shape for this instruction
         st.setOutTag(as, instr, Tag.SHAPEPTR);
-        st.setShape(instr, defShape);
+        st.shapeChg(instr, defShape);
 
         return;
     }

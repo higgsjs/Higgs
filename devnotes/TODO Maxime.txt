@@ -134,9 +134,26 @@ TODO: compare times, code size vs master branch
 TODO: stat for number of call site invalidations
 - output CSV, look at numbers for each benchmark
 
+TODO: revise markShapeChg uses, merge in?
+
+FIXME: shape is never known on fib42, always tested
+./higgs --nostdlib --stats benchmarks/micro/fib42.js
+
+TODO: asm comment in shapeChg, log shapes cleared
+
+
 test and commit
 
-FIXME: Global function redefinition fails
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: Global function redefinition fails
 ./higgs --nostdlib ./tests/02-regress/redef-fun.js
 Error: assertion failed
 $rt_throwExc(52C35C) ("runtime/runtime.js"@138:1)
@@ -148,18 +165,7 @@ __tests_02_regress_redef_fun_js(593A3F) ("./tests/02-regress/redef-fun.js"@7:1)
 - You're defining through this.foo but accessing as a global variable!
   - This is an aliasing problem
 
-
-
-TODO: asm comment in shapeChg, log shapes cleared
-
-Is clearShapes still useful?
-
-Revise markShapeChg, clearShape, setShape uses
-
-
-
-
-FIXME: clearShape vs clearShapes and aliasing
+[DONE] FIXME: clearShape vs clearShapes and aliasing
 - If changing the shape of some object, must clear other known shapes, unless
   we know other objects do not alias
 - Could potentially have a CodeGenState.shapeChg function
@@ -173,15 +179,6 @@ FIXME: clearShape vs clearShapes and aliasing
   - uses of setShape, clearShape
   - clearShapes: used only as contSt.clearShapes()
   - makeShapeChange: used only in jit.d
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: ask Luke Wagner, is moz hybrid TI removed from SpiderMonkey
 - Vyacheslav Egorov said this

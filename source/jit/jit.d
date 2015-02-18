@@ -1024,25 +1024,6 @@ class CodeGenState
     }
 
     /**
-    Clear known shape information. Used at function calls.
-    */
-    void clearShapes()
-    {
-        // For each value in the value map
-        foreach (value, state; valMap)
-        {
-            if (state.type.shapeKnown)
-            {
-                assert (!state.type.fptrKnown);
-                valMap[value] = state.clearShape();
-            }
-        }
-
-        // Mark this function as possibly changing shapes
-        markShapeChange(fun);
-    }
-
-    /**
     Get an operand for any IR value without allocating a register
     */
     X86Opnd getWordOpnd(IRValue value, size_t numBits)
@@ -1355,35 +1336,6 @@ class CodeGenState
         valMap[value] = state.setType(type);
     }
 
-    /// Set shape information for a given value
-    void setShape(IRDstValue value, ObjShape shape)
-    {
-        assert (
-            value in valMap,
-            "setShape: value not in value map"
-        );
-        ValState state = getState(value);
-
-        // Set a known type for this value
-        valMap[value] = state.setShape(shape);
-
-        // Mark this function as possibly changing shapes
-        markShapeChange(fun);
-    }
-
-    /// Clear shape information for a given value
-    void clearShape(IRDstValue value)
-    {
-        assert (value in valMap);
-        ValState state = getState(value);
-
-        // Set a known type for this value
-        valMap[value] = state.clearShape();
-
-        // Mark this function as possibly changing shapes
-        markShapeChange(fun);
-    }
-
     /// Get the type for a given value
     auto getType(IRValue value)
     {
@@ -1409,6 +1361,110 @@ class CodeGenState
         }
 
         return ValType(value.cstValue.tag);
+    }
+
+    /// Set shape information for a given value
+    /*void setShape(IRDstValue value, ObjShape shape)
+    {
+        assert (
+            value in valMap,
+            "setShape: value not in value map"
+        );
+        ValState state = getState(value);
+
+        // Set a known type for this value
+        valMap[value] = state.setShape(shape);
+
+        // Mark this function as possibly changing shapes
+        markShapeChange(fun);
+    }*/
+
+    /// Clear shape information for a given value
+    /*void clearShape(IRDstValue value)
+    {
+        assert (value in valMap);
+        ValState state = getState(value);
+
+        // Set a known type for this value
+        valMap[value] = state.clearShape();
+
+        // Mark this function as possibly changing shapes
+        markShapeChange(fun);
+    }*/
+
+    /**
+    Clear known shape information. Used at function calls.
+    */
+    /*void clearShapes()
+    {
+        // For each value in the value map
+        foreach (value, state; valMap)
+        {
+            if (state.type.shapeKnown)
+            {
+                assert (!state.type.fptrKnown);
+                valMap[value] = state.clearShape();
+            }
+        }
+
+        // Mark this function as possibly changing shapes
+        markShapeChange(fun);
+    }*/
+
+    /**
+    Signal a shape change
+    */
+    void shapeChg(IRDstValue objVal = null, ObjShape newShape = null)
+    {
+        // Mark this function as possibly changing shapes
+        markShapeChg(fun);
+
+        // If the specific object concerned is known
+        if (objVal)
+        {
+            assert (
+                objVal in valMap,
+                "shapeChg: object not in value map"
+            );
+
+            ValState objState = getState(objVal);
+
+            // If the current shape of the object is known
+            if (objState.shapeKnown)
+            {
+                // Clear all shapes matching this one because
+                // other values may be the same object (aliasing)
+                foreach (value, state; valMap)
+                    if (state.shapeKnown && state.shape is objState.shape)
+                        valMap[value] = state.clearShape();
+
+                return;
+            }
+            else
+            {
+                // Clear all known shapes because other
+                // values may be the same object (aliasing)
+                foreach (value, state; valMap)
+                    if (state.shapeKnown)
+                        valMap[value] = state.clearShape();
+            }
+
+            // If the new shape of the object is known
+            if (newShape)
+            {
+                // Set a known shape for this object value
+                valMap[objVal] = objState.setShape(newShape);
+            }
+        }
+
+        // An unknown object or many objects are changing shape
+        else
+        {
+            // By default, clear all known shapes
+            foreach (value, state; valMap)
+                if (state.type.shapeKnown)
+                    valMap[value] = state.clearShape();
+        }
     }
 
     /// Test if the shape is known for a given value
@@ -2880,7 +2936,7 @@ extern (C) CodePtr compileCont(ContStub stub)
 
         // Clear all known shapes
         vm.setCurInstr(callInstr.getTarget(0).target.firstInstr);
-        contSt.clearShapes();
+        contSt.shapeChg();
         vm.setCurInstr(null);
     }
 
@@ -2941,7 +2997,7 @@ extern (C) CodePtr compileCont(ContStub stub)
 Mark a function as potentially causing shape changes
 and invalidate its call continuations
 */
-void markShapeChange(IRFunction fun)
+void markShapeChg(IRFunction fun)
 {
     // If the function is not already known to cause shape changes
     if (fun.shapeChg is false)
