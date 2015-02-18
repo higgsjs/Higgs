@@ -1363,8 +1363,12 @@ class CodeGenState
         return ValType(value.cstValue.tag);
     }
 
-    /// Set shape information for a given value
-    /*void setShape(IRDstValue value, ObjShape shape)
+    /**
+    Set shape information for a given value
+    Note: this function should not be used to signal a
+    shape change, only to add shape info.
+    */
+    void setShape(IRDstValue value, ObjShape shape)
     {
         assert (
             value in valMap,
@@ -1374,50 +1378,22 @@ class CodeGenState
 
         // Set a known type for this value
         valMap[value] = state.setShape(shape);
-
-        // Mark this function as possibly changing shapes
-        markShapeChange(fun);
-    }*/
-
-    /// Clear shape information for a given value
-    /*void clearShape(IRDstValue value)
-    {
-        assert (value in valMap);
-        ValState state = getState(value);
-
-        // Set a known type for this value
-        valMap[value] = state.clearShape();
-
-        // Mark this function as possibly changing shapes
-        markShapeChange(fun);
-    }*/
-
-    /**
-    Clear known shape information. Used at function calls.
-    */
-    /*void clearShapes()
-    {
-        // For each value in the value map
-        foreach (value, state; valMap)
-        {
-            if (state.type.shapeKnown)
-            {
-                assert (!state.type.fptrKnown);
-                valMap[value] = state.clearShape();
-            }
-        }
-
-        // Mark this function as possibly changing shapes
-        markShapeChange(fun);
-    }*/
+    }
 
     /**
     Signal a shape change
     */
-    void shapeChg(IRDstValue objVal = null, ObjShape newShape = null)
+    void shapeChg(CodeBlock as, IRDstValue objVal = null, ObjShape newShape = null)
     {
-        // Mark this function as possibly changing shapes
-        markShapeChg(fun);
+        // If the function is not already known to cause shape changes
+        if (fun.shapeChg is false)
+        {
+            // Mark this function as possibly changing shapes
+            fun.shapeChg = true;
+
+            // Invalidate call continuations
+            removeConts(fun);
+        }
 
         // If the specific object concerned is known
         if (objVal)
@@ -1432,6 +1408,8 @@ class CodeGenState
             // If the current shape of the object is known
             if (objState.shapeKnown)
             {
+                as.comment("known obj shape change, clearing matching shapes");
+
                 // Clear all shapes matching this one because
                 // other values may be the same object (aliasing)
                 foreach (value, state; valMap)
@@ -1442,6 +1420,8 @@ class CodeGenState
             }
             else
             {
+                as.comment("known obj shape change, clearing all shapes");
+
                 // Clear all known shapes because other
                 // values may be the same object (aliasing)
                 foreach (value, state; valMap)
@@ -1460,6 +1440,8 @@ class CodeGenState
         // An unknown object or many objects are changing shape
         else
         {
+            as.comment("unknown shape change, clearing all shapes");
+
             // By default, clear all known shapes
             foreach (value, state; valMap)
                 if (state.type.shapeKnown)
@@ -2936,7 +2918,8 @@ extern (C) CodePtr compileCont(ContStub stub)
 
         // Clear all known shapes
         vm.setCurInstr(callInstr.getTarget(0).target.firstInstr);
-        contSt.shapeChg();
+
+        contSt.shapeChg(vm.execHeap);
         vm.setCurInstr(null);
     }
 
@@ -2991,22 +2974,6 @@ extern (C) CodePtr compileCont(ContStub stub)
 
     // Return a pointer to the compiled branch code
     return contBranch.getCodePtr(vm.execHeap);
-}
-
-/**
-Mark a function as potentially causing shape changes
-and invalidate its call continuations
-*/
-void markShapeChg(IRFunction fun)
-{
-    // If the function is not already known to cause shape changes
-    if (fun.shapeChg is false)
-    {
-        fun.shapeChg = true;
-
-        // Invalidate call continuations
-        removeConts(fun);
-    }
 }
 
 /**
