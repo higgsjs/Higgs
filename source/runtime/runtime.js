@@ -2127,7 +2127,7 @@ function $rt_objGetProp(obj, propStr)
     var proto = $ir_obj_get_proto(obj);
 
     // If the prototype is null, produce undefined
-    if ($ir_eq_refptr(proto, null))
+    if ($ir_is_refptr(proto))
         return $undef;
 
     // Do a recursive lookup on the prototype
@@ -2436,7 +2436,7 @@ function $rt_getGlobal(obj, propStr)
     var proto = $ir_obj_get_proto(obj);
 
     // If the prototype is null, the property is not defined
-    if ($ir_eq_refptr(proto, null))
+    if ($ir_is_refptr(proto))
     {
         //$ir_print_str(propStr); $ir_print_str('\n');
 

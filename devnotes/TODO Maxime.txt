@@ -145,16 +145,25 @@ make release; ./higgs benchmarks/nocomptime/controlflow-recursive.js
     num shape known: 28
     num shape tests: 245491
 
-TODO: could possibly eliminate check that proto is null?
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: could possibly eliminate check that proto is null?
 - Currently using null equality comparison
 - Requires knowing proto object tag. Do we have this?
-- code size before&after
-
-
-
-
-
-
+- We do get the prototype tag correctly. Problem is that null is a refptr?
+- Shouldn't be an issue
+- Already use is_refptr in some places but not others!
+- before: 282168
+- after : 281787
 
 [DONE] FIXME: mul code
 ; $0 = lt_i32 2, 0
