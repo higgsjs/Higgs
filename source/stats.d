@@ -84,6 +84,9 @@ ulong numSetPropCacheUpd = 0;
 /// Number of property reads
 ulong numGetProp = 0;
 
+/// Number of global property reads
+ulong numGetGlobal = 0;
+
 /// Number of host property reads
 ulong numGetPropHost = 0;
 
@@ -294,6 +297,7 @@ static ~this()
         writefln("num set prop host: %s", numSetPropHost);
         writefln("num set prop cache upd: %s", numSetPropCacheUpd);
         writefln("num get prop: %s", numGetProp);
+        writefln("num get global: %s", numGetGlobal);
         writefln("num get prop host: %s", numGetPropHost);
         writefln("num get prop cache upd: %s", numGetPropCacheUpd);
         writefln("num shape flips: %s", numShapeFlips);

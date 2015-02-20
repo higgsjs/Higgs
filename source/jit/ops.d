@@ -4300,11 +4300,15 @@ void gen_obj_get_prop(
         );
     }
 
+    // Get the object argument
+    auto objVal = cast(IRDstValue)instr.getArg(0);
+
     // Increment the number of get prop operations
     as.incStatCnt(&stats.numGetProp, scrRegs[1]);
 
-    // Get the object argument
-    auto objVal = cast(IRDstValue)instr.getArg(0);
+    // Increment the number of get global operations
+    if (objVal is st.fun.globalVal)
+        as.incStatCnt(&stats.numGetGlobal, scrRegs[1]);
 
     // Extract the property name, if known
     auto propName = instr.getArgStrCst(1);
@@ -4341,7 +4345,7 @@ void gen_obj_get_prop(
 
     // Compute the minimum object capacity we can guarantee
     auto minObjCap = (
-        (instr.getArg(0) is st.fun.globalVal)?
+        (objVal is st.fun.globalVal)?
         obj_get_cap(vm.globalObj.word.ptrVal):
         OBJ_MIN_CAP
     );

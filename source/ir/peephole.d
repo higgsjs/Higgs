@@ -339,6 +339,36 @@ void optIR(IRFunction fun)
                     }
                 }
 
+                // Constant folding on lt_i32
+                if (op == &LT_I32)
+                {
+                    auto cst0 = cast(IRConst)instr.getArg(0);
+                    auto cst1 = cast(IRConst)instr.getArg(1);
+
+                    if (cst0 && cst1 && cst0.isInt32 && cst1.isInt32)
+                    {
+                        bool boolVal = cst0.int32Val < cst1.int32Val;
+                        instr.replUses(boolVal? IRConst.trueCst:IRConst.falseCst);
+                        delInstr(instr);
+                        continue INSTR_LOOP;
+                    }
+                }
+
+                // Constant folding on eq_i32
+                if (op == &EQ_I32)
+                {
+                    auto cst0 = cast(IRConst)instr.getArg(0);
+                    auto cst1 = cast(IRConst)instr.getArg(1);
+
+                    if (cst0 && cst1 && cst0.isInt32 && cst1.isInt32)
+                    {
+                        bool boolVal = cst0.int32Val == cst1.int32Val;
+                        instr.replUses(boolVal? IRConst.trueCst:IRConst.falseCst);
+                        delInstr(instr);
+                        continue INSTR_LOOP;
+                    }
+                }
+
                 // Constant folding on int32 add instructions
                 if (op == &ADD_I32)
                 {

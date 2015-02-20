@@ -41,6 +41,10 @@ function tag(stringArr, ...values)
   - possibly need some flag like RE, informing the lexer that we're still
     in an expression
 
+Const prop in BBV:
+- useful for argc
+- useful for fn ptr reads on global object
+
 TODO: look at notes wrt global obj threading
 => do we need this for thesis or publications?
 TODO: look into freeing vmReg
@@ -67,19 +71,8 @@ TODO: load and draw gates from JSON
 - function that traverses the objects and draws them
 - KISS
 
-TODO: don't write ret type reg to stack if ret tag known
-- then need different strategy for exc path
-TODO: improve ret, map to ret word reg
-- current moving from reg to stack to reg is silly!
-- should help fib42 benchmark a little bit
-make release; ./higgs benchmarks/nocomptime/controlflow-recursive.js
-    1.98 ms, best of 5
-./higgs --nostdlib --stats benchmarks/sunspider/controlflow-recursive.js
-    code size (bytes): 36599
-    num shape known: 28
-    num shape tests: 245491
-
 TODO: check speed of fib(42) in c, because Marc is curious
+make release; time ./higgs --nostdlib benchmarks/micro/fib42.js => 6.37s
 gcc -O0 benchmarks/micro/fib42.c; time ./a.out => 2.274
 gcc -O4 benchmarks/micro/fib42.c; time ./a.out => 1.426
 - Mini blog post, Fibonacci in C - Higgs vs GCC, microbenchmark
@@ -95,7 +88,7 @@ http://www.dynamic-languages-symposium.org/dls-15/cfp/index.html
 
 Intra vs inter?
 
-TODO: re-submit BBV apper to Onward, april 2
+TODO: re-submit BBV apper to Onward, April 2
 http://2015.splashcon.org/track/onward2015-papers
 
 ------------------------------------------------------------------------------
@@ -103,46 +96,119 @@ http://2015.splashcon.org/track/onward2015-papers
 OOPSLA - March 25th - typed shapes paper
 ----------------------------------------
 
-Faster JS Objects with Typed Shapes
-
-Typed shapes paper: important points
-- can often know at compile time if obj needs to be extended or not
-  - simplifies spill/GC/bailout issue
-  - show control-flow diagram of work needing to be done for read and write
-- can often know at compile time if obj shape needs to be updated or not
-- our system allows a unified model, global object is a regular object
-- implement the inline cache self_hosted
-  - much easier to debug and optimize, generate compact code
-  - use source-level "ifdef", $ir_get_opt("shape_novers")
-- for global object, can determine prop idx, lower bound on global obj
-  size at compilation time
-
 TODO: if paper ECOOP is rejected, put it on citeseer immediately
 
-TODO: look at previously accepted OOPSLA papers
+Gotta begin work on typed shapes right away if you want to submit this!
+- Paper structure, results needed
+
+Meeting 2015-02-2X:
+- Luke's e-mail, Moz TI, typed shapes
+- Implemented shapeChg with handling of aliasing
+- Bugs fixed, shapes now conserved through fib calls
+  - but global obj not threaded
+- Not that many continuations get invalidated
+  - Most fns set the correct tag and/or shapes chg flag before first return
+  ~30 for earley-boyer
+- Compared to Higgs without interp BBV
+  - version limit is hit in some cases
+  - increase in number of versions is not big, ~8%
+  - code size slightly smaller
+  - Almost half of property accesses have known shapes
+  - 10x less type tests
+- Unfortunately, most prop accesses still test shapes
+  - x.y.z case poorly handled
+  - if we have to go down the prototype chain, we do not so well
+  - Will still be useful for global accesses
+- Most bench faster by small percentage, but earley-boyer quite a bit slower
+  - has version explosion in cons pair constructor
+  - probably awful for icache
+- May eventually benefit from separate mayChgGlobal flag
+  - but probably want to start by threading global object
+- Probably want to limit fn entry points
+  - Hard limit or limit polymorphism on parameters
+  - Do we need this for paper? Hack it for now?
+- OOPSLA 2015
+  - Began work on paper, setup template
+  - Pitch? vs inline caches, add-on, more efficient code
+  - What graphs/results do we need
+  - What illustrations do we want
+
+TODO: don't write ret type reg to stack if ret tag known
+- then need different strategy for exc path
+TODO: improve ret, map to ret word reg
+- current moving from reg to stack to reg is silly!
+- should help fib42 benchmark a little bit
+make release; ./higgs benchmarks/nocomptime/controlflow-recursive.js
+    1.98 ms, best of 5
+./higgs --nostdlib --stats benchmarks/sunspider/controlflow-recursive.js
+    code size (bytes): 36599
+    num shape known: 28
+    num shape tests: 245491
+
+TODO: could possibly eliminate check that proto is null?
+- Currently using null equality comparison
+- Requires knowing proto object tag. Do we have this?
+- code size before&after
+
+
+
+
+
+
+
+[DONE] FIXME: mul code
+; $0 = lt_i32 2, 0
+mov eax, 2;                             B802000000
+cmp eax, 0;                             83F800
+jl branch_and_sec(23A14);               0F8CDA91DE00
+; $0 = eq_i32 2, 0
+mov eax, 2;                             B802000000
+cmp eax, 0;                             83F800
+je branch_and_sec(23A17);               0F84F991DE00
+- before: code size (bytes): 282210
+- after: code size (bytes): 282168
+
+[DONE] TODO: look at machine code for bottomUpTree in access-binary-trees
+./higgs --genasm --e "print(bottomUpTree.asmString())" benchmarks/sunspider/access-binary-trees.js
+- we lose shapes because of ctor calls
+- may be worthwile to have a separate mayChgGlobal flag for functions?
+
+[DONE] TODO: look at access-binary-trees, why are most shapes lost?
+./higgs --genasm --e "print(TreeNode.prototype.itemCheck.asmString())" benchmarks/sunspider/access-binary-trees.js
+num shape known:  47601
+num shape tests: 722654
+num get prop  : 341153
+num get global:  88456
+num shape flips: 31
+num call fast: 126387
+num call slow: 5
+- log where the shape tests come from
+- is it because x.y.z is poorly handled? what can we improve?
+- do we lose shapes in itemCheck? No
+
+[DONE] TODO: create OOPSLA folder
+
+[DONE] TODO: look at shape known vs shape tests
+- in 3d-raytrace, tiny fraction of shapes are known
+
+[DONE] TODO: add num get globals stat
+- In 3d-raytrace, only about 10% of get props
+
+[DONE] TODO: run perf tests vs V8, TM
+- perf unaffected as of yet
 
 ------------------------------------------------------------------------------
 
 Goal: return info propagation, shapes changed flag
 --------------------------------------------------
 
-Gotta begin work on typed shapes right away if you want to submit this!
-- Paper structure, results needed
-
-Meeting 2015-02-2X:
-- Implemented shapeChg with handling of aliasing
-
-TODO: compare times, code size vs master branch
-
-TODO: stat for number of call site invalidations
-- output CSV, look at numbers for each benchmark
-
-test and commit
-
-
-
-
-
+[DONE] TODO: compare times, code size vs master branch
+- Compared to Higgs without interp BBV
+  - version limit is hit in some cases
+  - increase in number of versions is not big, ~8%
+  - code size slightly smaller
+  - Almost half of property accesses have known shapes
+  - 10x less type tests
 
 [DONE] FIXME: shape is never known on fib42, always tested
 ./higgs --nostdlib --stats benchmarks/micro/fib42.js

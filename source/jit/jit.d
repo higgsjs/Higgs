@@ -2981,6 +2981,8 @@ Invalidate call continuations going to a specific known callee
 */
 void removeConts(IRFunction callee)
 {
+    //writeln(callee.getName);
+
     // If there are no direct call sites, return early
     if (callee.callSites.length is 0)
         return;
@@ -2995,7 +2997,7 @@ void removeConts(IRFunction callee)
         if (contBranch is null)
             continue;
 
-        //writeln("invalidating cont");
+        //writeln("invalidating cont to ", callee.getName);
 
         // Recreate a continuation stub for each continuation
         auto contStub = getContStub(
