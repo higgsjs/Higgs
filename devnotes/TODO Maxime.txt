@@ -74,7 +74,7 @@ TODO: load and draw gates from JSON
 TODO: check speed of fib(42) in c, because Marc is curious
 make release; time ./higgs --nostdlib benchmarks/micro/fib42.js => 6.37s
 gcc -O0 benchmarks/micro/fib42.c; time ./a.out => 2.274
-gcc -O4 benchmarks/micro/fib42.c; time ./a.out => 1.426
+gcc -O4 benchmarks/micro/fib42.c; time ./a.out => 1.165
 - Mini blog post, Fibonacci in C - Higgs vs GCC, microbenchmark
 - Show machine code output for Higgs, GCC, V8
 TODO: look at machine code for fib42, ensure OK
@@ -133,28 +133,39 @@ Meeting 2015-02-2X:
   - What graphs/results do we need
   - What illustrations do we want
 
+TODO: paper: look at DYLA notes
+
 TODO: don't write ret type reg to stack if ret tag known
-- then need different strategy for exc path
+- along with exc path it is handled as before
+- if tag known, set type, let the branch spill it if necessary
+- if tag unknown, write tag as before in cont branch
+
+TODO: don't write ret val to stack, already mapped to reg
+- issue with GC? try and see
+
 TODO: improve ret, map to ret word reg
 - current moving from reg to stack to reg is silly!
 - should help fib42 benchmark a little bit
+make release; time ./higgs --nostdlib benchmarks/micro/fib42.js
+    5.101s
 make release; ./higgs benchmarks/nocomptime/controlflow-recursive.js
-    1.98 ms, best of 5
-./higgs --nostdlib --stats benchmarks/sunspider/controlflow-recursive.js
-    code size (bytes): 36599
-    num shape known: 28
-    num shape tests: 245491
+    1.58 ms, best of 5
+./higgs --nostdlib --perf_stats benchmarks/sunspider/controlflow-recursive.js
+    code size (bytes): 35500
+- Can try to map the value to the ret reg in compileCont
+  - normally, no live vals mapped there
+  - still have dead values, unfortunately
+- Implement a clearRegs function?
+  - what's the implication? normally, value is spilled or lost
+  - what we really want is removeDead semantics, with more flexibility
 
 
 
 
-
-
-
-
-
-
-
+[DONE] FIXME: mapReg fails in unit tests? passes Higgs init
+- we recreate the cont stub from the branch edge state...
+- try mapping the ret reg in genCallEdge instead
+  - same mapping for exc value, fixup after
 
 [DONE] TODO: could possibly eliminate check that proto is null?
 - Currently using null equality comparison

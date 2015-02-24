@@ -1576,7 +1576,7 @@ Generate the final branch and exception handler for a call instruction
 void genCallBranch(
     BlockVersion ver,
     CodeGenState st,
-    IRInstr instr,
+    IRInstr callInstr,
     CodeBlock as,
     BranchGenFn genFn,
     IRFunction callee,
@@ -1590,40 +1590,38 @@ void genCallBranch(
         callee.callSites[ver] = ver;
     }
 
-    // Map the return value to its stack location
-    st.mapToStack(instr);
+    // Remove information about values dead after the call
+    st.removeDead(
+        delegate bool(LiveInfo liveInfo, IRDstValue value)
+        {
+            return liveInfo.liveAfter(value, callInstr);
+        }
+    );
 
-    /*
-    // FIXME: mapReg doesn't work, says value is not mapped to a reg
-
-    In some cases, values are still mapped to regs
-    These values are possibly not live
-    Need to unmap whatever is mapped to retWordReg
-
-    auto freedReg = st.freeReg(as, instr, retWordReg);
-    assert (freedReg == retWordReg);
-    st.mapReg(retWordReg, instr, 64);
-    */
+    // Map the return value to the return word register
+    st.mapReg(retWordReg, callInstr, 64);
 
     BranchCode excBranch = null;
 
     // Create the exception branch object
-    if (instr.getTarget(1))
+    if (callInstr.getTarget(1))
     {
         excBranch = getBranchEdge(
-            instr.getTarget(1),
+            callInstr.getTarget(1),
             st,
             false,
             delegate void(CodeBlock as)
             {
-                // Pop the exception value off the stack and
-                // move it into the instruction's output slot
-                as.add(tspReg, Tag.sizeof);
+                // Pop the exception word off the stack and
+                // move it into the return word register
                 as.add(wspReg, Word.sizeof);
-                as.getWord(scrRegs[0], -1);
-                as.setWord(instr.outSlot, scrRegs[0].opnd(64));
-                as.getTag(scrRegs[0].reg(8), -1);
-                as.setTag(instr.outSlot, scrRegs[0].opnd(8));
+                as.getWord(retWordReg, -1);
+
+                // Pop the exception tag of the stack and move it to
+                // the instruction's output slot on the type stack
+                as.add(tspReg, Tag.sizeof);
+                as.getTag(retTagReg.reg(8), -1);
+                as.setTag(callInstr.outSlot, retTagReg.opnd(8));
             }
         );
     }
@@ -1643,7 +1641,7 @@ void genCallBranch(
         // Throw the call exception, unwind the stack,
         // find the topmost exception handler
         as.mov(cargRegs[0], vmReg);
-        as.ptr(cargRegs[1], instr);
+        as.ptr(cargRegs[1], callInstr);
         as.ptr(cargRegs[2], excBranch);
         as.ptr(scrRegs[0], &throwCallExc);
         as.call(scrRegs[0].opnd);

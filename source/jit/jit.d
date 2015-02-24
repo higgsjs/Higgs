@@ -466,7 +466,12 @@ class CodeGenState
 
         // Remove information about values dead after
         // the phi nodes in the successor block
-        removeDead(liveInfo, branch.target);
+        removeDead(
+            delegate bool(LiveInfo liveInfo, IRDstValue value)
+            {
+                return liveInfo.liveAfterPhi(value, branch.target);
+            }
+        );
     }
 
     /**
@@ -483,43 +488,6 @@ class CodeGenState
         }
 
         return str;
-    }
-
-    /**
-    Remove information about values dead at the beginning of
-    a given block
-    */
-    void removeDead(LiveInfo liveInfo, IRBlock block)
-    {
-        // For each value in the value map
-        // Note: a value being mapped to a register/slot does not mean that
-        // this register/slot is necessarily mapped to that value in the
-        // presence of inlined calls
-        foreach (value; valMap.keys)
-        {
-            // If this value is not from this function, skip it
-            if (value.block.fun !is block.fun)
-                continue;
-
-            if (liveInfo.liveAfterPhi(value, block) is false)
-                valMap.remove(value);
-        }
-
-        // For each general-purpose register
-        foreach (regNo, value; gpRegMap)
-        {
-            // If nothing is mapped to this register, skip it
-            if (value is null)
-                continue;
-
-            // If this value is not from this function, skip it
-            if (value.block.fun !is block.fun)
-                continue;
-
-            // If the value is no longer live, remove it
-            if (liveInfo.liveAfterPhi(value, block) is false)
-                gpRegMap[regNo] = null;
-        }
     }
 
     /**
@@ -623,8 +591,15 @@ class CodeGenState
     */
     X86Reg mapReg(X86Reg reg, IRDstValue value, size_t numBits)
     {
-        assert (getState(value).isReg is false);
-        assert (gpRegMap[reg.regNo] is null);
+        assert (
+            getState(value).isReg is false,
+            "mapReg: value already mapped to reg"
+        );
+
+        assert (
+            gpRegMap[reg.regNo] is null,
+            "mapReg: reg already mapped"
+        );
 
         // Map the register to the new value
         gpRegMap[reg.regNo] = value;
@@ -919,6 +894,37 @@ class CodeGenState
                     valMap[value] = state.writeTag();
                 }
             }
+        }
+    }
+
+    /**
+    Remove information about dead values
+    */
+    void removeDead(SpillTestFn liveTest)
+    {
+        auto liveInfo = fun.liveInfo;
+
+        // For each value in the value map
+        // Note: a value being mapped to a register/slot does not mean that
+        // this register/slot is necessarily mapped to that value in the
+        // presence of inlined calls
+        foreach (value; valMap.keys)
+        {
+            // If the value is no longer live, remove it
+            if (liveTest(liveInfo, value) is false)
+                valMap.remove(value);
+        }
+
+        // For each general-purpose register
+        foreach (regNo, value; gpRegMap)
+        {
+            // If nothing is mapped to this register, skip it
+            if (value is null)
+                continue;
+
+            // If the value is no longer live, remove it
+            if (liveTest(liveInfo, value) is false)
+                gpRegMap[regNo] = null;
         }
     }
 
@@ -1326,7 +1332,10 @@ class CodeGenState
     /// Set the type for a given value
     void setType(IRDstValue value, ValType type)
     {
-        assert (value in valMap);
+        assert (
+            value in valMap,
+            "setType: value not in val map"
+        );
         ValState state = getState(value);
 
         // Assert that we aren't contradicting existing information
@@ -2892,12 +2901,15 @@ extern (C) CodePtr compileCont(ContStub stub)
         writeln("entering compileCont");
     }
 
-    auto callInstr = stub.callVer.block.lastInstr;
+    auto as = vm.execHeap;
+    auto callBlock = stub.callVer.block;
+    auto callInstr = callBlock.lastInstr;
+    auto fun = callBlock.fun;
 
     /*
     writeln("compileCont");
     writeln("  ", stub.callee.getName);
-    writeln("  (", callInstr.block.fun.getName, ")");
+    //writeln("  (", callInstr.block.fun.getName, ")");
     */
 
     // Clone the state at the call site
@@ -2918,8 +2930,7 @@ extern (C) CodePtr compileCont(ContStub stub)
 
         // Clear all known shapes
         vm.setCurInstr(callInstr.getTarget(0).target.firstInstr);
-
-        contSt.shapeChg(vm.execHeap);
+        contSt.shapeChg(as);
         vm.setCurInstr(null);
     }
 
