@@ -2920,6 +2920,7 @@ extern (C) CodePtr compileCont(ContStub stub)
     {
         // Propagate the callee's return type
         contSt.setType(callInstr, stub.callee.retType);
+        assert (contSt.getState(callInstr).tagWritten);
     }
 
     // If the callee may change shapes
@@ -2941,10 +2942,10 @@ extern (C) CodePtr compileCont(ContStub stub)
         false,
         delegate void(CodeBlock as)
         {
-            // Move the return value into the instruction's output slot
+            // Move the return value tag into the instruction's output slot
             if (callInstr.hasUses)
             {
-                as.setWord(callInstr.outSlot, retWordReg.opnd(64));
+                //as.setWord(callInstr.outSlot, retWordReg.opnd(64));
                 as.setTag(callInstr.outSlot, retTagReg.opnd(8));
             }
         }

@@ -1598,6 +1598,9 @@ void genCallBranch(
         }
     );
 
+    // Map the return value tag to a register
+    st.mapToStack(callInstr);
+
     // Map the return value to the return word register
     st.mapReg(retWordReg, callInstr, 64);
 

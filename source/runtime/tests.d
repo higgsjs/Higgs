@@ -1531,6 +1531,10 @@ unittest
     vm.load("tests/core/gc/deepstack.js");
     vm.assertInt("test();", 0);
 
+    writefln("gc/ret");
+    VM.init();
+    vm.load("tests/core/gc/ret.js");
+
     writefln("gc/bigloop");
     VM.init();
     vm.load("tests/core/gc/bigloop.js");

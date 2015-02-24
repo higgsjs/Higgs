@@ -103,6 +103,7 @@ Gotta begin work on typed shapes right away if you want to submit this!
 
 Meeting 2015-02-2X:
 - Luke's e-mail, Moz TI, typed shapes
+- Optimized return value passing, 10% faster on recursive benchmark
 - Implemented shapeChg with handling of aliasing
 - Bugs fixed, shapes now conserved through fib calls
   - but global obj not threaded
@@ -133,15 +134,14 @@ Meeting 2015-02-2X:
   - What graphs/results do we need
   - What illustrations do we want
 
-TODO: paper: look at DYLA notes
-
 TODO: don't write ret type reg to stack if ret tag known
-- along with exc path it is handled as before
+- need to write it on exc path, not invalidated
 - if tag known, set type, let the branch spill it if necessary
 - if tag unknown, write tag as before in cont branch
 
-TODO: don't write ret val to stack, already mapped to reg
-- issue with GC? try and see
+TODO: begin fleshing out paper
+
+TODO: paper: look at DYLA notes
 
 TODO: improve ret, map to ret word reg
 - current moving from reg to stack to reg is silly!
@@ -161,6 +161,19 @@ make release; ./higgs benchmarks/nocomptime/controlflow-recursive.js
 
 
 
+
+
+
+
+
+
+
+
+
+[DONE] TODO: adversarial test, GC after returning obj
+
+[DONE] TODO: don't write ret val to stack, already mapped to reg
+- issue with GC? try and see
 
 [DONE] FIXME: mapReg fails in unit tests? passes Higgs init
 - we recreate the cont stub from the branch edge state...
