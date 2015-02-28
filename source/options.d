@@ -83,6 +83,9 @@ struct Options
     /// Disable overflow check elimination
     bool noovfelim = false;
 
+    /// Disable function entry point specialication (interprocedural)
+    bool noentryspec = false;
+
     /// Disable peephole optimizations
     bool nopeephole = false;
 
@@ -133,6 +136,7 @@ void parseCmdArgs(ref string[] args)
         "shape_notagspec"   , &opts.shape_notagspec,
         "shape_nofptrspec"  , &opts.shape_nofptrspec,
         "noovfelim"         , &opts.noovfelim,
+        "noentryspec"       , &opts.noentryspec,
         "nopeephole"        , &opts.nopeephole,
         "noinline"          , &opts.noinline,
         "dumpinfo"          , &opts.dumpinfo,

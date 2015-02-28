@@ -91,17 +91,38 @@ Intra vs inter?
 TODO: re-submit BBV apper to Onward, April 2
 http://2015.splashcon.org/track/onward2015-papers
 
+Priorities! Threading global obj is way more useful for perf!
+TODO: don't write ret type reg to stack if ret tag known
+- need to write it on exc path, not invalidated
+- if tag known, set type, let the branch spill it if necessary
+- if tag unknown, write tag as before in cont branch
+
+TODO: if paper ECOOP is rejected, put it on citeseer immediately
+
 ------------------------------------------------------------------------------
 
 OOPSLA - March 25th - typed shapes paper
 ----------------------------------------
 
-TODO: if paper ECOOP is rejected, put it on citeseer immediately
-
 Gotta begin work on typed shapes right away if you want to submit this!
 - Paper structure, results needed
 
-Meeting 2015-02-2X:
+TODO: figure out why earley-boyer creates so many shapes
+
+TODO: --nocontspec?
+
+
+
+
+
+
+
+[DONE] TODO: flag to deactivate interprocedural BBV, --noentryspec
+- Step 1: add to CodeGenState ctor
+before: total type tests: 65207
+after: total type tests: 601791
+
+[DONE] Meeting 2015-02-24:
 - Luke's e-mail, Moz TI, typed shapes
 - Optimized return value passing, 10% faster on recursive benchmark
 - Implemented shapeChg with handling of aliasing
@@ -128,22 +149,8 @@ Meeting 2015-02-2X:
 - Probably want to limit fn entry points
   - Hard limit or limit polymorphism on parameters
   - Do we need this for paper? Hack it for now?
-- OOPSLA 2015
-  - Began work on paper, setup template
-  - Pitch? vs inline caches, add-on, more efficient code
-  - What graphs/results do we need
-  - What illustrations do we want
 
-TODO: don't write ret type reg to stack if ret tag known
-- need to write it on exc path, not invalidated
-- if tag known, set type, let the branch spill it if necessary
-- if tag unknown, write tag as before in cont branch
-
-TODO: begin fleshing out paper
-
-TODO: paper: look at DYLA notes
-
-TODO: improve ret, map to ret word reg
+[DONE] TODO: improve ret, map to ret word reg
 - current moving from reg to stack to reg is silly!
 - should help fib42 benchmark a little bit
 make release; time ./higgs --nostdlib benchmarks/micro/fib42.js
@@ -158,17 +165,6 @@ make release; ./higgs benchmarks/nocomptime/controlflow-recursive.js
 - Implement a clearRegs function?
   - what's the implication? normally, value is spilled or lost
   - what we really want is removeDead semantics, with more flexibility
-
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: adversarial test, GC after returning obj
 

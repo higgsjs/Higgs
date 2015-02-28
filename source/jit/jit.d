@@ -338,14 +338,22 @@ class CodeGenState
         setTag(fun.closVal, Tag.CLOSURE);
         setTag(fun.argcVal, Tag.INT32);
 
-        // The tag of the "this" value is written only if unknown
-        mapToStack(fun.thisVal, !thisType.tagKnown);
+        // If interprocedural type prop is enabled
+        if (!opts.noentryspec)
+        {
+            // Tag of "this" value is written only if it's unknown
+            mapToStack(fun.thisVal, !thisType.tagKnown);
 
-        // Set the type for the "this" value
-        setType(fun.thisVal, thisType);
+            // Set the type for the "this" value
+            setType(fun.thisVal, thisType);
+        }
+        else
+        {
+            mapToStack(fun.thisVal);
+        }
 
         // If argument types were specified
-        if (argTypes)
+        if (!opts.noentryspec && argTypes)
         {
             assert (argTypes.length is fun.paramVals.length);
 
