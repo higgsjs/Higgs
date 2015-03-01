@@ -18,18 +18,22 @@ function timeFun(fun, numItrs)
 if (typeof benchmarkFun != 'function')
     throw Error('benchmarkFun not defined!');
 
+// Benchmarking time (to be measured)
 var benchTime = 0.0;
-var numItrs = 1;
+
+// Minimum number of timing iterations
+var numItrs = 16;
 
 // Warmup run
 timeFun(benchmarkFun, 1);
 
+// Perform warmup runs and
 // Compute the number of iterations needed to get
 // at least 1000ms of execution time
 while (timeFun(benchmarkFun, numItrs) < 1000)
     numItrs *= 2;
 
-// Timing run
+// Timing runs, several iterations
 benchTime = timeFun(benchmarkFun, numItrs) / numItrs;
 
 print('num itrs:', numItrs);
