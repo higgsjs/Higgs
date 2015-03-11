@@ -28,7 +28,7 @@ function test_parse_result()
     var o = options.Options()
         .add('long', null)
         .add('double', null, null, null, 'd')
-        .add(null, null, null, null, 's');
+        .add(null, null, 'boolean', null, 's');
 
     var r = o.parse(['--long=val1', '-sd=val2', 'arg1', 'arg2', 'arg3']);
 

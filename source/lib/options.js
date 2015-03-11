@@ -451,7 +451,7 @@
             if (val != null)
             {
                 // validate value
-                if (!typeTests[spec.type](val))
+                if ((typeof val === 'boolean' && spec.type !== 'boolean') || !typeTests[spec.type](val))
                 {
                     printAndExit('Invalid type for ' + formatSpec(spec) + '. Expected ' + typeToString[spec.type] + ".");
                 }
