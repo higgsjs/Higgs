@@ -21,13 +21,12 @@ if (typeof benchmarkFun != 'function')
 // Benchmarking time (to be measured)
 var benchTime = 0.0;
 
-// Minimum number of timing iterations
-var numItrs = 16;
+// Number of timing iterations, minimum 10
+var numItrs = 10;
 
-// Warmup run
-timeFun(benchmarkFun, 1);
+// Warmup iterations
+timeFun(benchmarkFun, 10);
 
-// Perform warmup runs and
 // Compute the number of iterations needed to get
 // at least 1000ms of execution time
 while (timeFun(benchmarkFun, numItrs) < 1000)

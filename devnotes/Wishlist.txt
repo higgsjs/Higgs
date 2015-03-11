@@ -207,7 +207,27 @@ TODO: Higgs is a Typed Architecture
 - Links to source
 - Reg alloc and future
 
+TODO: load and draw gates from JSON
+- add readJSON function to stdio?
+  - or directly load as JS, use new? more problematic to serialize back
+  - look further into JSON processing function
+- In and Out objects with optional names
+- function that traverses the objects and draws them
+- KISS
 
+TODO: look into improving template strings, completing further
+`string text ${expression} string text`
+tagExpr `string text ${expression} string text`
+function tag(stringArr, ...values)
+- Need to test template strings, nested too
+- For now, could ignore tag, support only expression substitution
+  - Full support at the parsing end, implement semantics partially
+- Implement TempStrExpr class
+- Lexer: dumb lexing possible? template string parts
+  - start at backtick or }???
+  - restarting at } is problematic
+  - possibly need some flag like RE, informing the lexer that we're still
+    in an expression
 
 
 

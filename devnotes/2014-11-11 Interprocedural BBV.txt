@@ -1,3 +1,6 @@
+Const prop in BBV:
+- useful for argc
+- useful for fn ptr reads on global object
 
 Plan:
 - First, get multiple entry points working, passing of arg types only

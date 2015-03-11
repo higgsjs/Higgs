@@ -8,6 +8,8 @@ Conference deadlines:
 - VMIL 2013             ~August
 - Intel Compiler...     ~July
 - DLS 2013              June
+- Onward!               April
+- OOPSLA                April
 - DYLA workshop         March
 - ISMM                  Feb
 - Computing Frontier    Jan 2015, notify Feb
@@ -27,50 +29,6 @@ List of possible contributions:
 
 ------------------------------------------------------------------------------
 
-TODO: look into improving template strings, completing further
-`string text ${expression} string text`
-tagExpr `string text ${expression} string text`
-function tag(stringArr, ...values)
-- Need to test template strings, nested too
-- For now, could ignore tag, support only expression substitution
-  - Full support at the parsing end, implement semantics partially
-- Implement TempStrExpr class
-- Lexer: dumb lexing possible? template string parts
-  - start at backtick or }???
-  - restarting at } is problematic
-  - possibly need some flag like RE, informing the lexer that we're still
-    in an expression
-
-Const prop in BBV:
-- useful for argc
-- useful for fn ptr reads on global object
-
-TODO: look at notes wrt global obj threading
-=> do we need this for thesis or publications?
-TODO: look into freeing vmReg
-- where is it used?
-
-TODO: think about "perfect" analysis
-=> this goes under 3rd publication, thesis subgoal
-- capture_tag... must disable typed shapes when not using analysis
-  - count them anyways, slight disadvantage for typed shapes
-- recording mode vs "playback" mode
-  - save an entry for all IsTypeOps, with serial idNo and function name
-  --save_type_tests
-  --load_type_tests
-
-TODO: can we load directly from moffs64 on x86-64?
-
-TODO: rename CodeGenState to CodeGenCtx
-
-TODO: load and draw gates from JSON
-- add readJSON function to stdio?
-  - or directly load as JS, use new? more problematic to serialize back
-  - look further into JSON processing function
-- In and Out objects with optional names
-- function that traverses the objects and draws them
-- KISS
-
 TODO: check speed of fib(42) in c, because Marc is curious
 make release; time ./higgs --nostdlib benchmarks/micro/fib42.js => 6.37s
 gcc -O0 benchmarks/micro/fib42.c; time ./a.out => 2.274
@@ -79,45 +37,143 @@ gcc -O4 benchmarks/micro/fib42.c; time ./a.out => 1.165
 - Show machine code output for Higgs, GCC, V8
 TODO: look at machine code for fib42, ensure OK
 
-------------------------------------------------------------------------------
+TODO: rename CodeGenState to CodeGenCtx
 
-DLS - June 7, 2015
-------------------
+TODO: recontact Laurie
+- advice for next publications & completing thesis?
 
-http://www.dynamic-languages-symposium.org/dls-15/cfp/index.html
+TODO: look at notes wrt global obj threading
+- do we need this for thesis or publications?
+  - looks like typed shapes need to perform better, so yes
+- Marc suggests keeping current implementation with threading
+  - no special global obj register at first
 
-Intra vs inter?
+TODO: eliminate uses of VM reg
+TODO: implement load/store from moffs64
+- write function to load directly, no special opnd type?
+  - encoding is very simple
+- use register size for opnd size, ptr value directly
+load:
+    A1 MOV EAX,moffs32* FD Valid Valid Move doubleword at (seg:offset) to EAX.
+    REX.W + A1 MOV RAX,moffs64* FD Valid N.E. Move quadword at (offset) to RAX.
+store:
+    A3 MOV moffs32*,EAX TD Valid Valid Move EAX to (seg:offset).
+    REX.W + A3 MOV moffs64*,RAX TD Valid N.E. Move RAX to (offset).
+- moffs32 means 32 bit data, not pointer
 
-Priorities! Threading global obj is way more useful for perf!
 TODO: don't write ret type reg to stack if ret tag known
 - need to write it on exc path, not invalidated
 - if tag known, set type, let the branch spill it if necessary
 - if tag unknown, write tag as before in cont branch
 
-TODO: re-submit BBV apper to Onward, April 2
+------------------------------------------------------------------------------
+
+DLS - June 7, 2015
+------------------
+
+ECOOP camera-ready version deadline is April 29
+
+http://www.dynamic-languages-symposium.org/dls-15/cfp/index.html
+
+Meeting 03-11-1X:
+- ECOOP: please add source graphics to the repo, not just output
+- Hotel & plane booking for ECOOP
+  - Dates?
+- Truffle workshop? April 23 deadline, extended abstract, 1-3 pages
+
+TODO: create genRelGraph fn
+- generate graph, table, many stats automatically, with standard names
+TODO: look into gnuplot for graphs
+- important for thesis too
+
+TODO: typed shapes, get full stats for base system
+- subtract this from shape count
+
+TODO: Blog Post: Basic Block Versioning - Published at Last!
+- Mention 3 refusals, thought would be rejected again
+- Good rebuttal, change of score
+- Show some graphs
+
+TODO: graph average depth of shape dispatch
+
+TODO: fix getProp loop
+- will help shape prop
+- may improve overall performance
+
+TODO: create synthetic benchmarks, pathological cases
+- inspired by earley-boyer
+- test our theories
+- global obj, high polymorphism
+- useful for paper
+
+TODO: shapes graph
+- write dot file on shutdown?
+Visualizing graph with large number of nodes: VCG, yComp
+Need to understand issue with earley-boyer, base system
+
+TODO: graph number of inline caches generated
+- Code size depends on inline cache implementation
+- keep code size
+
+TODO: graphs:
+- Pkhuong suggests R + ggplot2.
+- matplotlib... can that output PDF? do some googling
+  - @NIV_Anteru claims can output PDF
+    from matplotlib.backends.backend_pdf import PdfPages
+    pp = PdfPages('multipage.pdf')
+    pp.savefig()
+    pp.close()
+
+TODO: setup scripts to benchmark Truffle, cat harness
+
+Start 10M pomodoro
+
+
+
+
+
+
+
+
+[DONE] TODO: ECOOP, 10+ runs, upgrade runbenchmarks.sh
+- ensure that there are also 10+ warmup runs, comment on this, specify in paper
+
+[DONE] TODO: ECOOP, convert figures to pdf
+
+[DONE] Meeting 2015-03-1X:
+- ECOOP
+  - sent copyright authorization form by mail
+  - converted paper to lipic template
+  - Are you coming to ECOOP in Prague with me?
+  - TF wrk: not the wisest idea?
+- Typed shapes paper:
+  - Typed shape results: not entirely conclusive just yet
+    - Not ready for prime time
+  - OOPSLA doesn't seem to be the ideal after all
+    - More focused on tools, software development
+- Next paper: keep working on typed shapes, or work on interprocedural?
+  - Current BBV + entry point + ret prop w/ invalidation
+  - Compare against current system, submit to DLS
+  - Final paper, whole system with typed shapes
+    - Compare against "perfect" analysis
+  - Must compare total time with compilation, since invalidation/recompilation
+- According to Vyacheslav Egorov @mraleph, V8 intraprocedural only
+  interprocedrual considered way too costly and not worth it
+- Roadmap:
+  - Make corrections to ECOOP paper
+  - Work towards interprocedural BBV paper
+  - May/June: begin writing thesis
+  - Whole system paper: after thesis
+
+[DONE] TODO: create template for improved BBV paper, so we can see the results
+- Inter BBV DLS2015
+- Copy last BBV paper
+
+[PASS] TODO: re-submit BBV apper to Onward, April 2
 http://2015.splashcon.org/track/onward2015-papers
 - use the term "graceful degradation" when explaining maxvers?
 
-TODO: if paper ECOOP is rejected, put it on citeseer immediately
-
-------------------------------------------------------------------------------
-
-OOPSLA - March 25th - typed shapes paper
-----------------------------------------
-
-Begin work on typed shapes right away so you can submit this!
-- Paper structure, results needed
-
-TODO: figure out why earley-boyer creates so many shapes
-
-
-
-
-
-
-
-
-
+[PASS] TODO: if paper ECOOP is rejected, put it on citeseer immediately
 
 [DONE] FIXME: nocomptime should do at least 8 timing runs, no matter what
 
