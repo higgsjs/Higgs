@@ -115,7 +115,18 @@ TODO: graph number of inline caches generated
 - Code size depends on inline cache implementation
 - keep code size
 
-TODO: graphs:
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: graphs:
 - Pkhuong suggests R + ggplot2.
 - matplotlib... can that output PDF? do some googling
   - @NIV_Anteru claims can output PDF
@@ -124,16 +135,7 @@ TODO: graphs:
     pp.savefig()
     pp.close()
 
-TODO: setup scripts to benchmark Truffle, cat harness
-
-Start 10M pomodoro
-
-
-
-
-
-
-
+[DONE] TODO: setup scripts to benchmark Truffle, cat harness
 
 [DONE] TODO: ECOOP, 10+ runs, upgrade runbenchmarks.sh
 - ensure that there are also 10+ warmup runs, comment on this, specify in paper

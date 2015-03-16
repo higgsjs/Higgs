@@ -129,10 +129,14 @@ totalTimeEnd = time.time()
 
 # Computes the geometric mean of a list of values
 def geoMean(numList):
+    if len(numList) == 1:
+        return numList[0]
+
     prod = 1
     for val in numList:
         if val != 0:
             prod *= val
+
     return prod ** (1.0/len(numList))
 
 # Check if all the values in a list are integer
