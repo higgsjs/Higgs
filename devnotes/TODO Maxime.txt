@@ -103,6 +103,12 @@ Meeting 2015-03-24:
 - You wanted me to include avg speedup of Truffle over Higgs with 100 warmup itrs
   - With 100 itrs, Truffle faster on most, but Higgs still 1.6% faster (geo mean)
   - Did not include
+- Typed shapes: pitch as improvement to BBV instead of improvement over inline caches
+  - Just intraprocedural BBV + typed shapes
+  - Then third paper, interprocedural, can directly build on this
+  - Must show more type tests eliminated and speedups result
+  - Must focus on obtaining better results within intraprocedural framework
+    - Iron out the kinks
 
 TODO: plot avg dispatch length (relates to code size)
 
@@ -120,13 +126,17 @@ Inline cache paper: could also pitch it from type test elimination perspective?
 TODO: priority for next week, evaluate interp BBV without typed shapes ***
 - dev-maxime branch
 - fn ptrs only
-- reuse ECOOP paper source
+- reuse ECOOP paper source to test it
+
+TODO: re-bench typed shapes with --noentryspec and --noretspec
 
 TODO: fix getProp loop
 - may improve overall performance of typed shapes, re-graph
 
-TODO: stop db, re-measure exec time for typed shapes
-- do this with intra only, modify script
+TODO: bits-in-byte, is that really slower? why?
+- Had almost no type tests before, has almost no tests now
+- Shape dispatch improves the perf, typed shapes make it worse
+- Are we using inline caches? set prop host?
 
 
 
@@ -134,6 +144,23 @@ TODO: stop db, re-measure exec time for typed shapes
 
 
 
+
+
+
+
+
+
+
+
+
+[DONE] TODO: implement --noretspec flag
+- needed for thesis, 3rd pub
+
+[DONE] TODO: typed shapes perf with --noentryspec
+- avg speedup 6%, 12%
+
+[DONE] TODO: re-measure exec time for typed shapes properly
+- still slower on several benchmarks, avg speedup 6%, 14%
 
 [DONE] TODO: graph number of inline caches generated
 - Code size depends on inline cache implementation

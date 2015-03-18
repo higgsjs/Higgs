@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2011-2013, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2011-2015, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -86,6 +86,9 @@ struct Options
     /// Disable function entry point specialication (interprocedural)
     bool noentryspec = false;
 
+    /// Disable return/continuation specialication (interprocedural)
+    bool noretspec = false;
+
     /// Disable peephole optimizations
     bool nopeephole = false;
 
@@ -137,6 +140,7 @@ void parseCmdArgs(ref string[] args)
         "shape_nofptrspec"  , &opts.shape_nofptrspec,
         "noovfelim"         , &opts.noovfelim,
         "noentryspec"       , &opts.noentryspec,
+        "noretspec"         , &opts.noretspec,
         "nopeephole"        , &opts.nopeephole,
         "noinline"          , &opts.noinline,
         "dumpinfo"          , &opts.dumpinfo,

@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2012-2014, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2012-2015, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -2924,7 +2924,7 @@ extern (C) CodePtr compileCont(ContStub stub)
     auto contSt = new CodeGenState(stub.callState);
 
     // If the callee is known
-    if (stub.callee)
+    if (!opts.noretspec && stub.callee)
     {
         // Propagate the callee's return type
         contSt.setType(callInstr, stub.callee.retType);
@@ -2932,7 +2932,7 @@ extern (C) CodePtr compileCont(ContStub stub)
     }
 
     // If the callee may change shapes
-    if (stub.callee is null || stub.callee.shapeChg)
+    if (opts.noretspec || !stub.callee || stub.callee.shapeChg)
     {
         //writeln("clearing shapes in cont");
         //if (stub.callee) writeln("  ", stub.callee.getName);
@@ -3001,9 +3001,11 @@ Invalidate call continuations going to a specific known callee
 */
 void removeConts(IRFunction callee)
 {
-    //writeln(callee.getName);
+    // If return/continuation specialization is disabled, do nothing
+    if (opts.noretspec)
+        return;
 
-    // If there are no direct call sites, return early
+    // If there are no direct call sites, do nothing
     if (callee.callSites.length is 0)
         return;
 
