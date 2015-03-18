@@ -75,12 +75,6 @@ ECOOP camera-ready version deadline is April 29
 
 http://www.dynamic-languages-symposium.org/dls-15/cfp/index.html
 
-Meeting 03-11-1X:
-- ECOOP: please add source graphics to the repo, not just output
-- Hotel & plane booking for ECOOP
-  - Dates?
-- Truffle workshop? April 23 deadline, extended abstract, 1-3 pages
-
 TODO: create genRelGraph fn
 - generate graph, table, many stats automatically, with standard names
 TODO: look into gnuplot for graphs
@@ -94,37 +88,55 @@ TODO: Blog Post: Basic Block Versioning - Published at Last!
 - Good rebuttal, change of score
 - Show some graphs
 
-TODO: graph average depth of shape dispatch
-
-TODO: fix getProp loop
-- will help shape prop
-- may improve overall performance
-
-TODO: create synthetic benchmarks, pathological cases
-- inspired by earley-boyer
-- test our theories
-- global obj, high polymorphism
-- useful for paper
-
 TODO: shapes graph
 - write dot file on shutdown?
 Visualizing graph with large number of nodes: VCG, yComp
 Need to understand issue with earley-boyer, base system
 
-TODO: graph number of inline caches generated
+TODO: create synthetic benchmarks, pathological cases?
+- inspired by earley-boyer
+- test our theories
+- global obj, high polymorphism
+- useful for paper
+
+Meeting 2015-03-24:
+- You wanted me to include avg speedup of Truffle over Higgs with 100 warmup itrs
+  - With 100 itrs, Truffle faster on most, but Higgs still 1.6% faster (geo mean)
+  - Did not include
+
+TODO: plot avg dispatch length (relates to code size)
+
+TODO: plot avg dispatch hit depth
+- increase max depth for this test?
+- start with same depth
+
+Inline cache paper: could also pitch it from type test elimination perspective?
+- Intraprocedural only
+- Still needs to perform better!
+  - Worse performance, because too many shapes?
+- Pitch should be about how this improves BBV perf ***
+  - Intraprocedural only
+
+TODO: priority for next week, evaluate interp BBV without typed shapes ***
+- dev-maxime branch
+- fn ptrs only
+- reuse ECOOP paper source
+
+TODO: fix getProp loop
+- may improve overall performance of typed shapes, re-graph
+
+TODO: stop db, re-measure exec time for typed shapes
+- do this with intra only, modify script
+
+
+
+
+
+
+
+
+[DONE] TODO: graph number of inline caches generated
 - Code size depends on inline cache implementation
-- keep code size
-
-
-
-
-
-
-
-
-
-
-
 
 [DONE] TODO: graphs:
 - Pkhuong suggests R + ggplot2.

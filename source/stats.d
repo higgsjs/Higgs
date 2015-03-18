@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2012-2014, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2012-2015, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -62,6 +62,9 @@ ulong maxVersions = 0;
 
 /// Number of blocks with specific version counts
 ulong[ulong] numVerBlocks;
+
+/// Number of inline caches generated
+ulong numInlCaches = 0;
 
 /// Number of shape objects allocated
 ulong numShapes = 0;
@@ -291,6 +294,7 @@ static ~this()
         writefln("max versions: %s", maxVersions);
         writefln("num shapes: %s", numShapes);
 
+        writefln("num inl caches: %s", numInlCaches);
         writefln("num shape known: %s", numShapeKnown);
         writefln("num shape tests: %s", numShapeTests);
         writefln("num set prop: %s", numSetProp);
