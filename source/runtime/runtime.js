@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2012-2014, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2012-2015, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -2282,8 +2282,42 @@ function $rt_getPropField(base, propStr)
     {
         var obj = base;
 
-        // FIXME: BBV cannot get object shape from loop construct
-        // shape is found for phi node inside loop but not propagated
+        // Note: BBV cannot propagate object shape from loop construct
+        // shape is found for phi node inside loop but not propagated for
+        // the object value flowing into the phi node
+
+        // Capture the object shape
+        var objShape = $ir_obj_read_shape(obj);
+        if ($ir_break());
+        if ($ir_capture_shape(obj, objShape))
+            if ($ir_capture_shape(obj, objShape))
+                if ($ir_capture_shape(obj, objShape))
+                    if ($ir_capture_shape(obj, objShape))
+                        if ($ir_capture_shape(obj, objShape))
+                            if ($ir_capture_shape(obj, objShape));
+
+        // If the property value can be read directly
+        var propVal;
+        if (propVal = $ir_obj_get_prop(obj, propStr))
+        {
+            // Return the property value
+            return propVal;
+        }
+
+        // If the property is a getter-setter
+        if ($ir_is_object(propVal))
+        {
+            return $rt_getProp(base, propStr);
+        }
+
+        // Get the prototype of the object
+        var obj = $ir_obj_get_proto(obj);
+
+        // If we have reached the end of the prototype chain
+        if ($ir_is_refptr(obj))
+        {
+            return $undef;
+        }
 
         // Until we reach the end of the prototype chain
         for (;;)
@@ -2706,7 +2740,10 @@ function $rt_setPropField(base, propStr, val)
         if ($ir_capture_shape(obj, objShape))
             if ($ir_capture_shape(obj, objShape))
                 if ($ir_capture_shape(obj, objShape))
-                    if ($ir_capture_shape(obj, objShape));
+                    if ($ir_capture_shape(obj, objShape))
+                        if ($ir_capture_shape(obj, objShape))
+                            if ($ir_capture_shape(obj, objShape))
+                                if ($ir_capture_shape(obj, objShape));
 
         // Capture the type tag of the value
         if ($ir_break());
@@ -2803,7 +2840,9 @@ function $rt_setGlobalInl(propStr, val)
     if ($ir_capture_shape(obj, objShape))
         if ($ir_capture_shape(obj, objShape))
             if ($ir_capture_shape(obj, objShape))
-                if ($ir_capture_shape(obj, objShape));
+                if ($ir_capture_shape(obj, objShape))
+                    if ($ir_capture_shape(obj, objShape))
+                        if ($ir_capture_shape(obj, objShape));
 
     // Capture the type tag of the value
     if ($ir_break());

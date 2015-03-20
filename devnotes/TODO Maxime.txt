@@ -83,11 +83,6 @@ TODO: look into gnuplot for graphs
 TODO: typed shapes, get full stats for base system
 - subtract this from shape count
 
-TODO: Blog Post: Basic Block Versioning - Published at Last!
-- Mention 3 refusals, thought would be rejected again
-- Good rebuttal, change of score
-- Show some graphs
-
 TODO: shapes graph
 - write dot file on shutdown?
 Visualizing graph with large number of nodes: VCG, yComp
@@ -99,59 +94,93 @@ TODO: create synthetic benchmarks, pathological cases?
 - global obj, high polymorphism
 - useful for paper
 
-Meeting 2015-03-24:
-- You wanted me to include avg speedup of Truffle over Higgs with 100 warmup itrs
-  - With 100 itrs, Truffle faster on most, but Higgs still 1.6% faster (geo mean)
-  - Did not include
-- Typed shapes: pitch as improvement to BBV instead of improvement over inline caches
-  - Just intraprocedural BBV + typed shapes
-  - Then third paper, interprocedural, can directly build on this
-  - Must show more type tests eliminated and speedups result
-  - Must focus on obtaining better results within intraprocedural framework
-    - Iron out the kinks
-
 TODO: plot avg dispatch length (relates to code size)
-
 TODO: plot avg dispatch hit depth
 - increase max depth for this test?
 - start with same depth
 
-Inline cache paper: could also pitch it from type test elimination perspective?
-- Intraprocedural only
-- Still needs to perform better!
-  - Worse performance, because too many shapes?
-- Pitch should be about how this improves BBV perf ***
-  - Intraprocedural only
+TODO: think about BBV without typed shapes?
+- could have capture_clos instruction before calls
+  - insert in codegen
+  - tests clos ptr directly, not fptr, for speed
+- should easily regain costs by optimizing calling convention
+- But then, do we leave typed shapes as an unsolved problem? ***
+
+Meeting 2015-03-24:
+- Implemented --noentryspec and --noretspec to be able to study interp BBV for
+  thesis, and for typed shapes paper
+- You wanted me to include avg speedup of Truffle over Higgs with 100 warmup itrs
+  - With 100 itrs, Truffle faster on most, but Higgs still 1.6% faster (geo mean)
+  - Did not include
+- On small benchmarks, machine code alignment matters!
+  - Benchmarks unrelated to typed shapes are affected by typed shapes
+- Typed shapes: pitch as improvement to BBV instead of improvement over inline caches
+  - Just intraprocedural BBV + typed shapes
+    - Pitch with BBV perf improvement
+  - Then third paper, interprocedural, can directly build on this
+  - Must show more type tests eliminated and speedups result
+  - Must focus on obtaining better results within intraprocedural framework
+    - Iron out the kinks
+- Typed shapes, issue with set_prop, deeper capture_shape depth limit helps
+  - Shape explosion: we have no real solution
+  - Easy to think of pathological cases
+  - May be able to obtain better perf on benchmarks, but still won't scale? ******
+- Alternative to typed shapes: guard writes, capture shapes, invalidate
+  - Guard writes based on current type for a property
+  - Guard reads based on obj shape, as now
+    - We aren't increasing the number of shapes, which is great
+  - Prop reads are marked as dependent on the sub-shape for that property
+  - If sub-shape type expands, we invalidate the prop read
+    - Patch over that block version
+    - Should be relatively rare, relax shape types quickly
+  - Less good for polymorphism? Cant know fn identity? Not necessarily true
+    - Shape likely differ at prototype level. Can intentionally cause this for ctors.
 
 TODO: priority for next week, evaluate interp BBV without typed shapes ***
 - dev-maxime branch
 - fn ptrs only
 - reuse ECOOP paper source to test it
 
-TODO: re-bench typed shapes with --noentryspec and --noretspec
+TODO: look into cordic, why is it made slower by typed shapes?
+- made worse by shape guards too
 
-TODO: fix getProp loop
+TODO: count num shapes at getprop site (per IRinstr)
+- do a bucket count!
+- with and without typed shapes
+
+
+
+
+
+
+
+
+[DONE] TODO: fix getProp loop
+- try this before giving up on typed shapes, can always revert runtime ***
 - may improve overall performance of typed shapes, re-graph
+before:
+    num shape known: 51824
+    num shape tests: 60826
+after:
+    num shape known: 93690
+    num shape tests: 42506
+- Helps code size some, but performance is even worse for splay
+  - even more code bloat than before
 
-TODO: bits-in-byte, is that really slower? why?
+[DONE] TODO: try timebenchmark.js with empty function
+- working correctly, ~7 microseconds
+
+[DONE] TODO: bits-in-byte, is that really slower? why?
+./higgs --nostdlib --noentryspec --noretspec --stats benchmarks/sunspider/bitops-bits-in-byte.js 
 - Had almost no type tests before, has almost no tests now
 - Shape dispatch improves the perf, typed shapes make it worse
-- Are we using inline caches? set prop host?
+- Are we using inline caches? set prop host? No
+- Seems that novers is reliably faster
+  - But no shapes used
+  - No host calls
+  - The machine code is the same...
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+[DONE] TODO: Blog Post: Basic Block Versioning - Published at Last!
 
 [DONE] TODO: implement --noretspec flag
 - needed for thesis, 3rd pub
