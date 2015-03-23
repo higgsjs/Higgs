@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2011-2014, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2011-2015, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -201,6 +201,7 @@ Opcode LOAD_U64 = { "load_u64", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_u64 
 Opcode LOAD_I8 = { "load_i8", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_i8 };
 Opcode LOAD_I16 = { "load_i16", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_i16 };
 Opcode LOAD_I32 = { "load_i32", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_i32 };
+Opcode LOAD_I64 = { "load_64", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_i64 };
 Opcode LOAD_F64 = { "load_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_f64 };
 Opcode LOAD_REFPTR = { "load_refptr", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_refptr };
 Opcode LOAD_STRING = { "load_string", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_string };
@@ -216,6 +217,7 @@ Opcode STORE_U64 = { "store_u64", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL]
 Opcode STORE_I8 = { "store_i8", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_store_i8, OpInfo.IMPURE };
 Opcode STORE_I16 = { "store_i16", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_store_i16, OpInfo.IMPURE };
 Opcode STORE_I32 = { "store_i32", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_store_i32, OpInfo.IMPURE };
+Opcode STORE_I64 = { "store_i64", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_store_i64, OpInfo.IMPURE };
 Opcode STORE_F64 = { "store_f64", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_store_f64, OpInfo.IMPURE };
 Opcode STORE_REFPTR = { "store_refptr", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_store_refptr, OpInfo.IMPURE };
 Opcode STORE_RAWPTR = { "store_rawptr", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_store_rawptr, OpInfo.IMPURE };
