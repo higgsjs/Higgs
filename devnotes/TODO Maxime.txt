@@ -85,6 +85,7 @@ TODO: typed shapes, get full stats for base system
 
 TODO: shapes graph
 - write dot file on shutdown?
+- use dot tool to generate png
 Visualizing graph with large number of nodes: VCG, yComp
 Need to understand issue with earley-boyer, base system
 
@@ -98,8 +99,9 @@ TODO: plot avg dispatch length (relates to code size)
 TODO: plot avg dispatch hit depth
 - increase max depth for this test?
 - start with same depth
+- dispatch length not that useful, icache effects
 
-TODO: think about BBV without typed shapes?
+TODO: think about interprocedural BBV without typed shapes?
 - could have capture_clos instruction before calls
   - insert in codegen
   - tests clos ptr directly, not fptr, for speed
@@ -136,24 +138,158 @@ Meeting 2015-03-24:
   - Less good for polymorphism? Cant know fn identity? Not necessarily true
     - Shape likely differ at prototype level. Can intentionally cause this for ctors.
 
-TODO: priority for next week, evaluate interp BBV without typed shapes ***
+Shape types...
+- Can reuse current capture_shape system, keep it mostly as-is
+- Extracting types from shapes mostly works as before
+  - But now we register block versions with prop reads on the shapes
+- If writing a mismatched type, make shape read blocks jump to stubs?
+  - When stubs compiled, need to update the jump addr
+- No more shape transition on new type
+- Can separate shapes with null proto from shapes with nonnull proto
+  - rename __proto__ to __nullproto__ for root obj
+
+TODO: traverse heap, for each obj prop, find def shape
+- map def shapes to types
+
+TODO: callbacks, $ir_get_c_ftr('signature', js_fun) ?
+
+TODO: try reducing dispatch depth for interp BBV without typed shapes
+- don't need to be super aggressive about capture_tag either
+
+TODO: evaluate perf of interp BBV without typed shapes
+- reuse ECOOP paper source to test it
+- look at perf only first?
+- Use notypedshapes checkout
+--noentryspec --noretspec
+--noretspec
+
+FIXME: tests/02-regress/asm-string.js
+Assertion failed (jit/codeblock.d@174): endIdx=14967959
+Caught segmentation fault
+vm.curInstr: $0 = get_asm_str $3
+- Fix on master first? add assert comment
+
+
+
+
+
+
+
+[DONE] TODO: copy out interp BBV code, put on special branch, "notypedshapes"
+git checkout -b "notypedshapes"
+git commit -a
+
+[DONE] FIXME: too many shape flips without typed shapes
+- uknown doesn't show up as subtype of unknown!
+- add unit test in object.d
+- Type tag unknown but actual tag is nonzero value, == op doesn't work
+- Less shapes, less type tests, less cache upds and less shape flips
+total type tests: 587794
+--shape_novers: 1140621
+--noentryspec --noretspec: 1141086
+
+[DONE] FIXME: when disabling shape types for all but closures, get way too many
+set prop hosts and way too many shape flips!
+- Filtering out type tag, then calling host setprop because tag unknown
+
+[DONE] TODO: try basic interp BBV without typed shapes
 - dev-maxime branch
 - fn ptrs only
-- reuse ECOOP paper source to test it
+  - modify prop filter fn
+- test on benchmark.py
+  - most calls should still be fast calls
+after:
+    code size (bytes): 315528
+    exec time (ms): 52
+    max versions: 21
+    num blocks: 6470
+    num call fast: 34590
+    num call slow: 97
+    num get global: 53544
+    num get prop: 144680
+    num set prop: 12062
+    num set prop cache upd: 1
+    num set prop host: 10021
+    num shape flips: 1166
+    num shape known: 83645
+    num shape tests: 73201
+    num shapes: 2532
+    total type tests: 587405
+before:
+    code size (bytes): 283947
+    exec time (ms): 16
+    max versions: 21
+    num call fast: 36584
+    num call slow: 94
+    num get global: 53544
+    num get prop: 144680
+    num get prop cache upd: 7
+    num get prop host: 2
+    num heap allocs: 3317
+    num inl caches: 2
+    num set prop: 12062
+    num set prop cache upd: 1
+    num set prop host: 206
+    num shape flips: 95
+    num shape known: 93690
+    num shape tests: 42506
+    num shapes: 2956
+    total type tests: 82944
 
-TODO: look into cordic, why is it made slower by typed shapes?
-- made worse by shape guards too
+[DONE] TODO: add load and store i64 to master
 
-TODO: count num shapes at getprop site (per IRinstr)
+[DONE] TODO: evaluate whether obj protos have same shape in 3d-raytrace
+- cp benchmark, print the pointer value of the obj proto shapes
+- only triangles, not relevant!
+- In the case of deltablue, it's clear that constraints have different protos
+
+[DONE] TODO: count num shapes at getprop site (per IRinstr)
 - do a bucket count!
 - with and without typed shapes
+- with typed shapes:
+  - splay has many all the way to 8 and 9 shapes
+  - earley has many at 1 and 2, but also many at 3,4,5
+  - v8-raytrace has many at 1,2,3, some at 14
+  - 3d-raytrace has most with 5 shapes
+  - richards performs well, has most at 1 shape
+- without typed shapes:
+  - splay has many and 1 and 2, some at 3
+  - earley has most at 1, almost none at 2+
+  - v8-raytrace has most at 1, also some at 14 shapes...
+  - 3d-raytrace has most at 1 and 2
 
+ObjShape[][IRInstr] objShapes;
+size_t[IRInstr] instrCounts;
 
+extern (C) void noteShape(IRInstr instr, refptr objVal)
+{
+    auto shape = cast(ObjShape)obj_get_shape(objVal);
 
+    if (instr !in objShapes)
+        objShapes[instr] = [];
+    if (!objShapes[instr].canFind(shape))
+        objShapes[instr] ~= shape;
 
+    instrCounts[instr] += 1;
+}
 
+static ~this()
+{
+    // Count of instructions for which a specific number of shapes was seen
+    size_t[ulong] counts;
 
+    foreach (instr, shapes; objShapes)
+        counts[shapes.length] += instrCounts[instr];
 
+    auto keys = counts.keys;
+    keys.sort;
+    foreach (numShapes; keys)
+    {
+        auto numInstrs = counts[numShapes];
+
+        writeln(numShapes, " shapes: ", numInstrs);
+    }
+}
 
 [DONE] TODO: fix getProp loop
 - try this before giving up on typed shapes, can always revert runtime ***
