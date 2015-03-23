@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2012-2013, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2012-2015, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -171,7 +171,11 @@ class CodeBlock
     string toString(size_t startIdx, size_t endIdx)
     {
         assert (startIdx <= endIdx);
-        assert (endIdx <= writePos, "endIdx=" ~ to!string(endIdx));
+
+        assert (
+            endIdx <= writePos,
+            format("write position past end index, endIdx=%s", endIdx)
+        );
 
         auto app = appender!string();
 

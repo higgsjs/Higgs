@@ -167,7 +167,7 @@ FIXME: tests/02-regress/asm-string.js
 Assertion failed (jit/codeblock.d@174): endIdx=14967959
 Caught segmentation fault
 vm.curInstr: $0 = get_asm_str $3
-- Fix on master first? add assert comment
+- Fix on dev-maxime first, add assert comment
 
 
 
