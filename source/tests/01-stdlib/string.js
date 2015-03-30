@@ -39,6 +39,7 @@
  *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * _________________________________________________________________________
  */
+require('lib/test');
 
 function test_lit()
 {
@@ -63,6 +64,21 @@ function test_ctor()
     assert (String(new String('foo')) === 'foo')
 
     assert (String(new String()) === '')
+
+    var o = new String("abc");
+    assert(o[0] === "a");
+    assert(o[1] === "b");
+    assert(o[2] === "c");
+    assert(o[3] === undefined);
+    assert(o.length === 3);
+    assert(o.value === "abc");
+    // attempt and fail mutation
+    o.length = 5;
+    assert(o.length === 3);
+    o.value = "abcdef";
+    assert(o.value === "abc");
+    // check enumerability
+    assertEqArray(Object.keys(o), ['0', '1', '2']);
 }
 
 function test_toString()
@@ -448,4 +464,3 @@ function test()
 // exceptions instead of return codes
 var r = test();
 assert (r === 0, r);
-

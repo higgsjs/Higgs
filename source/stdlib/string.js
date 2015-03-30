@@ -58,12 +58,28 @@ function String(value)
     }
     else
     {
+        // Create indexes
+        for (var i = 0; i < strVal.length; i++)
+        {
+            Object.defineProperty(this, i,
+            {
+                enumerable: true,
+                value: strVal[i],
+            });
+        }
+
         // Store the value in the new object
-        // TODO: this should be a hidden/internal property
-        this.value = strVal;
+        // Value is read-only and not enumerable
+        Object.defineProperty(this, "value",
+        {
+            value: strVal,
+        });
 
         // Set length property.
-        this.length = strVal.length;
+        Object.defineProperty(this, "length",
+        {
+            value: strVal.length,
+        });
     }
 }
 
@@ -114,7 +130,7 @@ function string_internal_isWhiteSpace(c)
 }
 
 /// Preallocated character strings for 8-bit char codes
-$rt_char_str_table = (function () 
+$rt_char_str_table = (function ()
 {
     var len = 256;
     var table = $rt_arrtbl_alloc(len);
@@ -941,4 +957,3 @@ for (p in String.prototype)
         {enumerable:false, writable:true, configurable:true }
     );
 }
-
