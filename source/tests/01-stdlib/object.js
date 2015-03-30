@@ -409,6 +409,33 @@ function test_keys()
     assert (keys.length === 2)
 }
 
+function test_is()
+{
+    assert(!Object.is(-0, 0));
+    assert(!Object.is(0, -0));
+    assert(Object.is(0, 0));
+    assert(Object.is(-0, -0));
+    assert(Object.is(NaN, NaN));
+    assert(Object.is(Infinity, Infinity));
+    assert(Object.is(-Infinity, -Infinity));
+    assert(!Object.is(-Infinity, Infinity));
+
+    assert(!Object.is([], []));
+    assert(Object.is(assert, assert));
+    assert(Object.is('abcdéf', 'abcdéf'));
+    assert(!Object.is('abcdéf', 'abcdef'));
+
+    var o = {};
+    assert(Object.is(o, o));
+    assert(!Object.is({}, {}));
+
+    assert(Object.is(null, null));
+    assert(!Object.is(null));
+    assert(!Object.is(null, NaN));
+    assert(Object.is(undefined));
+    assert(Object.is(undefined, undefined));
+}
+
 function test_toString()
 {
     //Object.prototype.toString = function ()
@@ -536,6 +563,8 @@ function test()
 
     test_keys();
 
+    test_is();
+
     var r = test_toString();
     if (r != 0)
         return 1500 + r;
@@ -562,7 +591,6 @@ function test()
 }
 
 // TODO: convert this test to use assertions &
-// exceptions instead of return codes 
+// exceptions instead of return codes
 var r = test();
 assert (r === 0, 'code ' + r);
-
