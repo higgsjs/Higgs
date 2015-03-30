@@ -461,9 +461,43 @@ Object.is = function (a, b)
         // -Infinity or Infinity
         return 1/a == 1/b;
     }
-    
+
     return a === b;
 };
+
+/**
+http://people.mozilla.org/~jorendorff/es6-draft.html#sec-object.assign (19.1.2.1)
+*/
+Object.assign = function (target)
+{
+    // TODO symbol
+
+    if (target === null || target === undefined)
+        throw new TypeError("First source cannot be null or undefined");
+
+    var to = Object(target);
+
+    for (var i = 1; i < arguments.length; i++)
+    {
+        var arg = arguments[i];
+
+        if (arg === null || arg === undefined) continue;
+
+        var src = Object(arg);
+
+        // Own enumables properties
+        var keys = Object.keys(src);
+
+        for (var j = 0; j < keys.length; j++)
+        {
+            var key = keys[j];
+
+            to[key] = src[key];
+        }
+    }
+
+    return to;
+}
 
 /**
 15.2.4.2 Default object to string conversion function
