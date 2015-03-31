@@ -517,7 +517,7 @@ function $rt_concatRope(rope, rightStr)
     {
         // The right-hand node must be a string
         var rightLen = $rt_str_get_len(rightStr);
-       
+
         // Right string data pointers
         var dataI = $ir_add_ptr_i32(rightStr, $rt_str_ofs_data(null, 0));
         var idxI = $ir_lsft_i32(rightLen, 1);
@@ -633,6 +633,27 @@ function $rt_toString(v)
     }
 
     assert (false, "unhandled type in toString");
+}
+
+/**
+http://www.ecma-international.org/ecma-262/5.1/#sec-9.9
+*/
+function $rt_toObject(arg)
+{
+    if (arg === null || arg === undefined)
+        throw new TypeError("Cannot be null or undefined");
+
+    switch (typeof(arg))
+    {
+        case 'boolean':
+            return new Boolean(arg);
+        case 'number':
+            return new Number(arg);
+        case 'string':
+            return new String(arg);
+    }
+
+    return arg;
 }
 
 /**
@@ -1708,7 +1729,7 @@ function $rt_eq(x, y)
             return $ir_eq_const(x, y);
 
         // undefined == null
-        if ($ir_eq_const(x, undefined) && 
+        if ($ir_eq_const(x, undefined) &&
             $ir_is_refptr(y) && $ir_eq_refptr(y, null))
             return true;
     }
@@ -2201,7 +2222,7 @@ function $rt_getProp(base, prop)
     if ($ir_is_string(base))
     {
         // If the property is a non-negative integer
-        if ($ir_is_int32(prop) && $ir_ge_i32(prop, 0) && 
+        if ($ir_is_int32(prop) && $ir_ge_i32(prop, 0) &&
             $ir_lt_i32(prop, $rt_str_get_len(base)))
         {
             var ch = $rt_str_get_data(base, prop);
@@ -3169,4 +3190,3 @@ function $rt_getPropEnum(curObj, propName, propIdx)
     // Fall back to the array element read
     return $rt_getPropElem(curObj, propName);
 }
-
