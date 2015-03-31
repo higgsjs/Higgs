@@ -768,6 +768,30 @@ function string_split(separator, limit)
 }
 
 /**
+https://people.mozilla.org/~jorendorff/es6-draft.html#sec-string.prototype.startswith (21.1.3.18)
+*/
+function string_startsWith(searchString, position)
+{
+    if (this === null || this === undefined)
+        throw new TypeError("this cannot be null or undefined");
+
+    if (searchString instanceof RegExp)
+        throw new TypeError("searchString cannot be a RegExp");
+
+    var src = $rt_toString(this);
+    var searchStr = $rt_toString(searchString);
+    var pos = $rt_toInteger(position);
+    var len = src.length;
+    var start = Math.min(Math.max(pos, 0), len);
+    var searchLength = searchStr.length;
+
+    if (start + searchLength > len)
+        return false;
+
+    return src.substr(start, searchLength) === searchStr;
+}
+
+/**
 15.5.4.15 String.prototype.substring(start, end)
 */
 function string_substring(start, end)
@@ -959,6 +983,7 @@ String.prototype.repeat = string_repeat;
 String.prototype.replace = string_replace;
 String.prototype.search = string_search;
 String.prototype.split = string_split;
+String.prototype.startsWith = string_startsWith;
 String.prototype.substring = string_substring;
 String.prototype.substr = string_substr;
 String.prototype.toLowerCase = string_toLowerCase;
