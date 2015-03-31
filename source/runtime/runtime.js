@@ -750,6 +750,28 @@ function $rt_toNumber(v)
 }
 
 /**
+http://www.ecma-international.org/ecma-262/5.1/#sec-9.4
+*/
+function $rt_toInteger(val)
+{
+    var number = $rt_toNumber(val);
+
+    // NaN
+    if (number !== number) return +0;
+
+    // -0, +0, -Infinity, Infinity
+    if (number === 0 ||
+        number === Infinity ||
+        number === -Infinity)
+    {
+            return number;
+    }
+
+    var sign = number < 0 ? -1 : 1;
+    return sign * Math.floor(Math.abs(number));
+}
+
+/**
 Convert any value to a signed 32-bit integer
 */
 function $rt_toInt32(x)
