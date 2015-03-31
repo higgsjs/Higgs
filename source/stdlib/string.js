@@ -444,6 +444,31 @@ function string_match(regexp)
 }
 
 /**
+http://people.mozilla.org/~jorendorff/es6-draft.html#sec-properties-of-the-string-constructor (21.1.3.12)
+*/
+function string_repeat(count)
+{
+    if (this === null || this === undefined)
+        throw new TypeError("this cannot be null or undefined");
+
+    var str = $rt_toString(this);
+    var n = $rt_toInteger(count);
+
+    if (n < 0 || n === Infinity)
+        throw new RangeError("Count must be positive and cannot be Infinity");
+
+    if (str.length === 0 || count === 0) return '';
+
+    var buff = '';
+    for (var i = 0; i < count; i++)
+    {
+        buff += str;
+    }
+
+    return buff;
+}
+
+/**
 15.5.4.11 String.prototype.replace(searchValue, replaceValue)
 */
 function string_replace(searchValue, replaceValue)
@@ -930,6 +955,7 @@ String.prototype.lastIndexOf = string_lastIndexOf;
 String.prototype.localeCompare = string_localeCompare;
 String.prototype.slice = string_slice;
 String.prototype.match = string_match;
+String.prototype.repeat = string_repeat;
 String.prototype.replace = string_replace;
 String.prototype.search = string_search;
 String.prototype.split = string_split;
