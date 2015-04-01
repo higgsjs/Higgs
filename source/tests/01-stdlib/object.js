@@ -486,6 +486,14 @@ function test_assign()
         assert(o.b === 1);
         assert(r.b === 1);
     })();
+
+    // Test with primitive
+    (function ()
+    {
+        var r = Object.assign(true, {a: 1, b: 2});
+        assert(r.a === 1);
+        assert(r.b === 2);
+    })();
 }
 
 function test_toString()

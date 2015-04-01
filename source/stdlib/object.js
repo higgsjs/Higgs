@@ -472,10 +472,7 @@ Object.assign = function (target)
 {
     // TODO symbol
 
-    if (target === null || target === undefined)
-        throw new TypeError("First source cannot be null or undefined");
-
-    var to = Object(target);
+    var to = $rt_toObject(target);
 
     for (var i = 1; i < arguments.length; i++)
     {
@@ -483,7 +480,7 @@ Object.assign = function (target)
 
         if (arg === null || arg === undefined) continue;
 
-        var src = Object(arg);
+        var src = $rt_toObject(arg);
 
         // Own enumables properties
         var keys = Object.keys(src);
