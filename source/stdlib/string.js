@@ -295,6 +295,31 @@ function string_concat()
 }
 
 /**
+https://people.mozilla.org/~jorendorff/es6-draft.html#sec-string.prototype.endswith (21.1.3.6)
+*/
+function string_endsWith(searchString, endPosition)
+{
+    if (this === null || this === undefined)
+        throw new TypeError("this cannot be null or undefined");
+
+    if (searchString instanceof RegExp)
+        throw new TypeError("searchString cannot be a RegExp");
+
+    var src = $rt_toString(this);
+    var searchStr = $rt_toString(searchString);
+    var len = src.length;
+    var pos = endPosition === undefined ? len : $rt_toInteger(endPosition);
+    var end = Math.min(Math.max(pos, 0), len);
+    var searchLength = searchStr.length;
+
+    var start = end - searchLength;
+    if (start < 0)
+        return false;
+
+    return src.substr(start, searchLength) === searchStr;
+}
+
+/**
 15.5.4.7 String.prototype.indexOf(searchString, position)
 */
 function string_indexOf(searchString, pos)
@@ -974,6 +999,7 @@ String.prototype.charCodeAt = string_charCodeAt;
 String.prototype.valueOf = string_valueOf;
 String.prototype.charAt = string_charAt;
 String.prototype.concat = string_concat;
+String.prototype.endsWith = string_endsWith;
 String.prototype.indexOf = string_indexOf;
 String.prototype.lastIndexOf = string_lastIndexOf;
 String.prototype.localeCompare = string_localeCompare;
