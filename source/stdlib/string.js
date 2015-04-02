@@ -320,6 +320,41 @@ function string_endsWith(searchString, endPosition)
 }
 
 /**
+https://people.mozilla.org/~jorendorff/es6-draft.html#sec-string.prototype.includes (21.1.3.7)
+*/
+function string_includes(searchString, position)
+{
+    if (this === null || this === undefined)
+        throw new TypeError("this cannot be null or undefined");
+
+    if (searchString instanceof RegExp)
+        throw new TypeError("searchString cannot be a RegExp");
+
+    var src = $rt_toString(this);
+    var searchStr = $rt_toString(searchString);
+    var pos = $rt_toInteger(position);
+    var len = src.length;
+    var start = Math.min(Math.max(pos, 0), len);
+    var searchLen = searchStr.length;
+
+    var k = start;
+    while ((k + searchLen) <= len)
+    {
+        var j = 0;
+        while (j < searchLen)
+        {
+            if (src[k + j] !== searchStr[j]) break;
+            j++;
+        }
+        // Found a valid `k`.
+        if (j === searchLen) return true;
+        k++;
+    }
+
+    return false;
+}
+
+/**
 15.5.4.7 String.prototype.indexOf(searchString, position)
 */
 function string_indexOf(searchString, pos)
@@ -1000,6 +1035,7 @@ String.prototype.valueOf = string_valueOf;
 String.prototype.charAt = string_charAt;
 String.prototype.concat = string_concat;
 String.prototype.endsWith = string_endsWith;
+String.prototype.includes = string_includes;
 String.prototype.indexOf = string_indexOf;
 String.prototype.lastIndexOf = string_lastIndexOf;
 String.prototype.localeCompare = string_localeCompare;
