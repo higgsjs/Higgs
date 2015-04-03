@@ -129,6 +129,19 @@ function string_internal_isWhiteSpace(c)
            (c === 12288) || (c === 65279);
 }
 
+// Convert a code point into UTF-16 code units (surrogates).
+function string_internal_utf16encoding(cp)
+{
+    assert(cp >= 0 && cp <= 0x10FFFF);
+
+    if (cp < 65535) return [cp];
+
+    var cu1 = Math.floor((cp - 65536) / 1024) + 0xD800;
+    var cu2 = ((cp - 65536) % 1024) + 0xDC00;
+
+    return [cu1, cu2];
+}
+
 /// Preallocated character strings for 8-bit char codes
 $rt_char_str_table = (function ()
 {
@@ -186,6 +199,37 @@ function string_fromCharCode(c)
         $rt_str_set_data(str, i, parseInt($ir_get_arg(i)));
 
     return $ir_get_str(str);
+}
+
+/**
+https://people.mozilla.org/~jorendorff/es6-draft.html#sec-string.fromcodepoint (21.1.2.2)
+*/
+function string_fromCodePoint()
+{
+    var push = Array.prototype.push;
+    var fromCharCode = String.fromCharCode;
+
+    var codePoints = arguments;
+    var length = codePoints.length;
+    var elements = [];
+    var nextIndex = 0;
+
+    while (nextIndex < length)
+    {
+        var next = codePoints[nextIndex];
+        var nextCP = $rt_toNumber(next);
+
+        if (!Object.is(nextCP, $rt_toInteger(nextCP)))
+            throw RangeError("Code point cannot be a floating point");
+
+        if (nextCP < 0 || nextCP > 0x10FFFF)
+            throw RangeError("Code point " + next + " is not valid");
+
+        push.apply(elements, string_internal_utf16encoding(nextCP));
+        nextIndex++;
+    }
+
+    return elements.length === 0 ? '' : fromCharCode.apply(null, elements);
 }
 
 /**
@@ -1027,6 +1071,7 @@ Setup String method.
 */
 
 String.fromCharCode = string_fromCharCode;
+String.fromCodePoint = string_fromCodePoint;
 
 // Setup String prototype
 String.prototype.toString = string_toString;
