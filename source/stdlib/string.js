@@ -142,6 +142,14 @@ function string_internal_utf16encoding(cp)
     return [cu1, cu2];
 }
 
+// Convert UTF-8 code units (surrogates) into a code point.
+function string_internal_utf16decode(lead, trail)
+{
+    assert(0xD800 <= lead && lead <= 0xDBFF);
+    assert(0xDC00 <= trail && trail <= 0xDFFF);
+    return (lead - 0xD800) * 1024 + (trail - 0xDC00) + 0x10000;
+}
+
 /// Preallocated character strings for 8-bit char codes
 $rt_char_str_table = (function ()
 {
@@ -322,6 +330,31 @@ function string_charCodeAt(pos)
     }
 
     return NaN;
+}
+
+/**
+https://people.mozilla.org/~jorendorff/es6-draft.html#sec-string.prototype.codepointat
+*/
+function string_codePointAt(pos)
+{
+    if (this === null || this === undefined)
+        throw new TypeError("this cannot be null or undefined");
+
+    var src = $rt_toString(this);
+    var position = $rt_toInteger(pos);
+    var size = src.length;
+
+    if (position < 0 || position >= size) return undefined;
+
+    var first = src.charCodeAt(position);
+
+    if (first < 0xD800 || first > 0xDBFF || (position + 1) === size) return first;
+
+    var second = src.charCodeAt(position + 1);
+
+    if (second < 0xDC00 || second > 0xDFFF) return first;
+
+    return string_internal_utf16decode(first, second);
 }
 
 /**
@@ -1076,6 +1109,7 @@ String.fromCodePoint = string_fromCodePoint;
 // Setup String prototype
 String.prototype.toString = string_toString;
 String.prototype.charCodeAt = string_charCodeAt;
+String.prototype.codePointAt = string_codePointAt;
 String.prototype.valueOf = string_valueOf;
 String.prototype.charAt = string_charAt;
 String.prototype.concat = string_concat;
