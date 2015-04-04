@@ -121,6 +121,7 @@ Meeting:
   - Shape versioning system effectively implements a PIC
   - Fairer comparison using shape dispatch only quality code generation, same code
     - Added shape_noprop flag
+- Implemented shape indices for use instead of shape pointers
 
 TODO: think about shape types
 - Can reuse current capture_shape system, keep it mostly as-is
@@ -138,15 +139,21 @@ TODO: try modifying capture_tag to autoduplicate
 - avoids need to inline big structures
 - what to do about liveness? can we duplicate liveness data?
 
-TODO: shape array, so we can use shape indices and have smaller shape cmps
-- smaller code size will benefit versioning, it's a win
-- shapes will need an uint32_t shapeIdx
-- look at code size before
-
 TODO: try benchmarking with --shape_nofptrspec --shape_notagspec --shape_noprop vs full spec
 - Also add fptr only as middle config
 - If on trip, setup benchmarking without gathering results
 
+TODO: shape array, so we can use shape indices and have smaller shape cmps
+- smaller code size will benefit versioning, it's a win
+- shapes will need an uint32_t shapeIdx
+- code size before:
+    ./benchmark.py --vm_cmd="./higgs --perf_stats"
+    code size (bytes): 230664
+- code size after:
+    ./benchmark.py --vm_cmd="./higgs --perf_stats"
+
+TODO: missing object methods
+- need these now that shape ptr values no longer accessible
 
 
 

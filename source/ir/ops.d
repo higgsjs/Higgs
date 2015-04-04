@@ -207,7 +207,6 @@ Opcode LOAD_REFPTR = { "load_refptr", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_loa
 Opcode LOAD_STRING = { "load_string", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_string };
 Opcode LOAD_RAWPTR = { "load_rawptr", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_rawptr };
 Opcode LOAD_FUNPTR = { "load_funptr", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_funptr };
-Opcode LOAD_SHAPEPTR = { "load_shapeptr", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_load_shapeptr };
 
 // Store instructions
 Opcode STORE_U8 = { "store_u8", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_store_u8, OpInfo.IMPURE };
@@ -222,7 +221,6 @@ Opcode STORE_F64 = { "store_f64", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL]
 Opcode STORE_REFPTR = { "store_refptr", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_store_refptr, OpInfo.IMPURE };
 Opcode STORE_RAWPTR = { "store_rawptr", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_store_rawptr, OpInfo.IMPURE };
 Opcode STORE_FUNPTR = { "store_funptr", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_store_funptr, OpInfo.IMPURE };
-Opcode STORE_SHAPEPTR = { "store_shapeptr", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_store_shapeptr, OpInfo.IMPURE };
 
 // Unconditional jump
 Opcode JUMP = { "jump", false, [], &gen_jump, OpInfo.BRANCH };
@@ -297,8 +295,8 @@ Opcode CAPTURE_SHAPE = { "capture_shape", false, [OpArg.LOCAL, OpArg.LOCAL], &ge
 /// Clear the shape of a given object
 Opcode CLEAR_SHAPE = { "clear_shape", false, [OpArg.LOCAL], &gen_clear_shape, OpInfo.IMPURE };
 
-/// Get the shape of an object
-Opcode OBJ_READ_SHAPE = { "obj_read_shape", true, [OpArg.LOCAL], &gen_obj_read_shape };
+/// Get the shape index of an object
+Opcode READ_SHAPE_IDX = { "read_shape_idx", true, [OpArg.LOCAL], &gen_read_shape_idx };
 
 /// Initialize the shape of an object to the empty shape
 Opcode OBJ_INIT_SHAPE = { "obj_init_shape", false, [OpArg.LOCAL, OpArg.LOCAL], &gen_obj_init_shape, OpInfo.IMPURE };
@@ -318,17 +316,32 @@ Opcode OBJ_GET_PROTO = { "obj_get_proto", true, [OpArg.LOCAL], &gen_obj_get_prot
 /// Define a constant property on an object
 Opcode OBJ_DEF_CONST = { "obj_def_const", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_obj_def_const, OpInfo.MAY_GC | OpInfo.IMPURE };
 
-/// Set the attributes for a property
-Opcode OBJ_SET_ATTRS = { "obj_set_attrs", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_obj_set_attrs, OpInfo.IMPURE };
 
-/// Get the shape associated with a given property name
-Opcode OBJ_PROP_SHAPE = { "obj_prop_shape", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_obj_prop_shape };
 
-/// Get the attributes associated with a given shape
-Opcode SHAPE_GET_ATTRS = { "shape_get_attrs", true, [OpArg.LOCAL], &gen_shape_get_attrs };
 
-/// Get a table of enumerable property names for objects of this shape
-Opcode SHAPE_ENUM_TBL = { "shape_enum_tbl", true, [OpArg.LOCAL], &gen_shape_enum_tbl, OpInfo.MAY_GC };
+
+/// Set the attributes for a given property
+//Opcode OBJ_SET_PROP_ATTRS = { "obj_set_attrs", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_obj_set_attrs, OpInfo.IMPURE };
+
+// TODO: return deleted if the property doesn't exist
+/// Get the attributes for a given property
+//Opcode OBJ_GET_PROP_ATTRS = { "obj_get_prop_attrs", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_obj_get_prop_attrs };
+
+// Get the attributes for an object's own shape
+// obj_get_attrs => object attributes
+//Opcode OBJ_GET_ATTRS = { "obj_get_attrs", true, [OpArg.LOCAL], &gen_obj_get_attrs };
+
+// Set the attribute for an objects's own shape
+//Opcode OBJ_SET_PROP_ATTRS = { "obj_set_attrs", false, [OpArg.LOCAL, OpArg.LOCAL], &gen_obj_set_attrs, OpInfo.IMPURE };
+
+/// Get a table of enumerable property names for an object
+//Opcode OBJ_GET_ENUM_TBL = { "obj_get_enum_tbl", true, [OpArg.LOCAL], &gen_obj_get_enum_tbl, OpInfo.MAY_GC };
+
+
+
+
+
+
 
 /// Set the value of a global property
 Opcode SET_GLOBAL = { "set_global", false, [OpArg.STRING, OpArg.LOCAL], &gen_set_global, OpInfo.MAY_GC | OpInfo.IMPURE };

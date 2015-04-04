@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2013-2014, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2013-2015, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -180,7 +180,7 @@ void inlinePass(VM vm, IRFunction caller)
             assert (propName !is null);
 
             auto globalObj = vm.globalObj.word.ptrVal;
-            auto objShape = cast(ObjShape)obj_get_shape(globalObj);
+            auto objShape = getShape(globalObj);
             auto defShape = objShape.getDefShape(propName);
 
             // If the property is defined and is a constant

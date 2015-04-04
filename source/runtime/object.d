@@ -183,7 +183,7 @@ struct ValType
         if (isObject(this.tag))
         {
             // Get the object shape
-            this.shape = cast(ObjShape)obj_get_shape(val.ptr);
+            this.shape = getShape(val.ptr);
             this.shapeKnown = true;
         }
         else if (this.tag is Tag.FUNPTR)
@@ -366,14 +366,17 @@ class ObjShape
     /// Name of this property, null if array element property
     wstring propName;
 
+    /// Index at which this property is stored
+    uint32_t slotIdx;
+
+    /// Unique index number for this shape
+    uint32_t shapeIdx;
+
     /// Value type, may be unknown
     ValType type;
 
     /// Property attribute flags
     PropAttr attrs;
-
-    /// Index at which this property is stored
-    uint32_t slotIdx;
 
     /// Table of enumerable properties
     GCRoot enumTbl;
@@ -383,6 +386,9 @@ class ObjShape
     {
         // Increment the number of shapes allocated
         stats.numShapes++;
+
+        this.shapeIdx = cast(uint32_t)vm.objShapes.length;
+        vm.objShapes ~= this;
 
         this.parent = null;
 
@@ -409,6 +415,9 @@ class ObjShape
 
         // Increment the number of shapes allocated
         stats.numShapes++;
+
+        this.shapeIdx = cast(uint32_t)vm.objShapes.length;
+        vm.objShapes ~= this;
 
         this.parent = parent;
 
@@ -630,7 +639,7 @@ ValuePair newObj(
     auto objPtr = obj_alloc(vm, initCap);
     auto objPair = ValuePair(objPtr, Tag.OBJECT);
 
-    obj_set_shape(objPtr, cast(rawptr)vm.emptyShape);
+    obj_set_shape_idx(objPtr, vm.emptyShape.shapeIdx);
 
     defConst(objPair, "__proto__"w, protoObj.pair);
 
@@ -653,7 +662,7 @@ ValuePair newClos(
     auto objPtr = clos_alloc(vm, OBJ_MIN_CAP, allocNumCells);
     auto objPair = ValuePair(objPtr, Tag.CLOSURE);
 
-    obj_set_shape(objPair.word.ptrVal, cast(rawptr)vm.emptyShape);
+    obj_set_shape_idx(objPair.word.ptrVal, vm.emptyShape.shapeIdx);
 
     defConst(objPair, "__proto__"w, protoObj.pair);
     defConst(objPair, "__fptr__"w, ValuePair(fun));
@@ -661,9 +670,14 @@ ValuePair newClos(
     return objPair;
 }
 
-/**
-Get the function pointer from a closure object
-*/
+/// Get the shape of an object
+ObjShape getShape(refptr objPtr)
+{
+    auto shapeIdx = obj_get_shape_idx(objPtr);
+    return vm.objShapes[shapeIdx];
+}
+
+/// Get the function pointer from a closure object
 IRFunction getFunPtr(refptr closPtr)
 {
     return cast(IRFunction)cast(refptr)clos_get_word(closPtr, FPTR_SLOT_IDX);
@@ -705,7 +719,7 @@ void setSlotPair(refptr objPtr, uint32_t slotIdx, ValuePair val)
 ValuePair getProp(ValuePair obj, wstring propStr)
 {
     // Get the shape from the object
-    auto objShape = cast(ObjShape)obj_get_shape(obj.word.ptrVal);
+    auto objShape = getShape(obj.word.ptrVal);
     assert (objShape !is null);
 
     // Find the shape defining this property (if it exists)
@@ -789,7 +803,7 @@ bool setProp(
     auto valType = ValType(valPair).propType;
 
     // Get the shape from the object
-    auto objShape = cast(ObjShape)obj_get_shape(obj.word.ptrVal);
+    auto objShape = getShape(obj.word.ptrVal);
     assert (objShape !is null);
 
     // Find the shape defining this property (if it exists)
@@ -814,7 +828,7 @@ bool setProp(
         );
 
         // Set the new shape for the object
-        obj_set_shape(obj.ptr, cast(rawptr)defShape);
+        obj_set_shape_idx(obj.ptr, defShape.shapeIdx);
     }
     else
     {
@@ -842,7 +856,7 @@ bool setProp(
             );
 
             // Set the new shape for the object
-            obj_set_shape(obj.ptr, cast(rawptr)objShape);
+            obj_set_shape_idx(obj.ptr, objShape.shapeIdx);
 
             // Find the shape defining this property
             defShape = objShape.getDefShape(propStr);
@@ -911,10 +925,8 @@ bool defConst(
     bool enumerable = false
 )
 {
-    auto objShape = cast(ObjShape)obj_get_shape(objPair.word.ptrVal);
-    assert (
-        objShape !is null
-    );
+    auto objShape = getShape(objPair.word.ptrVal);
+    assert (objShape !is null);
 
     auto defShape = objShape.getDefShape(propStr);
 
@@ -946,7 +958,7 @@ bool setPropAttrs(
 )
 {
     // Get the shape from the object
-    auto objShape = cast(ObjShape)obj_get_shape(obj.word.ptrVal);
+    auto objShape = getShape(obj.word.ptrVal);
     assert (objShape !is null);
 
     assert (defShape !is null);
@@ -960,7 +972,7 @@ bool setPropAttrs(
     );
 
     // Set the new object shape
-    obj_set_shape(obj.word.ptrVal, cast(rawptr)newShape);
+    obj_set_shape_idx(obj.word.ptrVal, newShape.shapeIdx);
 
     // Operation successful
     return true;

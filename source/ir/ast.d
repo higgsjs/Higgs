@@ -53,8 +53,8 @@ import ir.iir;
 import ir.inlining;
 import ir.peephole;
 import ir.livevars;
-import ir.typeprop;
 import ir.slotalloc;
+import ir.typeprop;
 import runtime.vm;
 import options;
 

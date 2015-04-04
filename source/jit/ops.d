@@ -777,7 +777,6 @@ alias gen_load_refptr = LoadOp!(64, false, Tag.REFPTR);
 alias gen_load_string = LoadOp!(64, false, Tag.STRING);
 alias gen_load_rawptr = LoadOp!(64, false, Tag.RAWPTR);
 alias gen_load_funptr = LoadOp!(64, false, Tag.FUNPTR);
-alias gen_load_shapeptr = LoadOp!(64, false, Tag.SHAPEPTR);
 
 void StoreOp(size_t memSize, Tag tag)(
     BlockVersion ver,
@@ -829,7 +828,6 @@ alias gen_store_f64 = StoreOp!(64, Tag.FLOAT64);
 alias gen_store_refptr = StoreOp!(64, Tag.REFPTR);
 alias gen_store_rawptr = StoreOp!(64, Tag.RAWPTR);
 alias gen_store_funptr = StoreOp!(64, Tag.FUNPTR);
-alias gen_store_shapeptr = StoreOp!(64, Tag.SHAPEPTR);
 
 void TagTestOp(Tag tag)(
     BlockVersion ver,
@@ -3068,9 +3066,9 @@ void gen_capture_shape(
 
     // Get the object and shape argument values
     auto objVal = cast(IRDstValue)instr.getArg(0);
-    auto shapeVal = cast(IRDstValue)instr.getArg(1);
+    auto shapeIdxVal = cast(IRDstValue)instr.getArg(1);
     assert (objVal !is null);
-    assert (shapeVal !is null);
+    assert (shapeIdxVal !is null);
 
     // Get type information about the object argument
     ValType objType = st.getType(objVal);
@@ -3088,16 +3086,15 @@ void gen_capture_shape(
     // Increment the count of shape tests
     as.incStatCnt(&stats.numShapeTests, scrRegs[0]);
 
-    // Get the current shape argument word
-    assert (shapeVal.block !is instr.block);
-    auto shapeWord = vm.getWord(shapeVal.outSlot);
+    // Observe the current shape index at compilation time
+    assert (shapeIdxVal.block !is instr.block);
+    auto curShapeIdx = vm.getWord(shapeIdxVal.outSlot).uint32Val;
 
-    // Get the shape argument operand
-    auto shapeOpnd = st.getWordOpnd(as, instr, 1, 64);
+    // Get the shape index operand
+    auto shapeIdxOpnd = st.getWordOpnd(as, instr, 1, 32);
 
-    // Compare the shape operand with the observed shape
-    as.ptr(scrRegs[0], shapeWord.ptrVal);
-    as.cmp(shapeOpnd, scrRegs[0].opnd);
+    // Compare the shape index operand with the observed shape index
+    as.cmp(shapeIdxOpnd, X86Opnd(curShapeIdx));
 
     // On the recursive branch, no information is gained
     auto branchT = getBranchEdge(instr.getTarget(0), st, false);
@@ -3105,7 +3102,7 @@ void gen_capture_shape(
     // Mark the object shape as known on the false branch,
     // and queue this branch for immediate compilation (fall through)
     auto falseSt = new CodeGenState(st);
-    falseSt.setShape(objVal, cast(ObjShape)shapeWord.shapeVal);
+    falseSt.setShape(objVal, vm.objShapes[curShapeIdx]);
     auto branchF = getBranchEdge(instr.getTarget(1), falseSt, true);
 
     // Generate the branch code
@@ -3154,9 +3151,9 @@ void gen_clear_shape(
     }
 }
 
-/// Reads the shape of an object, does nothing if the shape is known
+/// Reads the shape index of an object, does nothing if the shape is known
 /// Inputs: obj
-void gen_obj_read_shape(
+void gen_read_shape_idx(
     BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
@@ -3171,7 +3168,7 @@ void gen_obj_read_shape(
     assert (opnd0.isReg);
 
     // Get the output operand
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    auto outOpnd = st.getOutOpnd(as, instr, 32);
     assert (outOpnd.isReg);
 
     // TODO: find way to have instr in valMap without allocating outOpnd?
@@ -3181,15 +3178,14 @@ void gen_obj_read_shape(
     // If the shape is known, do nothing
     if (st.shapeKnown(objVal))
     {
-        //as.mov(outOpnd, X86Opnd(0));
-        st.setOutTag(as, instr, Tag.CONST);
+        st.setOutTag(as, instr, Tag.INT32);
         return;
     }
 
-    // Get the object shape
-    as.getField(outOpnd.reg, opnd0.reg, obj_ofs_shape(null));
+    // Read the object shape index
+    as.getField(outOpnd.reg, opnd0.reg, obj_ofs_shape_idx(null));
 
-    st.setOutTag(as, instr, Tag.SHAPEPTR);
+    st.setOutTag(as, instr, Tag.INT32);
 }
 
 /// Initializes an object to the empty shape
@@ -3211,7 +3207,7 @@ void gen_obj_init_shape(
             null
         );
 
-        obj_set_shape(objPtr, cast(rawptr)shape);
+        obj_set_shape_idx(objPtr, shape.shapeIdx);
 
         assert (
             vm.wUpperLimit > vm.wStack,
@@ -3238,8 +3234,7 @@ void gen_obj_init_shape(
         );
 
         // Set the object shape
-        as.ptr(scrRegs[0], shape);
-        as.setField(objOpnd.reg, obj_ofs_shape(null), scrRegs[0]);
+        as.mov(X86Opnd(32, objOpnd.reg, obj_ofs_shape_idx(null)), X86Opnd(shape.shapeIdx));
 
         // Propagate the object shape
         st.setShape(cast(IRDstValue)instr.getArg(0), shape);
@@ -3259,8 +3254,7 @@ void gen_obj_init_shape(
         );
 
         // Set the object shape
-        as.ptr(scrRegs[0], shape);
-        as.setField(objOpnd.reg, obj_ofs_shape(null), scrRegs[0]);
+        as.mov(X86Opnd(32, objOpnd.reg, obj_ofs_shape_idx(null)), X86Opnd(shape.shapeIdx));
 
         // Propagate the object shape
         st.setShape(cast(IRDstValue)instr.getArg(0), shape);
@@ -3298,11 +3292,11 @@ void gen_arr_init_shape(
     auto opnd0 = st.getWordOpnd(as, instr, 0, 64);
     assert (opnd0.isReg);
 
-    // Load the array shape into r0
-    as.getMember!("VM.arrayShape")(scrRegs[0], vmReg);
-
-    // Set the object shape
-    as.setField(opnd0.reg, obj_ofs_shape(null), scrRegs[0]);
+    // Set the array shape
+    as.mov(
+        X86Opnd(32, opnd0.reg, obj_ofs_shape_idx(null)),
+        X86Opnd(vm.arrayShape.shapeIdx)
+    );
 
     // Propagate the array shape
     st.setShape(cast(IRDstValue)instr.getArg(0), vm.arrayShape);
@@ -3332,7 +3326,7 @@ void gen_obj_set_prop(
         //writeln("propName=", propName);
 
         // Get the shape of the object
-        auto objShape = cast(ObjShape)obj_get_shape(objPair.word.ptrVal);
+        auto objShape = getShape(objPair.word.ptrVal);
         assert (objShape !is null);
 
         // Find the shape defining this property (if it exists)
@@ -3551,8 +3545,10 @@ void gen_obj_set_prop(
             );
 
             // Update the object shape
-            as.ptr(scrRegs[2], objShape);
-            as.setField(objOpnd.reg, obj_ofs_shape(null), scrRegs[2]);
+            as.mov(
+                X86Opnd(32, objOpnd.reg, obj_ofs_shape_idx(null)), 
+                X86Opnd(objShape.shapeIdx)
+            );
 
             // Set the new object shape
             st.shapeChg(as, objVal, objShape);
@@ -3588,8 +3584,10 @@ void gen_obj_set_prop(
         as.mov(typeMem, tagOpnd);
 
         // Update the object shape
-        as.ptr(scrRegs[0].reg, defShape);
-        as.setField(objOpnd.reg, obj_ofs_shape(null), scrRegs[0].reg);
+        as.mov(
+            X86Opnd(32, objOpnd.reg, obj_ofs_shape_idx(null)), 
+            X86Opnd(defShape.shapeIdx)
+        );
 
         // Set the new object shape
         st.shapeChg(as, objVal, defShape);
@@ -3633,7 +3631,7 @@ void gen_obj_get_prop(
         auto propStr = tempWStr(strPtr);
 
         // Get the shape of the object
-        auto objShape = cast(ObjShape)obj_get_shape(objPtr);
+        auto objShape = getShape(objPtr);
         assert (objShape !is null);
 
         // Find the shape defining this property (if it exists)
@@ -3966,6 +3964,14 @@ void gen_obj_def_const(
     st.shapeChg(as, objDst);
 }
 
+
+
+
+
+
+
+
+/*
 /// Sets the attributes for a property
 /// Inputs: obj, defShape, attrBits
 void gen_obj_set_attrs(
@@ -4005,7 +4011,9 @@ void gen_obj_set_attrs(
     // Clear any known shape for this object
     st.shapeChg(as, cast(IRDstValue)instr.getArg(0));
 }
+*/
 
+/*
 /// Inputs: obj, propName
 /// Get the shape associated with the property name (if any)
 void gen_obj_prop_shape(
@@ -4020,7 +4028,7 @@ void gen_obj_prop_shape(
         refptr strPtr
     )
     {
-        auto objShape = cast(ObjShape)obj_get_shape(objPtr);
+        auto objShape = getShape(objPtr);
 
         // Get a temporary D string for the property name
         auto propStr = tempWStr(strPtr);
@@ -4085,10 +4093,49 @@ void gen_obj_prop_shape(
     // Set the output type for this instruction
     st.setOutTag(as, instr, Tag.SHAPEPTR);
 }
+*/
 
-/// Get a table of enumerable property names for objects of this shape
+/*
+/// Get the attributes associated with a given shape
 /// Inputs: shape
-void gen_shape_enum_tbl(
+void gen_shape_get_attrs(
+    BlockVersion ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    extern (C) static uint32 op_shape_get_attrs(ObjShape shape)
+    {
+        assert (shape !is null);
+        return shape.attrs;
+    }
+
+    // Spill the values live before this instruction
+    st.spillLiveBefore(as, instr);
+
+    auto shapeOpnd = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
+    auto outOpnd = st.getOutOpnd(as, instr, 32);
+
+    as.saveJITRegs();
+
+    // Call the host function
+    as.mov(cargRegs[0].opnd(64), shapeOpnd);
+    as.ptr(scrRegs[0], &op_shape_get_attrs);
+    as.call(scrRegs[0]);
+
+    // Set the output value
+    as.mov(outOpnd, cretReg.opnd(32));
+    st.setOutTag(as, instr, Tag.INT32);
+
+    as.loadJITRegs();
+}
+*/
+
+/*
+/// Get a table of enumerable property names for an object
+/// Inputs: shape
+void gen_obj_get_enum_tbl(
     BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
@@ -4147,41 +4194,7 @@ void gen_shape_enum_tbl(
 
     as.label(Label.DONE);
 }
-
-/// Get the attributes associated with a given shape
-/// Inputs: shape
-void gen_shape_get_attrs(
-    BlockVersion ver,
-    CodeGenState st,
-    IRInstr instr,
-    CodeBlock as
-)
-{
-    extern (C) static uint32 op_shape_get_attrs(ObjShape shape)
-    {
-        assert (shape !is null);
-        return shape.attrs;
-    }
-
-    // Spill the values live before this instruction
-    st.spillLiveBefore(as, instr);
-
-    auto shapeOpnd = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
-    auto outOpnd = st.getOutOpnd(as, instr, 32);
-
-    as.saveJITRegs();
-
-    // Call the host function
-    as.mov(cargRegs[0].opnd(64), shapeOpnd);
-    as.ptr(scrRegs[0], &op_shape_get_attrs);
-    as.call(scrRegs[0]);
-
-    // Set the output value
-    as.mov(outOpnd, cretReg.opnd(32));
-    st.setOutTag(as, instr, Tag.INT32);
-
-    as.loadJITRegs();
-}
+*/
 
 void gen_set_global(
     BlockVersion ver,

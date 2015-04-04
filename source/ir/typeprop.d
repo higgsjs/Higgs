@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2011-2014, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2011-2015, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -559,12 +559,6 @@ class TypeProp
                 return TypeSet(Tag.FUNPTR);
             }
 
-            // Load shapeptr
-            if (op is &LOAD_SHAPEPTR)
-            {
-                return TypeSet(Tag.SHAPEPTR);
-            }
-
             // Load rawptr
             if (op is &LOAD_RAWPTR)
             {
@@ -617,23 +611,6 @@ class TypeProp
             if (op is &GET_TIME_MS)
             {
                 return TypeSet(Tag.FLOAT64);
-            }
-
-            // Get shape attributes
-            if (op is &SHAPE_GET_ATTRS)
-            {
-                return TypeSet(Tag.INT32);
-            }
-
-            if (op is &SHAPE_ENUM_TBL)
-            {
-                return TypeSet(Tag.REFPTR);
-            }
-
-            // Get property shape
-            if (op is &OBJ_PROP_SHAPE)
-            {
-                return TypeSet(Tag.SHAPEPTR);
             }
 
             if (op is &OBJ_GET_PROTO)

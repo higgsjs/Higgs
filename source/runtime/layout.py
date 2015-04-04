@@ -103,8 +103,8 @@ layouts = [
             # Capacity, number of property slots
             { 'name':"cap" , 'tag':"uint32" },
 
-            # Shape pointer
-            { 'name':"shape", 'tag':"shapeptr" },
+            # Object shape index
+            { 'name':"shape_idx", 'tag':"uint32" },
 
             # Property words
             { 'name':"word", 'tag':"uint64", 'szField':"cap", 'tpField':'tag' },

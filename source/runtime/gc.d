@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2013-2014, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2013-2015, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -520,7 +520,7 @@ refptr gcForward(VM vm, refptr ptr)
                     setSlotPair(ptr, i, getSlotPair(oldObj, i));
 
                 // Set the object shape
-                obj_set_shape(ptr, obj_get_shape(oldObj));
+                obj_set_shape_idx(ptr, obj_get_shape_idx(oldObj));
             }
         }
     }
@@ -584,13 +584,6 @@ Word gcForward(VM vm, Word word, Tag tag)
         auto fun = word.funVal;
         assert (fun !is null, "null IRFunction pointer");
         visitFun(vm, fun);
-        return word;
-
-        // Object shape pointer
-        // Return the pointer unchanged
-        case Tag.SHAPEPTR:
-        auto shape = word.shapeVal;
-        assert (shape !is null);
         return word;
 
         // Return address

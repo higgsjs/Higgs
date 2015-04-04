@@ -343,19 +343,19 @@ extern (C) uint32 obj_ofs_cap(refptr o)
     return ((0 + 8) + 4);
 }
 
-extern (C) uint32 obj_ofs_shape(refptr o)
+extern (C) uint32 obj_ofs_shape_idx(refptr o)
 {    
     return (((0 + 8) + 4) + 4);
 }
 
 extern (C) uint32 obj_ofs_word(refptr o, uint32 i)
 {    
-    return (((((0 + 8) + 4) + 4) + 8) + (8 * i));
+    return ((((((0 + 8) + 4) + 4) + 4) + 4) + (8 * i));
 }
 
 extern (C) uint32 obj_ofs_tag(refptr o, uint32 i)
 {    
-    return ((((((0 + 8) + 4) + 4) + 8) + (8 * obj_get_cap(o))) + (1 * i));
+    return (((((((0 + 8) + 4) + 4) + 4) + 4) + (8 * obj_get_cap(o))) + (1 * i));
 }
 
 extern (C) refptr obj_get_next(refptr o)
@@ -373,9 +373,9 @@ extern (C) uint32 obj_get_cap(refptr o)
     return *cast(uint32*)(o + obj_ofs_cap(o));
 }
 
-extern (C) shapeptr obj_get_shape(refptr o)
+extern (C) uint32 obj_get_shape_idx(refptr o)
 {    
-    return *cast(shapeptr*)(o + obj_ofs_shape(o));
+    return *cast(uint32*)(o + obj_ofs_shape_idx(o));
 }
 
 extern (C) uint64 obj_get_word(refptr o, uint32 i)
@@ -403,9 +403,9 @@ extern (C) void obj_set_cap(refptr o, uint32 v)
     *cast(uint32*)(o + obj_ofs_cap(o)) = v;
 }
 
-extern (C) void obj_set_shape(refptr o, shapeptr v)
+extern (C) void obj_set_shape_idx(refptr o, uint32 v)
 {    
-    *cast(shapeptr*)(o + obj_ofs_shape(o)) = v;
+    *cast(uint32*)(o + obj_ofs_shape_idx(o)) = v;
 }
 
 extern (C) void obj_set_word(refptr o, uint32 i, uint64 v)
@@ -420,7 +420,7 @@ extern (C) void obj_set_tag(refptr o, uint32 i, uint8 v)
 
 extern (C) uint32 obj_comp_size(uint32 cap)
 {    
-    return ((((((0 + 8) + 4) + 4) + 8) + (8 * cap)) + (1 * cap));
+    return (((((((0 + 8) + 4) + 4) + 4) + 4) + (8 * cap)) + (1 * cap));
 }
 
 extern (C) uint32 obj_sizeof(refptr o)
@@ -463,29 +463,29 @@ extern (C) uint32 clos_ofs_cap(refptr o)
     return ((0 + 8) + 4);
 }
 
-extern (C) uint32 clos_ofs_shape(refptr o)
+extern (C) uint32 clos_ofs_shape_idx(refptr o)
 {    
     return (((0 + 8) + 4) + 4);
 }
 
 extern (C) uint32 clos_ofs_word(refptr o, uint32 i)
 {    
-    return (((((0 + 8) + 4) + 4) + 8) + (8 * i));
+    return ((((((0 + 8) + 4) + 4) + 4) + 4) + (8 * i));
 }
 
 extern (C) uint32 clos_ofs_tag(refptr o, uint32 i)
 {    
-    return ((((((0 + 8) + 4) + 4) + 8) + (8 * clos_get_cap(o))) + (1 * i));
+    return (((((((0 + 8) + 4) + 4) + 4) + 4) + (8 * clos_get_cap(o))) + (1 * i));
 }
 
 extern (C) uint32 clos_ofs_num_cells(refptr o)
 {    
-    return ((((((((0 + 8) + 4) + 4) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 7) & -8);
+    return (((((((((0 + 8) + 4) + 4) + 4) + 4) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 7) & -8);
 }
 
 extern (C) uint32 clos_ofs_cell(refptr o, uint32 i)
 {    
-    return ((((((((((0 + 8) + 4) + 4) + 8) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 7) & -8) + 4) + (8 * i));
+    return (((((((((((0 + 8) + 4) + 4) + 4) + 4) + (8 * clos_get_cap(o))) + (1 * clos_get_cap(o))) + 7) & -8) + 4) + (8 * i));
 }
 
 extern (C) refptr clos_get_next(refptr o)
@@ -503,9 +503,9 @@ extern (C) uint32 clos_get_cap(refptr o)
     return *cast(uint32*)(o + clos_ofs_cap(o));
 }
 
-extern (C) shapeptr clos_get_shape(refptr o)
+extern (C) uint32 clos_get_shape_idx(refptr o)
 {    
-    return *cast(shapeptr*)(o + clos_ofs_shape(o));
+    return *cast(uint32*)(o + clos_ofs_shape_idx(o));
 }
 
 extern (C) uint64 clos_get_word(refptr o, uint32 i)
@@ -543,9 +543,9 @@ extern (C) void clos_set_cap(refptr o, uint32 v)
     *cast(uint32*)(o + clos_ofs_cap(o)) = v;
 }
 
-extern (C) void clos_set_shape(refptr o, shapeptr v)
+extern (C) void clos_set_shape_idx(refptr o, uint32 v)
 {    
-    *cast(shapeptr*)(o + clos_ofs_shape(o)) = v;
+    *cast(uint32*)(o + clos_ofs_shape_idx(o)) = v;
 }
 
 extern (C) void clos_set_word(refptr o, uint32 i, uint64 v)
@@ -570,7 +570,7 @@ extern (C) void clos_set_cell(refptr o, uint32 i, refptr v)
 
 extern (C) uint32 clos_comp_size(uint32 cap, uint32 num_cells)
 {    
-    return ((((((((((0 + 8) + 4) + 4) + 8) + (8 * cap)) + (1 * cap)) + 7) & -8) + 4) + (8 * num_cells));
+    return (((((((((((0 + 8) + 4) + 4) + 4) + 4) + (8 * cap)) + (1 * cap)) + 7) & -8) + 4) + (8 * num_cells));
 }
 
 extern (C) uint32 clos_sizeof(refptr o)
@@ -705,19 +705,19 @@ extern (C) uint32 arr_ofs_cap(refptr o)
     return ((0 + 8) + 4);
 }
 
-extern (C) uint32 arr_ofs_shape(refptr o)
+extern (C) uint32 arr_ofs_shape_idx(refptr o)
 {    
     return (((0 + 8) + 4) + 4);
 }
 
 extern (C) uint32 arr_ofs_word(refptr o, uint32 i)
 {    
-    return (((((0 + 8) + 4) + 4) + 8) + (8 * i));
+    return ((((((0 + 8) + 4) + 4) + 4) + 4) + (8 * i));
 }
 
 extern (C) uint32 arr_ofs_tag(refptr o, uint32 i)
 {    
-    return ((((((0 + 8) + 4) + 4) + 8) + (8 * arr_get_cap(o))) + (1 * i));
+    return (((((((0 + 8) + 4) + 4) + 4) + 4) + (8 * arr_get_cap(o))) + (1 * i));
 }
 
 extern (C) refptr arr_get_next(refptr o)
@@ -735,9 +735,9 @@ extern (C) uint32 arr_get_cap(refptr o)
     return *cast(uint32*)(o + arr_ofs_cap(o));
 }
 
-extern (C) shapeptr arr_get_shape(refptr o)
+extern (C) uint32 arr_get_shape_idx(refptr o)
 {    
-    return *cast(shapeptr*)(o + arr_ofs_shape(o));
+    return *cast(uint32*)(o + arr_ofs_shape_idx(o));
 }
 
 extern (C) uint64 arr_get_word(refptr o, uint32 i)
@@ -765,9 +765,9 @@ extern (C) void arr_set_cap(refptr o, uint32 v)
     *cast(uint32*)(o + arr_ofs_cap(o)) = v;
 }
 
-extern (C) void arr_set_shape(refptr o, shapeptr v)
+extern (C) void arr_set_shape_idx(refptr o, uint32 v)
 {    
-    *cast(shapeptr*)(o + arr_ofs_shape(o)) = v;
+    *cast(uint32*)(o + arr_ofs_shape_idx(o)) = v;
 }
 
 extern (C) void arr_set_word(refptr o, uint32 i, uint64 v)
@@ -782,7 +782,7 @@ extern (C) void arr_set_tag(refptr o, uint32 i, uint8 v)
 
 extern (C) uint32 arr_comp_size(uint32 cap)
 {    
-    return ((((((0 + 8) + 4) + 4) + 8) + (8 * cap)) + (1 * cap));
+    return (((((((0 + 8) + 4) + 4) + 4) + 4) + (8 * cap)) + (1 * cap));
 }
 
 extern (C) uint32 arr_sizeof(refptr o)

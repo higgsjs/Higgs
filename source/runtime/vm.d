@@ -172,7 +172,6 @@ enum Tag : ubyte
     RAWPTR,
     RETADDR,
     FUNPTR,
-    SHAPEPTR,
 
     // GC heap pointer tags
     REFPTR,
@@ -205,7 +204,6 @@ bool isHeapPtr(Tag tag)
         case Tag.RAWPTR:
         case Tag.RETADDR:
         case Tag.FUNPTR:
-        case Tag.SHAPEPTR:
         return false;
 
         default:
@@ -245,7 +243,6 @@ string tagToString(Tag tag)
         case Tag.RETADDR:  return "retaddr";
         case Tag.CONST:    return "const";
         case Tag.FUNPTR:   return "funptr";
-        case Tag.SHAPEPTR: return "shapeptr";
 
         case Tag.REFPTR:   return "refptr";
         case Tag.OBJECT:   return "object";
@@ -498,6 +495,9 @@ class VM
 
     /// Initial array shape
     ObjShape arrayShape;
+
+    /// Object shapes, indexable by shape index
+    ObjShape[] objShapes;
 
     /// Object prototype object
     ValuePair objProto;
