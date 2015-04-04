@@ -158,7 +158,7 @@ struct ValState
 
     ObjShape shape() const 
     { 
-        assert (!opts.shape_novers || !type.shapeKnown);
+        assert (type.shapeKnown);
         return cast(ObjShape)type.shape;
     }
 
@@ -205,9 +205,6 @@ struct ValState
     {
         assert (!isConst);
 
-        if (opts.shape_novers)
-            return cast(ValState)this;
-
         ValState val = cast(ValState)this;
         val.type.shape = shape;
         val.type.shapeKnown = true;
@@ -223,13 +220,6 @@ struct ValState
 
         ValState val = cast(ValState)this;
         val.type = cast(ValType)type;
-
-        if (opts.shape_novers)
-        {
-            val.type.shape = null;
-            val.type.shapeKnown = false;
-            val.type.fptrKnown = false;
-        }
 
         if (opts.noovfelim)
         {
@@ -2385,7 +2375,7 @@ void compile(VM vm, IRInstr curInstr)
 
         //writeln("compiling fragment: ", frag.getName);
 
-        // If this is a version instance
+        // If this is a block version instance
         if (auto ver = cast(BlockVersion)frag)
         {
             assert (

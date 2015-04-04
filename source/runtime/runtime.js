@@ -2012,6 +2012,9 @@ function $rt_newObj(protoPtr)
     $ir_obj_init_shape(objPtr, protoPtr);
     $rt_setProto(objPtr, protoPtr);
 
+    // If shapes are not to be propagated, clear shape information
+    $ir_clear_shape(objPtr);
+
     return objPtr;
 }
 
@@ -2035,7 +2038,8 @@ function $rt_newArr(length)
     // Set the array length
     $rt_setArrLen(objPtr, length);
 
-    //$ir_print_str("Allocated array\n");
+    // If shapes are not to be propagated, clear shape information
+    $ir_clear_shape(objPtr);
 
     return objPtr;
 }
@@ -2124,9 +2128,15 @@ function $rt_objGetProp(obj, propStr)
     var propVal;
     if (propVal = $ir_obj_get_prop(obj, propStr))
     {
+        // If shapes are not to be propagated, clear shape information
+        $ir_clear_shape(obj);
+
         // Return the property value
         return propVal;
     }
+
+    // If shapes are not to be propagated, clear shape information
+    $ir_clear_shape(obj);
 
     // Otherwise, if the property is a getter-setter function
     if ($ir_is_object(propVal))
@@ -2322,9 +2332,15 @@ function $rt_getPropField(base, propStr)
         var propVal;
         if (propVal = $ir_obj_get_prop(obj, propStr))
         {
+            // If shapes are not to be propagated, clear shape information
+            $ir_clear_shape(obj);
+
             // Return the property value
             return propVal;
         }
+
+        // If shapes are not to be propagated, clear shape information
+        $ir_clear_shape(obj);
 
         // If the property is a getter-setter
         if ($ir_is_object(propVal))
@@ -2368,9 +2384,15 @@ function $rt_getPropField(base, propStr)
             var propVal;
             if (propVal = $ir_obj_get_prop(obj, propStr))
             {
+                // If shapes are not to be propagated, clear shape information
+                $ir_clear_shape(obj);
+
                 // Return the property value
                 return propVal;
             }
+
+            // If shapes are not to be propagated, clear shape information
+            $ir_clear_shape(obj);
 
             // If the property is a getter-setter, stop
             if ($ir_is_object(propVal))
@@ -2414,9 +2436,15 @@ function $rt_getStrMethod(base, propStr)
         var propVal;
         if (propVal = $ir_obj_get_prop(obj, propStr))
         {
+            // If shapes are not to be propagated, clear shape information
+            $ir_clear_shape(obj);
+
             // Return the property value
             return propVal;
         }
+
+        // If shapes are not to be propagated, clear shape information
+        $ir_clear_shape(obj);
     }
 
     return $rt_getProp(base, propStr);
@@ -2487,9 +2515,15 @@ function $rt_getGlobal(obj, propStr)
     var propVal;
     if (propVal = $ir_obj_get_prop(obj, propStr))
     {
+        // If shapes are not to be propagated, clear shape information
+        $ir_clear_shape(obj);
+
         // Return the property value
         return propVal;
     }
+
+    // If shapes are not to be propagated, clear shape information
+    $ir_clear_shape(obj);
 
     // Otherwise, if the property is a getter-setter function
     if ($ir_is_object(propVal))
@@ -2539,9 +2573,15 @@ function $rt_getGlobalInl(propStr)
     var propVal;
     if (propVal = $ir_obj_get_prop(obj, propStr))
     {
+        // If shapes are not to be propagated, clear shape information
+        $ir_clear_shape(obj);
+
         // Return the property value
         return propVal;
     }
+
+    // If shapes are not to be propagated, clear shape information
+    $ir_clear_shape(obj);
 
     // Do the full global lookup
     return $rt_getGlobal(
@@ -2597,9 +2637,15 @@ function $rt_objSetProp(obj, propStr, val)
     // If the property value can be set directly
     if ($ir_obj_set_prop(obj, propStr, val))
     {
+        // If shapes are not to be propagated, clear shape information
+        $ir_clear_shape(obj);
+
         // We are done
         return;
     }
+
+    // If shapes are not to be propagated, clear shape information
+    $ir_clear_shape(obj);
 
     // The property must have a getter-setter method
     // Get the accessor pair and call the setter function
@@ -2831,9 +2877,15 @@ function $rt_setPropField(base, propStr, val)
         // If the property value can be set directly
         if ($ir_obj_set_prop(obj, propStr, val))
         {
+            // If shapes are not to be propagated, clear shape information
+            $ir_clear_shape(obj);
+
             // We are done
             return;
         }
+
+        // If shapes are not to be propagated, clear shape information
+        $ir_clear_shape(obj);
     }
 
     return $rt_setProp(base, propStr, val);
@@ -2927,9 +2979,15 @@ function $rt_setGlobalInl(propStr, val)
     // If the property value can be set directly
     if ($ir_obj_set_prop(obj, propStr, val))
     {
+        // If shapes are not to be propagated, clear shape information
+        $ir_clear_shape(obj);
+
         // We are done
         return;
     }
+
+    // If shapes are not to be propagated, clear shape information
+    $ir_clear_shape(obj);
 
     $rt_objSetProp(obj, propStr, val)
 }

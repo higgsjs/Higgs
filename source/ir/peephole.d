@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2011-2014, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2011-2015, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -303,20 +303,6 @@ void optIR(IRFunction fun)
                 if (instr.hasNoUses && !op.isImpure && !op.isBranch)
                 {
                     //writeln("removing dead: ", instr);
-                    delInstr(instr);
-                    continue INSTR_LOOP;
-                }
-
-                // If this is a shape capture instruction
-                // and shape versioning is disabled
-                if (op == &CAPTURE_SHAPE && opts.shape_novers ||
-                    op == &CAPTURE_TAG && opts.shape_notagspec)
-                {
-                    auto desc = instr.getTarget(1);
-                    auto jumpInstr = block.addInstr(new IRInstr(&JUMP));
-                    auto newDesc = jumpInstr.setTarget(0, desc.target);
-                    foreach (arg; desc.args)
-                        newDesc.setPhiArg(cast(PhiNode)arg.owner, arg.value);
                     delInstr(instr);
                     continue INSTR_LOOP;
                 }

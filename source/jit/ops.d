@@ -2970,7 +2970,7 @@ void gen_break(
 
 /// Inputs: any value x
 /// Shifts us to version where the tag of the value is known
-/// Implements a dynamic type tag dispatch mechanism
+/// Implements a dynamic type tag dispatch/guard mechanism
 void gen_capture_tag(
     BlockVersion ver,
     CodeGenState st,
@@ -2978,6 +2978,10 @@ void gen_capture_tag(
     CodeBlock as
 )
 {
+    // If shape tag specialization is disabled, do nothing
+    if (opts.shape_notagspec)
+        return gen_jump_false(ver, st, instr, as);
+
     assert (instr.getTarget(0).args.length is 0);
 
     // Get the argument value
@@ -3052,7 +3056,7 @@ void gen_capture_tag(
 /// Inputs: obj, propName
 /// Capture the shape of the object
 /// This shifts us to a different version where the obj shape is known
-/// Implements a dynamic shape dispatch mechanism
+/// Implements a dynamic shape dispatch/guard mechanism
 void gen_capture_shape(
     BlockVersion ver,
     CodeGenState st,
@@ -3135,6 +3139,21 @@ void gen_capture_shape(
     );
 }
 
+void gen_clear_shape(
+    BlockVersion ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    // If object shapes are not to be propagated
+    if (opts.shape_noprop)
+    {
+        // Clear any known shape for this object
+        st.shapeChg(as, cast(IRDstValue)instr.getArg(0));
+    }
+}
+
 /// Reads the shape of an object, does nothing if the shape is known
 /// Inputs: obj
 void gen_obj_read_shape(
@@ -3156,6 +3175,7 @@ void gen_obj_read_shape(
     assert (outOpnd.isReg);
 
     // TODO: find way to have instr in valMap without allocating outOpnd?
+    // want to avoid spilling reg if obj shape is known
     // st.noOutOpnd() ?
 
     // If the shape is known, do nothing

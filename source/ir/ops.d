@@ -294,6 +294,9 @@ Opcode CAPTURE_TAG = { "capture_tag", false, [OpArg.LOCAL], &gen_capture_tag, Op
 /// Capture the shape of a given object
 Opcode CAPTURE_SHAPE = { "capture_shape", false, [OpArg.LOCAL, OpArg.LOCAL], &gen_capture_shape, OpInfo.BRANCH };
 
+/// Clear the shape of a given object
+Opcode CLEAR_SHAPE = { "clear_shape", false, [OpArg.LOCAL], &gen_clear_shape, OpInfo.IMPURE };
+
 /// Get the shape of an object
 Opcode OBJ_READ_SHAPE = { "obj_read_shape", true, [OpArg.LOCAL], &gen_obj_read_shape };
 

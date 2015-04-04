@@ -40,7 +40,7 @@ import std.getopt;
 
 struct Options
 {
-    /// String of code to execute (--e str)
+    /// String of code to execute (--e "str")
     string execString = null;
 
     /// Force a repl, even after loading files or executing a string
@@ -71,8 +71,8 @@ struct Options
     /// Maximum number of specialized versions to compile per basic block
     uint maxvers = 100;
 
-    /// Disable shape versioning and dispatch
-    bool shape_novers = false;
+    /// Disable propagation of shapes information past get/set prop
+    bool shape_noprop = false;
 
     /// Disable type tag specialization in shapes
     bool shape_notagspec = false;
@@ -135,7 +135,7 @@ void parseCmdArgs(ref string[] args)
 
         "typeprop"          , &opts.typeprop,
         "maxvers"           , &opts.maxvers,
-        "shape_novers"      , &opts.shape_novers,
+        "shape_noprop"      , &opts.shape_noprop,
         "shape_notagspec"   , &opts.shape_notagspec,
         "shape_nofptrspec"  , &opts.shape_nofptrspec,
         "noovfelim"         , &opts.noovfelim,
@@ -157,12 +157,5 @@ void parseCmdArgs(ref string[] args)
     // If dumping the ASM, we must first generate the ASM strings
     if (opts.dumpasm)
         opts.genasm = true;
-
-    // If shape versioning is disabled, disable shape specialization
-    if (opts.shape_novers)
-    {
-        opts.shape_notagspec = true;
-        opts.shape_nofptrspec = true;
-    }
 }
 

@@ -138,22 +138,37 @@ TODO: try modifying capture_tag to autoduplicate
 - avoids need to inline big structures
 - what to do about liveness? can we duplicate liveness data?
 
-TODO: try benchmarking with --shape_nofptrspec --shape_notagspec --shape_noprop vs full spec
-- Could also try fptr only as middle config
-- If on trip, setup benchmarking without gathering results
-
 TODO: shape array, so we can use shape indices and have smaller shape cmps
+- smaller code size will benefit versioning, it's a win
+- shapes will need an uint32_t shapeIdx
 - look at code size before
 
-TODO: shape_noprop flag, clears known shapes after set_prop and get_prop
-
-TODO: eliminate shape_novers flag
-
-
+TODO: try benchmarking with --shape_nofptrspec --shape_notagspec --shape_noprop vs full spec
+- Also add fptr only as middle config
+- If on trip, setup benchmarking without gathering results
 
 
 
 
+
+
+
+[DONE] TODO: shape_noprop flag, clears known shapes after set_prop and get_prop
+./benchmark.py --vm_cmd="./higgs --perf_stats"
+./benchmark.py --vm_cmd="./higgs --perf_stats --shape_noprop"
+- Create instr to explicitly clear shapes
+  clear_shape(val)
+  - Only way to clearly balance capture_shape
+with shape prop:
+    code size (bytes): 230576
+    comp time (ms): 643
+    exec time (ms): 11
+without:
+    code size (bytes): 223950
+    comp time (ms): 625
+    exec time (ms): 11
+
+[DONE] TODO: eliminate shape_novers flag
 
 [DONE] TODO: extend shape capture depth to 16 everywhere
 - don't indent, simpler
