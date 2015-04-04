@@ -75,45 +75,111 @@ ECOOP camera-ready version deadline is April 29
 
 http://www.dynamic-languages-symposium.org/dls-15/cfp/index.html
 
-TODO: create genRelGraph fn
-- generate graph, table, many stats automatically, with standard names
-TODO: look into gnuplot for graphs
-- important for thesis too
-
-TODO: typed shapes, get full stats for base system
-- subtract this from shape count
-
-TODO: shapes graph
-- write dot file on shutdown?
-- use dot tool to generate png
-Visualizing graph with large number of nodes: VCG, yComp
-Need to understand issue with earley-boyer, base system
-
 TODO: create synthetic benchmarks, pathological cases?
-- inspired by earley-boyer
-- test our theories
-- global obj, high polymorphism
-- useful for paper
 
-TODO: plot avg dispatch length (relates to code size)
-TODO: plot avg dispatch hit depth
-- increase max depth for this test?
-- start with same depth
-- dispatch length not that useful, icache effects
+TODO: description of typed shapes with invalidation in textual form
 
-TODO: think about interprocedural BBV without typed shapes?
-- could have capture_clos instruction before calls
-  - insert in codegen
-  - tests clos ptr directly, not fptr, for speed
-- should easily regain costs by optimizing calling convention
-- But then, do we leave typed shapes as an unsolved problem? ***
+TODO: callbacks
+- push RA on JS stack when calling C code
+<maximecb> yawnt, I wanted to ask you what your use case for callbacks would be
+<maximecb> I imagine that we'd call from JS code into C code
+<maximecb> and that C code would call into a JS function
+<yawnt> maximecb: libuv
+<yawnt> that's it
 
-Meeting 2015-03-24:
+Meeting:
+- Extending BBV core
+  - Type tag sets
+  - Const prop
+    - Fptrs, argc, constant property values
+- Poor performance on splay with notypedshapes
+  - Due to property writes being poorly optimized
+- New graphs for type test counts and code size with notypedshapes
+- May be able to make typed shapes perform well enough
+  - Inl caches for set prop
+  - Reduce dispatch depth
+- Read Truffle JS paper
+  - Inline caching
+  - Inlining
+  - Basic type specialization
+  - All at AST interpretation level, no JIT
+  - Type feedback in a type agnostic framework is what it is
+    - Nothing revolutionary
+- Read "One VM to rule them all"
+  - Interpreter gathers profiling data, does AST rewriting
+  - Optimized AST is compiled using partial evaluation
+  - Optimized code may be deoptimized to handle speculation failures
+  - Graal is a full on JIT compiler
+  - There is no clear link with our work, apart from type specialization ***
+- Read HipHop VM paper
+  - More similar to our work than I thought
+  - Tracelets with guards at entry
+  - Chain of guards
+  - Does not exploit tests inherent in the runtime
+  - Still relies on interpreter if chain too of guards too deep
+- Removed inline caches
+  - Shape versioning system effectively implements a PIC
+  - Fairer comparison using shape dispatch only quality code generation, same code
+    - Added shape_noprop flag
+
+TODO: think about shape types
+- Can reuse current capture_shape system, keep it mostly as-is
+- Extracting types from shapes mostly works as before
+  - But now we register block versions with prop reads on the shapes
+- If writing a mismatched type, make shape read blocks jump to stubs?
+  - When stubs compiled, need to update the jump addr
+- No more shape transition on new type
+- Can separate shapes with null proto from shapes with nonnull proto
+  - rename __proto__ to __nullproto__ for root obj
+  - use current type setup to keep this typed? or flag bits
+
+TODO: try modifying capture_tag to autoduplicate
+- generate new IR nodes on the fly
+- avoids need to inline big structures
+- what to do about liveness? can we duplicate liveness data?
+
+TODO: try benchmarking with --shape_nofptrspec --shape_notagspec --shape_noprop vs full spec
+- Could also try fptr only as middle config
+- If on trip, setup benchmarking without gathering results
+
+TODO: shape array, so we can use shape indices and have smaller shape cmps
+- look at code size before
+
+TODO: shape_noprop flag, clears known shapes after set_prop and get_prop
+
+TODO: eliminate shape_novers flag
+
+
+
+
+
+
+
+[DONE] TODO: extend shape capture depth to 16 everywhere
+- don't indent, simpler
+
+[DONE] TODO: set default maxvers to 100
+
+[DONE] TODO: comment out inline caches
+- Shape capture logic was already very much like inline caches...
+  - But more elegant, better code gen
+
+[DONE] TODO: check how splay, earley, cordic, navier-stokes perform wrt set prop host on dev-maxime
+- splay has a lot of set prop host
+- earley has some but not many
+
+[DONE] TODO: type test graph with intra BBV as baseline
+
+[DONE] TODO: ret versioning gains us no type tests?
+- must be wrong, recursive should perform better
+- full stats: full_full and full_entry has no diff
+- ret spec is broken on notypedshapes branch?
+  - we use propType to filter ret types...
+  - Duplicate the function
+
+[DONE] Meeting 2015-03-24:
 - Implemented --noentryspec and --noretspec to be able to study interp BBV for
   thesis, and for typed shapes paper
-- You wanted me to include avg speedup of Truffle over Higgs with 100 warmup itrs
-  - With 100 itrs, Truffle faster on most, but Higgs still 1.6% faster (geo mean)
-  - Did not include
 - On small benchmarks, machine code alignment matters!
   - Benchmarks unrelated to typed shapes are affected by typed shapes
 - Typed shapes: pitch as improvement to BBV instead of improvement over inline caches
@@ -126,7 +192,7 @@ Meeting 2015-03-24:
 - Typed shapes, issue with set_prop, deeper capture_shape depth limit helps
   - Shape explosion: we have no real solution
   - Easy to think of pathological cases
-  - May be able to obtain better perf on benchmarks, but still won't scale? ******
+  - May be able to obtain better perf on benchmarks, but still won't scale? ***
 - Alternative to typed shapes: guard writes, capture shapes, invalidate
   - Guard writes based on current type for a property
   - Guard reads based on obj shape, as now
@@ -137,43 +203,39 @@ Meeting 2015-03-24:
     - Should be relatively rare, relax shape types quickly
   - Less good for polymorphism? Cant know fn identity? Not necessarily true
     - Shape likely differ at prototype level. Can intentionally cause this for ctors.
+- Tested BBV without typed shapes
+  - still over 2x the shapes
+    - temporary fix, but not a real solution, it seems
+      - can still conceivably get pathological cases
+  - perf gain from interprocedural is small
+    - to be significant, may need other tweaks
+      - threading global obj shape
+      - improve calling convention
 
-Shape types...
-- Can reuse current capture_shape system, keep it mostly as-is
-- Extracting types from shapes mostly works as before
-  - But now we register block versions with prop reads on the shapes
-- If writing a mismatched type, make shape read blocks jump to stubs?
-  - When stubs compiled, need to update the jump addr
-- No more shape transition on new type
-- Can separate shapes with null proto from shapes with nonnull proto
-  - rename __proto__ to __nullproto__ for root obj
+[DONE] TODO: try setting maxvers=20
+- not helpful, makes splay perform worse
 
-TODO: traverse heap, for each obj prop, find def shape
-- map def shapes to types
+[DONE] TODO: try reducing capture_tag depth for interp BBV without typed shapes
 
-TODO: callbacks, $ir_get_c_ftr('signature', js_fun) ?
+[DONE] FIXME: binary-trees is way slower with shape versioning? over 300%
+- over 2x the shapes
+- maxvers=21 vs maxvers=4
+- Not obvious what's actually slower
+  - Presumably has to do with ctor code, set proto?
+    - Can insert a capture_tag? Yes
 
-TODO: try reducing dispatch depth for interp BBV without typed shapes
-- don't need to be super aggressive about capture_tag either
-
-TODO: evaluate perf of interp BBV without typed shapes
+[DONE] TODO: evaluate perf of interp BBV without typed shapes
 - reuse ECOOP paper source to test it
 - look at perf only first?
 - Use notypedshapes checkout
 --noentryspec --noretspec
 --noretspec
 
-FIXME: tests/02-regress/asm-string.js
+[DONE] FIXME: tests/02-regress/asm-string.js
 Assertion failed (jit/codeblock.d@174): endIdx=14967959
 Caught segmentation fault
 vm.curInstr: $0 = get_asm_str $3
 - Fix on dev-maxime first, add assert comment
-
-
-
-
-
-
 
 [DONE] TODO: copy out interp BBV code, put on special branch, "notypedshapes"
 git checkout -b "notypedshapes"

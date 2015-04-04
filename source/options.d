@@ -69,7 +69,7 @@ struct Options
     bool typeprop = false;
 
     /// Maximum number of specialized versions to compile per basic block
-    uint maxvers = 20;
+    uint maxvers = 100;
 
     /// Disable shape versioning and dispatch
     bool shape_novers = false;

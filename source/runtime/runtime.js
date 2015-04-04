@@ -2104,9 +2104,21 @@ function $rt_objGetProp(obj, propStr)
     var objShape = $ir_obj_read_shape(obj);
     if ($ir_break());
     if ($ir_capture_shape(obj, objShape))
-        if ($ir_capture_shape(obj, objShape))
-            if ($ir_capture_shape(obj, objShape))
-                if ($ir_capture_shape(obj, objShape));
+    if ($ir_capture_shape(obj, objShape))
+    if ($ir_capture_shape(obj, objShape))
+    if ($ir_capture_shape(obj, objShape))
+    if ($ir_capture_shape(obj, objShape))
+    if ($ir_capture_shape(obj, objShape))
+    if ($ir_capture_shape(obj, objShape))
+    if ($ir_capture_shape(obj, objShape))
+    if ($ir_capture_shape(obj, objShape))
+    if ($ir_capture_shape(obj, objShape))
+    if ($ir_capture_shape(obj, objShape))
+    if ($ir_capture_shape(obj, objShape))
+    if ($ir_capture_shape(obj, objShape))
+    if ($ir_capture_shape(obj, objShape))
+    if ($ir_capture_shape(obj, objShape))
+    if ($ir_capture_shape(obj, objShape));
 
     // If the property value can be read directly
     var propVal;
@@ -2290,11 +2302,21 @@ function $rt_getPropField(base, propStr)
         var objShape = $ir_obj_read_shape(obj);
         if ($ir_break());
         if ($ir_capture_shape(obj, objShape))
-            if ($ir_capture_shape(obj, objShape))
-                if ($ir_capture_shape(obj, objShape))
-                    if ($ir_capture_shape(obj, objShape))
-                        if ($ir_capture_shape(obj, objShape))
-                            if ($ir_capture_shape(obj, objShape));
+        if ($ir_capture_shape(obj, objShape))
+        if ($ir_capture_shape(obj, objShape))
+        if ($ir_capture_shape(obj, objShape))
+        if ($ir_capture_shape(obj, objShape))
+        if ($ir_capture_shape(obj, objShape))
+        if ($ir_capture_shape(obj, objShape))
+        if ($ir_capture_shape(obj, objShape))
+        if ($ir_capture_shape(obj, objShape))
+        if ($ir_capture_shape(obj, objShape))
+        if ($ir_capture_shape(obj, objShape))
+        if ($ir_capture_shape(obj, objShape))
+        if ($ir_capture_shape(obj, objShape))
+        if ($ir_capture_shape(obj, objShape))
+        if ($ir_capture_shape(obj, objShape))
+        if ($ir_capture_shape(obj, objShape));
 
         // If the property value can be read directly
         var propVal;
@@ -2326,11 +2348,21 @@ function $rt_getPropField(base, propStr)
             var objShape = $ir_obj_read_shape(obj);
             if ($ir_break());
             if ($ir_capture_shape(obj, objShape))
-                if ($ir_capture_shape(obj, objShape))
-                    if ($ir_capture_shape(obj, objShape))
-                        if ($ir_capture_shape(obj, objShape))
-                            if ($ir_capture_shape(obj, objShape))
-                                if ($ir_capture_shape(obj, objShape));
+            if ($ir_capture_shape(obj, objShape))
+            if ($ir_capture_shape(obj, objShape))
+            if ($ir_capture_shape(obj, objShape))
+            if ($ir_capture_shape(obj, objShape))
+            if ($ir_capture_shape(obj, objShape))
+            if ($ir_capture_shape(obj, objShape))
+            if ($ir_capture_shape(obj, objShape))
+            if ($ir_capture_shape(obj, objShape))
+            if ($ir_capture_shape(obj, objShape))
+            if ($ir_capture_shape(obj, objShape))
+            if ($ir_capture_shape(obj, objShape))
+            if ($ir_capture_shape(obj, objShape))
+            if ($ir_capture_shape(obj, objShape))
+            if ($ir_capture_shape(obj, objShape))
+            if ($ir_capture_shape(obj, objShape));
 
             // If the property value can be read directly
             var propVal;
@@ -2447,9 +2479,9 @@ function $rt_getGlobal(obj, propStr)
     var objShape = $ir_obj_read_shape(obj);
     if ($ir_break());
     if ($ir_capture_shape(obj, objShape))
-        if ($ir_capture_shape(obj, objShape))
-            if ($ir_capture_shape(obj, objShape))
-                if ($ir_capture_shape(obj, objShape));
+    if ($ir_capture_shape(obj, objShape))
+    if ($ir_capture_shape(obj, objShape))
+    if ($ir_capture_shape(obj, objShape));
 
     // If the property value can be read directly
     var propVal;
@@ -2499,9 +2531,9 @@ function $rt_getGlobalInl(propStr)
     var objShape = $ir_obj_read_shape(obj);
     if ($ir_break());
     if ($ir_capture_shape(obj, objShape))
-        if ($ir_capture_shape(obj, objShape))
-            if ($ir_capture_shape(obj, objShape))
-                if ($ir_capture_shape(obj, objShape));
+    if ($ir_capture_shape(obj, objShape))
+    if ($ir_capture_shape(obj, objShape))
+    if ($ir_capture_shape(obj, objShape));
 
     // If the property value can be read directly
     var propVal;
@@ -2527,17 +2559,40 @@ function $rt_objSetProp(obj, propStr, val)
     var objShape = $ir_obj_read_shape(obj);
     if ($ir_break());
     if ($ir_capture_shape(obj, objShape))
-        if ($ir_capture_shape(obj, objShape))
-            if ($ir_capture_shape(obj, objShape))
-                if ($ir_capture_shape(obj, objShape));
+    if ($ir_capture_shape(obj, objShape))
+    if ($ir_capture_shape(obj, objShape))
+    if ($ir_capture_shape(obj, objShape))
+    if ($ir_capture_shape(obj, objShape))
+    if ($ir_capture_shape(obj, objShape))
+    if ($ir_capture_shape(obj, objShape))
+    if ($ir_capture_shape(obj, objShape))
+    if ($ir_capture_shape(obj, objShape))
+    if ($ir_capture_shape(obj, objShape))
+    if ($ir_capture_shape(obj, objShape))
+    if ($ir_capture_shape(obj, objShape))
+    if ($ir_capture_shape(obj, objShape))
+    if ($ir_capture_shape(obj, objShape))
+    if ($ir_capture_shape(obj, objShape))
+    if ($ir_capture_shape(obj, objShape));
 
     // Capture the type tag of the value
     if ($ir_break());
     if ($ir_capture_tag(val))
-        if ($ir_capture_tag(val))
-            if ($ir_capture_tag(val))
-                if ($ir_capture_tag(val))
-                    if ($ir_capture_tag(val));
+    if ($ir_capture_tag(val))
+    if ($ir_capture_tag(val))
+    if ($ir_capture_tag(val))
+    if ($ir_capture_tag(val))
+    if ($ir_capture_tag(val))
+    if ($ir_capture_tag(val))
+    if ($ir_capture_tag(val))
+    if ($ir_capture_tag(val))
+    if ($ir_capture_tag(val))
+    if ($ir_capture_tag(val))
+    if ($ir_capture_tag(val))
+    if ($ir_capture_tag(val))
+    if ($ir_capture_tag(val))
+    if ($ir_capture_tag(val))
+    if ($ir_capture_tag(val));
 
     // If the property value can be set directly
     if ($ir_obj_set_prop(obj, propStr, val))
@@ -2738,20 +2793,40 @@ function $rt_setPropField(base, propStr, val)
         var objShape = $ir_obj_read_shape(obj);
         if ($ir_break());
         if ($ir_capture_shape(obj, objShape))
-            if ($ir_capture_shape(obj, objShape))
-                if ($ir_capture_shape(obj, objShape))
-                    if ($ir_capture_shape(obj, objShape))
-                        if ($ir_capture_shape(obj, objShape))
-                            if ($ir_capture_shape(obj, objShape))
-                                if ($ir_capture_shape(obj, objShape));
+        if ($ir_capture_shape(obj, objShape))
+        if ($ir_capture_shape(obj, objShape))
+        if ($ir_capture_shape(obj, objShape))
+        if ($ir_capture_shape(obj, objShape))
+        if ($ir_capture_shape(obj, objShape))
+        if ($ir_capture_shape(obj, objShape))
+        if ($ir_capture_shape(obj, objShape))
+        if ($ir_capture_shape(obj, objShape))
+        if ($ir_capture_shape(obj, objShape))
+        if ($ir_capture_shape(obj, objShape))
+        if ($ir_capture_shape(obj, objShape))
+        if ($ir_capture_shape(obj, objShape))
+        if ($ir_capture_shape(obj, objShape))
+        if ($ir_capture_shape(obj, objShape))
+        if ($ir_capture_shape(obj, objShape));
 
         // Capture the type tag of the value
         if ($ir_break());
         if ($ir_capture_tag(val))
-            if ($ir_capture_tag(val))
-                if ($ir_capture_tag(val))
-                    if ($ir_capture_tag(val))
-                        if ($ir_capture_tag(val));
+        if ($ir_capture_tag(val))
+        if ($ir_capture_tag(val))
+        if ($ir_capture_tag(val))
+        if ($ir_capture_tag(val))
+        if ($ir_capture_tag(val))
+        if ($ir_capture_tag(val))
+        if ($ir_capture_tag(val))
+        if ($ir_capture_tag(val))
+        if ($ir_capture_tag(val))
+        if ($ir_capture_tag(val))
+        if ($ir_capture_tag(val))
+        if ($ir_capture_tag(val))
+        if ($ir_capture_tag(val))
+        if ($ir_capture_tag(val))
+        if ($ir_capture_tag(val));
 
         // If the property value can be set directly
         if ($ir_obj_set_prop(obj, propStr, val))
@@ -2838,16 +2913,16 @@ function $rt_setGlobalInl(propStr, val)
     var objShape = $ir_obj_read_shape(obj);
     if ($ir_break());
     if ($ir_capture_shape(obj, objShape))
-        if ($ir_capture_shape(obj, objShape))
-            if ($ir_capture_shape(obj, objShape))
-                if ($ir_capture_shape(obj, objShape))
-                    if ($ir_capture_shape(obj, objShape))
-                        if ($ir_capture_shape(obj, objShape));
+    if ($ir_capture_shape(obj, objShape))
+    if ($ir_capture_shape(obj, objShape))
+    if ($ir_capture_shape(obj, objShape));
 
     // Capture the type tag of the value
     if ($ir_break());
     if ($ir_capture_tag(val))
-        if ($ir_capture_tag(val));
+    if ($ir_capture_tag(val))
+    if ($ir_capture_tag(val))
+    if ($ir_capture_tag(val));
 
     // If the property value can be set directly
     if ($ir_obj_set_prop(obj, propStr, val))
