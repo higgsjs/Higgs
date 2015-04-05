@@ -143,6 +143,8 @@ TODO: try benchmarking with --shape_nofptrspec --shape_notagspec --shape_noprop 
 - Also add fptr only as middle config
 - If on trip, setup benchmarking without gathering results
 
+TODO: implement load from moffs64, try use in obj_enum_tbl
+
 TODO: shape array, so we can use shape indices and have smaller shape cmps
 - smaller code size will benefit versioning, it's a win
 - shapes will need an uint32_t shapeIdx
@@ -152,13 +154,27 @@ TODO: shape array, so we can use shape indices and have smaller shape cmps
 - code size after:
     ./benchmark.py --vm_cmd="./higgs --perf_stats"
 
-TODO: missing object methods
-- need these now that shape ptr values no longer accessible
+FIXME: segfault
+Running: ./tests/00-runtime/for-in-continue.js...
+Caught segmentation fault
+IP=null
+vm.curInstr: $114 = obj_enum_tbl $13
+- we must be inside the hosted fn?
 
 
 
 
 
+
+[DONE] FIXME:
+Running: ./tests/02-regress/proto-prop-enum.js...
+global property not defined: "defShape"
+
+[DONE] TODO: get_attrs vs set_attrs
+- null prop for object shape
+
+[DONE] TODO: shape_enum_tbl
+- needed for Higgs init
 
 [DONE] TODO: shape_noprop flag, clears known shapes after set_prop and get_prop
 ./benchmark.py --vm_cmd="./higgs --perf_stats"

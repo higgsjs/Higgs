@@ -3964,16 +3964,66 @@ void gen_obj_def_const(
     st.shapeChg(as, objDst);
 }
 
+/// Get the attributes associated with a given property
+/// Note: null propName is used to get the attributes of the object shape
+/// Note: the deleted attribute is produced if the property doesn't exist
+/// Inputs: obj, propName
+void gen_obj_get_attrs(
+    BlockVersion ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    extern (C) static uint32 op_obj_get_attrs(
+        refptr objPtr, 
+        refptr propName
+    )
+    {
+        auto objShape = getShape(objPtr);
 
+        // If no property name is specified
+        if (propName is null)
+        {
+            return objShape.attrs;
+        }
 
+        auto defShape = objShape.getDefShape(extractWStr(propName));
 
+        // If the property doesn't exist
+        if (defShape is null)
+        {
+            return ATTR_DELETED;
+        }
 
+        return defShape.attrs;
+    }
 
+    // Spill the values live before this instruction
+    st.spillLiveBefore(as, instr);
 
+    auto objOpnd = st.getWordOpnd(as, instr, 0, 64, scrRegs[0].opnd, false, false);
+    auto propOpnd = st.getWordOpnd(as, instr, 1, 64, scrRegs[1].opnd, false, false);
+    auto outOpnd = st.getOutOpnd(as, instr, 32);
 
-/*
-/// Sets the attributes for a property
-/// Inputs: obj, defShape, attrBits
+    as.saveJITRegs();
+
+    // Call the host function
+    as.mov(cargRegs[0].opnd(64), objOpnd);
+    as.mov(cargRegs[1].opnd(64), propOpnd);
+    as.ptr(scrRegs[0], &op_obj_get_attrs);
+    as.call(scrRegs[0]);
+
+    // Set the output value
+    as.mov(outOpnd, cretReg.opnd(32));
+    st.setOutTag(as, instr, Tag.INT32);
+
+    as.loadJITRegs();
+}
+
+/// Sets the attributes for a given property
+/// Note: null propName is used to set the attributes of the object shape
+/// Inputs: obj, propName, attrBits
 void gen_obj_set_attrs(
     BlockVersion ver,
     CodeGenState st,
@@ -3981,18 +4031,39 @@ void gen_obj_set_attrs(
     CodeBlock as
 )
 {
-    extern (C) static void op_shape_set_attrs(VM vm, IRInstr instr)
+    extern (C) static void op_obj_set_attrs(
+        VM vm, 
+        IRInstr instr
+    )
     {
         auto objPair = vm.getArgVal(instr, 0);
-        auto defShape = vm.getArgVal(instr, 1).word.shapeVal;
+        auto propName = vm.getArgVal(instr, 1).word.ptrVal;
         auto newAttrs = vm.getArgUint32(instr, 2);
 
-        // Attempt to set the property attributes
-        setPropAttrs(
-            objPair,
-            defShape,
-            cast(uint8_t)newAttrs
-        );
+        auto objShape = getShape(objPair.word.ptrVal);
+
+        // If no property name is specified
+        if (propName is null)
+        {
+            // Attempt to set the property attributes
+            setPropAttrs(
+                objPair,
+                objShape,
+                cast(uint8_t)newAttrs
+            );
+        }
+        else
+        {
+            auto defShape = objShape.getDefShape(extractWStr(propName));
+            assert (defShape !is null);
+
+            // Attempt to set the property attributes
+            setPropAttrs(
+                objPair,
+                defShape,
+                cast(uint8_t)newAttrs
+            );
+        }
     }
 
     // Spill the values live before this instruction
@@ -4003,7 +4074,7 @@ void gen_obj_set_attrs(
     // Call the host function
     as.mov(cargRegs[0].opnd(64), vmReg.opnd(64));
     as.ptr(cargRegs[1], instr);
-    as.ptr(scrRegs[0], &op_shape_set_attrs);
+    as.ptr(scrRegs[0], &op_obj_set_attrs);
     as.call(scrRegs[0]);
 
     as.loadJITRegs();
@@ -4011,155 +4082,54 @@ void gen_obj_set_attrs(
     // Clear any known shape for this object
     st.shapeChg(as, cast(IRDstValue)instr.getArg(0));
 }
-*/
 
-/*
-/// Inputs: obj, propName
-/// Get the shape associated with the property name (if any)
-void gen_obj_prop_shape(
-    BlockVersion ver,
-    CodeGenState st,
-    IRInstr instr,
-    CodeBlock as
-)
-{
-    extern (C) ObjShape op_obj_prop_shape(
-        refptr objPtr,
-        refptr strPtr
-    )
-    {
-        auto objShape = getShape(objPtr);
-
-        // Get a temporary D string for the property name
-        auto propStr = tempWStr(strPtr);
-
-        // Lookup the shape defining this property
-        auto defShape = objShape.getDefShape(propStr);
-
-        return defShape;
-    }
-
-    // Get the object argument value
-    auto objVal = cast(IRDstValue)instr.getArg(0);
-
-    // Extract the property name, if known
-    auto propName = instr.getArgStrCst(1);
-
-    // If the object shape and the property name are both known
-    if (st.shapeKnown(objVal) && propName !is null)
-    {
-        //as.printStr("shape known");
-
-        // Get the object shape
-        auto objShape = st.getShape(objVal);
-        assert (objShape !is null);
-
-        // Get the output operand
-        auto outOpnd = st.getOutOpnd(as, instr, 64);
-        assert (outOpnd.isReg);
-
-        // Get the defining shape for the property
-        auto defShape = objShape.getDefShape(propName);
-
-        as.ptr(outOpnd.reg, defShape);
-
-        // Set the output type and shape for this instruction
-        st.setOutTag(as, instr, Tag.SHAPEPTR);
-        st.setShape(instr, defShape);
-
-        return;
-    }
-
-    // Spill the values live before this instruction
-    st.spillLiveBefore(as, instr);
-
-    auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
-    auto opnd1 = st.getWordOpnd(as, instr, 1, 64, scrRegs[0].opnd, false, false);
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
-
-    as.saveJITRegs();
-
-    // Call the host function
-    as.mov(cargRegs[0].opnd(64), opnd0);
-    as.mov(cargRegs[1].opnd(64), opnd1);
-    as.ptr(scrRegs[0], &op_obj_prop_shape);
-    as.call(scrRegs[0]);
-
-    as.loadJITRegs();
-
-    // Store the output value into the output operand
-    as.mov(outOpnd, cretReg.opnd);
-
-    // Set the output type for this instruction
-    st.setOutTag(as, instr, Tag.SHAPEPTR);
-}
-*/
-
-/*
-/// Get the attributes associated with a given shape
-/// Inputs: shape
-void gen_shape_get_attrs(
-    BlockVersion ver,
-    CodeGenState st,
-    IRInstr instr,
-    CodeBlock as
-)
-{
-    extern (C) static uint32 op_shape_get_attrs(ObjShape shape)
-    {
-        assert (shape !is null);
-        return shape.attrs;
-    }
-
-    // Spill the values live before this instruction
-    st.spillLiveBefore(as, instr);
-
-    auto shapeOpnd = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
-    auto outOpnd = st.getOutOpnd(as, instr, 32);
-
-    as.saveJITRegs();
-
-    // Call the host function
-    as.mov(cargRegs[0].opnd(64), shapeOpnd);
-    as.ptr(scrRegs[0], &op_shape_get_attrs);
-    as.call(scrRegs[0]);
-
-    // Set the output value
-    as.mov(outOpnd, cretReg.opnd(32));
-    st.setOutTag(as, instr, Tag.INT32);
-
-    as.loadJITRegs();
-}
-*/
-
-/*
 /// Get a table of enumerable property names for an object
 /// Inputs: shape
-void gen_obj_get_enum_tbl(
+void gen_obj_enum_tbl(
     BlockVersion ver,
     CodeGenState st,
     IRInstr instr,
     CodeBlock as
 )
 {
-    extern (C) static refptr op_shape_enum_tbl(
+    extern (C) static refptr op_obj_enum_tbl(
         IRInstr curInstr,
-        ObjShape shape
+        refptr objPtr
     )
     {
-        assert (shape !is null);
-
         vm.setCurInstr(curInstr);
 
-        auto enumTbl = shape.genEnumTbl();
+        auto objShape = getShape(objPtr);
+        auto enumTbl = objShape.genEnumTbl();
 
         vm.setCurInstr(null);
 
         return enumTbl;
     }
 
-    auto shapeOpnd = st.getWordOpnd(as, instr, 0, 64);
-    assert (shapeOpnd.isReg);
+    auto objVal = cast(IRDstValue)instr.getArg(0);
+    assert (objVal !is null);
+
+    // If the object shape is known
+    if (st.shapeKnown(objVal))
+    {
+        auto objShape = st.getShape(objVal);
+        objShape.genEnumTbl();
+
+        auto outOpnd = st.getOutOpnd(as, instr, 64);
+        assert (outOpnd.isReg);
+
+        // TODO: use load from moffs here
+        as.ptr(scrRegs[0], objShape);
+        as.getMember!("ObjShape.enumTbl.pair.word")(outOpnd.reg, scrRegs[0]);
+
+        st.setOutTag(as, instr, Tag.REFPTR);
+
+        return;
+    }
+
+    auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
+    assert (objOpnd.isReg);
 
     // Spill the values live after this instruction
     st.spillLiveAfter(as, instr);
@@ -4168,23 +4138,12 @@ void gen_obj_get_enum_tbl(
 
     st.setOutTag(as, instr, Tag.REFPTR);
 
-    // Get the table pointer and check if null
-    as.getMember!("ObjShape.enumTbl.pair.word")(scrRegs[0], shapeOpnd.reg);
-    as.cmp(scrRegs[0].opnd, X86Opnd(0));
-    as.je(Label.FALLBACK);
-
-    as.mov(outOpnd, scrRegs[0].opnd);
-    as.jmp(Label.DONE);
-
-    // Fallback code
-    as.label(Label.FALLBACK);
-
     as.saveJITRegs();
 
     // Call the host function
-    as.mov(cargRegs[1].opnd(64), shapeOpnd);
     as.ptr(cargRegs[0], instr);
-    as.ptr(scrRegs[0], &op_shape_enum_tbl);
+    as.mov(cargRegs[1].opnd(64), objOpnd);
+    as.ptr(scrRegs[0], &op_obj_enum_tbl);
     as.call(scrRegs[0]);
 
     // Set the output value
@@ -4194,7 +4153,6 @@ void gen_obj_get_enum_tbl(
 
     as.label(Label.DONE);
 }
-*/
 
 void gen_set_global(
     BlockVersion ver,

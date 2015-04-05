@@ -108,17 +108,14 @@ Object.getOwnPropertyDescriptor = function (obj, prop)
 
     prop = $rt_toString(prop);
 
-    // Get the defining shape for the property
-    var defShape = $ir_obj_prop_shape(obj, prop);
+    // Get the current property attributes
+    var attrs = $ir_obj_get_attrs(obj, prop);
 
     // If the property doesn't exist
-    if ($ir_eq_rawptr(defShape, $nullptr))
+    if (attrs & $rt_ATTR_DELETED)
         return undefined;
 
     var desc = {};
-
-    // Extract the current property attributes
-    var attrs = $ir_shape_get_attrs(defShape);
     desc.writable = !!(attrs & $rt_ATTR_WRITABLE);
     desc.enumerable = !!(attrs & $rt_ATTR_ENUMERABLE);
     desc.configurable = !!(attrs & $rt_ATTR_CONFIGURABLE);
@@ -214,7 +211,7 @@ Object.defineProperty = function (obj, prop, attribs)
         // If this is a new property
         if (!$rt_hasOwnProp(obj, prop))
         {
-            var objAttrs = $ir_shape_get_attrs($rt_obj_get_shape(obj));
+            var objAttrs = $ir_obj_get_attrs(obj, null);
             if (!(objAttrs & $rt_ATTR_EXTENSIBLE))
                 throw TypeError("cannot add new property to non-extensible object");
 
@@ -230,12 +227,8 @@ Object.defineProperty = function (obj, prop, attribs)
         }
     }
 
-    // Get the defining shape for the property
-    var defShape = $ir_obj_prop_shape(obj, prop);
-    assert ($ir_ne_rawptr(defShape, $nullptr));
-
     // Extract the current property attributes
-    var oldAttrs = $ir_shape_get_attrs(defShape);
+    var oldAttrs = $ir_obj_get_attrs(obj, prop);
     var oldWR = !!(oldAttrs & $rt_ATTR_WRITABLE);
     var oldEN = !!(oldAttrs & $rt_ATTR_ENUMERABLE);
     var oldCF = !!(oldAttrs & $rt_ATTR_CONFIGURABLE);
@@ -269,7 +262,7 @@ Object.defineProperty = function (obj, prop, attribs)
     );
 
     // Set the new property attributes
-    $ir_obj_set_attrs(obj, defShape, newAttrs);
+    $ir_obj_set_attrs(obj, prop, newAttrs);
 
     // Return the object
     return obj;
@@ -367,15 +360,12 @@ Object.preventExtensions = function (obj)
     if ($rt_valIsObj(obj) === false)
         throw TypeError('invalid object in preventExtensions');
 
-    // Get the object shape
-    var objShape = $rt_obj_get_shape(obj);
-
     // Remove the extensible attribute
-    var attrs = $ir_shape_get_attrs(objShape);
+    var attrs = $ir_obj_get_attrs(obj, null);
     var newAttrs = attrs & ~$rt_ATTR_EXTENSIBLE;
 
     // Set the new property attributes
-    $ir_obj_set_attrs(obj, objShape, newAttrs);
+    $ir_obj_set_attrs(obj, null, newAttrs);
 
     return obj;
 };
@@ -420,8 +410,7 @@ Object.isExtensible = function (obj)
     if ($rt_valIsObj(obj) === false)
         throw TypeError('invalid object in isExtensible');
 
-    var objShape = $rt_obj_get_shape(obj);
-    var attrs = $ir_shape_get_attrs(objShape);
+    var attrs = $ir_obj_get_attrs(obj, null);
     return (attrs & $rt_ATTR_EXTENSIBLE)? true:false;
 };
 
@@ -489,17 +478,11 @@ Object.prototype.isPrototypeOf = function (O)
 /**
 15.2.4.7 Object.prototype.propertyIsEnumerable (V)
 */
-Object.prototype.propertyIsEnumerable = function (V)
+Object.prototype.propertyIsEnumerable = function (prop)
 {
-    if (this.hasOwnProperty(V) === false)
-        return false;
+    prop = $rt_toString(prop);
 
-    var defShape = $ir_obj_prop_shape(this, V);
-
-    if ($ir_eq_rawptr(defShape, $nullptr))
-        return false;
-
-    var attrs = $ir_shape_get_attrs(defShape);
+    var attrs = $ir_obj_get_attrs(this, prop);
     return !!(attrs & $rt_ATTR_ENUMERABLE);
 };
 

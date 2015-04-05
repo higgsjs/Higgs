@@ -567,7 +567,8 @@ class ObjShape
     */
     refptr genEnumTbl()
     {
-        assert (enumTbl.ptr is null);
+        if (enumTbl.ptr)
+            return enumTbl.ptr;
 
         // Number of enumerable properties
         auto numEnum = 0;

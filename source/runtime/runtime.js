@@ -3005,15 +3005,8 @@ function $rt_delProp(base, prop)
     if (!$ir_is_string(prop))
         throw TypeError('non-string property name');
 
-    // Get the defining shape for the property
-    var defShape = $ir_obj_prop_shape(base, prop);
-
-    // If the property doesn't exist, stop
-    if ($ir_eq_rawptr(defShape, $nullptr))
-        return true;
-
     // Get the attributes for the shape
-    var attrs = $ir_shape_get_attrs(defShape);
+    var attrs = $ir_obj_get_attrs(base, prop);
 
     // If the property is not configurable, stop
     if (!(attrs & $rt_ATTR_CONFIGURABLE))
@@ -3028,15 +3021,11 @@ function $rt_delProp(base, prop)
         // For accessors, do nothing
     }
 
-    // Find the defining shape for the property
-    // Note: shape changes once the property is set to undefined
-    var defShape = $ir_obj_prop_shape(base, prop);
-
     // Set the property attributes to deleted and
     // preserve the current extensible status
     $ir_obj_set_attrs(
         base,
-        defShape,
+        prop,
         $rt_ATTR_DELETED |
         $rt_ATTR_CONFIGURABLE |
         (attrs & $rt_ATTR_EXTENSIBLE)
@@ -3083,11 +3072,7 @@ Check if an object has a given property
 */
 function $rt_objHasProp(obj, propStr)
 {
-    // Try to find the defining shape for the property
-    var defShape = $ir_obj_prop_shape(obj, propStr);
-
-    // Check if a defining shape was found
-    return $ir_ne_rawptr(defShape, $nullptr);
+    return !($ir_obj_get_attrs(obj, propStr) & $rt_ATTR_DELETED);
 }
 
 /**
@@ -3225,8 +3210,7 @@ function $rt_getEnumKey(topObj, curObj, propIdx)
     if ($rt_valIsObj(curObj))
     {
         // Get the property enumeration table for a given object
-        var shapeIdx = $rt_obj_get_shape(curObj);
-        var enumTbl = $ir_shape_enum_tbl(shapeIdx);
+        var enumTbl = $ir_obj_enum_tbl(curObj);
         var tblLen = $rt_arrtbl_get_cap(enumTbl);
 
         // Compute the enum table index for the property name
@@ -3319,8 +3303,7 @@ function $rt_getPropEnum(curObj, propName, propIdx)
     // If this is an object
     if ($ir_is_object(curObj) && $ir_lt_i32(propIdx, $rt_obj_get_cap(curObj)))
     {
-        var shapeIdx = $rt_obj_get_shape(curObj);
-        var enumTbl = $ir_shape_enum_tbl(shapeIdx);
+        var enumTbl = $ir_obj_enum_tbl(curObj);
         var tblLen = $rt_arrtbl_get_cap(enumTbl);
 
         // Compute the enum table index for the property attributes

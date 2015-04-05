@@ -316,32 +316,14 @@ Opcode OBJ_GET_PROTO = { "obj_get_proto", true, [OpArg.LOCAL], &gen_obj_get_prot
 /// Define a constant property on an object
 Opcode OBJ_DEF_CONST = { "obj_def_const", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_obj_def_const, OpInfo.MAY_GC | OpInfo.IMPURE };
 
-
-
-
+/// Get the attributes for a given property
+Opcode OBJ_GET_ATTRS = { "obj_get_attrs", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_obj_get_attrs };
 
 /// Set the attributes for a given property
-//Opcode OBJ_SET_PROP_ATTRS = { "obj_set_attrs", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_obj_set_attrs, OpInfo.IMPURE };
-
-// TODO: return deleted if the property doesn't exist
-/// Get the attributes for a given property
-//Opcode OBJ_GET_PROP_ATTRS = { "obj_get_prop_attrs", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_obj_get_prop_attrs };
-
-// Get the attributes for an object's own shape
-// obj_get_attrs => object attributes
-//Opcode OBJ_GET_ATTRS = { "obj_get_attrs", true, [OpArg.LOCAL], &gen_obj_get_attrs };
-
-// Set the attribute for an objects's own shape
-//Opcode OBJ_SET_PROP_ATTRS = { "obj_set_attrs", false, [OpArg.LOCAL, OpArg.LOCAL], &gen_obj_set_attrs, OpInfo.IMPURE };
+Opcode OBJ_SET_ATTRS = { "obj_set_attrs", false, [OpArg.LOCAL, OpArg.LOCAL, OpArg.LOCAL], &gen_obj_set_attrs, OpInfo.IMPURE };
 
 /// Get a table of enumerable property names for an object
-//Opcode OBJ_GET_ENUM_TBL = { "obj_get_enum_tbl", true, [OpArg.LOCAL], &gen_obj_get_enum_tbl, OpInfo.MAY_GC };
-
-
-
-
-
-
+Opcode OBJ_ENUM_TBL = { "obj_enum_tbl", true, [OpArg.LOCAL], &gen_obj_enum_tbl, OpInfo.MAY_GC };
 
 /// Set the value of a global property
 Opcode SET_GLOBAL = { "set_global", false, [OpArg.STRING, OpArg.LOCAL], &gen_set_global, OpInfo.MAY_GC | OpInfo.IMPURE };
