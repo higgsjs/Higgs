@@ -154,17 +154,19 @@ TODO: shape array, so we can use shape indices and have smaller shape cmps
 - code size after:
     ./benchmark.py --vm_cmd="./higgs --perf_stats"
 
-FIXME: segfault
+TODO: capture_shape before obj_enum_tbl
+
+
+
+
+
+
+[DONE] FIXME: segfault
 Running: ./tests/00-runtime/for-in-continue.js...
 Caught segmentation fault
 IP=null
 vm.curInstr: $114 = obj_enum_tbl $13
 - we must be inside the hosted fn?
-
-
-
-
-
 
 [DONE] FIXME:
 Running: ./tests/02-regress/proto-prop-enum.js...

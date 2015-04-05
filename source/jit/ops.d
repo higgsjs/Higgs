@@ -4099,7 +4099,11 @@ void gen_obj_enum_tbl(
     {
         vm.setCurInstr(curInstr);
 
+        assert (objPtr !is null);
+
         auto objShape = getShape(objPtr);
+        assert (objShape !is null);
+
         auto enumTbl = objShape.genEnumTbl();
 
         vm.setCurInstr(null);
@@ -4141,8 +4145,8 @@ void gen_obj_enum_tbl(
     as.saveJITRegs();
 
     // Call the host function
-    as.ptr(cargRegs[0], instr);
     as.mov(cargRegs[1].opnd(64), objOpnd);
+    as.ptr(cargRegs[0], instr);
     as.ptr(scrRegs[0], &op_obj_enum_tbl);
     as.call(scrRegs[0]);
 
