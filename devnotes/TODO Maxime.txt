@@ -49,17 +49,6 @@ TODO: look at notes wrt global obj threading
   - no special global obj register at first
 
 TODO: eliminate uses of VM reg
-TODO: implement load/store from moffs64
-- write function to load directly, no special opnd type?
-  - encoding is very simple
-- use register size for opnd size, ptr value directly
-load:
-    A1 MOV EAX,moffs32* FD Valid Valid Move doubleword at (seg:offset) to EAX.
-    REX.W + A1 MOV RAX,moffs64* FD Valid N.E. Move quadword at (offset) to RAX.
-store:
-    A3 MOV moffs32*,EAX TD Valid Valid Move EAX to (seg:offset).
-    REX.W + A3 MOV moffs64*,RAX TD Valid N.E. Move RAX to (offset).
-- moffs32 means 32 bit data, not pointer
 
 TODO: don't write ret type reg to stack if ret tag known
 - need to write it on exc path, not invalidated
@@ -77,8 +66,6 @@ http://www.dynamic-languages-symposium.org/dls-15/cfp/index.html
 
 TODO: create synthetic benchmarks, pathological cases?
 
-TODO: description of typed shapes with invalidation in textual form
-
 TODO: callbacks
 - push RA on JS stack when calling C code
 <maximecb> yawnt, I wanted to ask you what your use case for callbacks would be
@@ -86,6 +73,14 @@ TODO: callbacks
 <maximecb> and that C code would call into a JS function
 <yawnt> maximecb: libuv
 <yawnt> that's it
+
+TODO: try modifying capture_tag to autoduplicate
+- generate new IR nodes on the fly
+- avoids need to inline big structures
+- true branch needs to duplication instruction?
+- interesting small foray into self-modifying IR
+  - no new output vals
+  - can we duplicate liveness data?
 
 Meeting:
 - Extending BBV core
@@ -134,26 +129,24 @@ TODO: think about shape types
   - rename __proto__ to __nullproto__ for root obj
   - use current type setup to keep this typed? or flag bits
 
-TODO: try modifying capture_tag to autoduplicate
-- generate new IR nodes on the fly
-- avoids need to inline big structures
-- true branch needs to duplication instruction?
-- interesting small foray into self-modifying IR
-  - no new output vals
-  - can we duplicate liveness data?
-
 TODO: try benchmarking with --shape_nofptrspec --shape_notagspec --shape_noprop vs full spec
 - Also add fptr only as middle config
 - If on trip, setup benchmarking without gathering results
 
-TODO: implement load from moffs64, try use in obj_enum_tbl
+TODO: try use of load from moffs64 in obj_enum_tbl
 
-FIXME: system with shape index is much slower?
-num set prop: 12062
-num set prop host: 172
-- binary trees seems quite a bit slower
+TODO: implement load from moffs64
+- write function to load directly, encoding is very simple
+- use register size for opnd size, ptr value directly
+load:
+    A1 MOV EAX, moffs32
+    REX.W + A1 MOV RAX, moffs64
+store:
+    A3 MOV moffs32, EAX
+    REX.W + A3 MOV moffs64, RAX 
+- moffs32 means 32 bit data, not pointer
 
-Look at obj shape init, quite possibly deoptimized again
+
 
 
 
