@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2012-2013, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2012-2015, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -620,9 +620,9 @@ struct X86Opnd
 Write the REX byte
 */
 void writeREX(
-    CodeBlock cb, 
+    CodeBlock cb,
     bool wFlag,
-    uint8_t regNo, 
+    uint8_t regNo,
     uint8_t idxRegNo = 0,
     uint8_t rmRegNo = 0
 )
@@ -1526,6 +1526,25 @@ void mov(CodeBlock cb, X86Reg dst, X86Reg src)
 {
     // TODO: more optimized code for this case
     cb.mov(X86Opnd(dst), X86Opnd(src));
+}
+
+/// mov EAX/RAX, moffs - Load into register from 64-bit memory address
+void mov(CodeBlock cb, X86Reg dst, void* ptr)
+{
+    assert (dst.regNo is RAX.regNo);
+    assert (dst.size is 32 || dst.size is 64);
+
+    //         A1 MOV EAX, moffs32
+    // REX.W + A1 MOV RAX, moffs64
+
+    cb.writeASM("mov", dst, "moffs");
+
+    if (dst.size is 64)
+        cb.writeREX(true, 0, 0, 0);
+
+    cb.writeByte(0xA1);
+
+    cb.writeInt(cast(uint64_t)ptr, 64);
 }
 
 /// movq - Move quadword

@@ -2812,8 +2812,8 @@ void HeapAllocOp(Tag tag)(
     as.mov(cargRegs[0], vmReg);
     as.ptr(cargRegs[1], instr);
     as.mov(cargRegs[2].opnd(32), szOpnd);
-    as.ptr(RAX, &allocFallback);
-    as.call(RAX);
+    as.ptr(scrRegs[0], &allocFallback);
+    as.call(scrRegs[0]);
 
     //as.printStr("alloc bailout done ***");
 
@@ -3475,7 +3475,7 @@ void gen_obj_set_prop(
     if (!defShape.writable)
         return gen_jump(ver, st, instr, as);
 
-    // If the property exists on the object and is writable
+    // If the property exists on the object
     if (slotIdx <= objShape.slotIdx)
     {
         auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
@@ -3544,13 +3544,13 @@ void gen_obj_set_prop(
                 defShape
             );
 
-            // Update the object shape
+            // Write the object shape
             as.mov(
-                X86Opnd(32, objOpnd.reg, obj_ofs_shape_idx(null)), 
+                X86Opnd(32, objOpnd.reg, obj_ofs_shape_idx(null)),
                 X86Opnd(objShape.shapeIdx)
             );
 
-            // Set the new object shape
+            // Set the new object shape in the code gen state
             st.shapeChg(as, objVal, objShape);
 
             // Increment the number of shape changes due to type
@@ -3561,12 +3561,8 @@ void gen_obj_set_prop(
         return gen_jump(ver, st, instr, as);
     }
 
-    // This is a new property
+    // This is a new property being added to the object
     // If the slot index is within the guaranteed object capacity
-    //
-    // Note: we don't check if the property goes in the extended
-    // table because we cant guarantee the object size is sufficient
-    // or that the extended table even exists
     if (slotIdx < minObjCap)
     {
         auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
@@ -3585,9 +3581,13 @@ void gen_obj_set_prop(
 
         // Update the object shape
         as.mov(
-            X86Opnd(32, objOpnd.reg, obj_ofs_shape_idx(null)), 
+            X86Opnd(32, objOpnd.reg, obj_ofs_shape_idx(null)),
             X86Opnd(defShape.shapeIdx)
         );
+
+
+        as.comment("set new shape to defShape.....");
+        as.comment(defShape? "defShape is not null":"defShape is null");
 
         // Set the new object shape
         st.shapeChg(as, objVal, defShape);
@@ -3597,6 +3597,9 @@ void gen_obj_set_prop(
     }
 
     // Use the slow path
+    // Note: we don't check if the property goes in the extended
+    // table because we cant guarantee the object size is sufficient
+    // or that the extended table even exists
     return gen_slow_path(ver, st, instr, as);
 }
 
@@ -4123,9 +4126,9 @@ void gen_obj_enum_tbl(
         auto outOpnd = st.getOutOpnd(as, instr, 64);
         assert (outOpnd.isReg);
 
-        // TODO: use load from moffs here
-        as.ptr(scrRegs[0], objShape);
-        as.getMember!("ObjShape.enumTbl.pair.word")(outOpnd.reg, scrRegs[0]);
+        // Load the enum table pointer
+        as.mov(RAX, &objShape.enumTbl.pair.word);
+        as.mov(outOpnd, RAX.opnd);
 
         st.setOutTag(as, instr, Tag.REFPTR);
 

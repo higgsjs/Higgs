@@ -49,9 +49,13 @@ TODO: look at notes wrt global obj threading
   - no special global obj register at first
 
 TODO: eliminate uses of VM reg
+TODO: implement store to moffs
+    A3 MOV moffs32, EAX
+    REX.W + A3 MOV moffs64, RAX
+- see existing load from moffs
 
-TODO: don't write ret type reg to stack if ret tag known
-- need to write it on exc path, not invalidated
+TODO: don't write ret tag register to type stack if tag known
+- need to write it on exc path, not invalidated by cont recompilation
 - if tag known, set type, let the branch spill it if necessary
 - if tag unknown, write tag as before in cont branch
 
@@ -117,6 +121,7 @@ Meeting:
   - Fairer comparison using shape dispatch only quality code generation, same code
     - Added shape_noprop flag
 - Implemented shape indices for use instead of shape pointers
+- Fixed bug with shape info getting cleared when it shouldn't
 
 TODO: think about shape types
 - Can reuse current capture_shape system, keep it mostly as-is
@@ -129,28 +134,53 @@ TODO: think about shape types
   - rename __proto__ to __nullproto__ for root obj
   - use current type setup to keep this typed? or flag bits
 
-TODO: try benchmarking with --shape_nofptrspec --shape_notagspec --shape_noprop vs full spec
+Idea: capture_tag could be informed by shape
+- right now, seems we have version explosions due to capture_tag
+  - earley boyer and pair as an example
+- if we had a capture_tag that could see what type tag the shape
+  already contains (if any)...
+- Note: we need the tag to generate efficient code
+  But, if we checked for the shape's tag first, we could be more efficient?
+  Not sure what's true...
+
+
+Idea: assert values of specific counters in tests ***
+getStats(cmdOpts, jsStr) => returns obj
+- run new instance of Higgs with pipe, run microbenchmark, get result
+  - good to dogfood Higgs
+- would be useful to validate this, avoid breakage
+- can have a loop, check the number of is_int64
+
+TODO: no speedup on bitwise-and, why is that? look at machine code
+./higgs --genasm --e "print(test.asmString())" bitops-bitwise-and.js
+- long and bulky
+- can fix small inefficiencies in the hopes of improving code size, perf
+
+
+
+
+
+
+[DONE] FIXME: changing global obj shape to a known shape clears global obj shape!
+./higgs --genasm --e "print(test.asmString())" bitops-bitwise-and.js
+before:
+    num shape known: 96356
+    num shape tests: 41206
+after:
+    num shape known: 106205
+    num shape tests: 37537
+
+[DONE] TODO: try benchmarking with --shape_nofptrspec --shape_notagspec --shape_noprop vs full spec
 - Also add fptr only as middle config
-- If on trip, setup benchmarking without gathering results
 
-TODO: try use of load from moffs64 in obj_enum_tbl
+[DONE] TODO: try use of load from moffs64 in obj_enum_tbl
 
-TODO: implement load from moffs64
-- write function to load directly, encoding is very simple
-- use register size for opnd size, ptr value directly
-load:
+[DONE] TODO: implement load from moffs64
     A1 MOV EAX, moffs32
     REX.W + A1 MOV RAX, moffs64
-store:
-    A3 MOV moffs32, EAX
-    REX.W + A3 MOV moffs64, RAX 
+- write function to load directly, encoding is very simple
+- use register size for opnd size, ptr value directly
 - moffs32 means 32 bit data, not pointer
-
-
-
-
-
-
 
 [DONE] TODO: shape array, so we can use shape indices and have smaller shape cmps
 - smaller code size will benefit versioning, it's a win
