@@ -3209,9 +3209,17 @@ function $rt_getEnumKey(topObj, curObj, propIdx)
     // If the current object is an object of some kind
     if ($rt_valIsObj(curObj))
     {
-        // Get the property enumeration table for a given object
+        // Capture the object shape
+        var shapeIdx = $ir_read_shape_idx(curObj);
+        if ($ir_break());
+        if ($ir_capture_shape(curObj, shapeIdx));
+
+        // Get the property enumeration table for the current object
         var enumTbl = $ir_obj_enum_tbl(curObj);
         var tblLen = $rt_arrtbl_get_cap(enumTbl);
+
+        // If shapes are not to be propagated, clear shape information
+        $ir_clear_shape(curObj);
 
         // Compute the enum table index for the property name
         var nameIdx = $ir_lsft_i32(propIdx, 1);
@@ -3303,8 +3311,17 @@ function $rt_getPropEnum(curObj, propName, propIdx)
     // If this is an object
     if ($ir_is_object(curObj) && $ir_lt_i32(propIdx, $rt_obj_get_cap(curObj)))
     {
+        // Capture the object shape
+        var shapeIdx = $ir_read_shape_idx(curObj);
+        if ($ir_break());
+        if ($ir_capture_shape(curObj, shapeIdx));
+
+        // Get the property enumeration table for the current object
         var enumTbl = $ir_obj_enum_tbl(curObj);
         var tblLen = $rt_arrtbl_get_cap(enumTbl);
+
+        // If shapes are not to be propagated, clear shape information
+        $ir_clear_shape(curObj);
 
         // Compute the enum table index for the property attributes
         var attrIdx = $ir_add_i32($ir_lsft_i32(propIdx, 1), 1);

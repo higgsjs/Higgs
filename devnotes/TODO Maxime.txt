@@ -137,7 +137,10 @@ TODO: think about shape types
 TODO: try modifying capture_tag to autoduplicate
 - generate new IR nodes on the fly
 - avoids need to inline big structures
-- what to do about liveness? can we duplicate liveness data?
+- true branch needs to duplication instruction?
+- interesting small foray into self-modifying IR
+  - no new output vals
+  - can we duplicate liveness data?
 
 TODO: try benchmarking with --shape_nofptrspec --shape_notagspec --shape_noprop vs full spec
 - Also add fptr only as middle config
@@ -145,7 +148,18 @@ TODO: try benchmarking with --shape_nofptrspec --shape_notagspec --shape_noprop 
 
 TODO: implement load from moffs64, try use in obj_enum_tbl
 
-TODO: shape array, so we can use shape indices and have smaller shape cmps
+FIXME: system with shape index is much slower?
+num set prop: 12062
+num set prop host: 172
+- binary trees seems quite a bit slower
+
+Look at obj shape init, quite possibly deoptimized again
+
+
+
+
+
+[DONE] TODO: shape array, so we can use shape indices and have smaller shape cmps
 - smaller code size will benefit versioning, it's a win
 - shapes will need an uint32_t shapeIdx
 - code size before:
@@ -153,13 +167,9 @@ TODO: shape array, so we can use shape indices and have smaller shape cmps
     code size (bytes): 230664
 - code size after:
     ./benchmark.py --vm_cmd="./higgs --perf_stats"
+    code size (bytes): 224995
 
-TODO: capture_shape before obj_enum_tbl
-
-
-
-
-
+[DONE] TODO: capture_shape before obj_enum_tbl
 
 [DONE] FIXME: segfault
 Running: ./tests/00-runtime/for-in-continue.js...
