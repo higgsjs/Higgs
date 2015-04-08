@@ -1437,8 +1437,6 @@ class CodeGenState
             // If the new shape of the object is known
             if (newShape)
             {
-                as.comment("dst shape known, setting new shape");
-
                 // Set a known shape for this object value
                 valMap[objVal] = objState.setShape(newShape);
             }

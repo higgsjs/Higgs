@@ -59,17 +59,6 @@ TODO: don't write ret tag register to type stack if tag known
 - if tag known, set type, let the branch spill it if necessary
 - if tag unknown, write tag as before in cont branch
 
-------------------------------------------------------------------------------
-
-DLS - June 7, 2015
-------------------
-
-ECOOP camera-ready version deadline is April 29
-
-http://www.dynamic-languages-symposium.org/dls-15/cfp/index.html
-
-TODO: create synthetic benchmarks, pathological cases?
-
 TODO: callbacks
 - push RA on JS stack when calling C code
 <maximecb> yawnt, I wanted to ask you what your use case for callbacks would be
@@ -78,15 +67,192 @@ TODO: callbacks
 <yawnt> maximecb: libuv
 <yawnt> that's it
 
-TODO: try modifying capture_tag to autoduplicate
-- generate new IR nodes on the fly
-- avoids need to inline big structures
-- true branch needs to duplication instruction?
-- interesting small foray into self-modifying IR
-  - no new output vals
-  - can we duplicate liveness data?
+TODO: think about shape types
+- Can reuse current capture_shape system, keep it mostly as-is
+- Extracting types from shapes mostly works as before
+  - But now we register block versions with prop reads on the shapes
+- If writing a mismatched type, make shape read blocks jump to stubs?
+  - When stubs compiled, need to update the jump addr
+- No more shape transition on new type
+- Can separate shapes with null proto from shapes with nonnull proto
+  - rename __proto__ to __nullproto__ for root obj
+  - use current type setup to keep this typed? or flag bits
 
-Meeting:
+------------------------------------------------------------------------------
+
+DLS - June 7, 2015
+------------------
+
+Marc leaves May 31st
+- Should be avail remotely June 5th
+- Comes back July 13th
+
+ECOOP camera-ready version deadline is April 29
+
+http://www.dynamic-languages-symposium.org/dls-15/cfp/index.html
+
+TODO: Marc wants description of workings of typed shapes
+- write in textual form, first draft
+  - write into typed shapes paper template
+- hack little diagrams
+
+Meeting 2015-04-14:
+- splay hits version limit even with maxvers=1000
+  maxvers=1248
+  - not so surprising, 14*14=196
+  - compilation time goes up 10X
+  - code size twice as bit
+  - performance better than maxvers=100, but worse than without typed shapes
+- splay is fastest with typed shapes ON and no shape propagation
+  - this is also the config resulting in the smallest code size
+  - so code size does matter
+- benchmarked typed shapes with and without shape propagation
+  - Slightly better avg speedup with shape prop, 23% vs 19%
+  - Benchmarks with ever so slightly more tests:
+    it's because of is_refptr on proto, checking if proto is null after getprop fails
+  - With no shape prop, typed shapes never any slower than inline caches
+    - All benchmarks can be made faster with typed shapes! :)
+    - Motivates invesgitation of maxtypes=N and auto duplicating capture
+
+TODO: try maxtypes=N
+- Need capture_shape/tag duplication first, otherwise this will kill perf
+
+TODO: work on auto-duplicating capture_shape, Marc says ok
+- Issue: probably want same duplication mechanism for capture_tag
+  - Want to duplicate *whole subgraph* inside true branch, and instruction itself
+    - Everything but the false subtree? Everything but after the join?
+- What do we do wrt liveness?
+  - Can we duplicate all info for whole subtree? No
+  - Can we update the liveness analysis?
+- What do we do wrt stack slots...
+  - Should be able to just reuse same slots here
+
+    var shapeIdx = $ir_read_shape_idx(obj);
+    if ($ir_break());
+
+    if ($ir_capture_shape(obj, shapeIdx))
+    {
+        return get_prop(obj, prop);
+    }
+    else
+    {
+        // Whole thing until merge is duplicated
+        // Liveness, slots...
+        // Could we just change the IR to point to the same subgraph?
+        // No, because we want a *new version*
+
+        // Liveness... need a rerun/update
+        // Could also try making all live in new blocks, nowhere live in old blocks
+
+        /*
+        if ($ir_capture_shape(obj, shapeIdx))
+        {
+            return get_prop(obj, prop);
+        }
+        else
+        {
+            $ir_duplicate();
+        }
+        */
+
+        $ir_duplicate();
+    }
+
+TODO: limited IR subgraph copy mechanism for auto-duplicating capture instrs
+TODO: way to update LiveInfo
+- can start by trying to re-run with existing data?
+  - get that working right first
+- how do we cope with new instrs not in existing data?
+
+TODO: string code point issue, look into it
+- Don't need to fix it necessarily, but make headway!
+
+Tell Tommy Marc suggests going to NYC during June
+- Article deadline June 7th
+- Cheaper plane tickets... Set time now
+
+Blog post: Versioning is Not Cloning
+
+TODO: implement basic meta stat test system
+- run new instance of Higgs with pipe, run microbenchmark, get result
+  - good to dogfood Higgs pipes and such
+  - need new init if we want to set --shape_noprop, specific params
+- try to design tests not to use stdlib, for speed, --nostdlib
+- we depend on lib, put it after lib tests in tests/10-meta folder
+  - start with just one file, no external lib
+  - fn to get stat counters from Higgs run with pipe
+- to test:
+  - new object, getprop with --shape_noprop has no known shapes
+    ./higgs --stats --shape_noprop --noretspec --noentryspec --nostdlib --e "o = { x:3, y:2 }"
+    - has 1 known shape, 3 tests
+  - number of shape tests, type tests for specific loop microbenchmarks
+    - can have a loop, check the number of is_int64
+  - obj lit usage patterns that should have no shape tests whatsoever
+  - init with --nostdlib should have no shape tests, no perf degradation
+
+TODO: establish *which shapes* cause blowup in SplayTree_prototype_splay_(84008B)
+- which properties?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] FIXME: bare system has 120 known shapes with --shape_noprop
+./higgs --stats --shape_noprop --noretspec --noentryspec --e ""
+- alloc_object is responsible
+- setPropFieldNoCheck has no clear_shape!
+
+[DONE] TODO: why does shape prop affect type test count?
+- Look at access-binary trees
+  - what's the maxvers with and without?
+  - what stats are different
+./higgs --stats --noretspec --noentryspec bt.js
+=> almost no shapes known
+./higgs --stats --shape_noprop --noretspec --noentryspec bt.js
+=> more type tests
+    is_refptr tests, from when getting proto!
+
+[DONE] TODO: add typed shapes without propagation as extra config, --shape_noprop
+- Disabling shape prop fixes code bloat on splay, code now smaller
+- splay also faster with no shape prop
+  Mean code size change no prop -16.23%
+  Mean code size change with types shapes -12.71
+  Mean speedup with no prop 19%
+  Mean speedup with typed shapes 23%
+  - Never any slower
+  - All benchmarks can be made faster with typed shapes! :)
+
+[DONE] TODO: try benchmarking splay with maxvers=2000
+./higgs --maxvers=100 --perf_stats benchmarks/nocomptime/splay.js
+    exec time (ms): 134.7
+    comp time (ms): 1100
+    code size (bytes): 310480
+./higgs --maxvers=2000 --perf_stats benchmarks/nocomptime/splay.js
+    exec time (ms): 100.4
+    comp time (ms): 10000
+    code size (bytes): 473033
+    - no more get prop host
+./higgs --maxvers=100 --shape_noprop --perf_stats benchmarks/nocomptime/splay.js
+    exec time (ms): 88.15
+    comp time (ms): 643
+    code size (bytes): 210510
+    - best perf is with typed shapes and no prop
+    - gives credit to maxtypes=N idea
+./higgs --maxvers=100 --shape_noprop --shape_notagspec --shape_nofptrspec --perf_stats benchmarks/nocomptime/splay.js
+    exec time (ms): 96.7
+    comp time (ms): 640
+    code size (bytes): 247908
+
+[DONE] Meeting 2015-04-07:
 - Extending BBV core
   - Type tag sets
   - Const prop
@@ -110,56 +276,53 @@ Meeting:
   - Optimized code may be deoptimized to handle speculation failures
   - Graal is a full on JIT compiler
   - There is no clear link with our work, apart from type specialization ***
+  - Duplication through inlining
 - Read HipHop VM paper
   - More similar to our work than I thought
   - Tracelets with guards at entry
   - Chain of guards
   - Does not exploit tests inherent in the runtime
   - Still relies on interpreter if chain too of guards too deep
+  - Do not gain information from primitives, extract information first
+    - reverse of our approach?
 - Removed inline caches
   - Shape versioning system effectively implements a PIC
   - Fairer comparison using shape dispatch only quality code generation, same code
     - Added shape_noprop flag
 - Implemented shape indices for use instead of shape pointers
 - Fixed bug with shape info getting cleared when it shouldn't
+- Shapes without prop might work well, works for splay
+  - Why: most values are not very polymorphic, but object shapes can be very polymorphic
+  - Could stop propagation of specifically very polymorphic object shapes
+  Death by versioning: max vers hit, resort to get prop host, icache misses
+  In splay, maxvers=100 is hit
+- Idea: have maxvers=K, maxtypes=N
+  - Megamorphic values are problematic
+    - For entry points
+    - For typed shapes
+    - Too many values of argc
+  - Useful if extending BBV to do const prop, e.g.: on argc
+- Idea: modify capture_tag to duplicate inside of if body, dup get_prop
+  - avoid inlining long sequences of IR instructions, costly
+  - avoid fixed dispatch depth duplicated everywhere
+  - circumvent BBV limit on shape dispatch, type always captured!
 
-TODO: think about shape types
-- Can reuse current capture_shape system, keep it mostly as-is
-- Extracting types from shapes mostly works as before
-  - But now we register block versions with prop reads on the shapes
-- If writing a mismatched type, make shape read blocks jump to stubs?
-  - When stubs compiled, need to update the jump addr
-- No more shape transition on new type
-- Can separate shapes with null proto from shapes with nonnull proto
-  - rename __proto__ to __nullproto__ for root obj
-  - use current type setup to keep this typed? or flag bits
-
-Idea: capture_tag could be informed by shape
-- right now, seems we have version explosions due to capture_tag
-  - earley boyer and pair as an example
-- if we had a capture_tag that could see what type tag the shape
-  already contains (if any)...
-- Note: we need the tag to generate efficient code
-  But, if we checked for the shape's tag first, we could be more efficient?
-  Not sure what's true...
-
-
-Idea: assert values of specific counters in tests ***
-getStats(cmdOpts, jsStr) => returns obj
-- run new instance of Higgs with pipe, run microbenchmark, get result
-  - good to dogfood Higgs
-- would be useful to validate this, avoid breakage
-- can have a loop, check the number of is_int64
-
-TODO: no speedup on bitwise-and, why is that? look at machine code
-./higgs --genasm --e "print(test.asmString())" bitops-bitwise-and.js
-- long and bulky
-- can fix small inefficiencies in the hopes of improving code size, perf
-
-
-
-
-
+[DONE] TODO: time splay without typed shapes
+- Code size blowup is ridiculous
+  - We exceed the version limit somewhere
+  - This is caused by typed shapes being enabled
+  - Look at maxvers with and without
+- May get ideas by looking at the code
+  - Specific fn that exceeds maxvers
+./higgs --stats benchmarks/v8bench/base.js bnchmarks/v8bench/splay.js benchmarks/v8bench/drv-splay.js
+    max versions: 101
+./higgs --stats --shape_noprop --shape_notagspec --shape_nofptrspec benchmarks/v8bench/base.js benchmarks/v8bench/splay.js benchmarks/v8bench/drv-splay.js
+    max versions: 28
+    86ms
+./higgs --stats --shape_noprop benchmarks/v8bench/base.js benchmarks/v8bench/splay.js benchmarks/v8bench/drv-splay.js
+    max versions: 28
+    76ms
+    => actually faster, no set prop host
 
 [DONE] FIXME: changing global obj shape to a known shape clears global obj shape!
 ./higgs --genasm --e "print(test.asmString())" bitops-bitwise-and.js

@@ -3585,10 +3585,6 @@ void gen_obj_set_prop(
             X86Opnd(defShape.shapeIdx)
         );
 
-
-        as.comment("set new shape to defShape.....");
-        as.comment(defShape? "defShape is not null":"defShape is null");
-
         // Set the new object shape
         st.shapeChg(as, objVal, defShape);
 

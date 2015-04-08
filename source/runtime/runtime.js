@@ -2909,6 +2909,9 @@ function $rt_setPropFieldNoCheck(obj, propStr, val)
 
     // Set the property value
     if ($ir_obj_set_prop(obj, propStr, val));
+
+    // If shapes are not to be propagated, clear shape information
+    $ir_clear_shape(obj);
 }
 
 /**
