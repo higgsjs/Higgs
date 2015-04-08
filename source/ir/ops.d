@@ -368,3 +368,6 @@ Opcode GET_SYM = { "get_sym", true, [OpArg.LOCAL, OpArg.STRING], &gen_get_sym };
 /// Call function in shared lib
 Opcode CALL_FFI = { "call_ffi", true, [OpArg.LOCAL, OpArg.STRING], &gen_call_ffi, OpInfo.BRANCH | OpInfo.CALL | OpInfo.VAR_ARG };
 
+/// Get a C function pointer (entry point) for a JS function
+Opcode GET_C_FPTR = { "get_c_fptr", true, [OpArg.LOCAL, OpArg.STRING], &gen_get_c_fptr, OpInfo.MAY_GC};
+

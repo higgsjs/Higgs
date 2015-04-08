@@ -39,6 +39,7 @@
  *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * _________________________________________________________________________
  */
+require('lib/test');
 
 function test_lit()
 {
@@ -63,6 +64,21 @@ function test_ctor()
     assert (String(new String('foo')) === 'foo')
 
     assert (String(new String()) === '')
+
+    var o = new String("abc");
+    assert(o[0] === "a");
+    assert(o[1] === "b");
+    assert(o[2] === "c");
+    assert(o[3] === undefined);
+    assert(o.length === 3);
+    assert(o.value === "abc");
+    // attempt and fail mutation
+    o.length = 5;
+    assert(o.length === 3);
+    o.value = "abcdef";
+    assert(o.value === "abc");
+    // check enumerability
+    assertEqArray(Object.keys(o), ['0', '1', '2']);
 }
 
 function test_toString()
@@ -113,6 +129,24 @@ function test_charCodeAt()
     return 0;
 }
 
+function test_codePointAt()
+{
+    var codePointAt = String.prototype.codePointAt;
+
+    assertThrows(function () {
+        codePointAt.call(null);
+    });
+    assertThrows(function () {
+        codePointAt.call(null);
+    });
+
+    assert('foo'.codePointAt(0) === 102);
+    assert('foo'.codePointAt(1) === 111);
+    assert('foo'.codePointAt(2) === 111);
+    assert('🂡'.codePointAt(0) === 0x1F0A1);
+    assert('🂡f'.codePointAt(2) === 102);
+}
+
 function test_charAt()
 {
     var s = 'foo';
@@ -121,6 +155,60 @@ function test_charAt()
     assert (s.charAt(1) === 'o')
     assert (s.charAt(2) === 'o')
     assert (s.charAt(3) === '')
+}
+
+function test_endsWith()
+{
+    var endsWith = String.prototype.endsWith;
+
+    assertThrows(function () {
+        endsWith.call(null);
+    });
+    assertThrows(function () {
+        endsWith.call(undefined);
+    });
+    assertThrows(function () {
+        "abc".endsWith(/abc/);
+    });
+
+    assert("abc".endsWith("c"));
+    assert("abc".endsWith("abc"));
+    assert("abc".endsWith("ab", 2));
+    assert("abcdef".endsWith("a", 1));
+
+    assert(endsWith.call(3.14, "14"));
+    assert(endsWith.call(3, 3));
+    assert(endsWith.call(3, "3"));
+    assert(endsWith.call("3", 3));
+    assert(endsWith.call(true, "e"));
+    assert(endsWith.call(false, "e"));
+}
+
+function test_includes()
+{
+    var includes = String.prototype.includes;
+
+    assertThrows(function () {
+        includes.call(null);
+    });
+    assertThrows(function () {
+        includes.call(undefined);
+    });
+    assertThrows(function () {
+        "abc".includes(/abc/);
+    });
+
+    assert("abc".includes("ab"));
+    assert("abc".includes("bc"));
+    assert(!"abc".includes("d"));
+    assert("defabc".includes("ab", 3));
+    assert(!"ééééeeee".includes("é", 4));
+
+    assert(includes.call(3.14, 14));
+    assert(includes.call(true, "r"));
+    assert(includes.call(false, "a"));
+    assert(!includes.call(false, "a", 2));
+
 }
 
 function test_indexing()
@@ -251,6 +339,34 @@ function test_concat()
     assert ('f'.concat(2) === 'f2');
 }
 
+function test_repeat()
+{
+    assertThrows(function () {
+        String.prototype.repeat.call(null, 2);
+    });
+    assertThrows(function () {
+        String.prototype.repeat.call(undefined, 2);
+    });
+    assertThrows(function () {
+        "abc".repeat(-1);
+    });
+    assertThrows(function () {
+        "abc".repeat(Infinity);
+    });
+
+    var repeat = String.prototype.repeat;
+
+    assert("abc".repeat(3) === "abcabcabc");
+    assert("".repeat(5) === "");
+    assert("abc".repeat(0) === "");
+    assert("abc".repeat(null) === "");
+    assert("abc".repeat() === "");
+    assert(repeat.call(3, 3) === "333");
+    assert(repeat.call(3.14, 3) === "3.143.143.14");
+    assert(repeat.call(false, 2) === "falsefalse");
+    assert(repeat.call(true, 2) === "truetrue");
+}
+
 function test_replace()
 {
     assert ('foobif'.replace('oo', 'oobar') === 'foobarbif')
@@ -330,6 +446,33 @@ function test_split()
     return 0;
 }
 
+function test_startsWith()
+{
+    var startsWith = String.prototype.startsWith;
+
+    assertThrows(function () {
+        startsWith.call(null, "abc");
+    });
+    assertThrows(function () {
+        startsWith.call(undefined, "abc");
+    });
+    assertThrows(function () {
+        "abc".startsWith(/abc/);
+    });
+
+    assert("abc".startsWith("a"));
+    assert(!"defabc".startsWith("a"));
+    assert("defabc".startsWith("a", 3));
+    assert(!"defabc".startsWith("a", 8));
+
+    assert(startsWith.call(3.14, "3"));
+    assert(startsWith.call(3, 3));
+    assert(startsWith.call("3", 3));
+    assert(startsWith.call(3, "3"));
+    assert(startsWith.call(false, "fal"));
+    assert(startsWith.call(true, "tru"));
+}
+
 function test_trim()
 {
     if ('foo'.trim() !== 'foo')
@@ -373,6 +516,23 @@ function test_fromCharCode()
     return 0;
 }
 
+function test_fromCodePoint()
+{
+    assertThrows(function () {
+        String.fromCodePoint(17.5);
+    });
+    assertThrows(function () {
+        String.fromCodePoint(-5);
+    });
+    assertThrows(function () {
+        String.fromCodePoint(0x11FFFF);
+    });
+
+    assert(String.fromCodePoint(102, 111, 111) === 'foo');
+    assert(String.fromCodePoint(0x1F0A1, 0x1F0B1, 0x1F0C1, 0x1F0D1) === '🂡🂱🃁🃑');
+    assert(String.fromCodePoint(102, 0x1F0A1, 111, 111) === 'f🂡oo');
+}
+
 function test()
 {
     var r = test_lit();
@@ -394,6 +554,10 @@ function test()
         return 500 + r;
 
     test_charAt();
+
+    test_endsWith();
+
+    test_includes();
 
     var r = test_indexing();
     if (r != 0)
@@ -427,11 +591,15 @@ function test()
 
     test_concat();
 
+    test_repeat();
+
     test_replace();
 
     var r = test_split();
     if (r != 0)
         return 1700 + r;
+
+    test_startsWith();
 
     var r = test_trim();
     if (r != 0)
@@ -441,6 +609,8 @@ function test()
     if (r != 0)
         return 1900 + r;
 
+    test_fromCodePoint();
+
     return 0;
 }
 
@@ -448,4 +618,3 @@ function test()
 // exceptions instead of return codes
 var r = test();
 assert (r === 0, r);
-

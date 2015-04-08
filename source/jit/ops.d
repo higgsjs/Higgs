@@ -4722,13 +4722,7 @@ void gen_get_sym(
     }
 
     // Spill the values live before this instruction
-    st.spillValues(
-        as,
-        delegate bool(LiveInfo liveInfo, IRDstValue value)
-        {
-            return liveInfo.liveBefore(value, instr);
-        }
-    );
+    st.spillLiveBefore(as, instr);
 
     auto outOpnd = st.getOutOpnd(as, instr, 64);
 
@@ -4754,7 +4748,6 @@ void gen_get_sym(
 
 }
 
-// TODO: add support for new i types
 // Mappings for arguments/return values
 Tag[string] typeMap;
 size_t[string] sizeMap;
@@ -4818,13 +4811,7 @@ void gen_call_ffi(
     );
 
     // Spill the values live before this instruction
-    st.spillValues(
-        as,
-        delegate bool(LiveInfo liveInfo, IRDstValue value)
-        {
-            return liveInfo.liveBefore(value, instr);
-        }
-    );
+    st.spillLiveBefore(as, instr);
 
     // outOpnd
     auto outOpnd = st.getOutOpnd(as, instr, 64);
@@ -4944,5 +4931,88 @@ void gen_call_ffi(
 
     // Jump directly to the successor block
     return gen_jump(ver, st, instr, as);
+}
+
+void gen_get_c_fptr(
+    BlockVersion ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    extern (C) CodePtr genCEntry(IRInstr instr)
+    {
+        // Get the function signature
+        auto sigStr = cast(IRString)instr.getArg(1);
+        assert (sigStr !is null, "null sigStr in call_ffi.");
+        auto types = to!string(sigStr.str).split();
+
+        // Get the IRFunction
+        auto closPtr = vm.getArgVal(instr, 0).word.ptrVal;
+        assert (closPtr !is null);
+        auto fun = getFunPtr(closPtr);
+
+        // If a C entry point was already generated
+        if (fun.cEntryCode !is null)
+        {
+            return throwError(
+                vm,
+                instr,
+                null,
+                "RuntimeError",
+                "get_c_fptr: entry point already generated"
+            );
+        }
+
+        // Allocate a block of executable memory
+        fun.cEntryCode = new CodeBlock(1000, false);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        // TODO:
+        // Push the entry point address on the stack
+        auto codePtr = fun.cEntryCode.getAddress;
+        vm.push(Word.ptrv(cast(rawptr)codePtr), Tag.RAWPTR);
+
+        // Return null, meaning no exception thrown
+        return null;
+    }
+
+    // Spill the values live before this instruction
+    st.spillLiveBefore(as, instr);
+
+    // Allocate the output operand
+    auto outOpnd = st.getOutOpnd(as, instr, 64);
+
+    as.saveJITRegs();
+    as.ptr(cargRegs[0], instr);
+    as.ptr(scrRegs[0], &genCEntry);
+    as.call(scrRegs[0].opnd);
+    as.loadJITRegs();
+
+    // If an exception was thrown, jump to the exception handler
+    as.cmp(cretReg.opnd, X86Opnd(0));
+    as.je(Label.FALSE);
+    as.jmp(cretReg.opnd);
+    as.label(Label.FALSE);
+
+    // Get the sym handle from the stack
+    as.getWord(scrRegs[0], 0);
+    as.add(wspReg, Word.sizeof);
+    as.add(tspReg, Tag.sizeof);
+    as.mov(outOpnd, scrRegs[0].opnd);
+    st.setOutTag(as, instr, Tag.RAWPTR);
 }
 

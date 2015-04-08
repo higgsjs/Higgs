@@ -127,8 +127,11 @@ class IRFunction : IdObject
     /// Type analysis results (may be null)
     TypeProp typeInfo = null;
 
-    /// Regular entry point code
+    /// Generic function entry point
     CodePtr entryCode = null;
+
+    /// C entry point code
+    CodeBlock cEntryCode;
 
     /// Map of blocks to lists of existing versions
     BlockVersion[][IRBlock] versionMap;
