@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2011-2013, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2011-2015, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -43,14 +43,13 @@ import std.array;
 import std.conv;
 import std.algorithm;
 import std.math;
-import util.id;
 import util.string;
 import parser.lexer;
 
 /**
 Base class for all AST nodes
 */
-class ASTNode : IdObject
+class ASTNode
 {
     SrcPos pos;
 
@@ -984,15 +983,33 @@ class IdentExpr : ASTExpr
     /// Identifier node associated with this variable declaration, if applicable
     IdentExpr declNode = null;
 
+    /// Hash code, for indexing in an associative array
+    hash_t hashCode;
+
     this(wstring name, SrcPos pos = null)
     {
         super(pos);
         this.name = name;
+
+        // Compute the hash of the name string once only
+        assert (name !is null);
+        hashCode = typeid(name).getHash(&name);
     }
 
     override string toString()
     {
         return to!string(name);
+    }
+
+    /// For associative array indexing
+    override hash_t toHash() const
+    {
+        return hashCode;
+    }
+
+    override bool opEquals(Object o) const
+    {
+        return (this is o);
     }
 }
 

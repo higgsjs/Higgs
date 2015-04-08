@@ -194,6 +194,19 @@ TODO: establish *which shapes* cause blowup in SplayTree_prototype_splay_(84008B
 - which properties?
 
 
+These timings should be roughly the same because bits-in-byte doesn't depend on typed shapes
+
+./higgs --noentryspec --noretspec --shape_noprop --shape_notagspec --shape_nofptrspec benchmarks/nocomptime/bitops-bits-in-byte.js ; \
+./higgs --noentryspec --noretspec --shape_noprop benchmarks/nocomptime/bitops-bits-in-byte.js
+
+
+
+
+TODO: eliminate IdObject?
+- should hash based on more stable factors...
+- grep for IdObject
+
+TODO: remove inheritance of ASTNode from IdObject?
 
 
 
@@ -203,8 +216,52 @@ TODO: establish *which shapes* cause blowup in SplayTree_prototype_splay_(84008B
 
 
 
+[DONE] FIXME: IdentExpr toHash, base it on ident name, not id
 
+[DONE] TODO: bits-in-byte, can we remove perf diff by aligning function entries?
+- Perf is significantly affected by introduction of dummy variable "t"
+- In ir/ast.d, iterating through local variables using map of IdentExpr
+  - each IdentExpr has a unique id, depends on codegen elsewhere
+./higgs --noentryspec --noretspec --shape_noprop --shape_notagspec --shape_nofptrspec b1.js; \
+./higgs --noentryspec --noretspec --shape_noprop b2.js;
 
+exec time (ms): 2.8525
+entry(3BEDC):
+; jump => while_test(3BEE3)
+branch_while_test(3BEE3):
+; $2 = phi 0
+; $3 = phi 1
+xor ecx, ecx;                           31C9
+mov edx, 1;                             BA01000000
+
+exec time (ms): 2.255
+entry(3BEDA):
+; jump => while_test(3BEE1)
+branch_while_test(3BEE1):
+; $3 = phi 1
+; $2 = phi 0
+mov edx, 1;                             BA01000000
+xor ecx, ecx;                           31C9
+
+function bitsinbyte(b) {
+var m = 1, c = 0;
+
+Dummy variable elsewhere affects iteration order of the locals...
+
+// For each local variable
+foreach (ident, value; curCtx.localMap)
+{
+    ...
+}
+
+[DONE] TODO: bitops-bits-in-byte is on nocomptime with typed shapes (no prop)
+./higgs --noentryspec --noretspec --shape_noprop --shape_notagspec --shape_nofptrspec benchmarks/nocomptime/bitops-bits-in-byte.js
+    2.5
+./higgs --noentryspec --noretspec --shape_noprop benchmarks/nocomptime/bitops-bits-in-byte.js
+    2.8
+- timing through closure with lambda passed, slow calls
+- shapes make little to no difference
+- must be cache effects, slight irrelevant difference affecting microbenchmark
 
 [DONE] FIXME: bare system has 120 known shapes with --shape_noprop
 ./higgs --stats --shape_noprop --noretspec --noentryspec --e ""
