@@ -113,6 +113,16 @@ Meeting 2015-04-14:
   - With no shape prop, typed shapes never any slower than inline caches
     - All benchmarks can be made faster with typed shapes! :)
     - Motivates invesgitation of maxtypes=N and auto duplicating capture
+- ran into issue: microbenchmark timings not so reliable
+  - in bitops-bits-in-byte, difference can be up to 20%
+  - slight difference in codegen based on order of iteration of maps, etc.
+  - enabling/disabling shapes can make noticeable timing difference
+  - irrelevant minute codegen effects
+    - changes in runtime code gen can affect other code
+    - hard to pinpoint, stack frame sizes in other functions? pointer values not the same?
+  - can't realistically guarantee codegen is the same everywhere but the benchmark fn
+  - explain in analysis if results turn out odd? microbenchmark
+    - interesting for validation, not so much for timing
 
 TODO: try maxtypes=N
 - Need capture_shape/tag duplication first, otherwise this will kill perf
@@ -190,23 +200,6 @@ TODO: implement basic meta stat test system
   - obj lit usage patterns that should have no shape tests whatsoever
   - init with --nostdlib should have no shape tests, no perf degradation
 
-TODO: establish *which shapes* cause blowup in SplayTree_prototype_splay_(84008B)
-- which properties?
-
-
-These timings should be roughly the same because bits-in-byte doesn't depend on typed shapes
-
-./higgs --noentryspec --noretspec --shape_noprop --shape_notagspec --shape_nofptrspec benchmarks/nocomptime/bitops-bits-in-byte.js ; \
-./higgs --noentryspec --noretspec --shape_noprop benchmarks/nocomptime/bitops-bits-in-byte.js
-
-
-
-
-TODO: eliminate IdObject?
-- should hash based on more stable factors...
-- grep for IdObject
-
-TODO: remove inheritance of ASTNode from IdObject?
 
 
 
@@ -215,6 +208,14 @@ TODO: remove inheritance of ASTNode from IdObject?
 
 
 
+
+[DONE] TODO: establish *which shapes* cause blowup in SplayTree_prototype_splay_(84008B)
+- Node have left, right, node, value
+- Can have refptr and object as tags
+- Left and right sometimes flipped
+- This is a legit case of many shapes
+
+[DONE] TODO: remove dependency of BranchEdge on IdObject
 
 [DONE] FIXME: IdentExpr toHash, base it on ident name, not id
 

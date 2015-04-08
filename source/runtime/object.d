@@ -39,6 +39,7 @@ module runtime.object;
 
 import std.stdio;
 import std.string;
+import std.array;
 import std.algorithm;
 import std.stdint;
 import std.typecons;
@@ -433,6 +434,28 @@ class ObjShape
     ~this()
     {
         //writeln("destroying shape");
+    }
+
+    /// Produce a string representation of the shape chain for an object
+    override string toString() const
+    {
+        auto output = appender!string();
+
+        output.put("shape " ~ to!string(shapeIdx) ~ "\n");
+
+        for (auto shape = cast(ObjShape)this; shape.parent !is null; shape = shape.parent)
+        {
+            output.put(to!string(shape.slotIdx));
+            output.put(" : ");
+            output.put(shape.propName);
+            output.put(" : ");
+            output.put(shape.type.toString);
+
+            if (shape.parent.parent !is null)
+                output.put("\n");
+        }
+
+        return output.data;
     }
 
     /// Test if this shape has a given attribute
