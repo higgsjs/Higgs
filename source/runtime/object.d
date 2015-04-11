@@ -50,6 +50,7 @@ import runtime.layout;
 import runtime.string;
 import runtime.gc;
 import util.id;
+import stats;
 import options;
 
 /// Minimum object capacity (number of slots)
