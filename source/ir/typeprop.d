@@ -47,6 +47,7 @@ import ir.ops;
 import ir.livevars;
 import runtime.vm;
 import jit.ops;
+import stats;
 import options;
 
 /// Type test result

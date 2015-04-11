@@ -37,6 +37,7 @@
 
 module jit.util;
 
+import core.stdc.stdlib;
 import std.stdio;
 import std.string;
 import std.array;
@@ -552,7 +553,7 @@ void checkStackAlign(CodeBlock as, string errorStr)
         {
             printf("%s\n", pErrorStr);
             writeln("rem=", rem);
-            std.c.stdlib.exit(-1);
+            core.stdc.stdlib.exit(-1);
         }
     }
 
