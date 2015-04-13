@@ -5,6 +5,11 @@ if (typeof assertEq === 'undefined')
 
 var options = require('lib/options.js');
 
+function reset()
+{
+    delete require.loaded['lib/options.js'];
+}
+
 function test_parseArgv()
 {
     var argv = ['arg1', '--longbool', '--longval=val', '-abc', 'arg2', '-def=val'];
@@ -25,7 +30,9 @@ function test_parseArgv()
 
 function test_parse_result()
 {
-    var o = options.Options()
+    reset();
+
+    var o = require('lib/options.js')
         .add('long', null)
         .add('double', null, null, null, 'd')
         .add(null, null, 'boolean', null, 's');
@@ -41,7 +48,9 @@ function test_parse_result()
 
 function test_parse_defval()
 {
-    var o = options.Options()
+    reset();
+
+    var o = require('lib/options.js')
         .add('default', 'qwerty', null, null, 'D');
 
     var r = o.parse([]);
@@ -52,7 +61,9 @@ function test_parse_defval()
 
 function test_parse_convert()
 {
-    var o = options.Options()
+    reset();
+
+    var o = require('lib/options.js')
         .add('intval', null, 'int')
         .add('floatval', null, 'float')
         .add('yes', null, 'boolean')

@@ -1,15 +1,11 @@
-var Options = require('lib/options').Options;
-var console = require('lib/console')
+var options = require('lib/options');
+var console = require('lib/console');
 
-var o = Options()
-    // turn on automatic display of help
-    .autoHelp()
-    // turn on automatic display of version
-    .autoVersion()
+options
     // set version number
-    .version('1.0.0')
+    .setVersion('1.0.0')
     // set the usage string
-    .usage('file1, file2, fileN')
+    .setUsage('file1, file2, fileN')
     // long option only
     .add('long', null, null, 'long option.')
     // long and short option
@@ -21,8 +17,6 @@ var o = Options()
 
 // alternate construction
 // var o = Options({
-//     autoHelp: true,
-//     autoVersion: true,
 //     version: '1.0.0',
 //     usage: 'file1, file2, fileN',
 //     opts: [
@@ -37,7 +31,7 @@ var o = Options()
 // Both the long and short option will contain the value.
 // The plain arguments are placed in an array that
 // can be accessed via the _ property on the result.
-var r = o.parse(arguments);
+var r = options.parse(arguments);
 
 // display the resulting object
 console.log(r);
