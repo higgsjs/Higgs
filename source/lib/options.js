@@ -147,7 +147,7 @@
     exports.help = help;
 
     /**
-     * long: long option name
+     * long: long option name (or an object with these params as keys)
      * short: short option name
      * desc: description of option
      * defval: default value
@@ -156,6 +156,15 @@
      */
     function add(long, defval, type, desc, short, req)
     {
+        if (arguments.length === 1 && long !== null && typeof(long) === "object") {
+            var opts = long;
+            long = opts.long;
+            defval = opts.defval;
+            type = opts.type;
+            desc = opts.desc;
+            short = opts.short;
+            req = opts.req;
+        }
         // try to infer the type when possible
         if (type == null)
         {
