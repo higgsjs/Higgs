@@ -1360,7 +1360,7 @@ class IRInstr : IRDstValue
 
         output ~= opcode.mnem;
 
-        if (opcode.argTypes.length > 0)
+        if (args.length > 0)
             output ~= " ";
 
         foreach (argIdx, arg; args)

@@ -117,22 +117,7 @@ Marc leaves May 31st
 - Should be avail remotely June 5th
 - Comes back July 13th
 
-ECOOP camera-ready version deadline is April 29
-
-Short blog post: A Small venture into self-modifying compiler IR
-- Tell them about what you're doing now
-- Some code examples
-- inline caches as self-modifying code
-- Recursively modifying itself
-- Lazy inlining exposed at the IR level
-- Self modifying IR
-- Link to code for dup_capture
-
-Backup plan: inline the recursive structure
-- could possibly use eval to generate the recursive getprop/setprop structure?
-  - have to do it in D! no access to JS primitives
-- this is an ugly solution, try to go for duplication
-  - self-modifying IR is important to understand, be patient
+TODO: genRelGraph fn with no extra stats
 
 TODO: lower default maxvers back to 20?
 
@@ -144,12 +129,30 @@ TODO: way to update LiveInfo
   - get that working right first
 - how do we cope with new instrs not in existing data?
 
-TODO: dup_capture in objGetProp
-- Sure to get many bugs!
-- Try debugging on tiny inline examples, --nostdlib
+TODO: Marc wants description of workings of typed shapes
+- write in textual form, first draft
+  - write into typed shapes paper template
+- hack little diagrams
+TODO: write/sketch explanation of typed shapes in typed shapes paper
 
-GC heisenbug: something is corrupting the VM object...
-- Probably through the VM register
+TODO: backup plan, implement maxshapes=N through $ir_clear_shape for now?
+
+Short blog post: A Small venture into self-modifying compiler IR
+- Mad computer scientist
+- Tell them about what you're doing now
+- Some code examples
+- inline caches as self-modifying code
+- Recursively modifying itself
+- Inspired from inlining code
+  - Restrictions make it simpler
+- Lazy inlining exposed at the IR level
+- Self modifying IR
+- Link to code for dup_capture
+
+TODO: lazy_inline "prim", args instruction
+
+GC heisenbug... use git bisect?
+- Problem is, it doesn't show up every run of `make test`
 
 ------------------------------------------------------------------------------
 
@@ -158,7 +161,57 @@ ECOOP - Camera Ready Version for April 29th
 
 ECOOP! Finish it up so you can move on
 
-Meeting 2015-04-14:
+Next meeting:
+- Book plane & hotel for ECOOP?
+  - Check conf dates
+  - Can I stay at the main conf hotel?
+
+Send Marc & Baptiste paper by next meeting for proofreading
+https://www.dropbox.com/s/2fno5ks5tn9e3xf/main.pdf?dl=0
+- Use dropbox link
+
+At home, open ECOOP paper in new tab, begin working on simple tasks ASAP
+- Backup current results
+
+------------------------------------------------------------------------------
+
+TODO: inlining support for throw
+- so we can have fast exceptions after inlining
+- to implement inline caches recursively
+- need to add tests
+- throw is done through throwExc
+  - But we can still use the throw instruction directly, $ir_throw
+
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: fix IRInstr.toString
+
+[PASS] FIXME: dup_capture in getPropField copies way too many blocks
+- Problem is we don't go through if_join, once inline.
+- If the property read is a simple one, we're done, move onto something else
+- Maybe we should use clear_shape as an end of copying marker?
+- Or just don't go past obj_get_prop?
+
+[DONE] FIXME: dup_capture in getPropField
+- traversal fails, block has a phi node
+- the phi node is the result of inlining
+  - selects the property value to use
+
+[DONE] FIXME: dup_capture toString is borked
+if_false(66C52):
+  dup_capture$15, $19, "x" => if_join(66C54)
+
+[DONE] Meeting 2015-04-14:
 - splay hits version limit even with maxvers=1000
   maxvers=1248
   - not so surprising, 14*14=196
@@ -187,30 +240,16 @@ Meeting 2015-04-14:
     - interesting for validation, not so much for timing
 - NEXT: take a break, finish up ECOOP paper, submit camera-ready version!
 
-TODO: Marc wants description of workings of typed shapes
-- write in textual form, first draft
-  - write into typed shapes paper template
-- hack little diagrams
-TODO: write/sketch explanation of typed shapes in typed shapes paper
+[DONE] TODO: dup_capture in objGetProp
 
-TODO: in paper graph num shape tests with and without typed shapes
+[DONE] TODO: in paper graph num shape tests with and without typed shapes
 - also column for num type tests with and without, same scale, not relative
   - order of magnitude is similar
 
-TODO: genAbsGraph fn with no extra stats
-
-TODO: paper, create quick-runbenchmarks.sh
+[DONE] TODO: paper, create quick-runbenchmarks.sh
 - no deleting of prev results
 - no checking for running processes
 - comment out all but needed stats
-
-
-
-
-
-
-
-
 
 [DONE] TODO: move dupcapture into own folder, not dev-maxime
 
