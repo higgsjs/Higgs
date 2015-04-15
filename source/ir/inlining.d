@@ -276,23 +276,33 @@ PhiNode inlineCall(IRInstr callSite, IRFunction callee)
     else
         assert (false);
 
-    // Get the call continuation branch and successor block
-    auto contBranch = callSite.getTarget(0);
-    auto contBlock = contBranch.target;
-
     // Create a block for the return value merging
-    auto mergeBlock = caller.newBlock("call_merge");
-
-    // Create a phi node in the call continuation for the return value
-    auto retPhi = mergeBlock.addPhi(new PhiNode());
+    auto retBlock = caller.newBlock("ret_merge");
+    auto retPhi = retBlock.addPhi(new PhiNode());
 
     // Jump to the call continuation block
-    auto jumpInstr = mergeBlock.addInstr(new IRInstr(&JUMP));
-    auto jumpDesc = jumpInstr.setTarget(0, contBlock);
-
-    // Copy arguments from the call continuation jump
+    auto contBranch = callSite.getTarget(0);
+    auto contJump = retBlock.addInstr(new IRInstr(&JUMP));
+    auto contDesc = contJump.setTarget(0, contBranch.target);
     foreach (arg; contBranch.args)
-        jumpDesc.setPhiArg(cast(PhiNode)arg.owner, arg.value);
+        contDesc.setPhiArg(cast(PhiNode)arg.owner, arg.value);
+
+    // If the call has an exception target
+    IRBlock excBlock = null;
+    PhiNode excPhi = null;
+    if (callSite.getTarget(1))
+    {
+        // Create a block for the exception value merging
+        excBlock = caller.newBlock("exc_merge");
+        excPhi = excBlock.addPhi(new PhiNode());
+
+        // Jump to the call continuation block
+        auto excBranch = callSite.getTarget(1);
+        auto excJump = excBlock.addInstr(new IRInstr(&JUMP));
+        auto excDesc = excJump.setTarget(0, excBranch.target);
+        foreach (arg; excBranch.args)
+            excDesc.setPhiArg(cast(PhiNode)arg.owner, arg.value);
+    }
 
     //
     // Callee basic block copying and translation
@@ -409,24 +419,8 @@ PhiNode inlineCall(IRInstr callSite, IRFunction callee)
                 }
             }
 
-            /*
-            // If this is a call instruction
-            if (newInstr.opcode.isCall)
-            {
-                // Add the callee function to the list of
-                // inlined functions at this call site
-                caller.inlineMap[newInstr] ~= callee.inlineMap.get(oldInstr, []) ~ callee;
-
-                // Copy the call profiles from the callee
-                caller.callCounts[newInstr] = callee.callCounts.get(
-                    oldInstr,
-                    uint64_t[IRFunction].init
-                );
-            }
-            */
-
             // If this is a return instruction
-            if (newInstr.opcode == &RET)
+            if (newInstr.opcode is &RET)
             {
                 // Get the return value
                 auto retVal = newInstr.getArg(0);
@@ -436,10 +430,27 @@ PhiNode inlineCall(IRInstr callSite, IRFunction callee)
 
                 // Jump to the merge block
                 auto jump = newBlock.addInstr(new IRInstr(&JUMP));
-                auto desc = jump.setTarget(0, mergeBlock);
+                auto desc = jump.setTarget(0, retBlock);
 
                 // Set the return phi argument
                 desc.setPhiArg(retPhi, retVal);
+            }
+
+            // If this is a throw instruction and we have an exception target
+            if (newInstr.opcode is &THROW && excBlock !is null)
+            {
+                // Get the return value
+                auto excVal = newInstr.getArg(0);
+
+                // Remove the throw instruction
+                newBlock.delInstr(newInstr);
+
+                // Jump to the merge block
+                auto jump = newBlock.addInstr(new IRInstr(&JUMP));
+                auto desc = jump.setTarget(0, excBlock);
+
+                // Set the return phi argument
+                desc.setPhiArg(excPhi, excVal);
             }
         }
     }
@@ -478,7 +489,7 @@ PhiNode inlineCall(IRInstr callSite, IRFunction callee)
         callBlock.moveInstr(callSite, regCallBlock);
 
         // Make the regular call continue to the call merge block
-        auto regCallDesc = callSite.setTarget(0, mergeBlock);
+        auto regCallDesc = callSite.setTarget(0, retBlock);
         regCallDesc.setPhiArg(retPhi, callSite);
 
         // Create a function pointer for the callee function

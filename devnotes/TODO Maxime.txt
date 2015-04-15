@@ -153,6 +153,9 @@ TODO: lazy_inline "prim", args instruction
 
 GC heisenbug... use git bisect?
 - Problem is, it doesn't show up every run of `make test`
+- Seems to have to do with the VM register
+- Likely, one of the primitive calls is done wrong
+  - some arg value gets corrupted/misplaced
 
 ------------------------------------------------------------------------------
 
@@ -170,29 +173,28 @@ Send Marc & Baptiste paper by next meeting for proofreading
 https://www.dropbox.com/s/2fno5ks5tn9e3xf/main.pdf?dl=0
 - Use dropbox link
 
-At home, open ECOOP paper in new tab, begin working on simple tasks ASAP
-- Backup current results
+Use of inlining to implement inline cache seems much cleaner...
 
-------------------------------------------------------------------------------
+TODO: try implementing $ir_lazy_inline instruction
+- only one case to handle for now, must identify the get_prop and set its outSlot
+- can find it from return phi
 
-TODO: inlining support for throw
+
+
+
+
+
+
+[DONE] TODO: write runtime prims for getProp with lazy inline
+
+[DONE] TODO: inlining support for throw
 - so we can have fast exceptions after inlining
 - to implement inline caches recursively
 - need to add tests
 - throw is done through throwExc
   - But we can still use the throw instruction directly, $ir_throw
 
-
-
-
-
-
-
-
-
-
-
-
+------------------------------------------------------------------------------
 
 [DONE] TODO: fix IRInstr.toString
 
