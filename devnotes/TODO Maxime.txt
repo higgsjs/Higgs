@@ -179,11 +179,19 @@ TODO: try implementing $ir_lazy_inline instruction
 - only one case to handle for now, must identify the get_prop and set its outSlot
 - can find it from return phi
 
+TODO: IRInstr.numVarArgs
+
+test, commit
+
+FIXME: assert (inlinable(...)) in inlineCall
 
 
 
 
 
+[DONE] TODO: add $rt_getPropCache to inlining whitelist
+
+[DONE] TODO: inlining whitelist
 
 [DONE] TODO: write runtime prims for getProp with lazy inline
 

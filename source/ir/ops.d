@@ -228,6 +228,9 @@ Opcode JUMP = { "jump", false, [], &gen_jump, OpInfo.BRANCH };
 // Branch based on a boolean value
 Opcode IF_TRUE = { "if_true", false, [OpArg.LOCAL], &gen_if_true, OpInfo.BRANCH };
 
+/// Lazily inline a primitive by name
+Opcode LAZY_INLINE = { "lazy_inline", false, [OpArg.STRING], &gen_lazy_inline, OpInfo.VAR_ARG | OpInfo.BRANCH | OpInfo.CALL };
+
 // <dstLocal> = CALL_PRIM <primName> <primFun> ...
 // Call a primitive function by name (compile-time lookup)
 // Note: the second argument is a cached function reference

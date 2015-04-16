@@ -50,6 +50,64 @@ import runtime.object;
 import util.bitset;
 import options;
 
+/// Whitelist of functions to be inlined
+bool[string] inlineFuns;
+static this()
+{
+    void inl(string fName)
+    {
+        inlineFuns[fName] = true;
+    }
+
+    inl("$rt_valIsObj");
+    inl("$rt_toBool");
+    inl("$rt_minus");
+    inl("$rt_addInt");
+    inl("$rt_addIntFloat");
+    inl("$rt_subInt");
+    inl("$rt_subIntFloat");
+    inl("$rt_mulIntFloat");
+    inl("$rt_divIntFloat");
+    inl("$rt_modInt");
+    inl("$rt_and");
+    inl("$rt_or");
+    inl("$rt_xor");
+    inl("$rt_lsft");
+    inl("$rt_rsft");
+    inl("$rt_ursft");
+
+    inl("$rt_ltIntFloat");
+    inl("$rt_leIntFloat");
+    inl("$rt_gtIntFloat");
+    inl("$rt_geIntFloat");
+    inl("$rt_eqInt");
+    inl("$rt_eqNull");
+    inl("$rt_neNull");
+
+    inl("$rt_getPropCache");
+    inl("$rt_getPropField");
+    inl("$rt_getStrMethod");
+    inl("$rt_getPropElem");
+    inl("$rt_getPropLength");
+    inl("$rt_setPropCache");
+    inl("$rt_setPropField");
+    inl("$rt_setPropElem");
+    inl("$rt_setArrElemNoCheck");
+    inl("$rt_setProto");
+    inl("$rt_getGlobalInl");
+    inl("$rt_setGlobalInl");
+
+    inl("$rt_newObj");
+    inl("$rt_newArr");
+    inl("$rt_ctorNewThis");
+
+    inl("$rt_ropeToStr");
+    inl("$rt_isShadowed");
+    inl("$rt_getEnumKey");
+    inl("$rt_nextEnumObj");
+    inl("$rt_getPropEnum");
+}
+
 /**
 Selectively inline callees into a function
 */
@@ -119,62 +177,18 @@ void inlinePass(VM vm, IRFunction caller)
             continue;
 
         if (callee.entryBlock is null)
-        {
             astToIR(callee.ast, callee);
-        }
 
-        auto name = callee.getName();
+        auto name = callee.getName().split("(")[0];
 
-        if (callee.numBlocks > 4
-            && !name.startsWith("$rt_valIsObj")
-            && !name.startsWith("$rt_toBool")
-            && !name.startsWith("$rt_minus")
-            && !name.startsWith("$rt_addInt")
-            && !name.startsWith("$rt_addIntFloat")
-            && !name.startsWith("$rt_subInt")
-            && !name.startsWith("$rt_subIntFloat")
-            && !name.startsWith("$rt_mulIntFloat")
-            && !name.startsWith("$rt_divIntFloat")
-            && !name.startsWith("$rt_modInt")
-            && !name.startsWith("$rt_and")
-            && !name.startsWith("$rt_or")
-            && !name.startsWith("$rt_xor")
-            && !name.startsWith("$rt_lsft")
-            && !name.startsWith("$rt_rsft")
-            && !name.startsWith("$rt_ursft")
-            && !name.startsWith("$rt_ltIntFloat")
-            && !name.startsWith("$rt_leIntFloat")
-            && !name.startsWith("$rt_gtIntFloat")
-            && !name.startsWith("$rt_geIntFloat")
-            && !name.startsWith("$rt_eqInt")
-            && !name.startsWith("$rt_eqNull")
-            && !name.startsWith("$rt_neNull")
-            && !name.startsWith("$rt_getPropField")
-            && !name.startsWith("$rt_getStrMethod")
-            && !name.startsWith("$rt_getPropElem")
-            && !name.startsWith("$rt_getPropLength")
-            && !name.startsWith("$rt_setPropField")
-            && !name.startsWith("$rt_setPropElem")
-            && !name.startsWith("$rt_setArrElemNoCheck")
-            && !name.startsWith("$rt_setProto")
-            && !name.startsWith("$rt_newObj")
-            && !name.startsWith("$rt_newArr")
-            && !name.startsWith("$rt_ctorNewThis")
-            && !name.startsWith("$rt_getGlobalInl")
-            && !name.startsWith("$rt_setGlobalInl")
-            && !name.startsWith("$rt_ropeToStr")
-            && !name.startsWith("$rt_isShadowed")
-            && !name.startsWith("$rt_getEnumKey")
-            && !name.startsWith("$rt_nextEnumObj")
-            && !name.startsWith("$rt_getPropEnum")
-        )
+        if (callee.numBlocks > 4 && name !in inlineFuns)
             continue;
 
         if (name.startsWith("$rt_throw"))
             continue;
 
         // If this is a global property read
-        if (name.startsWith("$rt_getGlobalInl"))
+        if (name == "$rt_getGlobalInl")
         {
             auto propName = callSite.getArgStrCst(1);
             assert (propName !is null);
@@ -268,13 +282,8 @@ PhiNode inlineCall(IRInstr callSite, IRFunction callee)
     assert (caller !is null);
 
     // Get the number of visible arguments passed at the call site
-    size_t numArgs;
-    if (callSite.opcode is &CALL_PRIM)
-        numArgs = callSite.numArgs - 1;
-    else if (callSite.opcode is &CALL)
-        numArgs = callSite.numArgs - 2;
-    else
-        assert (false);
+    assert (callSite.opcode.isCall);
+    size_t numArgs = callSite.numArgs - callSite.opcode.argTypes.length;
 
     // Create a block for the return value merging
     auto retBlock = caller.newBlock("ret_merge");

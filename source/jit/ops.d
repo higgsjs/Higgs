@@ -1545,6 +1545,43 @@ void JumpOp(size_t succIdx)(
 alias gen_jump = JumpOp!(0);
 alias gen_jump_false = JumpOp!(1);
 
+void gen_lazy_inline(
+    BlockVersion ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    // Function name string (D string)
+    auto strArg = cast(IRString)instr.getArg(0);
+    assert (strArg !is null);
+    auto nameStr = strArg.str;
+
+    // Increment the stat counter for this primitive
+    as.incStatCnt(stats.getPrimCallCtr(to!string(nameStr)), scrRegs[0]);
+
+    // Get the primitve function from the global object
+    auto closVal = getProp(vm.globalObj, nameStr);
+    assert (
+        closVal.tag is Tag.CLOSURE,
+        "failed to resolve closure in lazy_inline"
+    );
+    assert (closVal.word.ptrVal !is null);
+    auto fun = getFunPtr(closVal.word.ptrVal);
+
+
+
+
+
+
+
+
+
+
+
+
+}
+
 /**
 Throw an exception and unwind the stack when one calls a non-function.
 Returns a pointer to an exception handler.
