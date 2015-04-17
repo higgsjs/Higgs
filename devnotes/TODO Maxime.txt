@@ -174,20 +174,16 @@ Send Marc & Baptiste paper by next meeting for proofreading
 https://www.dropbox.com/s/2fno5ks5tn9e3xf/main.pdf?dl=0
 - Use dropbox link
 
+TODO: simplified phi arg iteration?
+- phi.numArgs, phi.getArg(i)?
+
 TODO: IRInstr.numVarArgs
+- do this on master, pull
+- replace in ir/inlining
+- find use cases in jit/ops
 
-Issue: exc phi created when no throws?
-- may want to lazily create it
-- is this an issue?
-
-FIXME: assert (inlinable(...)) in inlineCall
-- must have call sites with exc target show up as inlinable
-- Note: call with exc target support still not complete since we're not
-  handling calls
-  - would need to add catch on way to excPhi
-
-TODO: try new inline cache with lazy_inline, objGetProp first
-- can we run higgs init?
+FIXME: inlining in getPropCache? why is getPropCache not inlined?
+- cause it's in a try block!
 
 test, commit
 
@@ -195,6 +191,16 @@ test, commit
 
 
 
+[DONE] FIXME: outSlot issue
+Assertion failed (jit/jit.d@553): no out slot for value:
+  t_90617 = obj_get_prop $8, $9 => if_true(9061A), if_false(9061D)
+- Assign out slot from other get_prop
+  - but how do we find the other get_prop?
+  - iterate through return phi values
+
+[DONE] FIXME:
+Assertion failed (ir/livevars.d@242):
+  no live set for instr: capture_shape $8, $0 => if_true(90614), if_false(90616)
 
 [DONE] TODO: try implementing $ir_lazy_inline instruction
 - only one case to handle for now, must identify the get_prop and set its outSlot

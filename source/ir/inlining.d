@@ -85,11 +85,13 @@ static this()
     inl("$rt_neNull");
 
     inl("$rt_getPropCache");
+    inl("$rt_getPropCacheRecur");
     inl("$rt_getPropField");
     inl("$rt_getStrMethod");
     inl("$rt_getPropElem");
     inl("$rt_getPropLength");
     inl("$rt_setPropCache");
+    inl("$rt_getPropCacheRecur");
     inl("$rt_setPropField");
     inl("$rt_setPropElem");
     inl("$rt_setArrElemNoCheck");
@@ -252,23 +254,18 @@ bool inlinable(IRInstr callSite, IRFunction callee)
 {
     auto caller = callSite.block.fun;
 
-    // Not support for new for now, avoids complicated return logic
     if (callSite.opcode !is &CALL &&
-        callSite.opcode !is &CALL_PRIM)
+        callSite.opcode !is &CALL_PRIM &&
+        callSite.opcode !is &LAZY_INLINE)
         return false;
-
-    // No support for inlining within try blocks for now
-    //if (callSite.getTarget(1) !is null)
-    //    return false;
 
     // No support for functions using the "arguments" object
     if (callee.ast.usesArguments == true)
         return false;
 
     // No support for argument count mismatch
-    auto numArgs = callSite.numArgs;
-    if ((callSite.opcode is &CALL && numArgs - 2 != callee.numParams) ||
-        (callSite.opcode is &CALL_PRIM && numArgs - 1 != callee.numParams))
+    auto numArgs = callSite.numArgs - callSite.opcode.argTypes.length;
+    if (numArgs != callee.numParams)
         return false;
 
     // Inlining is possible
@@ -289,7 +286,7 @@ PhiNode inlineCall(IRInstr callSite, IRFunction callee)
 
     // Get the number of visible arguments passed at the call site
     assert (callSite.opcode.isCall);
-    size_t numArgs = callSite.numArgs - callSite.opcode.argTypes.length;
+    auto numArgs = callSite.numArgs - callSite.opcode.argTypes.length;
 
     // Create a block for the return value merging
     auto retBlock = caller.newBlock("ret_merge");
@@ -505,45 +502,12 @@ PhiNode inlineCall(IRInstr callSite, IRFunction callee)
         catchInstr.replUses(excPhi);
     }
 
-    // If this is a static primitive call
-    if (callSite.opcode is &CALL_PRIM)
-    {
-        // Remove the original call instruction
-        callBlock.delInstr(callSite);
+    // Remove the original call instruction
+    callBlock.delInstr(callSite);
 
-        // Add a direct jump to the callee entry block
-        auto jump = callBlock.addInstr(new IRInstr(&JUMP));
-        jump.setTarget(0, entryBlock);
-    }
-    else
-    {
-        assert (false);
-
-        /*
-        // Move the call instruction to a new basic block,
-        // This will be our fallback (uninlined call)
-        auto regCallBlock = caller.newBlock("call_reg");
-        callBlock.moveInstr(callSite, regCallBlock);
-
-        // Make the regular call continue to the call merge block
-        auto regCallDesc = callSite.setTarget(0, retBlock);
-        regCallDesc.setPhiArg(retPhi, callSite);
-
-        // Create a function pointer for the callee function
-        auto ptrConst = new IRFunPtr(callee);
-
-        // If the function pointer matches, jump to the callee's entry
-        auto ifInstr = callBlock.addInstr(
-            new IRInstr(
-                &IF_EQ_FUN,
-                callSite.getArg(0),
-                ptrConst
-            )
-        );
-        ifInstr.setTarget(0, blockMap[callee.entryBlock]);
-        ifInstr.setTarget(1, regCallBlock);
-        */
-    }
+    // Add a direct jump to the callee entry block
+    auto jump = callBlock.addInstr(new IRInstr(&JUMP));
+    jump.setTarget(0, entryBlock);
 
     // Return the return merge phi node
     return retPhi;

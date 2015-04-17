@@ -1552,6 +1552,8 @@ void gen_lazy_inline(
     CodeBlock as
 )
 {
+    writeln("entering lazy_inline (", instr.block.fun.getName, ")");
+
     // Function name string (D string)
     auto strArg = cast(IRString)instr.getArg(0);
     assert (strArg !is null);
@@ -1567,23 +1569,49 @@ void gen_lazy_inline(
         "failed to resolve closure in lazy_inline"
     );
     assert (closVal.word.ptrVal !is null);
-    auto fun = getFunPtr(closVal.word.ptrVal);
+    auto callee = getFunPtr(closVal.word.ptrVal);
+
+    auto outSlot = instr.outSlot;
 
     // Inline the callee at this position
     // this will replace the lazy_inline instruction by a jump
     import ir.inlining;
-    inlineCall(instr, fun);
+    auto retPhi = inlineCall(instr, callee);
+    auto retBlock = retPhi.block;
+
+    // Set the output slot of return values to the
+    // output slot of the inlining instruction
+    for (size_t i = 0; i < retBlock.numIncoming; ++i)
+    {
+        auto edge = retBlock.getIncoming(i);
+        auto phiArg = edge.getPhiArg(retPhi);
+
+        if (auto dstArg = cast(IRDstValue)phiArg)
+            dstArg.outSlot = outSlot;
+    }
+
+    // Set the output slot of return values to the
+    // output slot of the inlining instruction
+    retPhi.outSlot = outSlot;
+
+
+
+
+
+
 
     // TODO: find way to incrementally update LiveInfo
     // Once IR subtree copy is done, we update the LiveInfo
     // - Can start by rerunning the whole thing, KISS at first
-    fun.liveInfo = new LiveInfo(fun);
+    st.fun.liveInfo = new LiveInfo(st.fun);
 
     // Jump directly to the successor block
     // - We're not generating any code for dup capture itself
     // - We basically hijack BBV so that the new IR gets generated
     // - dup_capture jumps or "falls through" to newly generated IR blocks
     gen_jump(ver, st, ver.block.lastInstr, as);
+
+    writeln("leaving lazy_inline");
 }
 
 /**

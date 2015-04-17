@@ -2155,7 +2155,7 @@ function $rt_getPropCacheRecur(obj, propStr, shapeIdx)
     if ($ir_capture_shape(obj, shapeIdx))
     {
         // Generate a new inline cache level recursively
-        return $ir_lazy_inline(obj, propStr, shapeIdx);
+        return $ir_lazy_inline("$rt_getPropCacheRecur", obj, propStr, shapeIdx);
     }
     else
     {
@@ -2203,7 +2203,7 @@ function $rt_objGetProp(obj, propStr)
 {
 
 
-    /*
+    
     try
     {
         return $rt_getPropCache(obj, propStr);
@@ -2231,13 +2231,13 @@ function $rt_objGetProp(obj, propStr)
             propStr
         );
     }
-    */
+    
 
 
 
 
 
-
+    /*
     // Capture the object shape
     var shapeIdx = $ir_read_shape_idx(obj);
     if ($ir_break());
@@ -2291,6 +2291,7 @@ function $rt_objGetProp(obj, propStr)
         proto,
         propStr
     );
+    */
 }
 
 /**
