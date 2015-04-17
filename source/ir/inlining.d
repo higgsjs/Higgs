@@ -169,10 +169,15 @@ void inlinePass(VM vm, IRFunction caller)
         assert (closVal.word.ptrVal !is null);
         auto callee = getFunPtr(closVal.word.ptrVal);
 
+        // Don't inline within try blocks for now
+        if (callSite.getTarget(1) !is null)
+            continue;
+
         // If this combination is not inlinable, skip it
         if (inlinable(callSite, callee) is false)
             continue;
 
+        // Don't inline this function into itself
         if (caller is callee)
             continue;
 
@@ -184,7 +189,8 @@ void inlinePass(VM vm, IRFunction caller)
         if (callee.numBlocks > 4 && name !in inlineFuns)
             continue;
 
-        if (name.startsWith("$rt_throw"))
+        // The runtime primitive used to throw exceptions cannot be inlined
+        if (name == "$rt_throwExc")
             continue;
 
         // If this is a global property read
@@ -252,8 +258,8 @@ bool inlinable(IRInstr callSite, IRFunction callee)
         return false;
 
     // No support for inlining within try blocks for now
-    if (callSite.getTarget(1) !is null)
-        return false;
+    //if (callSite.getTarget(1) !is null)
+    //    return false;
 
     // No support for functions using the "arguments" object
     if (callee.ast.usesArguments == true)
@@ -296,6 +302,10 @@ PhiNode inlineCall(IRInstr callSite, IRFunction callee)
     foreach (arg; contBranch.args)
         contDesc.setPhiArg(cast(PhiNode)arg.owner, arg.value);
 
+
+
+
+
     // If the call has an exception target
     IRBlock excBlock = null;
     PhiNode excPhi = null;
@@ -312,6 +322,9 @@ PhiNode inlineCall(IRInstr callSite, IRFunction callee)
         foreach (arg; excBranch.args)
             excDesc.setPhiArg(cast(PhiNode)arg.owner, arg.value);
     }
+
+
+
 
     //
     // Callee basic block copying and translation
@@ -476,6 +489,21 @@ PhiNode inlineCall(IRInstr callSite, IRFunction callee)
 
     // Replace uses of the call instruction by uses of the return phi
     callSite.replUses(retPhi);
+
+    // If there are exception values
+    if (excPhi)
+    {
+        // Identify the catch instruction
+        IRInstr catchInstr = null;
+        for (auto use = callSite.getFirstUse; use !is null; use = use.next)
+            if (auto useInstr = cast(IRInstr)use.owner)
+                if (useInstr.opcode is &CATCH)
+                    catchInstr = useInstr;
+        assert (catchInstr !is null);
+
+        // Replace exception uses by the exception phi
+        catchInstr.replUses(excPhi);
+    }
 
     // If this is a static primitive call
     if (callSite.opcode is &CALL_PRIM)

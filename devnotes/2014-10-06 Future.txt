@@ -1,4 +1,4 @@
-TODO: Blog post, "In Hindsight: How I'd do it Even Better"
+TODO: Blog post, "In Hindsight - How I'd do it Even Better"
 Slowly but surely nearing the end of my PhD. Many ideas I won't have time
 to explore.
 
@@ -8,8 +8,23 @@ TypeSet:
   May also be able to have multiple kinds of typed arrays and an is_array() test.
 - Some amount of constant propagation should be built into versioning. Useful
   for many simple cases. Booleans come to mind. Constant shapes.
-- May want to be able to represent uninf types as upposed to unknown?
+- May want to be able to represent uninf types as upposed to unknown/any?
   - Useful for return type inf
+
+May want something more sophisticated than a TypeSet bit set
+- Propagate constants, shapes, numerical ranges
+- Negative information about shapes
+  - Useful for inline caches, replicating structure
+- Other info we haven't thought of
+- Could use a pointer to some type object
+  - Type objects manipulated in a functional style
+
+Inlining of calls which throw is currently problematic
+- Return and exception values get merged into one SSA value, can't be detangled
+- Two control flow targets but one SSA value
+- Would ideally need branch instrs to have one SSA value per target
+  - Or need a separate catch instruction of some sort
+  - Calls can point to the catch instruction on their throw target
 
 Memory allocation of AST & IR nodes should be thought of from the beginning
 - Either zones or pools. Pools probably more flexible/safe.
@@ -17,11 +32,12 @@ Memory allocation of AST & IR nodes should be thought of from the beginning
   - Large flat array of instruction and label objects?
 - No blocks?
   - Two branches possible, one means go straight to the next instr
+- Could embed types of live values into blocks or instrs
 - Type tags, reg/slot alloc, metainf, should be encoded in the IR if possible
   - instr output can specify reg,slot,tag
-  - design so no hashing on instructions is necessary, no extra data structures
+  - no external data structures for liveness and metainfo
 
-Should do transformations at the IR level.
+Should do transformations at the IR level
 - IR needs new constructs to integrate versioning
 - Guards? Child sub-versions of other blocks with preconditions?
 - Incremental generation, need branch edge "stubs"
@@ -50,3 +66,4 @@ Should use the C stack, match call and return instructions
   - Pass argc in a reg, even though not used most of the time
     - If not used, not touched
   - Regs for words and types of first 3 args, maybe "this"
+

@@ -260,6 +260,9 @@ Opcode RET = { "ret", false, [OpArg.LOCAL], &gen_ret, OpInfo.BRANCH };
 // Throws an exception, unwinds the stack
 Opcode THROW = { "throw", false, [OpArg.LOCAL], &gen_throw, OpInfo.BRANCH };
 
+// Catch the exception value from a function call
+Opcode CATCH = { "catch", true, [OpArg.LOCAL], &gen_catch };
+
 // Special implementation object/value access instructions
 Opcode GET_OBJ_PROTO = { "get_obj_proto", true, [], &gen_get_obj_proto };
 Opcode GET_ARR_PROTO = { "get_arr_proto", true, [], &gen_get_arr_proto };

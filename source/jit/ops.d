@@ -1569,17 +1569,21 @@ void gen_lazy_inline(
     assert (closVal.word.ptrVal !is null);
     auto fun = getFunPtr(closVal.word.ptrVal);
 
+    // Inline the callee at this position
+    // this will replace the lazy_inline instruction by a jump
+    import ir.inlining;
+    inlineCall(instr, fun);
 
+    // TODO: find way to incrementally update LiveInfo
+    // Once IR subtree copy is done, we update the LiveInfo
+    // - Can start by rerunning the whole thing, KISS at first
+    fun.liveInfo = new LiveInfo(fun);
 
-
-
-
-
-
-
-
-
-
+    // Jump directly to the successor block
+    // - We're not generating any code for dup capture itself
+    // - We basically hijack BBV so that the new IR gets generated
+    // - dup_capture jumps or "falls through" to newly generated IR blocks
+    gen_jump(ver, st, ver.block.lastInstr, as);
 }
 
 /**
@@ -2723,6 +2727,22 @@ void gen_throw(
 
     // Mark the end of the fragment
     ver.markEnd(as);
+}
+
+void gen_catch(
+    BlockVersion ver,
+    CodeGenState st,
+    IRInstr instr,
+    CodeBlock as
+)
+{
+    auto wordOpnd = st.getWordOpnd(as, instr, 0, 64, scrRegs[0].opnd(64), true);
+    auto outOpnd = st.getOutOpnd(as, instr, 64, true);
+    if (outOpnd != wordOpnd)
+        as.mov(outOpnd, wordOpnd);
+
+    auto tagOpnd = st.getTagOpnd(as, instr, 0, scrRegs[0].opnd(8), true);
+    st.setOutTag(as, instr, tagOpnd.reg);
 }
 
 void GetValOp(Tag tag, string fName)(

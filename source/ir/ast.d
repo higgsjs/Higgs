@@ -299,7 +299,7 @@ class IRGenCtx
         if (catchIdent !is null)
         {
             return new Tuple!(
-                IdentExpr, "ident", 
+                IdentExpr, "ident",
                 IRBlock, "block",
                 IRGenCtx[]*, "throwCtxs"
             )
@@ -2837,6 +2837,9 @@ IRBlock genExcPath(IRGenCtx ctx, IRValue excVal)
     // If there is an englobing try block
     if (catchInfo !is null)
     {
+        // Mark the exception value on the exception path
+        excVal = excCtx.addInstr(new IRInstr(&CATCH, excVal));
+
         // Assign the exception value to the catch variable
         assgToIR(
             excCtx,

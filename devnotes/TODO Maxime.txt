@@ -136,6 +136,7 @@ TODO: Marc wants description of workings of typed shapes
 TODO: write/sketch explanation of typed shapes in typed shapes paper
 
 TODO: backup plan, implement maxshapes=N through $ir_clear_shape for now?
+Alternative backup plan: set shape of shapeIdx as unmatched shape
 
 Short blog post: A Small venture into self-modifying compiler IR
 - Mad computer scientist
@@ -173,21 +174,42 @@ Send Marc & Baptiste paper by next meeting for proofreading
 https://www.dropbox.com/s/2fno5ks5tn9e3xf/main.pdf?dl=0
 - Use dropbox link
 
-Use of inlining to implement inline cache seems much cleaner...
-
-TODO: try implementing $ir_lazy_inline instruction
-- only one case to handle for now, must identify the get_prop and set its outSlot
-- can find it from return phi
-
 TODO: IRInstr.numVarArgs
+
+Issue: exc phi created when no throws?
+- may want to lazily create it
+- is this an issue?
+
+FIXME: assert (inlinable(...)) in inlineCall
+- must have call sites with exc target show up as inlinable
+- Note: call with exc target support still not complete since we're not
+  handling calls
+  - would need to add catch on way to excPhi
+
+TODO: try new inline cache with lazy_inline, objGetProp first
+- can we run higgs init?
 
 test, commit
 
-FIXME: assert (inlinable(...)) in inlineCall
 
 
 
 
+
+[DONE] TODO: try implementing $ir_lazy_inline instruction
+- only one case to handle for now, must identify the get_prop and set its outSlot
+- can find it from return phi
+
+[DONE] TODO: fix inlining, use new catch instr
+- can then replace uses of catch by excPhi
+
+[DONE] TODO: implement gen_catch and test it
+- Doesn't need to be fast
+- Need a tag for the exception value
+- another value, really
+  - in to out
+- when you want the exception value from a call, you use catch
+- catch can take call arg as input
 
 [DONE] TODO: add $rt_getPropCache to inlining whitelist
 
