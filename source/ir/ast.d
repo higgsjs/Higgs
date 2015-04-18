@@ -574,11 +574,17 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
         bodyCtx.addInstr(new IRInstr(&RET, IRConst.undefCst));
     }
 
+    //writeln("inlining pass ****");
+
     // Run the inlining pass
     inlinePass(vm, fun);
 
+    //writeln("optimizing IR ****");
+
     // Perform peephole optimizations on the function
     optIR(fun);
+
+    //writeln("computing liveness ****");
 
     // Compute liveness information for the function
     fun.liveInfo = new LiveInfo(fun);
@@ -588,18 +594,6 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
     {
         fun.typeInfo = new TypeProp(fun, fun.liveInfo);
     }
-
-    /*
-    version (release)
-    {
-        fun.typeInfo = new TypeProp(fun, fun.liveInfo);
-    }
-    else
-    {
-        if (opts.typeprop)
-            fun.typeInfo = new TypeProp(fun, fun.liveInfo);
-    }
-    */
 
     // Allocate stack slots for the IR instructions
     allocSlots(fun);

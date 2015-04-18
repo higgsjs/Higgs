@@ -128,6 +128,8 @@ TODO: way to update LiveInfo
 - can start by trying to re-run with existing data?
   - get that working right first
 - how do we cope with new instrs not in existing data?
+Idea: liveness info, register new instrs
+- abridged, mark live everywhere but outside of inlining
 
 TODO: Marc wants description of workings of typed shapes
 - write in textual form, first draft
@@ -170,25 +172,21 @@ Next meeting:
   - Check conf dates
   - Can I stay at the main conf hotel?
 
-Send Marc & Baptiste paper by next meeting for proofreading
-https://www.dropbox.com/s/2fno5ks5tn9e3xf/main.pdf?dl=0
-- Use dropbox link
-
 TODO: simplified phi arg iteration?
 - phi.numArgs, phi.getArg(i)?
-
 TODO: IRInstr.numVarArgs
 - do this on master, pull
 - replace in ir/inlining
 - find use cases in jit/ops
 
+Send Marc & Baptiste paper by next meeting for proofreading
+https://www.dropbox.com/s/2fno5ks5tn9e3xf/main.pdf?dl=0
+- Use dropbox link
+
 test, commit
 
 FIXME: inlining in getPropCache? why is getPropCache not inlined?
 - cause it's in a try block!
-TODO: make fn in try inlinable again
-
-test, commit
 
 
 
@@ -196,6 +194,13 @@ test, commit
 
 
 
+
+[DONE] FIXME: segfault after inlining
+- happens even with --nostdlib
+- seems to occur during peephole opts
+  - IR likely invalid/broken
+
+[DONE] TODO: make fn in try inlinable again
 
 [DONE] TODO: inlining in try blocks
 - need to modify all call ops to jump to block with catch, then excPhi

@@ -171,10 +171,6 @@ void inlinePass(VM vm, IRFunction caller)
         assert (closVal.word.ptrVal !is null);
         auto callee = getFunPtr(closVal.word.ptrVal);
 
-        // Don't inline within try blocks for now
-        if (callSite.getTarget(1) !is null)
-            continue;
-
         // If this combination is not inlinable, skip it
         if (inlinable(callSite, callee) is false)
             continue;
@@ -277,6 +273,11 @@ Inline a callee function at a call site
 */
 PhiNode inlineCall(IRInstr callSite, IRFunction callee)
 {
+    writeln("inlining into ", callSite.block.fun.getName);
+    writeln("  callSite: ", callSite);
+    writeln("  callee: ", callee.getName);
+    writeln("  hasUses: ", callSite.hasUses);
+
     // Ensure that this inlining is possible
     assert (inlinable(callSite, callee));
 
@@ -299,15 +300,13 @@ PhiNode inlineCall(IRInstr callSite, IRFunction callee)
     foreach (arg; contBranch.args)
         contDesc.setPhiArg(cast(PhiNode)arg.owner, arg.value);
 
-
-
-
-
     // If the call has an exception target
     IRBlock excBlock = null;
     PhiNode excPhi = null;
     if (callSite.getTarget(1))
     {
+        writeln("callSite has exc target");
+
         // Create a block for the exception value merging
         excBlock = caller.newBlock("exc_merge");
         excPhi = excBlock.addPhi(new PhiNode());
@@ -319,9 +318,6 @@ PhiNode inlineCall(IRInstr callSite, IRFunction callee)
         foreach (arg; excBranch.args)
             excDesc.setPhiArg(cast(PhiNode)arg.owner, arg.value);
     }
-
-
-
 
     //
     // Callee basic block copying and translation
@@ -449,10 +445,10 @@ PhiNode inlineCall(IRInstr callSite, IRFunction callee)
                     newInstr.setTarget(1, catchBlock);
 
                     // Mark the exception value on the exception path
-                    auto excVal = excBlock.addInstr(new IRInstr(&CATCH, newInstr));
+                    auto excVal = catchBlock.addInstr(new IRInstr(&CATCH, newInstr));
 
                     // Jump to the merge block
-                    auto jump = excBlock.addInstr(new IRInstr(&JUMP));
+                    auto jump = catchBlock.addInstr(new IRInstr(&JUMP));
                     auto desc = jump.setTarget(0, excBlock);
 
                     // Set the return phi argument
@@ -510,23 +506,31 @@ PhiNode inlineCall(IRInstr callSite, IRFunction callee)
     // Get the inlined entry block for the callee function
     auto entryBlock = blockMap[callee.entryBlock];
 
-    // Replace uses of the call instruction by uses of the return phi
-    callSite.replUses(retPhi);
-
-    // If there are exception values
+    // If the call site has an exception target
     if (excPhi)
     {
+        writeln("  hasUses: ", callSite.hasUses);
+
         // Identify the catch instruction
         IRInstr catchInstr = null;
         for (auto use = callSite.getFirstUse; use !is null; use = use.next)
+        {
+            writeln(use.owner);
+
             if (auto useInstr = cast(IRInstr)use.owner)
                 if (useInstr.opcode is &CATCH)
                     catchInstr = useInstr;
+        }
         assert (catchInstr !is null);
 
         // Replace exception uses by the exception phi
         catchInstr.replUses(excPhi);
+
+        writeln("replaced catch");
     }
+
+    // Replace uses of the call instruction by uses of the return phi
+    callSite.replUses(retPhi);
 
     // Remove the original call instruction
     callBlock.delInstr(callSite);
@@ -534,6 +538,8 @@ PhiNode inlineCall(IRInstr callSite, IRFunction callee)
     // Add a direct jump to the callee entry block
     auto jump = callBlock.addInstr(new IRInstr(&JUMP));
     jump.setTarget(0, entryBlock);
+
+    writeln("inlining done");
 
     // Return the return merge phi node
     return retPhi;
