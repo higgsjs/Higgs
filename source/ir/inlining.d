@@ -438,8 +438,30 @@ PhiNode inlineCall(IRInstr callSite, IRFunction callee)
                 }
             }
 
+            // If this is a call instruction
+            if (newInstr.opcode.isCall)
+            {
+                // If we have an exception target
+                if (excBlock !is null && newInstr.getTarget(1) is null)
+                {
+                    auto catchBlock = caller.newBlock("call_exc");
+
+                    newInstr.setTarget(1, catchBlock);
+
+                    // Mark the exception value on the exception path
+                    auto excVal = excBlock.addInstr(new IRInstr(&CATCH, newInstr));
+
+                    // Jump to the merge block
+                    auto jump = excBlock.addInstr(new IRInstr(&JUMP));
+                    auto desc = jump.setTarget(0, excBlock);
+
+                    // Set the return phi argument
+                    desc.setPhiArg(excPhi, excVal);
+                }
+            }
+
             // If this is a return instruction
-            if (newInstr.opcode is &RET)
+            else if (newInstr.opcode is &RET)
             {
                 // Get the return value
                 auto retVal = newInstr.getArg(0);
@@ -455,21 +477,25 @@ PhiNode inlineCall(IRInstr callSite, IRFunction callee)
                 desc.setPhiArg(retPhi, retVal);
             }
 
-            // If this is a throw instruction and we have an exception target
-            if (newInstr.opcode is &THROW && excBlock !is null)
+            // If this is a throw instruction
+            else if (newInstr.opcode is &THROW)
             {
-                // Get the return value
-                auto excVal = newInstr.getArg(0);
+                // If we have an exception target
+                if (excBlock !is null)
+                {
+                    // Get the return value
+                    auto excVal = newInstr.getArg(0);
 
-                // Remove the throw instruction
-                newBlock.delInstr(newInstr);
+                    // Remove the throw instruction
+                    newBlock.delInstr(newInstr);
 
-                // Jump to the merge block
-                auto jump = newBlock.addInstr(new IRInstr(&JUMP));
-                auto desc = jump.setTarget(0, excBlock);
+                    // Jump to the merge block
+                    auto jump = newBlock.addInstr(new IRInstr(&JUMP));
+                    auto desc = jump.setTarget(0, excBlock);
 
-                // Set the return phi argument
-                desc.setPhiArg(excPhi, excVal);
+                    // Set the return phi argument
+                    desc.setPhiArg(excPhi, excVal);
+                }
             }
         }
     }

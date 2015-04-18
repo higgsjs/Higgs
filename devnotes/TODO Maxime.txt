@@ -182,14 +182,23 @@ TODO: IRInstr.numVarArgs
 - replace in ir/inlining
 - find use cases in jit/ops
 
+test, commit
+
 FIXME: inlining in getPropCache? why is getPropCache not inlined?
 - cause it's in a try block!
+TODO: make fn in try inlinable again
 
 test, commit
 
 
 
 
+
+
+
+
+[DONE] TODO: inlining in try blocks
+- need to modify all call ops to jump to block with catch, then excPhi
 
 [DONE] FIXME: outSlot issue
 Assertion failed (jit/jit.d@553): no out slot for value:
