@@ -2142,102 +2142,19 @@ function $rt_getArrLen(arr)
     return $ir_load_u32(arr, $rt_ARRLEN_SLOT_OFS);
 }
 
-
-
-
-
-
-/**
-Recursive postion of the property read inline cache
-*/
-function $rt_getPropCacheRecur(obj, propStr, shapeIdx)
-{
-    if ($ir_capture_shape(obj, shapeIdx))
-    {
-        // Generate a new inline cache level recursively
-        return $ir_lazy_inline("$rt_getPropCacheRecur", obj, propStr, shapeIdx);
-    }
-    else
-    {
-        var propVal;
-
-        if (propVal = $ir_obj_get_prop(obj, propStr))
-        {
-            // If shapes are not to be propagated, clear shape information
-            $ir_clear_shape(obj);
-
-            // Return the property value
-            return propVal;
-        }
-        else
-        {
-            // If shapes are not to be propagated, clear shape information
-            $ir_clear_shape(obj);
-
-            // Throw the property value as an exception
-            throw propVal;
-        }
-
-        // If shapes are not to be propagated, clear shape information
-        $ir_clear_shape(obj);
-    }
-}
-
-/**
-Property read inline cache.
-Note: this function is always inlined.
-*/
-function $rt_getPropCache(obj, propStr)
-{
-    var shapeIdx = $ir_read_shape_idx(obj);
-
-    if ($ir_break());
-
-    return $rt_getPropCacheRecur(obj, propStr, shapeIdx);
-}
-
 /**
 Get a property from an object using a string as key
 */
 function $rt_objGetProp(obj, propStr)
 {
+    // TODO
+
+
+
+
 
 
     
-    try
-    {
-        return $rt_getPropCache(obj, propStr);
-    }
-
-    catch (propVal)
-    {
-        // Otherwise, if the property is a getter-setter function
-        if ($ir_is_object(propVal))
-        {
-            // Call the getter function
-            return $ir_call(propVal.get, obj);
-        }
-
-        // Get the object's prototype
-        var proto = $ir_obj_get_proto(obj);
-
-        // If the prototype is null, produce undefined
-        if ($ir_is_refptr(proto))
-            return $undef;
-
-        // Do a recursive lookup on the prototype
-        return $rt_objGetProp(
-            proto,
-            propStr
-        );
-    }
-    
-
-
-
-
-
-    /*
     // Capture the object shape
     var shapeIdx = $ir_read_shape_idx(obj);
     if ($ir_break());
@@ -2291,7 +2208,7 @@ function $rt_objGetProp(obj, propStr)
         proto,
         propStr
     );
-    */
+    
 }
 
 /**
