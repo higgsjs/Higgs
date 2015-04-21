@@ -159,6 +159,13 @@ GC heisenbug... use git bisect?
 - Likely, one of the primitive calls is done wrong
   - some arg value gets corrupted/misplaced
 
+TODO: simplified phi arg iteration?
+- phi.numArgs, phi.getArg(i)?
+TODO: IRInstr.numVarArgs
+- do this on master, pull
+- replace in ir/inlining
+- find use cases in jit/ops
+
 ------------------------------------------------------------------------------
 
 ECOOP - Camera Ready Version for April 29th
@@ -170,13 +177,9 @@ Next meeting:
 - Book plane & hotel for ECOOP?
   - Check conf dates
   - Can I stay at the main conf hotel?
-
-TODO: simplified phi arg iteration?
-- phi.numArgs, phi.getArg(i)?
-TODO: IRInstr.numVarArgs
-- do this on master, pull
-- replace in ir/inlining
-- find use cases in jit/ops
+- Next papers: Crankshaft without inlining as other config
+- Rapidly cited Truffle in passing when mentioning type feedback
+  - their approach is not closely related or really novel
 
 Send Marc & Baptiste paper by next meeting for proofreading
 https://www.dropbox.com/s/2fno5ks5tn9e3xf/main.pdf?dl=0
@@ -187,13 +190,6 @@ TODO: backup plan: set shape of shapeIdx as unmatched shape in capture_shape
 - sketch loop first to evaluate viability
   - mismatch edge continues looping
 
-Look at benchmark.py, check that performance isn't degraded
-
-ECOOP citations *************
-- Annoying, but it has to be done
-- Write first draft without self-censorship!
-
-test, commit
 
 
 
@@ -204,6 +200,13 @@ test, commit
 
 
 
+
+[DONE] TODO: look at benchmark.py, check that performance isn't degraded
+- splay and v8-raytrace seem slower
+- on splay with --shape_noprop
+num set prop     : 1497821
+num set prop host: 1018430
+- setPropFieldNoCheck is not inlined
 
 [DONE] FIXME: Why is getPropCache not inlined? Cause it's in a try block!
 

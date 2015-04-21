@@ -51,7 +51,7 @@ import runtime.object;
 import util.bitset;
 import options;
 
-/// Whitelist of functions to be inlined
+/// Whitelist of runtime functions to be inlined
 bool[string] inlineFuns;
 static this()
 {
@@ -86,14 +86,14 @@ static this()
     inl("$rt_neNull");
 
     inl("$rt_getPropCache");
-    inl("$rt_getPropCacheRecur");
     inl("$rt_getPropField");
     inl("$rt_getStrMethod");
     inl("$rt_getPropElem");
     inl("$rt_getPropLength");
+
     inl("$rt_setPropCache");
-    inl("$rt_getPropCacheRecur");
     inl("$rt_setPropField");
+    inl("$rt_setPropFieldNoCheck");
     inl("$rt_setPropElem");
     inl("$rt_setArrElemNoCheck");
     inl("$rt_setProto");
