@@ -32,74 +32,54 @@
 (function (exports) {
 
     var exit = require('lib/stdlib').exit;
+    var inst = {
+        _usage: null,
+        _version: null,
+        _specs: [],
+        _helpSpec: {long: 'help', short: null, desc: 'display this help and exit', defval: false, type: 'boolean'},
+        _versionSpec: {long: 'version', short: null, desc: "output version information and exit", defval: false, type: 'boolean'},
+     };
 
     /**
      * Create a new options parser.
      * config: (optional)
      */
-    function Options(config)
+    function setConfig(config)
     {
-        if (!(this instanceof Options)) return new Options(config);
-        this._usage = null;
-        this._version = null;
-        this._specs = [];
-
-        this.helpSpec = {long: 'help', short: null, desc: 'display this help and exit', defval: false, type: 'boolean'};
-        this.versionSpec = {long: 'version', short: null, desc: "output version information and exit", defval: false, type: 'boolean'};
-
         if (config != null)
         {
-            this._usage = config.usage;
-            this._version = config.version;
-            this._autoHelp = config.autoHelp;
-            this._autoVersion = config.autoVersion;
+            inst._usage = config.usage;
+            inst._version = config.version;
             for (var i = 0; i < config.opts.length; i++)
             {
                 var opt = config.opts[i];
-                this.add(opt.long, opt.defval, opt.type, opt.desc, opt.short, opt.req);
+                add(opt.long, opt.defval, opt.type, opt.desc, opt.short, opt.req);
             }
         }
+
+        return exports;
     }
+    exports.setConfig = setConfig;
 
     /**
      * usage: usage string
      */
-    Options.prototype.usage = function (usage)
+    function setUsage(usage)
     {
-        this._usage = usage;
-        return this;
+        inst._usage = usage;
+        return exports;
     };
+    exports.setUsage = setUsage;
 
     /**
      * version: version string
      */
-    Options.prototype.version = function (version)
+    function setVersion(version)
     {
-        this._version = version;
-        return this;
+        inst._version = version;
+        return exports;
     };
-
-    /**
-     * Turn automatic display of help on or off.
-     * on: (optional, defaults to true)
-     */
-    Options.prototype.autoHelp = function (on)
-    {
-        if (on == null) on = true;
-        this._autoHelp = on;
-        return this;
-    };
-
-    /**
-     * Turn automatic display of version on of off.
-     * on: (optional, defaults to true)
-     */
-    Options.prototype.autoVersion = function (on)
-    {
-        if (on == null) on = true;
-        this._autoVersion = on;
-        return this;
-    }
+    exports.setVersion = setVersion;
 
     /**
      * Format a spec for display.
@@ -126,13 +106,13 @@
     /**
      * Display help about command.
      */
-    Options.prototype.help = function ()
+    function help()
     {
         var buff = '';
-        var specs = this._getSpecs();
+        var specs = getSpecs();
 
-        if (this._usage != null)
-            buff += '\nUsage: ' + this._usage +'\n';
+        if (inst._usage != null)
+            buff += '\nUsage: ' + inst._usage +'\n';
 
         if (specs.length > 0)
         {
@@ -164,17 +144,27 @@
 
         print(buff);
     };
+    exports.help = help;
 
     /**
-     * long: long option name
+     * long: long option name (or an object with these params as keys)
      * short: short option name
      * desc: description of option
      * defval: default value
      * type: type of data (valid types: string, int, +int, float, +float, boolean)
      * req: required
      */
-    Options.prototype.add = function (long, defval, type, desc, short, req)
+    function add(long, defval, type, desc, short, req)
     {
+        if (arguments.length === 1 && long !== null && typeof(long) === "object") {
+            var opts = long;
+            long = opts.long;
+            defval = opts.defval;
+            type = opts.type;
+            desc = opts.desc;
+            short = opts.short;
+            req = opts.req;
+        }
         // try to infer the type when possible
         if (type == null)
         {
@@ -196,7 +186,7 @@
             }
         }
 
-        this._specs.push({
+        inst._specs.push({
             long: long,
             short: short,
             desc: desc,
@@ -205,21 +195,85 @@
             req: req,
         });
 
-        return this;
+        return exports;
     };
+    exports.add = add;
+
+    /**
+     * args: command line arguments
+     *
+     * Accepted patterns for parameters:
+     *  -a             => {a: true}
+     *  -ab            => {a: true, b: true}
+     *  -ab=value      => {a: true, b: value}
+     *  --long=value   => {long: value}
+     */
+    function parse(argv)
+    {
+        var p = parseArgv(argv);
+        var opts = p.opts;
+        var results = {};
+        var specs = getSpecs();
+        for (var i = 0; i < specs.length; i++)
+        {
+            var spec = specs[i];
+            // check if long option is present
+            var val = getValue(opts, spec);
+
+            // if there is a value, use it
+            if (val != null)
+            {
+                // validate value
+                if ((typeof val === 'boolean' && spec.type !== 'boolean') || !typeTests[spec.type](val))
+                {
+                    printAndExit('Invalid type for ' + formatSpec(spec) + '. Expected ' + typeToString[spec.type] + ".");
+                }
+
+                // convert from string to spec.type
+                val = convertValue(val, spec.type);
+
+                applyValue(results, spec, val);
+            }
+            // fallback to default value if present
+            else if (spec.defval != null)
+            {
+                applyValue(results, spec, spec.defval);
+            }
+            else if (spec.req === true)
+            {
+                printAndExit('The option ' + formatSpec(spec) + ' is required.');
+            }
+        }
+
+        results._ = p.args;
+
+        if (results.help === true)
+        {
+            help();
+            exit(0);
+        }
+
+        if (inst._version != null && results.version === true)
+        {
+            printAndExit(inst._version, 0);
+        }
+
+        return results;
+    };
+    exports.parse = parse;
 
     /**
      * Get the list of specs and append the helpSpec and versionSpec if they're activated.
      */
-    Options.prototype._getSpecs = function ()
+    function getSpecs()
     {
-        var arr = this._specs.slice();
-        if (this._autoHelp)
-            arr = arr.concat(this.helpSpec);
-        if (this._autoVersion && this._version != null)
-            arr = arr.concat(this.versionSpec);
+        var arr = inst._specs.slice();
+        if (inst._usage != null)
+            arr = arr.concat(inst._helpSpec);
+        if (inst._version != null)
+            arr = arr.concat(inst._versionSpec);
         return arr;
-    };
+    }
 
     /**
      * arg: argument to parse
@@ -425,69 +479,5 @@
         print(str);
         exit(code != null ? code : 1);
     }
-
-    /**
-     * args: command line arguments
-     *
-     * Accepted patterns for parameters:
-     *  -a             => {a: true}
-     *  -ab            => {a: true, b: true}
-     *  -ab=value      => {a: true, b: value}
-     *  --long=value   => {long: value}
-     */
-    Options.prototype.parse = function (argv)
-    {
-        var p = parseArgv(argv);
-        var opts = p.opts;
-        var results = {};
-        var specs = this._getSpecs();
-        for (var i = 0; i < specs.length; i++)
-        {
-            var spec = specs[i];
-            // check if long option is present
-            var val = getValue(opts, spec);
-
-            // if there is a value, use it
-            if (val != null)
-            {
-                // validate value
-                if ((typeof val === 'boolean' && spec.type !== 'boolean') || !typeTests[spec.type](val))
-                {
-                    printAndExit('Invalid type for ' + formatSpec(spec) + '. Expected ' + typeToString[spec.type] + ".");
-                }
-
-                // convert from string to spec.type
-                val = convertValue(val, spec.type);
-
-                applyValue(results, spec, val);
-            }
-            // fallback to default value if present
-            else if (spec.defval != null)
-            {
-                applyValue(results, spec, spec.defval);
-            }
-            else if (spec.req === true)
-            {
-                printAndExit('The option ' + formatSpec(spec) + ' is required.');
-            }
-        }
-
-        results._ = p.args;
-
-        if (this._autoHelp && results.help === true)
-        {
-            this.help();
-            exit(0);
-        }
-
-        if (this._autoVersion && this._version != null && results.version === true)
-        {
-            printAndExit(this._version, 0);
-        }
-
-        return results;
-    };
-
-    exports.Options = Options;
 
 })(exports);

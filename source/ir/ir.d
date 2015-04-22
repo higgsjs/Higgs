@@ -51,6 +51,7 @@ import parser.ast;
 import ir.ops;
 import ir.livevars;
 import ir.typeprop;
+import runtime.gc;
 import runtime.vm;
 import runtime.layout;
 import runtime.object;
@@ -1302,6 +1303,12 @@ class IRInstr : IRDstValue
     size_t numArgs()
     {
         return args.length;
+    }
+
+    /// Get the number of variable length (extra) arguments
+    size_t numVarArgs()
+    {
+        return args.length - opcode.argTypes.length;
     }
 
     /// Get an argument of this instruction

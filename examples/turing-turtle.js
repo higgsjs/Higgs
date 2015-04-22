@@ -16,7 +16,7 @@ var std = require('lib/stdlib');
 var draw = require('lib/draw');
 var image = require('lib/image');
 var rnd = require('lib/random');
-var Options = require('lib/options').Options;
+var options = require('lib/options');
 
 // ===========================================================================
 
@@ -267,12 +267,10 @@ Machine.prototype.update = function (numItrs)
 // ===========================================================================
 
 // Parse the command line arguments
-var o = Options()
-    .autoHelp()
-    .autoVersion()
+options
     .add('width' , 600, '+int', 'canvas width', 'w')
     .add('height', 600, '+int', 'canvas height', 'h');
-var args = o.parse(arguments);
+var args = options.parse(arguments);
 var canvasWidth  = args.width;
 var canvasHeight = args.height;
 
@@ -410,4 +408,3 @@ window.canvas.drawText(20, 120, "Left arrow to restart");
 
 // Show the drawing window
 window.show();
-
