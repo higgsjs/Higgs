@@ -1289,6 +1289,12 @@ class IRInstr : IRDstValue
         return args.length;
     }
 
+    /// Get the number of variable length (extra) arguments
+    size_t numVarArgs()
+    {
+        return args.length - opcode.argTypes.length;
+    }
+
     /// Get an argument of this instruction
     IRValue getArg(size_t idx)
     {

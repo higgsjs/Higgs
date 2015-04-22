@@ -5587,6 +5587,8 @@ void gen_get_c_fptr(
         auto sigStr = cast(IRString)instr.getArg(1);
         assert (sigStr !is null, "null sigStr in call_ffi.");
         auto types = to!string(sigStr.str).split();
+        auto argTypes = types[1..$];
+        auto numArgs = argTypes.length;
 
         // Get the IRFunction
         auto closPtr = vm.getArgVal(instr, 0).word.ptrVal;
@@ -5612,6 +5614,150 @@ void gen_get_c_fptr(
 
 
 
+        /*
+        FIXME: issue.... wsp and tsp
+        can get those from the VM object
+
+
+        FIXME: still an issue of stack traversal
+        GC traverses chain of ret addrs
+
+        Can't unwind through C calls... Which is OK.
+        - Can have the user take special provisions
+
+        But what about the GC?
+        Would need an RA to tell us who the next function is
+
+
+        */
+
+
+
+
+        // TODO: get a basic call with no args working first
+        // Look at optimized call code
+
+
+
+
+
+        /*
+        // Compute the number of locals in this frame
+        auto frameSize = fun.numLocals + numExtra;
+
+        // Copy the function arguments supplied
+        for (int32_t i = 0; i < numArgs; ++i)
+        {
+            auto instrArgIdx = 2 + i;
+            auto dstIdx = -(numArgs - i);
+
+            // Copy the argument word
+            auto argOpnd = st.getWordOpnd(
+                as,
+                instr,
+                instrArgIdx,
+                64,
+                scrRegs[1].opnd(64),
+                true,
+                false
+            );
+            as.setWord(dstIdx, argOpnd);
+
+            // Copy the argument type
+            auto tagOpnd = st.getTagOpnd(
+                as,
+                instr,
+                instrArgIdx,
+                scrRegs[1].opnd(8),
+                true
+            );
+            as.setTag(dstIdx, tagOpnd);
+        }
+
+        // Write undefined values for the missing arguments
+        for (int32_t i = 0; i < numMissing; ++i)
+        {
+            auto dstIdx = -(i + 1);
+
+            as.setWord(dstIdx, UNDEF.word.int8Val);
+            as.setTag(dstIdx, UNDEF.tag);
+        }
+
+        // Write the argument count
+        as.setWord(-numArgs - 1, numArgs);
+
+        // Write the "this" argument
+        if (fun.thisVal.hasUses)
+        {
+            auto thisReg = st.getWordOpnd(
+                as,
+                instr,
+                1,
+                64,
+                scrRegs[1].opnd(64),
+                true,
+                false
+            );
+            as.setWord(-numArgs - 2, thisReg);
+            auto tagOpnd = st.getTagOpnd(
+                as,
+                instr,
+                1,
+                scrRegs[1].opnd(8),
+                true
+            );
+            as.setTag(-numArgs - 2, tagOpnd);
+        }
+
+        // Write the closure argument
+        if (fun.closVal.hasUses)
+        {
+            auto closReg = st.getWordOpnd(
+                as,
+                instr,
+                0,
+                64,
+                scrRegs[0].opnd(64),
+                false,
+                false
+            );
+            as.setWord(-numArgs - 3, closReg);
+        }
+
+        // Spill the values that are live after the call
+        st.spillLiveBefore(as, instr);
+
+        // Clear the known shape information
+        st.clearShapes();
+
+        // Push space for the callee arguments and locals
+        as.sub(X86Opnd(tspReg), X86Opnd(frameSize));
+        as.sub(X86Opnd(wspReg), X86Opnd(8 * frameSize));
+
+        // Request an instance for the function entry block
+        auto entryVer = getBlockVersion(
+            fun.entryBlock,
+            new CodeGenState(fun)
+        );
+        */
+
+
+
+        // TODO: create RA entry for this?
+
+
+        /*
+        // Get the return address slot of the callee
+        auto raSlot = entryVer.block.fun.raVal.outSlot;
+        assert (raSlot !is NULL_STACK);
+
+        // Write the return address on the stack
+        as.movAbsRef(vm, scrRegs[0], block, target0, 0);
+        as.setWord(raSlot, scrRegs[0].opnd(64));
+
+        // Jump to the function entry block
+        jmp32Ref(as, vm, block, entryVer, 0);
+        */
 
 
 
@@ -5622,7 +5768,28 @@ void gen_get_c_fptr(
 
 
 
-        // TODO:
+
+        // TODO: compile the entry point
+
+        vm.setCurInstr(instr);
+
+
+        vm.setCurInstr(null);
+
+
+
+        // TODO: Return to the calling code
+        //as.ret();
+
+
+
+
+
+
+
+
+
+
         // Push the entry point address on the stack
         auto codePtr = fun.cEntryCode.getAddress;
         vm.push(Word.ptrv(cast(rawptr)codePtr), Tag.RAWPTR);
