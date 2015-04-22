@@ -52,6 +52,7 @@ import runtime.layout;
 import runtime.string;
 import runtime.object;
 import util.misc;
+import stats;
 
 /**
 GC root object

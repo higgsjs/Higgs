@@ -51,6 +51,7 @@ import parser.ast;
 import ir.ops;
 import ir.livevars;
 import ir.typeprop;
+import runtime.gc;
 import runtime.vm;
 import runtime.layout;
 import runtime.object;

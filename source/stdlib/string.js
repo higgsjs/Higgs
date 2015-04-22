@@ -58,12 +58,28 @@ function String(value)
     }
     else
     {
+        // Create indexes
+        for (var i = 0; i < strVal.length; i++)
+        {
+            Object.defineProperty(this, i,
+            {
+                enumerable: true,
+                value: strVal[i],
+            });
+        }
+
         // Store the value in the new object
-        // TODO: this should be a hidden/internal property
-        this.value = strVal;
+        // Value is read-only and not enumerable
+        Object.defineProperty(this, "value",
+        {
+            value: strVal,
+        });
 
         // Set length property.
-        this.length = strVal.length;
+        Object.defineProperty(this, "length",
+        {
+            value: strVal.length,
+        });
     }
 }
 
@@ -113,8 +129,29 @@ function string_internal_isWhiteSpace(c)
            (c === 12288) || (c === 65279);
 }
 
+// Convert a code point into UTF-16 code units (surrogates).
+function string_internal_utf16encoding(cp)
+{
+    assert(cp >= 0 && cp <= 0x10FFFF);
+
+    if (cp < 65535) return [cp];
+
+    var cu1 = Math.floor((cp - 65536) / 1024) + 0xD800;
+    var cu2 = ((cp - 65536) % 1024) + 0xDC00;
+
+    return [cu1, cu2];
+}
+
+// Convert UTF-8 code units (surrogates) into a code point.
+function string_internal_utf16decode(lead, trail)
+{
+    assert(0xD800 <= lead && lead <= 0xDBFF);
+    assert(0xDC00 <= trail && trail <= 0xDFFF);
+    return (lead - 0xD800) * 1024 + (trail - 0xDC00) + 0x10000;
+}
+
 /// Preallocated character strings for 8-bit char codes
-$rt_char_str_table = (function () 
+$rt_char_str_table = (function ()
 {
     var len = 256;
     var table = $rt_arrtbl_alloc(len);
@@ -170,6 +207,37 @@ function string_fromCharCode(c)
         $rt_str_set_data(str, i, parseInt($ir_get_arg(i)));
 
     return $ir_get_str(str);
+}
+
+/**
+https://people.mozilla.org/~jorendorff/es6-draft.html#sec-string.fromcodepoint (21.1.2.2)
+*/
+function string_fromCodePoint()
+{
+    var push = Array.prototype.push;
+    var fromCharCode = String.fromCharCode;
+
+    var codePoints = arguments;
+    var length = codePoints.length;
+    var elements = [];
+    var nextIndex = 0;
+
+    while (nextIndex < length)
+    {
+        var next = codePoints[nextIndex];
+        var nextCP = $rt_toNumber(next);
+
+        if (!Object.is(nextCP, $rt_toInteger(nextCP)))
+            throw RangeError("Code point cannot be a floating point");
+
+        if (nextCP < 0 || nextCP > 0x10FFFF)
+            throw RangeError("Code point " + next + " is not valid");
+
+        push.apply(elements, string_internal_utf16encoding(nextCP));
+        nextIndex++;
+    }
+
+    return elements.length === 0 ? '' : fromCharCode.apply(null, elements);
 }
 
 /**
@@ -265,6 +333,31 @@ function string_charCodeAt(pos)
 }
 
 /**
+https://people.mozilla.org/~jorendorff/es6-draft.html#sec-string.prototype.codepointat
+*/
+function string_codePointAt(pos)
+{
+    if (this === null || this === undefined)
+        throw new TypeError("this cannot be null or undefined");
+
+    var src = $rt_toString(this);
+    var position = $rt_toInteger(pos);
+    var size = src.length;
+
+    if (position < 0 || position >= size) return undefined;
+
+    var first = src.charCodeAt(position);
+
+    if (first < 0xD800 || first > 0xDBFF || (position + 1) === size) return first;
+
+    var second = src.charCodeAt(position + 1);
+
+    if (second < 0xDC00 || second > 0xDFFF) return first;
+
+    return string_internal_utf16decode(first, second);
+}
+
+/**
 15.5.4.6 String.prototype.concat([string1 [, string2 [, ... ]]])
 */
 function string_concat()
@@ -276,6 +369,66 @@ function string_concat()
         outStr += $ir_get_arg(i);
 
     return outStr;
+}
+
+/**
+https://people.mozilla.org/~jorendorff/es6-draft.html#sec-string.prototype.endswith (21.1.3.6)
+*/
+function string_endsWith(searchString, endPosition)
+{
+    if (this === null || this === undefined)
+        throw new TypeError("this cannot be null or undefined");
+
+    if (searchString instanceof RegExp)
+        throw new TypeError("searchString cannot be a RegExp");
+
+    var src = $rt_toString(this);
+    var searchStr = $rt_toString(searchString);
+    var len = src.length;
+    var pos = endPosition === undefined ? len : $rt_toInteger(endPosition);
+    var end = Math.min(Math.max(pos, 0), len);
+    var searchLength = searchStr.length;
+
+    var start = end - searchLength;
+    if (start < 0)
+        return false;
+
+    return src.substr(start, searchLength) === searchStr;
+}
+
+/**
+https://people.mozilla.org/~jorendorff/es6-draft.html#sec-string.prototype.includes (21.1.3.7)
+*/
+function string_includes(searchString, position)
+{
+    if (this === null || this === undefined)
+        throw new TypeError("this cannot be null or undefined");
+
+    if (searchString instanceof RegExp)
+        throw new TypeError("searchString cannot be a RegExp");
+
+    var src = $rt_toString(this);
+    var searchStr = $rt_toString(searchString);
+    var pos = $rt_toInteger(position);
+    var len = src.length;
+    var start = Math.min(Math.max(pos, 0), len);
+    var searchLen = searchStr.length;
+
+    var k = start;
+    while ((k + searchLen) <= len)
+    {
+        var j = 0;
+        while (j < searchLen)
+        {
+            if (src[k + j] !== searchStr[j]) break;
+            j++;
+        }
+        // Found a valid `k`.
+        if (j === searchLen) return true;
+        k++;
+    }
+
+    return false;
 }
 
 /**
@@ -425,6 +578,31 @@ function string_match(regexp)
     {
         return re.exec(this);
     }
+}
+
+/**
+http://people.mozilla.org/~jorendorff/es6-draft.html#sec-properties-of-the-string-constructor (21.1.3.12)
+*/
+function string_repeat(count)
+{
+    if (this === null || this === undefined)
+        throw new TypeError("this cannot be null or undefined");
+
+    var str = $rt_toString(this);
+    var n = $rt_toInteger(count);
+
+    if (n < 0 || n === Infinity)
+        throw new RangeError("Count must be positive and cannot be Infinity");
+
+    if (str.length === 0 || count === 0) return '';
+
+    var buff = '';
+    for (var i = 0; i < count; i++)
+    {
+        buff += str;
+    }
+
+    return buff;
 }
 
 /**
@@ -727,6 +905,30 @@ function string_split(separator, limit)
 }
 
 /**
+https://people.mozilla.org/~jorendorff/es6-draft.html#sec-string.prototype.startswith (21.1.3.18)
+*/
+function string_startsWith(searchString, position)
+{
+    if (this === null || this === undefined)
+        throw new TypeError("this cannot be null or undefined");
+
+    if (searchString instanceof RegExp)
+        throw new TypeError("searchString cannot be a RegExp");
+
+    var src = $rt_toString(this);
+    var searchStr = $rt_toString(searchString);
+    var pos = $rt_toInteger(position);
+    var len = src.length;
+    var start = Math.min(Math.max(pos, 0), len);
+    var searchLength = searchStr.length;
+
+    if (start + searchLength > len)
+        return false;
+
+    return src.substr(start, searchLength) === searchStr;
+}
+
+/**
 15.5.4.15 String.prototype.substring(start, end)
 */
 function string_substring(start, end)
@@ -902,21 +1104,27 @@ Setup String method.
 */
 
 String.fromCharCode = string_fromCharCode;
+String.fromCodePoint = string_fromCodePoint;
 
 // Setup String prototype
 String.prototype.toString = string_toString;
 String.prototype.charCodeAt = string_charCodeAt;
+String.prototype.codePointAt = string_codePointAt;
 String.prototype.valueOf = string_valueOf;
 String.prototype.charAt = string_charAt;
 String.prototype.concat = string_concat;
+String.prototype.endsWith = string_endsWith;
+String.prototype.includes = string_includes;
 String.prototype.indexOf = string_indexOf;
 String.prototype.lastIndexOf = string_lastIndexOf;
 String.prototype.localeCompare = string_localeCompare;
 String.prototype.slice = string_slice;
 String.prototype.match = string_match;
+String.prototype.repeat = string_repeat;
 String.prototype.replace = string_replace;
 String.prototype.search = string_search;
 String.prototype.split = string_split;
+String.prototype.startsWith = string_startsWith;
 String.prototype.substring = string_substring;
 String.prototype.substr = string_substr;
 String.prototype.toLowerCase = string_toLowerCase;
@@ -941,4 +1149,3 @@ for (p in String.prototype)
         {enumerable:false, writable:true, configurable:true }
     );
 }
-
