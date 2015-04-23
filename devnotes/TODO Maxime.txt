@@ -187,22 +187,24 @@ Next meeting:
 
 TODO: try implementing maxshapes=N through $ir_clear_shape for now
 - will allow us to get crucial experiments for next paper working
-TODO: duplicate capture_shape loop mechanism, use for all the things
+- version limit is hit in many benchmarks right now
+
+TODO: $rt_setPropCache
 
 TODO: try using $rt_getPropCache everywhere
 
-TODO: try putting inline cache code into method
+test, commit
+
+
+
+
+
+
+
+
+[DONE] TODO: try putting inline cache code into method
 $rt_getPropCache(obj, propName)
 - this requires inlining & exceptions
-- make a special case for getPropCache
-
-
-
-
-
-
-
-
 
 [DONE] TODO: try benchmark.py with exception inlining
 
