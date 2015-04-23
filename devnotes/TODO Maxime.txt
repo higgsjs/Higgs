@@ -137,8 +137,6 @@ TODO: Marc wants description of workings of typed shapes
 - hack little diagrams
 TODO: write/sketch explanation of typed shapes in typed shapes paper
 
-TODO: backup plan, implement maxshapes=N through $ir_clear_shape for now?
-
 TODO: simplified phi arg iteration?
 - phi.numArgs, phi.getArg(i)?
 
@@ -187,6 +185,10 @@ Next meeting:
   - Can I stay at the main conf hotel?
 =====
 
+TODO: try implementing maxshapes=N through $ir_clear_shape for now
+- will allow us to get crucial experiments for next paper working
+TODO: duplicate capture_shape loop mechanism, use for all the things
+
 TODO: try using $rt_getPropCache everywhere
 
 TODO: try putting inline cache code into method
@@ -194,9 +196,6 @@ $rt_getPropCache(obj, propName)
 - this requires inlining & exceptions
 - make a special case for getPropCache
 
-test, commit
-
-TODO: duplicate capture_shape loop mechanism, use for all the things
 
 
 
@@ -205,6 +204,9 @@ TODO: duplicate capture_shape loop mechanism, use for all the things
 
 
 
+[DONE] TODO: try benchmark.py with exception inlining
+
+[DONE] TODO: try making inlining with exceptions pass `make test`
 
 [DONE] TODO: try benchmark.py
 

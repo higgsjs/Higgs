@@ -256,10 +256,6 @@ bool inlinable(IRInstr callSite, IRFunction callee)
         callSite.opcode !is &CALL_PRIM)
         return false;
 
-    // No support for inlining calls inside of try blocks
-    if (callSite.getTarget(1) !is null)
-        return false;
-
     // No support for functions using the "arguments" object
     if (callee.ast.usesArguments == true)
         return false;
@@ -305,6 +301,23 @@ PhiNode inlineCall(IRInstr callSite, IRFunction callee)
     auto contDesc = contJump.setTarget(0, contBranch.target);
     foreach (arg; contBranch.args)
         contDesc.setPhiArg(cast(PhiNode)arg.owner, arg.value);
+
+    // If the call has an exception target
+    IRBlock excBlock = null;
+    PhiNode excPhi = null;
+    if (callSite.getTarget(1))
+    {
+        // Create a block for the exception value merging
+        excBlock = caller.newBlock("exc_merge");
+        excPhi = excBlock.addPhi(new PhiNode());
+
+        // Jump to the call continuation block
+        auto excBranch = callSite.getTarget(1);
+        auto excJump = excBlock.addInstr(new IRInstr(&JUMP));
+        auto excDesc = excJump.setTarget(0, excBranch.target);
+        foreach (arg; excBranch.args)
+            excDesc.setPhiArg(cast(PhiNode)arg.owner, arg.value);
+    }
 
     //
     // Callee basic block copying and translation
@@ -398,6 +411,7 @@ PhiNode inlineCall(IRInstr callSite, IRFunction callee)
             for (size_t aIdx = 0; aIdx < oldInstr.numArgs; ++aIdx)
             {
                 auto arg = oldInstr.getArg(aIdx);
+
                 assert (arg in valMap || cast(IRDstValue)arg is null);
                 auto newArg = valMap.get(arg, arg);
                 newInstr.setArg(aIdx, newArg);
@@ -421,8 +435,31 @@ PhiNode inlineCall(IRInstr callSite, IRFunction callee)
                 }
             }
 
+            // If this is a call instruction
+            if (newInstr.opcode.isCall)
+            {
+                // If the inlined call site has an exception target
+                // but this call instruction does not
+                if (excBlock !is null && newInstr.getTarget(1) is null)
+                {
+                    auto catchBlock = caller.newBlock("call_exc");
+
+                    newInstr.setTarget(1, catchBlock);
+
+                    // Mark the exception value on the exception path
+                    auto excVal = catchBlock.addInstr(new IRInstr(&CATCH, newInstr));
+
+                    // Jump to the merge block
+                    auto jump = catchBlock.addInstr(new IRInstr(&JUMP));
+                    auto desc = jump.setTarget(0, excBlock);
+
+                    // Set the exception phi argument
+                    desc.setPhiArg(excPhi, excVal);
+                }
+            }
+
             // If this is a return instruction
-            if (newInstr.opcode is &RET)
+            else if (newInstr.opcode is &RET)
             {
                 // Get the return value
                 auto retVal = newInstr.getArg(0);
@@ -437,6 +474,27 @@ PhiNode inlineCall(IRInstr callSite, IRFunction callee)
                 // Set the return phi argument
                 desc.setPhiArg(retPhi, retVal);
             }
+
+            // If this is a throw instruction
+            else if (newInstr.opcode is &THROW)
+            {
+                // If we have an exception target
+                if (excBlock !is null)
+                {
+                    // Get the return value
+                    auto excVal = newInstr.getArg(0);
+
+                    // Remove the throw instruction
+                    newBlock.delInstr(newInstr);
+
+                    // Jump to the merge block
+                    auto jump = newBlock.addInstr(new IRInstr(&JUMP));
+                    auto desc = jump.setTarget(0, excBlock);
+
+                    // Set the return phi argument
+                    desc.setPhiArg(excPhi, excVal);
+                }
+            }
         }
     }
  
@@ -449,6 +507,28 @@ PhiNode inlineCall(IRInstr callSite, IRFunction callee)
 
     // Get the inlined entry block for the callee function
     auto entryBlock = blockMap[callee.entryBlock];
+
+    // If the call site has an exception target
+    if (excPhi)
+    {
+        // Identify the catch instruction
+        IRInstr catchInstr = null;
+        for (auto use = callSite.getFirstUse; use !is null; use = use.next)
+        {
+            if (auto useInstr = cast(IRInstr)use.owner)
+                if (useInstr.opcode is &CATCH)
+                    catchInstr = useInstr;
+        }
+        
+        // If the exception value is used
+        if (catchInstr !is null)
+        {
+            // Replace exception uses by the exception phi
+            catchInstr.replUses(excPhi);
+        }
+
+        //writeln("replaced catch");
+    }
 
     // Replace uses of the call instruction by uses of the return phi
     callSite.replUses(retPhi);
