@@ -2144,6 +2144,7 @@ function $rt_getArrLen(arr)
 
 /**
 Property read inline cache implementation
+Note: this primitive is always inlined
 */
 function $rt_getPropCache(obj, propStr)
 {
@@ -2189,53 +2190,20 @@ Get a property from an object using a string as key
 */
 function $rt_objGetProp(obj, propStr)
 {
-    // TODO
-
-
-
-
-
-
-    
-    // Capture the object shape
-    var shapeIdx = $ir_read_shape_idx(obj);
-    if ($ir_break());
-    if ($ir_capture_shape(obj, shapeIdx))
-    if ($ir_capture_shape(obj, shapeIdx))
-    if ($ir_capture_shape(obj, shapeIdx))
-    if ($ir_capture_shape(obj, shapeIdx))
-    if ($ir_capture_shape(obj, shapeIdx))
-    if ($ir_capture_shape(obj, shapeIdx))
-    if ($ir_capture_shape(obj, shapeIdx))
-    if ($ir_capture_shape(obj, shapeIdx))
-    if ($ir_capture_shape(obj, shapeIdx))
-    if ($ir_capture_shape(obj, shapeIdx))
-    if ($ir_capture_shape(obj, shapeIdx))
-    if ($ir_capture_shape(obj, shapeIdx))
-    if ($ir_capture_shape(obj, shapeIdx))
-    if ($ir_capture_shape(obj, shapeIdx))
-    if ($ir_capture_shape(obj, shapeIdx))
-    if ($ir_capture_shape(obj, shapeIdx));
-
-    // If the property value can be read directly
-    var propVal;
-    if (propVal = $ir_obj_get_prop(obj, propStr))
+    // Try reading this as a normal property
+    try
     {
-        // If shapes are not to be propagated, clear shape information
-        $ir_clear_shape(obj);
-
-        // Return the property value
-        return propVal;
+        return $rt_getPropCache(obj, propStr);
     }
 
-    // If shapes are not to be propagated, clear shape information
-    $ir_clear_shape(obj);
-
-    // Otherwise, if the property is a getter-setter function
-    if ($ir_is_object(propVal))
+    // If the property is a getter-setter
+    catch (propVal)
     {
-        // Call the getter function
-        return $ir_call(propVal.get, obj);
+        if ($ir_is_object(propVal))
+        {
+            // Call the getter function
+            return $ir_call(propVal.get, obj);
+        }
     }
 
     // Get the object's prototype
@@ -2250,7 +2218,6 @@ function $rt_objGetProp(obj, propStr)
         proto,
         propStr
     );
-    
 }
 
 /**
@@ -2467,28 +2434,15 @@ function $rt_getStrMethod(base, propStr)
     // If the base is a simple object
     if ($ir_is_string(base) || $ir_is_rope(base))
     {
-        // Get the string prototype object
-        var obj = $ir_get_str_proto();
-
-        // Capture the object shape
-        var shapeIdx = $ir_read_shape_idx(obj);
-        if ($ir_break());
-        if ($ir_capture_shape(obj, shapeIdx))
-            if ($ir_capture_shape(obj, shapeIdx))
-
-        // If the property value can be read directly
-        var propVal;
-        if (propVal = $ir_obj_get_prop(obj, propStr))
+        // Try reading this as property of the string prototype object
+        try
         {
-            // If shapes are not to be propagated, clear shape information
-            $ir_clear_shape(obj);
-
-            // Return the property value
-            return propVal;
+            return $rt_getPropCache($ir_get_str_proto(), propStr);
         }
 
-        // If shapes are not to be propagated, clear shape information
-        $ir_clear_shape(obj);
+        catch (propVal)
+        {
+        }
     }
 
     return $rt_getProp(base, propStr);

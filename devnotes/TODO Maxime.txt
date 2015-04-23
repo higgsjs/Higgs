@@ -185,15 +185,19 @@ Next meeting:
   - Can I stay at the main conf hotel?
 =====
 
+TODO: replace --shape_noprop with maxshapes=0
+
 TODO: try implementing maxshapes=N through $ir_clear_shape for now
 - will allow us to get crucial experiments for next paper working
 - version limit is hit in many benchmarks right now
 
 TODO: $rt_setPropCache
 
-TODO: try using $rt_getPropCache everywhere
-
 test, commit
+
+TODO: try using $rt_getPropCache everywhere
+- grep for capture_shape
+
 
 
 
