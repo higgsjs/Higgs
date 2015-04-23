@@ -1693,7 +1693,7 @@ void gen_call_prim(
     //as.printStr(to!string(nameStr));
 
     // Check that the argument count matches
-    auto numArgs = cast(int32_t)instr.numArgs - 1;
+    auto numArgs = cast(int32_t)instr.numVarArgs;
     assert (
         numArgs is fun.numParams,
         "incorrect argument count for call to primitive " ~ fun.getName
@@ -1818,7 +1818,7 @@ void gen_call(
     auto mayThrow = !closType.tagKnown || closType.tag !is Tag.CLOSURE;
 
     // Get the number of arguments supplied
-    auto numArgs = cast(uint32_t)instr.numArgs - 2;
+    auto numArgs = cast(uint32_t)instr.numVarArgs;
 
     // If the callee function is known
     if (closType.fptrKnown)

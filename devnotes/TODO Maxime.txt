@@ -139,32 +139,28 @@ TODO: write/sketch explanation of typed shapes in typed shapes paper
 
 TODO: backup plan, implement maxshapes=N through $ir_clear_shape for now?
 
-Short blog post: A Small venture into self-modifying compiler IR
-- Mad computer scientist
-- Tell them about what you're doing now
-- Some code examples
-- inline caches as self-modifying code
-- Recursively modifying itself
-- Inspired from inlining code
-  - Restrictions make it simpler
-- Lazy inlining exposed at the IR level
-- Self modifying IR
-- Link to code for dup_capture
-
-TODO: lazy_inline "prim", args instruction
+TODO: simplified phi arg iteration?
+- phi.numArgs, phi.getArg(i)?
 
 GC heisenbug... use git bisect?
 - Problem is, it doesn't show up every run of `make test`
-- Seems to have to do with the VM register
-- Likely, one of the primitive calls is done wrong
-  - some arg value gets corrupted/misplaced
+- Symptoms:
+  - invalid outslot
+  - vm ptr null
+- Causes:
+  - Seems to have to do with the VM register
+  - Likely, one of the primitive calls is done wrong
+    - some arg value gets corrupted/misplaced
+  - Heisenbug probably has to do with address randomization
+    - VM object or IR corrupted some of the time
+  - Some value is stored in the wrong place
+- Ideas:
+  - May be able to devise some adversarial test
 
-TODO: simplified phi arg iteration?
-- phi.numArgs, phi.getArg(i)?
-TODO: IRInstr.numVarArgs
-- do this on master, pull
-- replace in ir/inlining
-- find use cases in jit/ops
+TODO: work on new bib for typed shapes
+- use bibtex
+- *recent* papers about object, inline caches, etc
+TODO: copy over ECOOP graph code for DLS paper
 
 ------------------------------------------------------------------------------
 
@@ -174,16 +170,21 @@ ECOOP - Camera Ready Version for April 29th
 ECOOP! Finish it up so you can move on
 
 Next meeting:
+- Next papers: Crankshaft without inlining as other config
+- Ran into problems with self-modifying IR
+- Returned efforts to revising ECOOP papers
+  - Removed subdirectories for submission
+  - Rapidly cited Truffle in passing when mentioning type feedback
+    - their approach is not closely related or really novel
+  - Did some proofreading, fixed typos and wording
+  - Submitted current version
+  - ECOOP paper pretty much finished, needs final proofreading
+======
+- Laptop overheating...
 - Book plane & hotel for ECOOP?
   - Check conf dates
   - Can I stay at the main conf hotel?
-- Next papers: Crankshaft without inlining as other config
-- Rapidly cited Truffle in passing when mentioning type feedback
-  - their approach is not closely related or really novel
-
-Send Marc & Baptiste paper by next meeting for proofreading
-https://www.dropbox.com/s/2fno5ks5tn9e3xf/main.pdf?dl=0
-- Use dropbox link
+=====
 
 TODO: backup plan: set shape of shapeIdx as unmatched shape in capture_shape
 - implement shape capture as loop
@@ -196,10 +197,15 @@ TODO: backup plan: set shape of shapeIdx as unmatched shape in capture_shape
 
 
 
+[DONE] TODO: make use of IRInstr.numVarArgs in jit/ops and ir/inlining
 
+[DONE] TODO: IRInstr.numVarArgs
+- do this on master, pull
+- replace in ir/inlining
 
-
-
+[DONE] Send Marc & Baptiste paper by next meeting for proofreading
+https://www.dropbox.com/s/2fno5ks5tn9e3xf/main.pdf?dl=0
+- Use dropbox link
 
 [DONE] TODO: look at benchmark.py, check that performance isn't degraded
 - splay and v8-raytrace seem slower

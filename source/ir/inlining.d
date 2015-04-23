@@ -265,8 +265,7 @@ bool inlinable(IRInstr callSite, IRFunction callee)
         return false;
 
     // No support for argument count mismatch
-    auto numArgs = callSite.numArgs - callSite.opcode.argTypes.length;
-    if (numArgs != callee.numParams)
+    if (callSite.numVarArgs != callee.numParams)
         return false;
 
     // Inlining is possible
@@ -294,7 +293,7 @@ PhiNode inlineCall(IRInstr callSite, IRFunction callee)
 
     // Get the number of visible arguments passed at the call site
     assert (callSite.opcode.isCall);
-    auto numArgs = callSite.numArgs - callSite.opcode.argTypes.length;
+    auto numArgs = callSite.numVarArgs;
 
     // Create a block for the return value merging
     auto retBlock = caller.newBlock("ret_merge");
