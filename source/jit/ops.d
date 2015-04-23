@@ -3086,6 +3086,11 @@ void gen_capture_shape(
     assert (objVal !is null);
     assert (shapeIdxVal !is null);
 
+    // If we hit the version limit and we're in a generic block version,
+    // exit the capture_shape chain without capturing the shape
+    if (!st.shapeKnown(shapeIdxVal))
+        return gen_jump_false(ver, st, instr, as);
+
     // Get type information about the object argument
     ValType objType = st.getType(objVal);
 
@@ -3112,10 +3117,14 @@ void gen_capture_shape(
     // Compare the shape index operand with the observed shape index
     as.cmp(shapeIdxOpnd, X86Opnd(curShapeIdx));
 
-    // On the recursive branch, no information is gained
-    auto branchT = getBranchEdge(instr.getTarget(0), st, false);
+    // On the recursive (true) branch, no info about the object shape gained
+    // We mark the shape idx as having the shape we just tested, this is a
+    // hack to create new block versions during the shape dispatch
+    auto trueSt = new CodeGenState(st);
+    trueSt.setShape(shapeIdxVal, vm.objShapes[curShapeIdx]);
+    auto branchT = getBranchEdge(instr.getTarget(0), trueSt, false);
 
-    // Mark the object shape as known on the false branch,
+    // On the exit (false) branch, mark the object shape as known
     // and queue this branch for immediate compilation (fall through)
     auto falseSt = new CodeGenState(st);
     falseSt.setShape(objVal, vm.objShapes[curShapeIdx]);
@@ -3202,6 +3211,10 @@ void gen_read_shape_idx(
     as.getField(outOpnd.reg, opnd0.reg, obj_ofs_shape_idx(null));
 
     st.setOutTag(as, instr, Tag.INT32);
+
+    // Mark the shape of this instructon's output as null
+    // We do this to signal to capture_shape that the shape was just read
+    st.setShape(instr, null);
 }
 
 /// Initializes an object to the empty shape

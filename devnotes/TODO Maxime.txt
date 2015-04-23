@@ -172,13 +172,14 @@ ECOOP! Finish it up so you can move on
 Next meeting:
 - Next papers: Crankshaft without inlining as other config
 - Ran into problems with self-modifying IR
-- Returned efforts to revising ECOOP papers
+- Concentrated efforts to revising ECOOP papers
   - Removed subdirectories for submission
   - Rapidly cited Truffle in passing when mentioning type feedback
     - their approach is not closely related or really novel
   - Did some proofreading, fixed typos and wording
   - Submitted current version
   - ECOOP paper pretty much finished, needs final proofreading
+- Table for Figure 10?
 ======
 - Laptop overheating...
 - Book plane & hotel for ECOOP?
@@ -186,16 +187,49 @@ Next meeting:
   - Can I stay at the main conf hotel?
 =====
 
-TODO: backup plan: set shape of shapeIdx as unmatched shape in capture_shape
+TODO: try using $rt_getPropCache everywhere
+
+TODO: try putting inline cache code into method
+$rt_getPropCache(obj, propName)
+- this requires inlining & exceptions
+- make a special case for getPropCache
+
+test, commit
+
+TODO: duplicate capture_shape loop mechanism, use for all the things
+
+
+
+
+
+
+
+
+
+[DONE] TODO: try benchmark.py
+
+[DONE] FIXME: splay test freezes up
+- infinite loop?
+- splay has a lot of shapes
+  - Possibly, at some point, we fail to capture the shape
+  - Get back the first capture_shape level
+  - Code already generated to test for first shape
+- Possibly, can call getBlockVersion instead of generating a branch
+  - Test if shape info has been preserved
+  - If not preserved, jump to false branch
+- If the read_prop_idx sets the shape to null...
+  - Guarantees first level is incompatible
+  - Then if no shape is marked known for shape idx, we can jump to false
+
+[DONE] TODO: try loop-based shape dispatch in getPropField
+- version count should go up, test on 3d-raytrace
+./higgs --stats benchmarks/sunspider/3d-raytrace.js
+- Performance and stats are stable
+
+[DONE] TODO: backup plan: set shape of shapeIdx as unmatched shape in capture_shape
 - implement shape capture as loop
 - sketch loop first to evaluate viability
   - mismatch edge continues looping
-
-
-
-
-
-
 
 [DONE] TODO: make use of IRInstr.numVarArgs in jit/ops and ir/inlining
 

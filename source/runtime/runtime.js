@@ -2360,25 +2360,22 @@ function $rt_getPropField(base, propStr)
         // shape is found for phi node inside loop but not propagated for
         // the object value flowing into the phi node
 
-        // Capture the object shape
+        // Read the object shape
         var shapeIdx = $ir_read_shape_idx(obj);
         if ($ir_break());
-        if ($ir_capture_shape(obj, shapeIdx))
-        if ($ir_capture_shape(obj, shapeIdx))
-        if ($ir_capture_shape(obj, shapeIdx))
-        if ($ir_capture_shape(obj, shapeIdx))
-        if ($ir_capture_shape(obj, shapeIdx))
-        if ($ir_capture_shape(obj, shapeIdx))
-        if ($ir_capture_shape(obj, shapeIdx))
-        if ($ir_capture_shape(obj, shapeIdx))
-        if ($ir_capture_shape(obj, shapeIdx))
-        if ($ir_capture_shape(obj, shapeIdx))
-        if ($ir_capture_shape(obj, shapeIdx))
-        if ($ir_capture_shape(obj, shapeIdx))
-        if ($ir_capture_shape(obj, shapeIdx))
-        if ($ir_capture_shape(obj, shapeIdx))
-        if ($ir_capture_shape(obj, shapeIdx))
-        if ($ir_capture_shape(obj, shapeIdx));
+
+        // Capture the object shape
+        while (true)
+        {
+            // TODO: swap branch directions
+            if ($ir_capture_shape(obj, shapeIdx))
+            {
+            }
+            else
+            {
+                break;
+            }
+        }
 
         // If the property value can be read directly
         var propVal;
@@ -2412,25 +2409,22 @@ function $rt_getPropField(base, propStr)
         // Until we reach the end of the prototype chain
         for (;;)
         {
-            // Capture the object shape
+            // Read the object shape
             var shapeIdx = $ir_read_shape_idx(obj);
             if ($ir_break());
-            if ($ir_capture_shape(obj, shapeIdx))
-            if ($ir_capture_shape(obj, shapeIdx))
-            if ($ir_capture_shape(obj, shapeIdx))
-            if ($ir_capture_shape(obj, shapeIdx))
-            if ($ir_capture_shape(obj, shapeIdx))
-            if ($ir_capture_shape(obj, shapeIdx))
-            if ($ir_capture_shape(obj, shapeIdx))
-            if ($ir_capture_shape(obj, shapeIdx))
-            if ($ir_capture_shape(obj, shapeIdx))
-            if ($ir_capture_shape(obj, shapeIdx))
-            if ($ir_capture_shape(obj, shapeIdx))
-            if ($ir_capture_shape(obj, shapeIdx))
-            if ($ir_capture_shape(obj, shapeIdx))
-            if ($ir_capture_shape(obj, shapeIdx))
-            if ($ir_capture_shape(obj, shapeIdx))
-            if ($ir_capture_shape(obj, shapeIdx));
+
+            // Capture the object shape
+            while (true)
+            {
+                // TODO: swap branch directions
+                if ($ir_capture_shape(obj, shapeIdx))
+                {
+                }
+                else
+                {
+                    break;
+                }
+            }
 
             // If the property value can be read directly
             var propVal;
