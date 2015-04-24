@@ -131,12 +131,6 @@ TODO: way to update LiveInfo
 Idea: liveness info, register new instrs
 - abridged, mark live everywhere but outside of inlining
 
-TODO: Marc wants description of workings of typed shapes
-- write in textual form, first draft
-  - write into typed shapes paper template
-- hack little diagrams
-TODO: write/sketch explanation of typed shapes in typed shapes paper
-
 TODO: simplified phi arg iteration?
 - phi.numArgs, phi.getArg(i)?
 
@@ -185,6 +179,12 @@ Next meeting:
   - Can I stay at the main conf hotel?
 =====
 
+TODO: Marc wants description of workings of typed shapes
+- write in textual form, first draft
+  - write into typed shapes paper template
+- hack little diagrams
+TODO: write/sketch explanation of typed shapes in typed shapes paper
+
 TODO: replace --shape_noprop with maxshapes=0
 
 TODO: try implementing maxshapes=N through $ir_clear_shape for now
@@ -195,16 +195,15 @@ TODO: $rt_setPropCache
 
 test, commit
 
-TODO: try using $rt_getPropCache everywhere
+
+
+
+
+
+
+
+[DONE] TODO: try using $rt_getPropCache everywhere
 - grep for capture_shape
-
-
-
-
-
-
-
-
 
 [DONE] TODO: try putting inline cache code into method
 $rt_getPropCache(obj, propName)

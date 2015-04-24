@@ -2380,7 +2380,7 @@ function $rt_getPropField(base, propStr)
         {
             if ($ir_is_object(propVal))
             {
-                return $rt_getProp(base, propStr);
+                return $rt_getProp(obj, propStr);
             }
         }
 
@@ -2407,7 +2407,7 @@ function $rt_getPropField(base, propStr)
             {
                 if ($ir_is_object(propVal))
                 {
-                    return $rt_getProp(base, propStr);
+                    return $rt_getProp(obj, propStr);
                 }
             }
 
@@ -2501,33 +2501,19 @@ Get a property from the global object
 */
 function $rt_getGlobal(obj, propStr)
 {
-    // Capture the object shape
-    var shapeIdx = $ir_read_shape_idx(obj);
-    if ($ir_break());
-    if ($ir_capture_shape(obj, shapeIdx))
-    if ($ir_capture_shape(obj, shapeIdx))
-    if ($ir_capture_shape(obj, shapeIdx))
-    if ($ir_capture_shape(obj, shapeIdx));
-
-    // If the property value can be read directly
-    var propVal;
-    if (propVal = $ir_obj_get_prop(obj, propStr))
+    // Try reading this as a normal property
+    try
     {
-        // If shapes are not to be propagated, clear shape information
-        $ir_clear_shape(obj);
-
-        // Return the property value
-        return propVal;
+        return $rt_getPropCache(obj, propStr);
     }
 
-    // If shapes are not to be propagated, clear shape information
-    $ir_clear_shape(obj);
-
-    // Otherwise, if the property is a getter-setter function
-    if ($ir_is_object(propVal))
+    // If the property is a getter-setter
+    catch (propVal)
     {
-        // Call the getter function
-        return $ir_call(propVal.get, obj);
+        if ($ir_is_object(propVal))
+        {
+            return $rt_getProp(obj, propStr);
+        }
     }
 
     // Get the object's prototype
@@ -2559,27 +2545,16 @@ function $rt_getGlobalInl(propStr)
 {
     var obj = $global;
 
-    // Capture the object shape
-    var shapeIdx = $ir_read_shape_idx(obj);
-    if ($ir_break());
-    if ($ir_capture_shape(obj, shapeIdx))
-    if ($ir_capture_shape(obj, shapeIdx))
-    if ($ir_capture_shape(obj, shapeIdx))
-    if ($ir_capture_shape(obj, shapeIdx));
-
-    // If the property value can be read directly
-    var propVal;
-    if (propVal = $ir_obj_get_prop(obj, propStr))
+    // Try reading this as a normal property
+    try
     {
-        // If shapes are not to be propagated, clear shape information
-        $ir_clear_shape(obj);
-
-        // Return the property value
-        return propVal;
+        return $rt_getPropCache(obj, propStr);
     }
 
-    // If shapes are not to be propagated, clear shape information
-    $ir_clear_shape(obj);
+    // If the property is a getter-setter
+    catch (propVal)
+    {
+    }
 
     // Do the full global lookup
     return $rt_getGlobal(
