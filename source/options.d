@@ -71,8 +71,8 @@ struct Options
     /// Maximum number of specialized versions to compile per basic block
     uint maxvers = 100;
 
-    /// Disable propagation of shapes information past get/set prop
-    bool shape_noprop = false;
+    /// Maximum number of shapes to be propagated
+    uint maxshapes = 100;
 
     /// Disable type tag specialization in shapes
     bool shape_notagspec = false;
@@ -135,7 +135,7 @@ void parseCmdArgs(ref string[] args)
 
         "typeprop"          , &opts.typeprop,
         "maxvers"           , &opts.maxvers,
-        "shape_noprop"      , &opts.shape_noprop,
+        "maxshapes"         , &opts.maxshapes,
         "shape_notagspec"   , &opts.shape_notagspec,
         "shape_nofptrspec"  , &opts.shape_nofptrspec,
         "noovfelim"         , &opts.noovfelim,

@@ -185,18 +185,38 @@ TODO: Marc wants description of workings of typed shapes
 - hack little diagrams
 TODO: write/sketch explanation of typed shapes in typed shapes paper
 
-TODO: replace --shape_noprop with maxshapes=0
+TODO: try crankshaft without inlining config in DLS paper
 
-TODO: try implementing maxshapes=N through $ir_clear_shape for now
+TODO: replace --shape_noprop with maxshapes=0 in gentables.py
+
+TODO: look at maxvers on 3d-raytrace with various maxshapes parameters
+
+
+
+
+
+
+
+
+[DONE] FIXME: num shape known is 1 in benchmark.py, 3d-raytrace
+- always clearing the shape? not the case
+- it's not because of clear_shape
+- Did notice that since using the getPropCache primitive, there were less
+  version limit hit warnings
+  - Is it because the object value is no longer live after getPropCache?
+  - This can happen if it passes through a phi node or some such
+- Try logging if shape is ever known in read_shape_idx on 3d-raytrace ***
+  - known many times during Higgs startup
+  - still, num shape known is 0
+- Minor issue with accounting in capture_shape
+
+[DONE] FIXME: clear_shape needs to be in separate block from obj_init_shape
+
+[DONE] TODO: try implementing maxshapes=N through $ir_clear_shape for now
 - will allow us to get crucial experiments for next paper working
 - version limit is hit in many benchmarks right now
 
-
-
-
-
-
-
+[DONE] TODO: remove --shape_noprop, add --maxshapes option
 
 [DONE] TODO: fix getEnumKey
 

@@ -3086,21 +3086,20 @@ void gen_capture_shape(
     assert (objVal !is null);
     assert (shapeIdxVal !is null);
 
-    // If we hit the version limit and we're in a generic block version,
-    // exit the capture_shape chain without capturing the shape
-    if (!st.shapeKnown(shapeIdxVal))
-        return gen_jump(ver, st, instr, as);
-
-    // Get type information about the object argument
-    ValType objType = st.getType(objVal);
-
-    // If the shape is marked as known
-    if (objType.shapeKnown)
+    // If the object shape is already known
+    if (st.shapeKnown(objVal))
     {
         // Increment the count of known shape instances
         as.incStatCnt(&stats.numShapeKnown, scrRegs[0]);
 
-        // Jump directly to the true successor block
+        // Exit the capture_chape chain early
+        return gen_jump(ver, st, instr, as);
+    }
+
+    // If we hit the version limit and we're in a generic block version,
+    // exit the capture_shape chain without capturing the shape
+    if (!st.shapeKnown(shapeIdxVal))
+    {
         return gen_jump(ver, st, instr, as);
     }
 
@@ -3168,11 +3167,28 @@ void gen_clear_shape(
     CodeBlock as
 )
 {
-    // If object shapes are not to be propagated
-    if (opts.shape_noprop)
+    auto objVal = cast(IRDstValue)instr.getArg(0);
+    assert (objVal !is null);
+    assert (objVal.block !is instr.block);
+
+    ObjShape[ObjShape] shapes;
+
+    // Gather all distinct shapes for the object value
+    foreach (blockVer; st.fun.versionMap.get(instr.block, []))
+    {
+        auto blockSt = blockVer.state;
+        if (blockSt.shapeKnown(objVal))
+        {
+            auto shape = blockSt.getShape(objVal);
+            shapes[shape] = shape;
+        }
+    }
+
+    // If the number of shapes exceeds the maximum
+    if (shapes.length > opts.maxshapes)
     {
         // Clear any known shape for this object
-        st.shapeChg(as, cast(IRDstValue)instr.getArg(0));
+        st.shapeChg(as, objVal);
     }
 }
 
@@ -3251,33 +3267,14 @@ void gen_obj_init_shape(
     // Get the type operand for the prototype argument
     auto tagOpnd = st.getTagOpnd(as, instr, 1);
 
-    // If property tag specialization is disabled
-    if (opts.shape_notagspec)
+    // If the prototype tag is a known constant or
+    // property tag specialization is disabled
+    if (tagOpnd.isImm || opts.shape_notagspec)
     {
         // Get the initial object shape
         auto shape = vm.emptyShape.defProp(
             "__proto__",
-            ValType(),
-            ATTR_CONST_NOT_ENUM,
-            null
-        );
-
-        // Set the object shape
-        as.mov(X86Opnd(32, objOpnd.reg, obj_ofs_shape_idx(null)), X86Opnd(shape.shapeIdx));
-
-        // Propagate the object shape
-        st.setShape(cast(IRDstValue)instr.getArg(0), shape);
-
-        return;
-    }
-
-    // If the prototype tag is a constant
-    if (tagOpnd.isImm)
-    {
-        // Get the initial object shape
-        auto shape = vm.emptyShape.defProp(
-            "__proto__",
-            ValType(cast(Tag)tagOpnd.imm.imm),
+            tagOpnd.isImm? ValType(cast(Tag)tagOpnd.imm.imm):ValType(),
             ATTR_CONST_NOT_ENUM,
             null
         );

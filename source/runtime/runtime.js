@@ -2056,6 +2056,7 @@ function $rt_newObj(protoPtr)
     $rt_setProto(objPtr, protoPtr);
 
     // If shapes are not to be propagated, clear shape information
+    if ($ir_break());
     $ir_clear_shape(objPtr);
 
     return objPtr;
@@ -2082,6 +2083,7 @@ function $rt_newArr(length)
     $rt_setArrLen(objPtr, length);
 
     // If shapes are not to be propagated, clear shape information
+    if ($ir_break());
     $ir_clear_shape(objPtr);
 
     return objPtr;
