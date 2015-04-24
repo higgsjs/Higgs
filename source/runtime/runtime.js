@@ -2155,14 +2155,8 @@ function $rt_getPropCache(obj, propStr)
     // Capture the object shape
     while (true)
     {
-        // TODO: swap capture_shape branch directions
         if ($ir_capture_shape(obj, shapeIdx))
-        {
-        }
-        else
-        {
             break;
-        }
     }
 
     // If the property value can be read directly
@@ -2564,32 +2558,23 @@ function $rt_getGlobalInl(propStr)
 }
 
 /**
-Set a property on an object using a string as key
+Property write inline cache implementation
+Note: this primitive is always inlined
 */
-function $rt_objSetProp(obj, propStr, val)
+function $rt_setPropCache(obj, propStr, val)
 {
-    // Capture the object shape
+    // Read the object shape
     var shapeIdx = $ir_read_shape_idx(obj);
     if ($ir_break());
-    if ($ir_capture_shape(obj, shapeIdx))
-    if ($ir_capture_shape(obj, shapeIdx))
-    if ($ir_capture_shape(obj, shapeIdx))
-    if ($ir_capture_shape(obj, shapeIdx))
-    if ($ir_capture_shape(obj, shapeIdx))
-    if ($ir_capture_shape(obj, shapeIdx))
-    if ($ir_capture_shape(obj, shapeIdx))
-    if ($ir_capture_shape(obj, shapeIdx))
-    if ($ir_capture_shape(obj, shapeIdx))
-    if ($ir_capture_shape(obj, shapeIdx))
-    if ($ir_capture_shape(obj, shapeIdx))
-    if ($ir_capture_shape(obj, shapeIdx))
-    if ($ir_capture_shape(obj, shapeIdx))
-    if ($ir_capture_shape(obj, shapeIdx))
-    if ($ir_capture_shape(obj, shapeIdx))
-    if ($ir_capture_shape(obj, shapeIdx));
+
+    // Capture the object shape
+    while (true)
+    {
+        if ($ir_capture_shape(obj, shapeIdx))
+            break;
+    }
 
     // Capture the type tag of the value
-    if ($ir_break());
     if ($ir_capture_tag(val))
     if ($ir_capture_tag(val))
     if ($ir_capture_tag(val))
@@ -2607,24 +2592,46 @@ function $rt_objSetProp(obj, propStr, val)
     if ($ir_capture_tag(val))
     if ($ir_capture_tag(val));
 
-    // If the property value can be set directly
+    // If the property value can be written directly
+    var propVal;
     if ($ir_obj_set_prop(obj, propStr, val))
     {
         // If shapes are not to be propagated, clear shape information
         $ir_clear_shape(obj);
 
-        // We are done
-        return;
+        // Property value written
+        return true;
+    }
+    else
+    {
+        // If shapes are not to be propagated, clear shape information
+        $ir_clear_shape(obj);
+
+        // Property value not written
+        $ir_throw(false);
+    }
+}
+
+/**
+Set a property on an object using a string as key
+*/
+function $rt_objSetProp(obj, propStr, val)
+{
+    // Try writing this as a normal property
+    try
+    {
+        return $rt_setPropCache(obj, propStr, val);
     }
 
-    // If shapes are not to be propagated, clear shape information
-    $ir_clear_shape(obj);
-
-    // The property must have a getter-setter method
-    // Get the accessor pair and call the setter function
-    var propVal
-    if (propVal = $ir_obj_get_prop(obj, propStr));
-    $ir_call(propVal.set, obj, val);
+    // If the property is a getter-setter
+    catch (e)
+    {
+        // The property must have a getter-setter method
+        // Get the accessor pair and call the setter function
+        var propVal
+        if (propVal = $ir_obj_get_prop(obj, propStr));
+        $ir_call(propVal.set, obj, val);
+    }
 }
 
 /**
@@ -2808,57 +2815,14 @@ function $rt_setPropField(base, propStr, val)
     {
         var obj = base;
 
-        // Capture the object shape
-        var shapeIdx = $ir_read_shape_idx(obj);
-        if ($ir_break());
-        if ($ir_capture_shape(obj, shapeIdx))
-        if ($ir_capture_shape(obj, shapeIdx))
-        if ($ir_capture_shape(obj, shapeIdx))
-        if ($ir_capture_shape(obj, shapeIdx))
-        if ($ir_capture_shape(obj, shapeIdx))
-        if ($ir_capture_shape(obj, shapeIdx))
-        if ($ir_capture_shape(obj, shapeIdx))
-        if ($ir_capture_shape(obj, shapeIdx))
-        if ($ir_capture_shape(obj, shapeIdx))
-        if ($ir_capture_shape(obj, shapeIdx))
-        if ($ir_capture_shape(obj, shapeIdx))
-        if ($ir_capture_shape(obj, shapeIdx))
-        if ($ir_capture_shape(obj, shapeIdx))
-        if ($ir_capture_shape(obj, shapeIdx))
-        if ($ir_capture_shape(obj, shapeIdx))
-        if ($ir_capture_shape(obj, shapeIdx));
-
-        // Capture the type tag of the value
-        if ($ir_break());
-        if ($ir_capture_tag(val))
-        if ($ir_capture_tag(val))
-        if ($ir_capture_tag(val))
-        if ($ir_capture_tag(val))
-        if ($ir_capture_tag(val))
-        if ($ir_capture_tag(val))
-        if ($ir_capture_tag(val))
-        if ($ir_capture_tag(val))
-        if ($ir_capture_tag(val))
-        if ($ir_capture_tag(val))
-        if ($ir_capture_tag(val))
-        if ($ir_capture_tag(val))
-        if ($ir_capture_tag(val))
-        if ($ir_capture_tag(val))
-        if ($ir_capture_tag(val))
-        if ($ir_capture_tag(val));
-
-        // If the property value can be set directly
-        if ($ir_obj_set_prop(obj, propStr, val))
+        // Try writing this as a normal property
+        try
         {
-            // If shapes are not to be propagated, clear shape information
-            $ir_clear_shape(obj);
-
-            // We are done
-            return;
+            return $rt_setPropCache(obj, propStr, val);
         }
-
-        // If shapes are not to be propagated, clear shape information
-        $ir_clear_shape(obj);
+        catch (e)
+        {
+        }
     }
 
     return $rt_setProp(base, propStr, val);
@@ -2871,20 +2835,14 @@ be a string, and the property itself is assumed not to be an accessor.
 */
 function $rt_setPropFieldNoCheck(obj, propStr, val)
 {
-    // Capture the object shape
-    var shapeIdx = $ir_read_shape_idx(obj);
-    if ($ir_break());
-    if ($ir_capture_shape(obj, shapeIdx));
-
-    // Capture the type tag of the value
-    if ($ir_break());
-    if ($ir_capture_tag(val));
-
-    // Set the property value
-    if ($ir_obj_set_prop(obj, propStr, val));
-
-    // If shapes are not to be propagated, clear shape information
-    $ir_clear_shape(obj);
+    // Try writing this as a normal property
+    try
+    {
+        return $rt_setPropCache(obj, propStr, val);
+    }
+    catch (e)
+    {
+    }
 }
 
 /**
@@ -2937,33 +2895,14 @@ function $rt_setGlobalInl(propStr, val)
 {
     var obj = $global;
 
-    // Capture the object shape
-    var shapeIdx = $ir_read_shape_idx(obj);
-    if ($ir_break());
-    if ($ir_capture_shape(obj, shapeIdx))
-    if ($ir_capture_shape(obj, shapeIdx))
-    if ($ir_capture_shape(obj, shapeIdx))
-    if ($ir_capture_shape(obj, shapeIdx));
-
-    // Capture the type tag of the value
-    if ($ir_break());
-    if ($ir_capture_tag(val))
-    if ($ir_capture_tag(val))
-    if ($ir_capture_tag(val))
-    if ($ir_capture_tag(val));
-
-    // If the property value can be set directly
-    if ($ir_obj_set_prop(obj, propStr, val))
+    // Try writing this as a normal property
+    try
     {
-        // If shapes are not to be propagated, clear shape information
-        $ir_clear_shape(obj);
-
-        // We are done
-        return;
+        return $rt_setPropCache(obj, propStr, val);
     }
-
-    // If shapes are not to be propagated, clear shape information
-    $ir_clear_shape(obj);
+    catch (e)
+    {
+    }
 
     $rt_objSetProp(obj, propStr, val)
 }
@@ -3186,10 +3125,16 @@ function $rt_getEnumKey(topObj, curObj, propIdx)
     // If the current object is an object of some kind
     if ($rt_valIsObj(curObj))
     {
-        // Capture the object shape
+        // Read the object shape
         var shapeIdx = $ir_read_shape_idx(curObj);
         if ($ir_break());
-        if ($ir_capture_shape(curObj, shapeIdx));
+
+        // Capture the object shape
+        while (true)
+        {
+            if ($ir_capture_shape(curObj, shapeIdx))
+                break;
+        }
 
         // Get the property enumeration table for the current object
         var enumTbl = $ir_obj_enum_tbl(curObj);
@@ -3288,10 +3233,16 @@ function $rt_getPropEnum(curObj, propName, propIdx)
     // If this is an object
     if ($ir_is_object(curObj) && $ir_lt_i32(propIdx, $rt_obj_get_cap(curObj)))
     {
-        // Capture the object shape
+        // Read the object shape
         var shapeIdx = $ir_read_shape_idx(curObj);
         if ($ir_break());
-        if ($ir_capture_shape(curObj, shapeIdx));
+
+        // Capture the object shape
+        while (true)
+        {
+            if ($ir_capture_shape(curObj, shapeIdx))
+                break;
+        }
 
         // Get the property enumeration table for the current object
         var enumTbl = $ir_obj_enum_tbl(curObj);

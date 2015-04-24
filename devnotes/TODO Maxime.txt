@@ -191,9 +191,6 @@ TODO: try implementing maxshapes=N through $ir_clear_shape for now
 - will allow us to get crucial experiments for next paper working
 - version limit is hit in many benchmarks right now
 
-TODO: $rt_setPropCache
-
-test, commit
 
 
 
@@ -201,6 +198,11 @@ test, commit
 
 
 
+[DONE] TODO: fix getEnumKey
+
+[DONE] TODO: flip capture_shape branch directions
+
+[DONE] TODO: $rt_setPropCache
 
 [DONE] TODO: try using $rt_getPropCache everywhere
 - grep for capture_shape

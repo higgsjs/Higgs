@@ -3089,7 +3089,7 @@ void gen_capture_shape(
     // If we hit the version limit and we're in a generic block version,
     // exit the capture_shape chain without capturing the shape
     if (!st.shapeKnown(shapeIdxVal))
-        return gen_jump_false(ver, st, instr, as);
+        return gen_jump(ver, st, instr, as);
 
     // Get type information about the object argument
     ValType objType = st.getType(objVal);
@@ -3100,8 +3100,8 @@ void gen_capture_shape(
         // Increment the count of known shape instances
         as.incStatCnt(&stats.numShapeKnown, scrRegs[0]);
 
-        // Jump directly to the false successor block
-        return gen_jump_false(ver, st, instr, as);
+        // Jump directly to the true successor block
+        return gen_jump(ver, st, instr, as);
     }
 
     // Increment the count of shape tests
@@ -3117,18 +3117,18 @@ void gen_capture_shape(
     // Compare the shape index operand with the observed shape index
     as.cmp(shapeIdxOpnd, X86Opnd(curShapeIdx));
 
-    // On the recursive (true) branch, no info about the object shape gained
+    // On the exit (true) branch, mark the object shape as known
+    // and queue this branch for immediate compilation (fall through)
+    auto trueSt = new CodeGenState(st);
+    trueSt.setShape(objVal, vm.objShapes[curShapeIdx]);
+    auto branchT = getBranchEdge(instr.getTarget(0), trueSt, true);
+
+    // On the recursive (false) branch, no info about the object shape gained
     // We mark the shape idx as having the shape we just tested, this is a
     // hack to create new block versions during the shape dispatch
-    auto trueSt = new CodeGenState(st);
-    trueSt.setShape(shapeIdxVal, vm.objShapes[curShapeIdx]);
-    auto branchT = getBranchEdge(instr.getTarget(0), trueSt, false);
-
-    // On the exit (false) branch, mark the object shape as known
-    // and queue this branch for immediate compilation (fall through)
     auto falseSt = new CodeGenState(st);
-    falseSt.setShape(objVal, vm.objShapes[curShapeIdx]);
-    auto branchF = getBranchEdge(instr.getTarget(1), falseSt, true);
+    falseSt.setShape(shapeIdxVal, vm.objShapes[curShapeIdx]);
+    auto branchF = getBranchEdge(instr.getTarget(1), falseSt, false);
 
     // Generate the branch code
     ver.genBranch(
@@ -3146,15 +3146,15 @@ void gen_capture_shape(
             final switch (shape)
             {
                 case BranchShape.NEXT0:
-                je32Ref(as, vm, block, target1, 1);
+                jne32Ref(as, vm, block, target1, 1);
                 break;
 
                 case BranchShape.NEXT1:
-                jne32Ref(as, vm, block, target0, 0);
+                je32Ref(as, vm, block, target0, 0);
                 break;
 
                 case BranchShape.DEFAULT:
-                jne32Ref(as, vm, block, target0, 0);
+                je32Ref(as, vm, block, target0, 0);
                 jmp32Ref(as, vm, block, target1, 1);
             }
         }
