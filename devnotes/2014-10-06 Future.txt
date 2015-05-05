@@ -16,15 +16,31 @@ May want something more sophisticated than a TypeSet bit set
 - Negative information about shapes
   - Useful for inline caches, replicating structure
 - Other info we haven't thought of
-- Could use a pointer to some type object
+- Could use a pointer to some type object ***
   - Type objects manipulated in a functional style
+  - Can have an extremely rich type representation then
+  - exact constants, string constants, precise numerical ranges if desired
+  - say that a value is not some shape
 
-Inlining of calls which throw is currently problematic
-- Return and exception values get merged into one SSA value, can't be detangled
-- Two control flow targets but one SSA value
-- Would ideally need branch instrs to have one SSA value per target
-  - Or need a separate catch instruction of some sort
-  - Calls can point to the catch instruction on their throw target
+Def-use chains:
+- Uses of values can redefine type sets
+- Ideally, want something more akin to def-use chains
+  - Then latest type info can be encoded inside instructions
+- Current system already has linked list, firstUse, next, ...
+  - This doesn't respect control-flow, however
+- Last use can define a type
+- Last use can potentially indicate provenance (control flow path)
+- Last use is not sufficient to encode register spills/loads
+- Could insert spill and load instructions
+  - Encourages us to use IR instructions with lower granularity
+  - Spills become external to IR instructions
+
+Liveness:
+- Can compute it with heuristics
+- Certail IR blocks are bottlenecks
+  - If a value is not live there, never live after
+  - Must be able to exploit such phenomena somehow
+- Dominator graph, maybe?
 
 Memory allocation of AST & IR nodes should be thought of from the beginning
 - Either zones or pools. Pools probably more flexible/safe.

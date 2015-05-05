@@ -51,11 +51,6 @@ TODO: implement store to moffs
     REX.W + A3 MOV moffs64, RAX
 - see existing load from moffs
 
-TODO: don't write ret tag register to type stack if tag known
-- need to write it on exc path, not invalidated by cont recompilation
-- if tag known, set type, let the branch spill it if necessary
-- if tag unknown, write tag as before in cont branch
-
 TODO: callbacks
 - push RA on JS stack when calling C code
 <maximecb> yawnt, I wanted to ask you what your use case for callbacks would be
@@ -101,11 +96,6 @@ TODO: implement basic meta stat test system
 Short blog post: PhD Musings - Versioning is Not Cloning
 - Short and sweet, KISS, musings
 
-TODO: string code point issue, look into it
-https://github.com/higgsjs/Higgs/issues/184
-- Don't need to fix it necessarily, but make headway!
-- Do this on master
-
 ------------------------------------------------------------------------------
 
 DLS - June 7, 2015
@@ -116,23 +106,6 @@ http://www.dynamic-languages-symposium.org/dls-15/cfp/index.html
 Marc leaves May 31st
 - Should be avail remotely June 5th
 - Comes back July 13th
-
-TODO: genRelGraph fn with no extra stats
-
-TODO: lower default maxvers back to 20?
-
-TODO: try maxtypes=N
-- Need capture_shape/tag duplication first, otherwise this will kill perf
-
-TODO: way to update LiveInfo
-- can start by trying to re-run with existing data?
-  - get that working right first
-- how do we cope with new instrs not in existing data?
-Idea: liveness info, register new instrs
-- abridged, mark live everywhere but outside of inlining
-
-TODO: simplified phi arg iteration?
-- phi.numArgs, phi.getArg(i)?
 
 GC heisenbug... use git bisect?
 - Problem is, it doesn't show up every run of `make test`
@@ -148,22 +121,52 @@ GC heisenbug... use git bisect?
   - Some value is stored in the wrong place
 - Ideas:
   - May be able to devise some adversarial test
+  - Can try script that runs test bin (without test runner) 50 times
+    - Log success, move onto previous commit
+  - We don't actually want a bisect?
+    - Maybe start with bisect, see what happens
+  - Do this in Python
 
-TODO: work on new bib for typed shapes
-- use bibtex
-- *recent* papers about object, inline caches, etc
-TODO: copy over ECOOP graph code for DLS paper
+TODO: simplified phi arg iteration?
+- phi.numArgs, phi.getArg(i)?
+
+TODO: don't write ret tag register to type stack (in caller) if tag known
+- if tag known, set known tag, let the branch spill it if necessary
+- if tag unknown, write tag as before in cont branch
+
+TODO: look at code point issue again
+
+Meeting 2015-05-05:
+- Bourse FESP, fill in form, may I have text from last letter?
+- New graphs for DLS paper
+  - maxshapes=5
+  - peak memory usage
+- Compiled latest SpiderMonkey baseline and without inlining, produced graphs
+- Wrote more content
+- Worked on bibliography
+  - Emphasis on recent publications
+    "Situate your work in context..."
+
+
+
+
+
+
+
+
+
+
 
 ------------------------------------------------------------------------------
 
 ECOOP - Camera Ready Version for April 29th
 -------------------------------------------
 
-ECOOP! Finish it up so you can move on
+[DONE] TODO: final proofreading & submission for ECOOP
+- Marc will do his tonight
+- Make sure main.pdf is accessible
 
-Next meeting:
-- Next papers: Crankshaft without inlining as other config
-- Ran into problems with self-modifying IR
+[DONE] Next meeting:
 - Concentrated efforts to revising ECOOP papers
   - Removed subdirectories for submission
   - Rapidly cited Truffle in passing when mentioning type feedback
@@ -171,32 +174,24 @@ Next meeting:
   - Did some proofreading, fixed typos and wording
   - Submitted current version
   - ECOOP paper pretty much finished, needs final proofreading
-- Table for Figure 10?
-======
-- Laptop overheating...
+  - Had friends proofread evaluation and related work
+  - Table for Figure 10?
+  - ECOOP camera-ready deadline is April 29!
+- Ran into problems with self-modifying IR
+  - Implemented inline cache as loop with BBV instead
+  - Implemented inlining of calls with exceptions
+  - Implemented maxshapes=N parameter
+- Typed shapes paper
+  - New graphs with maxshapes=0,2,100
+  - Written explanation of typed shapes
+- Idea: next papers: Crankshaft without inlining as other config
+  - May be able to compete with a real JIT, with inlining disabled
 - Book plane & hotel for ECOOP?
   - Check conf dates
   - Can I stay at the main conf hotel?
-=====
 
-TODO: Marc wants description of workings of typed shapes
-- write in textual form, first draft
-  - write into typed shapes paper template
-- hack little diagrams
-TODO: write/sketch explanation of typed shapes in typed shapes paper
-
-TODO: try crankshaft without inlining config in DLS paper
-
-TODO: replace --shape_noprop with maxshapes=0 in gentables.py
-
-TODO: look at maxvers on 3d-raytrace with various maxshapes parameters
-
-
-
-
-
-
-
+[DONE] TODO: look at maxvers on 3d-raytrace with various maxshapes parameters
+./higgs --maxshapes=0 --stats benchmarks/sunspider/3d-raytrace.js
 
 [DONE] FIXME: num shape known is 1 in benchmark.py, 3d-raytrace
 - always clearing the shape? not the case
