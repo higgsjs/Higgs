@@ -106,8 +106,8 @@ class CodeBlock
     private size_t writePos = 0;
 
     /// Disassembly/comment strings, indexed by position
-    alias CommentStr = Tuple!(size_t, "pos", string, "str");
-    private CommentStr[][] strings;
+    alias ASMStr = Tuple!(size_t, "pos", string, "str");
+    private ASMStr[][] strings;
 
     // Table of label addresses
     private size_t[Label.max+1] labelAddrs;
@@ -117,9 +117,9 @@ class CodeBlock
     private LabelRef[] labelRefs;
 
     /// Flag to enable or disable comments
-    private bool hasComments;
+    private bool hasASM;
 
-    this(size_t memSize, bool hasComments)
+    this(size_t memSize, bool hasASM)
     {
         assert (
             memSize > 0,
@@ -127,7 +127,7 @@ class CodeBlock
         );
 
         this.memSize = memSize;
-        this.hasComments = hasComments;
+        this.hasASM = hasASM;
 
         // Map the memory as executable
         this.memBlock = cast(ubyte*)mmap(
@@ -354,10 +354,10 @@ class CodeBlock
     */
     void writeString(string str)
     {
-        if (!hasComments)
+        if (!hasASM)
             return;
 
-        auto newStr = CommentStr(writePos, str);
+        auto newStr = ASMStr(writePos, str);
 
         if (writePos >= strings.length)
             strings.length = writePos + 1;
@@ -398,7 +398,7 @@ class CodeBlock
     */
     void writeASM(T...)(string mnem, T args)
     {
-        if (!hasComments)
+        if (!hasASM)
             return;
 
         auto str = mnem;
@@ -419,7 +419,7 @@ class CodeBlock
     */
     void comment(string str)
     {
-        if (!hasComments)
+        if (!hasASM)
             return;
 
         return writeString("; " ~ str);
@@ -432,7 +432,7 @@ class CodeBlock
     {
         auto labelAddr = labelAddrs[label];
 
-        if (hasComments)
+        if (hasASM)
             writeString(to!string(label) ~ ":");
 
         assert (

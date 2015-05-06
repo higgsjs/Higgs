@@ -96,17 +96,6 @@ TODO: implement basic meta stat test system
 Short blog post: PhD Musings - Versioning is Not Cloning
 - Short and sweet, KISS, musings
 
-------------------------------------------------------------------------------
-
-DLS - June 7, 2015
-------------------
-
-http://www.dynamic-languages-symposium.org/dls-15/cfp/index.html
-
-Marc leaves May 31st
-- Should be avail remotely June 5th
-- Comes back July 13th
-
 GC heisenbug... use git bisect?
 - Problem is, it doesn't show up every run of `make test`
 - Symptoms:
@@ -134,9 +123,35 @@ TODO: don't write ret tag register to type stack (in caller) if tag known
 - if tag known, set known tag, let the branch spill it if necessary
 - if tag unknown, write tag as before in cont branch
 
+------------------------------------------------------------------------------
+
+DLS - June 7, 2015
+------------------
+
+http://www.dynamic-languages-symposium.org/dls-15/cfp/index.html
+
+Marc leaves May 31st
+- Should be avail remotely June 5th
+- Comes back July 13th
+
 TODO: look at code point issue again
 
-Meeting 2015-05-05:
+TODO: e-mail Marc wrt bourse FESP
+- Bourse FESP, fill in form, may I have text from last letter?
+
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] Meeting 2015-05-05:
 - Bourse FESP, fill in form, may I have text from last letter?
 - New graphs for DLS paper
   - maxshapes=5
@@ -146,16 +161,6 @@ Meeting 2015-05-05:
 - Worked on bibliography
   - Emphasis on recent publications
     "Situate your work in context..."
-
-
-
-
-
-
-
-
-
-
 
 ------------------------------------------------------------------------------
 

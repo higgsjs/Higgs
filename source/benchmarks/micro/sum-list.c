@@ -2,25 +2,24 @@
 
 typedef struct Node_t { int val; struct Node_t* next; } Node;
 
-Node* list = 0;
-
-double sumList(Node* l)
+int sumList(Node* l)
 {
-    Node* node;
-    double sum;
+    Node* nd;
+    int sum;
     int i;
     for (i = 0; i < 500000000; ++i)
     {
         sum = 0;
-        for (node = l; node != 0; node = node->next)
-            sum += node->val;
+        for (nd = l; nd != 0; nd = nd->next)
+            sum += nd->val;
     }
 
     return sum;
 }
 
-void main()
+int main()
 {
+    Node* list = 0;
     int i;
     for (i = 0; i < 10; ++i)
     {
@@ -31,4 +30,6 @@ void main()
     }
 
     sumList(list);
+    return 0;
 }
+
