@@ -142,6 +142,7 @@ TODO: optimize backwards jump encoding?
 Meeting 2015-05-12:
 - Added additional graph, known callees
   - Fixed inefficiency/bug with known callee info
+- Fixed performance issue with apply call
 - Wrote evaluation section, future work
 - Paper is a rough draft
 - Page limit 12 pages, we are at... 10 pages?
@@ -162,17 +163,21 @@ Meeting 2015-05-12:
   - All interpreted
   - Not even sure that Truffle 0.5 has the truffle object model (2014)
 
-TODO: why is Higgs slower than V8 baseline on earley-boyer, V8 raytrace?
-./higgs --maxvers=10000 --noentryspec --noretspec benchmarks/nocomptime/3d-raytrace.js
+
+
+
+
+
+
+
+
+
+[DONE] TODO: why is Higgs slower than V8 baseline on v8-raytrace?
+./higgs --maxvers=10000 --noentryspec --noretspec benchmarks/nocomptime/v8-raytrace.js
 - ask for some help? paulfryzel
-
-
-
-
-
-
-
-
+- about 33% slower
+- 23M heap allocs and 8M apply calls
+- Pattern-matching on 0,1,2,3 args yields speedup over hosted apply
 
 [DONE] FIXME: binary-trees still has calls with unknown targets
 - move the this object creation after the argument evaluation? is this beneficial?

@@ -657,14 +657,8 @@ void FPToStr(string fmt)(
         return str;
     }
 
-    // Spill the values live before this instruction
-    st.spillValues(
-        as,
-        delegate bool(LiveInfo liveInfo, IRDstValue value)
-        {
-            return liveInfo.liveBefore(value, instr);
-        }
-    );
+    // Spill the values that are live before this instruction
+    st.spillLiveBefore(as, instr);
 
     auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
 
@@ -682,7 +676,7 @@ void FPToStr(string fmt)(
     as.loadJITRegs();
 
     // Store the output value into the output operand
-    as.mov(outOpnd, X86Opnd(RAX));
+    as.mov(outOpnd, cretReg.opnd);
 
     st.setOutTag(as, instr, Tag.STRING);
 }

@@ -947,6 +947,18 @@ function $rt_add(x, y)
             $rt_rope_set_len(rope, len);
             return rope;
         }
+
+        if ($ir_is_int32(y) || $ir_is_float64(y))
+        {
+            y = $rt_numToStr(y, 10);
+
+            var rope = $rt_rope_alloc();
+            var len = $ir_add_i32($rt_str_get_len(x), $rt_str_get_len(y));
+            $rt_rope_set_left(rope, x);
+            $rt_rope_set_right(rope, y);
+            $rt_rope_set_len(rope, len);
+            return rope;
+        }
     }
 
     // If x is a rope
@@ -962,7 +974,6 @@ function $rt_add(x, y)
         return rope;
     }
 
-    // TODO: eliminate toPrim call, specialize more
     // Convert x and y to primitives
     var px = $rt_toPrim(x);
     var py = $rt_toPrim(y);
@@ -970,7 +981,10 @@ function $rt_add(x, y)
     // If x is a string
     if ($ir_is_string(px))
     {
-        return $rt_strcat(px, $rt_toString(y));
+        if ($ir_is_string(py))
+            return $rt_strcat(px, py);
+
+        return $rt_strcat(px, $rt_toString(py));
     }
 
     // If y is a string

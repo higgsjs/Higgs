@@ -224,11 +224,50 @@ Function.prototype.apply = function (thisArg, argArray)
         ($ir_is_const(thisArg) && $ir_eq_const(thisArg, $undef)))
         thisArg = $global;
 
-    // Get the arguments table from the array
-    var argTable = $rt_getArrTbl(argArray);
-
     // Get the number of arguments
     var numArgs = argArray.length;
+
+    if ($ir_eq_i32(numArgs, 1))
+    {
+        return $ir_call(
+            this,
+            thisArg,
+            argArray[0]
+        );
+    }
+
+    if ($ir_eq_i32(numArgs, 2))
+    {
+        return $ir_call(
+            this,
+            thisArg,
+            argArray[0],
+            argArray[1]
+        );
+    }
+
+    if ($ir_eq_i32(numArgs, 3))
+    {
+        return $ir_call(
+            this,
+            thisArg,
+            argArray[0],
+            argArray[1],
+            argArray[2]
+        );
+    }
+
+    // No arguments
+    if ($ir_eq_i32(numArgs, 0))
+    {
+        return $ir_call(
+            this,
+            thisArg
+        );
+    }
+
+    // Get the arguments table from the array
+    var argTable = $rt_getArrTbl(argArray);
 
     // Perform the call using the apply instruction
     var retVal = $ir_call_apply(this, thisArg, argTable, numArgs);

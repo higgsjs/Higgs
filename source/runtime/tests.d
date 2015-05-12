@@ -144,13 +144,13 @@ void assertStr(VM vm, string input, string strVal)
     auto ret = vm.evalString(input);
 
     assert (
-        ret.tag is Tag.STRING,
+        ret.tag is Tag.STRING || ret.tag is Tag.ROPE,
         "non-string value: " ~ ret.toString ~ "\n" ~
         "for eval string \"" ~ input ~ "\""
     );
 
     assert (
-        extractStr(ret.word.ptrVal) == strVal,
+        ret.toString == strVal,
         format(
             "Test failed:\n" ~
             input ~ "\n" ~
@@ -663,8 +663,8 @@ unittest
     vm.assertStr("'foo'", "foo");
     vm.assertInt("'foo'? 1:0", 1);
     vm.assertInt("''? 1:0", 0);
-    vm.assertStr("'foo' + 1", "foo1");
-    vm.assertStr("'foo' + true", "footrue");
+    vm.assertTrue("'foo' + 1 === 'foo1'");
+    vm.assertTrue("'foo' + true === 'footrue'");
     vm.assertTrue("'foo' + 'bar' == 'foobar'");
     vm.assertTrue("'foo' === 'foo'");
     vm.assertTrue("'foo' === 'f' + 'oo'");
