@@ -84,6 +84,7 @@ static this()
     inl("$rt_eqInt");
     inl("$rt_eqNull");
     inl("$rt_neNull");
+    inl("$rt_se");
 
     inl("$rt_getPropCache");
     inl("$rt_getPropField");

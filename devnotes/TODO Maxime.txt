@@ -171,7 +171,6 @@ Meeting 2015-05-12:
 
 
 
-
 [DONE] TODO: why is Higgs slower than V8 baseline on v8-raytrace?
 ./higgs --maxvers=10000 --noentryspec --noretspec benchmarks/nocomptime/v8-raytrace.js
 - ask for some help? paulfryzel

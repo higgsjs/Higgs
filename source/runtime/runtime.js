@@ -1892,13 +1892,13 @@ function $rt_se(x, y)
         if ($ir_is_string(y))
             return $ir_eq_refptr(x, y);
         if ($ir_is_rope(y))
-            return $rt_se(x, $rt_ropeToStr(y));
+            return $ir_eq_refptr(x, $rt_ropeToStr(y));
         return false;
     }
 
     else if ($ir_is_rope(x))
     {
-        return $rt_se($rt_ropeToStr(x), y);
+        return $ir_eq_refptr($rt_ropeToStr(x), $rt_toString(y));
     }
 
     else if ($ir_is_refptr(x))
