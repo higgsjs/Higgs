@@ -2039,6 +2039,11 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
         // Evaluate the base expression
         auto closVal = exprToIR(ctx, baseExpr);
 
+        // Evaluate the arguments
+        auto argVals = new IRValue[argExprs.length];
+        foreach (argIdx, argExpr; argExprs)
+            argVals[argIdx] = exprToIR(ctx, argExpr);
+
         // Create the "this" value
         auto thisVal = genRtCall(
             ctx,
@@ -2046,11 +2051,6 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
             [closVal],
             expr.pos
         );
-
-        // Evaluate the arguments
-        auto argVals = new IRValue[argExprs.length];
-        foreach (argIdx, argExpr; argExprs)
-            argVals[argIdx] = exprToIR(ctx, argExpr);
 
         // Add the call instruction
         // <dstLocal> = CALL <fnLocal> <thisArg> ...

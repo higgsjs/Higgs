@@ -140,8 +140,9 @@ TODO: optimize backwards jump encoding?
 - know position of jump, position of target
 
 Meeting 2015-05-12:
+- Added additional graph, known callees
+  - Fixed inefficiency/bug with known callee info
 - Wrote evaluation section, future work
-- Added additional graphs
 - Paper is a rough draft
 - Page limit 12 pages, we are at... 10 pages?
 - Read and cited Truffle object model paper
@@ -165,19 +166,30 @@ TODO: why is Higgs slower than V8 baseline on earley-boyer, V8 raytrace?
 ./higgs --maxvers=10000 --noentryspec --noretspec benchmarks/nocomptime/3d-raytrace.js
 - ask for some help? paulfryzel
 
-FIXME: binary-trees still has calls with unknown targets
+
+
+
+
+
+
+
+
+[DONE] FIXME: binary-trees still has calls with unknown targets
 - move the this object creation after the argument evaluation? is this beneficial?
-
 before change:
-
-
-
-
+    num call apply: 1
+    num call fast: 35652
+    num call slow: 8
+    num shape known: 109272
+    num shape tests: 40279
+    code size (bytes): 328814
 after change:
-
-
-
-
+    num call apply: 1
+    num call fast: 36281
+    num call slow: 4
+    num shape known: 110039
+    num shape tests: 40126
+    code size (bytes): 327108
 
 [DONE] TODO: binary-trees has many calls with unknown targets, why?
 ./higgs --stats --maxvers=10000 --noentryspec --noretspec benchmarks/sunspider/access-binary-trees.js
