@@ -7,7 +7,7 @@ int sumList(Node* l)
     Node* nd;
     int sum;
     int i;
-    for (i = 0; i < 500000000; ++i)
+    for (i = 0; i < 2000000000; ++i)
     {
         sum = 0;
         for (nd = l; nd != 0; nd = nd->next)

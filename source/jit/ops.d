@@ -1812,7 +1812,7 @@ void gen_call(
     //
 
     // Get the type information for the closure value
-    auto closType = st.getType(instr.getArg(0));
+    auto closType = st.getType(instr.getArg(0)).propType();
 
     // This may throw an exception if the callee is not a closure
     auto mayThrow = !closType.tagKnown || closType.tag !is Tag.CLOSURE;

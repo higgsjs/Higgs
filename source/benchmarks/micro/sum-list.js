@@ -4,7 +4,7 @@ for (var i = 0; i < 10; ++i)
 
 function sumList(l)
 {
-    for (var i = 0; i < 500000000; ++i) // repeat 500M times
+    for (var i = 0; i < 2000000000; ++i)
     {
         var sum = 0;
         for (var node = l; node != null; node = node.next)

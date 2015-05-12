@@ -136,20 +136,64 @@ Marc leaves May 31st
 
 TODO: look at code point issue again
 
-TODO: e-mail Marc wrt bourse FESP
-- Bourse FESP, fill in form, may I have text from last letter?
+TODO: optimize backwards jump encoding?
+- know position of jump, position of target
+
+Meeting 2015-05-12:
+- Wrote evaluation section, future work
+- Added additional graphs
+- Paper is a rough draft
+- Page limit 12 pages, we are at... 10 pages?
+- Read and cited Truffle object model paper
+- ISSUE: Truffle already does type specialization of object shapes...
+  - in some areas, they have a more sophisticated system
+    - avoid walking the prototype chain
+  - should probably avoid saying that we introduce typed shapes
+  - contributions:
+    - integrating typed shapes into BBV
+    - Angle: typed shapes combine well with BBV
+    - function pointer into shape types
+    - shape propagation
+    - our results support those presented in Truffle OSM
+      - much more detailed analysis of the effect of typed shapes
+  - May give us opportunity to explain less of the gory details of typed shapes
+- Interestingly, on the sum-list microbenchmark, Truffle 0.5 takes 10 minutes
+  - All interpreted
+  - Not even sure that Truffle 0.5 has the truffle object model (2014)
+
+TODO: why is Higgs slower than V8 baseline on earley-boyer, V8 raytrace?
+./higgs --maxvers=10000 --noentryspec --noretspec benchmarks/nocomptime/3d-raytrace.js
+- ask for some help? paulfryzel
+
+FIXME: binary-trees still has calls with unknown targets
+- move the this object creation after the argument evaluation? is this beneficial?
+
+before change:
+
+
+
+
+after change:
 
 
 
 
 
-
-
-
-
-
-
-
+[DONE] TODO: binary-trees has many calls with unknown targets, why?
+./higgs --stats --maxvers=10000 --noentryspec --noretspec benchmarks/sunspider/access-binary-trees.js
+num call fast: 84248
+num call slow: 42073
+num call apply: 0
+- Both new TreeNode calls are slow...
+  - Could be because we get the prototype value from it and clear the shape?
+  - but maxshapes is not 0
+benchmark.py before:
+    num call apply: 1
+    num call fast: 34225
+    num call slow: 39
+after:
+    num call apply: 1
+    num call fast: 35652
 
 [DONE] Meeting 2015-05-05:
 - Bourse FESP, fill in form, may I have text from last letter?

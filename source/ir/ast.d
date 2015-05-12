@@ -2039,7 +2039,7 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
         // Evaluate the base expression
         auto closVal = exprToIR(ctx, baseExpr);
 
-        // Get the method property
+        // Create the "this" value
         auto thisVal = genRtCall(
             ctx,
             "ctorNewThis",
