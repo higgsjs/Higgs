@@ -3426,12 +3426,14 @@ void gen_obj_set_prop(
         );
     }
 
-    // Increment the number of set prop operations
-    as.incStatCnt(&stats.numSetProp, scrRegs[1]);
-
     // Get the argument values
     auto objVal = cast(IRDstValue)instr.getArg(0);
     auto propVal = instr.getArg(2);
+
+    // Increment the number of set prop operations
+    as.incStatCnt(&stats.numSetProp, scrRegs[1]);
+    if (objVal is st.fun.globalVal)
+        as.incStatCnt(&stats.numSetGlobal, scrRegs[1]);
 
     // Extract the property name, if known
     auto propName = instr.getArgStrCst(1);
@@ -3575,6 +3577,8 @@ void gen_obj_set_prop(
 
             // Increment the number of shape changes due to type
             as.incStatCnt(&stats.numShapeFlips, scrRegs[0]);
+            if (objVal is st.fun.globalVal)
+                as.incStatCnt(&stats.numShapeFlipsGlobal, scrRegs[0]);
         }
 
         // Property successfully set, jump to the true branch
@@ -3770,8 +3774,6 @@ void gen_obj_get_prop(
 
     // Increment the number of get prop operations
     as.incStatCnt(&stats.numGetProp, scrRegs[1]);
-
-    // Increment the number of get global operations
     if (objVal is st.fun.globalVal)
         as.incStatCnt(&stats.numGetGlobal, scrRegs[1]);
 

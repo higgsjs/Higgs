@@ -867,8 +867,10 @@ bool setProp(
         // If the value type doesn't match the shape type
         if (!valType.isSubType(defShape.type))
         {
-            // Number of shape changes due to type
+            // Number of shape changes due to a type mismatch
             ++stats.numShapeFlips;
+            if (objPair == vm.globalObj)
+                ++stats.numShapeFlipsGlobal;
 
             //writeln(defShape.type.tag, " ==> ", valType.tag);
 

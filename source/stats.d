@@ -75,6 +75,9 @@ ulong numShapeTests = 0;
 /// Number of property writes
 ulong numSetProp = 0;
 
+/// Number of global property writes
+ulong numSetGlobal = 0;
+
 /// Number of host property writes
 ulong numSetPropHost = 0;
 
@@ -87,8 +90,11 @@ ulong numGetGlobal = 0;
 /// Number of host property reads
 ulong numGetPropHost = 0;
 
-/// Number of shape changes due to type
+/// Number of shape changes due to a type mismatch
 ulong numShapeFlips = 0;
+
+/// Number of global object shape changes due to a type mismatch
+ulong numShapeFlipsGlobal = 0;
 
 /// Number of heap allocations
 ulong numHeapAllocs = 0;
@@ -288,11 +294,13 @@ static ~this()
         writefln("num shape known: %s", numShapeKnown);
         writefln("num shape tests: %s", numShapeTests);
         writefln("num set prop: %s", numSetProp);
+        writefln("num set global: %s", numSetGlobal);
         writefln("num set prop host: %s", numSetPropHost);
         writefln("num get prop: %s", numGetProp);
         writefln("num get global: %s", numGetGlobal);
         writefln("num get prop host: %s", numGetPropHost);
         writefln("num shape flips: %s", numShapeFlips);
+        writefln("num shape flips global: %s", numShapeFlipsGlobal);
         writefln("num heap allocs: %s", numHeapAllocs);
 
         writefln("num call fast: %s", numCallFast);

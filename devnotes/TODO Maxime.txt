@@ -123,6 +123,8 @@ TODO: don't write ret tag register to type stack (in caller) if tag known
 - if tag known, set known tag, let the branch spill it if necessary
 - if tag unknown, write tag as before in cont branch
 
+TODO: look at code point issue again
+
 ------------------------------------------------------------------------------
 
 DLS - June 7, 2015
@@ -134,12 +136,45 @@ Marc leaves May 31st
 - Should be avail remotely June 5th
 - Comes back July 13th
 
-TODO: look at code point issue again
+Meeting 2015-05-19:
+- Cont spec
+  - noticeable reduction in shape tests on some benchmarks
+  - not a large difference in code size or exec time
+  - most of the overhead left is probably in slow function calls
+- Paper advice from Simon Peyton Jones: one clear idea
+  - Don't include cont spec, complicates the discussion significantly
+  - Takes something away from interprocedural paper also
+- Paper spin: Augmenting BBV with Typed Shapes
+  - Focus specifically on how well this integrates with BBV
+  - Skip the cont spec for now, KISS
+Does the Truffle/JS v0.5 release incorporate the Truffle object storage model? As described in
+@Love2Code Yes, it does. It also includes additional techniques. Among them one that we call "speculative object shapes".
+- Can you look if there's a way to build Truffle without inlining?
+  - No command-line option that I can tell
 
 TODO: optimize backwards jump encoding?
 - know position of jump, position of target
+- can start with plain jump only, not jcc
 
-Meeting 2015-05-12:
+TODO: study bits-in-byte
+- but don't spend too long!
+- try using linux perf util
+perf stat -d command
+
+test and commit
+
+
+
+
+
+
+
+
+[DONE] TODO: num shape flips global
+
+[DONE] TODO: num set global
+
+[DONE] Meeting 2015-05-12:
 - Added additional graph, known callees
   - Fixed inefficiency/bug with known callee info
 - Fixed performance issue with apply call
@@ -162,14 +197,6 @@ Meeting 2015-05-12:
 - Interestingly, on the sum-list microbenchmark, Truffle 0.5 takes 10 minutes
   - All interpreted
   - Not even sure that Truffle 0.5 has the truffle object model (2014)
-
-
-
-
-
-
-
-
 
 [DONE] TODO: why is Higgs slower than V8 baseline on v8-raytrace?
 ./higgs --maxvers=10000 --noentryspec --noretspec benchmarks/nocomptime/v8-raytrace.js
