@@ -72,6 +72,9 @@ ulong numShapeKnown = 0;
 /// Number of shape tests
 ulong numShapeTests = 0;
 
+/// Number of capture_tag test executions
+ulong numTagTests = 0;
+
 /// Number of property writes
 ulong numSetProp = 0;
 
@@ -293,6 +296,7 @@ static ~this()
 
         writefln("num shape known: %s", numShapeKnown);
         writefln("num shape tests: %s", numShapeTests);
+        writefln("num tag tests: %s", numTagTests);
         writefln("num set prop: %s", numSetProp);
         writefln("num set global: %s", numSetGlobal);
         writefln("num set prop host: %s", numSetPropHost);

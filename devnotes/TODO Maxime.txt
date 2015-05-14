@@ -159,16 +159,32 @@ TODO: optimize backwards jump encoding?
 TODO: study bits-in-byte
 - but don't spend too long!
 - try using linux perf util
+http://www.brendangregg.com/perf.html
 perf stat -d command
 
-test and commit
 
 
 
 
 
 
+[DONE] TODO: "num capture tag" stat
 
+[DONE] TODO: look at IR for global call
+./higgs --e "function foo() { bar(); }; print(foo.irString())"
+./higgs --e "function bar() {}; function foo() { bar(); }; foo(); print(foo.asmString())"
+- Difficulty wrt analysis is there are two paths
+  - should ignore the accessor path to begin with, start in successor
+- Do a DFS until we reach the call, with some maximum depth, stop at the call
+  - must not encounter "may GC" or calls
+- Issue with spills... Some instructions may try to spill the fptr, write its tag
+  - This would all work much better with constant propagation
+
+[DONE] TODO: how many loop itrs are equivalent to say, 500M calls?
+./higgs --perf_stats --noentryspec --noretspec benchmarks/micro/200m-calls.js
+~971ms
+- Each call is about as costly as 8 for loop iterations
+- More if we pass args
 
 [DONE] TODO: num shape flips global
 

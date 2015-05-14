@@ -3014,6 +3014,9 @@ void gen_capture_tag(
     // Get the type operand
     auto tagOpnd = st.getTagOpnd(as, instr, 0);
 
+    // Increment the capture_tag count
+    as.incStatCnt(&stats.numTagTests, scrRegs[0]);
+
     // Increment the counter for this type tag test
     auto testName = "is_" ~ toLower(to!string(argTag));
     as.incStatCnt(stats.getTagTestCtr(testName), scrRegs[0]);
