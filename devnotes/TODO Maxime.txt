@@ -96,26 +96,6 @@ TODO: implement basic meta stat test system
 Short blog post: PhD Musings - Versioning is Not Cloning
 - Short and sweet, KISS, musings
 
-GC heisenbug... use git bisect?
-- Problem is, it doesn't show up every run of `make test`
-- Symptoms:
-  - invalid outslot
-  - vm ptr null
-- Causes:
-  - Seems to have to do with the VM register
-  - Likely, one of the primitive calls is done wrong
-    - some arg value gets corrupted/misplaced
-  - Heisenbug probably has to do with address randomization
-    - VM object or IR corrupted some of the time
-  - Some value is stored in the wrong place
-- Ideas:
-  - May be able to devise some adversarial test
-  - Can try script that runs test bin (without test runner) 50 times
-    - Log success, move onto previous commit
-  - We don't actually want a bisect?
-    - Maybe start with bisect, see what happens
-  - Do this in Python
-
 TODO: simplified phi arg iteration?
 - phi.numArgs, phi.getArg(i)?
 
@@ -152,21 +132,52 @@ Does the Truffle/JS v0.5 release incorporate the Truffle object storage model? A
 - Can you look if there's a way to build Truffle without inlining?
   - No command-line option that I can tell
 
-TODO: optimize backwards jump encoding?
-- know position of jump, position of target
-- can start with plain jump only, not jcc
-
 TODO: study bits-in-byte
 - but don't spend too long!
 - try using linux perf util
 http://www.brendangregg.com/perf.html
 perf stat -d command
+./higgs --noentryspec --noretspec --maxshapes=0 benchmarks/nocomptime/bitops-bits-in-byte.js
+./higgs --noentryspec --noretspec --maxshapes=5 benchmarks/nocomptime/bitops-bits-in-byte.js
 
 
 
 
 
 
+
+
+
+
+
+
+
+
+[DONE] FIXME: GC heisenbug... use git bisect?
+- Problem is, it doesn't show up every run of `make test`
+- Symptoms:
+  - invalid outslot
+  - vm ptr null
+- Causes:
+  - Seems to have to do with the VM register
+  - Likely, one of the primitive calls is done wrong
+    - some arg value gets corrupted/misplaced
+  - Heisenbug probably has to do with address randomization
+    - VM object or IR corrupted some of the time
+  - Some value is stored in the wrong place
+- Ideas:
+  - May be able to devise some adversarial test
+  - Can try script that runs test bin (without test runner) 50 times
+    - Log success, move onto previous commit
+  - We don't actually want a bisect?
+    - Maybe start with bisect, see what happens
+  - Do this in Python
+- Always happens during the initial tests... Never in test runner
+  - Must have to do with GC and VM restarts
+  - Could try restarting VM in a loop to trigger it
+- Heisenbug... something to do with VM restart and GC?
+  - May also have to do with eval? often happens after eval
+  - explicitly calling destroy on VM object...why?
 
 [DONE] TODO: "num capture tag" stat
 

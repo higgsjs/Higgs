@@ -1273,8 +1273,6 @@ unittest
     vm.assertBool("o = {k:3}; return o.hasOwnProperty('k');", true);
     vm.assertBool("o = {k:3}; p = Object.create(o); return p.hasOwnProperty('k')", false);
     vm.assertBool("o = {k:3}; p = Object.create(o); return 'k' in p;", true);
-
-    vm = null;
 }
 
 /// Stdlib Number library
@@ -1289,8 +1287,6 @@ unittest
     vm.assertInt("Number(null)", 0);
 
     vm.assertStr("(10).toString()", "10");
-
-    vm = null;
 }
 
 /// Stdlib Array library
@@ -1306,8 +1302,6 @@ unittest
 
     vm.assertInt("Array.prototype['0'] = 7; a = [3]; a['0'];", 3);
     vm.assertInt("a = [function () { return 9; }]; a[0]();", 9);
-
-    vm = null;
 }
 
 /// Stdlib String library
@@ -1335,8 +1329,6 @@ unittest
     vm.assertInt("parseInt(10)", 10);
     vm.assertInt("parseInt(-1)", -1);
     vm.assertBool("isNaN(parseInt('zux'))", true);
-
-    destroy(vm);
 }
 
 /// Exceptions
@@ -1381,7 +1373,7 @@ unittest
 {
     VM.init();
 
-    writefln("load");
+    writeln("load");
 
     // Dynamic code loading
     vm.load("tests/core/load/loader.js");
@@ -1389,15 +1381,15 @@ unittest
     // Loading a missing file
     vm.assertThrows("load('_filethatdoesntexist123_')");
 
-    writefln("eval");
+    writeln("eval");
 
     // Eval
     vm.load("tests/core/eval/eval.js");
 
+    writeln("eval throw");
+
     // Eval throwing an exception
     vm.assertThrows("eval('throw 1')");
-
-    destroy(vm);
 }
 
 /// High-level features
@@ -1419,8 +1411,6 @@ unittest
     writeln("for-in");
     vm.load("tests/core/for_in/for_in.js");
     vm.assertInt("test();", 0);
-
-    destroy(vm);
 }
 
 /// Regression tests
