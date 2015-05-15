@@ -117,7 +117,8 @@ Marc leaves May 31st
 - Comes back July 13th
 
 Meeting 2015-05-19:
-- Cont spec
+- Added citations and text to paper, improved structure
+- Investigated cont spec
   - noticeable reduction in shape tests on some benchmarks
   - not a large difference in code size or exec time
   - most of the overhead left is probably in slow function calls
@@ -127,31 +128,43 @@ Meeting 2015-05-19:
 - Paper spin: Augmenting BBV with Typed Shapes
   - Focus specifically on how well this integrates with BBV
   - Skip the cont spec for now, KISS
+- Investigated bits-in-byte timing anomaly
+  - Linux perf tool, performance counters
+  - branch misses
+  - Likely related to calls & returns, implemented with jumps
+  - Tiny changes in code alignment affect cache performance
+    - Instruction decoding performance
 Does the Truffle/JS v0.5 release incorporate the Truffle object storage model? As described in
 @Love2Code Yes, it does. It also includes additional techniques. Among them one that we call "speculative object shapes".
 - Can you look if there's a way to build Truffle without inlining?
   - No command-line option that I can tell
 
-TODO: study bits-in-byte
+
+
+
+
+
+
+
+
+[DONE] TODO: study bits-in-byte
 - but don't spend too long!
 - try using linux perf util
 http://www.brendangregg.com/perf.html
 perf stat -d command
-./higgs --noentryspec --noretspec --maxshapes=0 benchmarks/nocomptime/bitops-bits-in-byte.js
-./higgs --noentryspec --noretspec --maxshapes=5 benchmarks/nocomptime/bitops-bits-in-byte.js
+perf stat -d ./higgs --noentryspec --noretspec --maxshapes=0 benchmarks/nocomptime/bitops-bits-in-byte.js
+perf stat -d ./higgs --noentryspec --noretspec --maxshapes=5 benchmarks/nocomptime/bitops-bits-in-byte.js
+- slowness confirmed!
+- Slow one has way more branch misses... Look up branch misses
+  - Probably does have to do with alignment?
+6,612,817,055 branches                  # 1077.898 M/sec
+       124,727,115 branch-misses        #    1.89% of all branches   
+- seems those misses could be returns?
 
-
-
-
-
-
-
-
-
-
-
-
-
+[DONE] TODO: compute number of returns in bits-in-byte
+- 81.6M branch misses
+  89.6M calls
+- Likely related
 
 [DONE] FIXME: GC heisenbug... use git bisect?
 - Problem is, it doesn't show up every run of `make test`

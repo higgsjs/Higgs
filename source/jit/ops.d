@@ -2163,8 +2163,6 @@ void gen_call(
             movArgWord(as, numArgs + 3, scrReg3.opnd);
 
             // Adjust the stack pointers
-            //as.printStr("pushing");
-            //as.printUint(scrRegs[0].opnd(64));
             as.sub(X86Opnd(tspReg), scrRegs[0].opnd(64));
 
             // Adjust the word stack pointer
@@ -2172,8 +2170,7 @@ void gen_call(
             as.sub(X86Opnd(wspReg), scrRegs[0].opnd(64));
 
             // Jump to the function entry block
-            as.getMember!("IRFunction.entryCode")(scrRegs[0], scrRegs[1]);
-            as.jmp(scrRegs[0].opnd(64));
+            as.jmp(memberOpnd!("IRFunction.entryCode")(scrRegs[1]));
         },
         null,
         mayThrow
@@ -2634,8 +2631,6 @@ void gen_ret(
     }
 
     // Jump to the return address
-    //as.printStr("ra=");
-    //as.printUint(scrRegs[1].opnd);
     as.jmp(scrRegs[1].opnd);
 
     // Mark the end of the fragment
