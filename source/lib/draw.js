@@ -439,6 +439,21 @@ lib/draw - provides basic drawing API using xlib
     */
     CanvasProto.drawPoint = function(x, y)
     {
+        // Convert FP values to int for xy coordinates.
+        if (!($ir_is_int32(x)) || !($ir_is_int32(y)))              
+        {
+            // Round and convert to Int32
+            if (x + .5 >= x | 0 + 1)
+                x = $rt_toInt32(x) + 1;
+            else
+                x = $rt_toInt32(x);
+                
+            if (y + .5 >= y | 0 + 1)
+                y = $rt_toInt32(y) + 1;
+            else
+                y = $rt_toInt32(y);
+        }
+        
         Xlib.XDrawPoint(this.display, this.id, this.gc, x, y);
     };
 
