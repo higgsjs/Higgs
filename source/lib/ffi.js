@@ -1264,9 +1264,9 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         var d;
         var loader;
         var loaders;
-        var loader_dec = '';
         var loader_n = 0;
-        var arg_str;
+        var loader_args = [];
+        var loader_gens = [];
 
         var wrapper_fun =
             `(function(c)
@@ -1297,17 +1297,16 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
             // of a type like char[], the former uses simple getters/setters
             // the latter use a wrapper
             loader = mem.load_fun;
-
             if (!loader)
             {
                 // This member uses a wrapper
                 loaders = loaders || [];
                 loader_n += 1;
-                arg_str = (arg_str) ? (arg_str + ', ld' + loader_n) : ('ld1');
+                loader_args.push('ld' + loader_n);
                 loaders.push(mem.wrapper_fun);
-                loader_dec =
-                    `s.` + names[i] + ` = ld` +
-                        loader_n + `(s.ptr, s.offset + ` + mem_offset + `);`;
+                loader_gens.push(`\
+                    s.` + names[i] + ` = ld` +
+                        loader_n + `(s.ptr, s.offset + ` + mem_offset + `);`);
             }
             else
             {
@@ -1346,8 +1345,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
                     {
                       s.ptr = c.malloc(` + size + `);
                       s.offset = offset || 0;
-                    }
-                    ` + loader_dec +
+                    }\n` + loader_gens.join('\n') +
                     `
                     return s;
                 });
@@ -1357,7 +1355,7 @@ FFI - provides functionality for writing bindings to/wrappers for C code.
         {
             // If any of the members use wrappers, add access to the wrapping functions
             wrapper_fun =
-                `(function(` + arg_str + `)
+                `(function(` + loader_args.join(', ') + `)
                  {
                      return ` + wrapper_fun + `;
                  })`;
