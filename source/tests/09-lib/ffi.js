@@ -133,3 +133,19 @@ assertEq(testdir.get_d_namlen(), 4);
 assertEq(testdir.get_d_type(), 5);
 assertEq(testdir.d_name.toString(), "foo");
 
+
+c.cdef(`
+    typedef struct {
+        double x;
+        double y;
+    } Point;
+    typedef struct {
+        Point a;
+        Point b;
+        Point c;
+    } Vec;
+`);
+var o = c.Vec();
+assert(o.a !== undefined);
+assert(o.b !== undefined);
+assert(o.c !== undefined);
