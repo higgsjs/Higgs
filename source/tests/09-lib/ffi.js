@@ -133,7 +133,7 @@ assertEq(testdir.get_d_namlen(), 4);
 assertEq(testdir.get_d_type(), 5);
 assertEq(testdir.d_name.toString(), "foo");
 
-
+// Test structs
 c.cdef(`
     typedef struct {
         double x;
@@ -146,6 +146,19 @@ c.cdef(`
     } Vec;
 `);
 var o = c.Vec();
+assert(o.a !== undefined);
+assert(o.b !== undefined);
+assert(o.c !== undefined);
+
+// Test Unions
+c.cdef(`
+    typedef struct {
+        Point a;
+        Point b;
+        Point c;
+    } UVec;
+`);
+var o = c.UVec();
 assert(o.a !== undefined);
 assert(o.b !== undefined);
 assert(o.c !== undefined);
