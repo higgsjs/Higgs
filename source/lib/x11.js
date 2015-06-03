@@ -217,6 +217,59 @@ NOTE: currently this provides just enough bindings for the drawing lib
         typedef XKeyEvent XKeyPressedEvent;
         typedef XKeyEvent XKeyReleasedEvent;
         
+        typedef struct {
+            int type;   /* of event */
+            unsigned long serial;   /* # of last request processed by server */
+            Bool send_event;    /* true if this came from a SendEvent request */
+            Display *display;   /* Display the event was read from */
+            Window window;        /* "event" window it is reported relative to */
+            Window root;        /* root window that the event occurred on */
+            Window subwindow;   /* child window */
+            Time time;  /* milliseconds */
+            int x, y;   /* pointer x, y coordinates in event window */
+            int x_root, y_root; /* coordinates relative to root */
+            unsigned int state; /* key or button mask */
+            unsigned int keycode;   /* detail */
+            Bool same_screen;   /* same screen flag */
+        } XKeyEvent;
+        typedef XKeyEvent XKeyPressedEvent;
+        typedef XKeyEvent XKeyReleasedEvent;
+
+        typedef struct {
+           int            type;            /* ButtonPress or ButtonRelease */
+           unsigned long  serial;          /* # of last request processed by server */
+           Bool           send_event;      /* true if this came from a SendEvent request */
+           Display        *display;        /* Display the event was read from */
+           Window         window;          /* “event” window it is reported relative to */
+           Window         root;            /* root window that the event occurred on */
+           Window         subwindow;       /* child window */
+           Time           time;            /* milliseconds */
+           int            x, y;            /* pointer x, y coordinates in event window */
+           int            x_root, y_root;  /* coordinates relative to root */
+           unsigned int   state;           /* key or button mask */
+           unsigned int   button;          /* detail */
+           Bool           same_screen;     /* same screen flag */
+        } XButtonEvent;
+        typedef XButtonEvent XButtonPressedEvent;
+        typedef XButtonEvent XButtonReleasedEvent;
+
+        typedef struct {
+            int type;    /* MotionNotify */
+            unsigned long serial;    /* # of last request processed by server */
+            Bool send_event;    /* true if this came from a SendEvent request */
+            Display *display;    /* Display the event was read from */
+            Window window;    /* “event” window reported relative to */
+            Window root;    /* root window that the event occurred on */
+            Window subwindow;    /* child window */
+            Time time;    /* milliseconds */
+            int x, y;    /* pointer x, y coordinates in event window */
+            int x_root, y_root;    /* coordinates relative to root */
+            unsigned int state;    /* key or button mask */
+            char is_hint;    /* detail */
+            Bool same_screen;    /* same screen flag */
+        } XMotionEvent;
+        typedef XMotionEvent XPointerMovedEvent;
+
         /*
          * this union is defined so Xlib can always use the same sized
          * event structure internally, to avoid memory fragmentation.
@@ -224,12 +277,13 @@ NOTE: currently this provides just enough bindings for the drawing lib
         typedef union _XEvent {
             int type;   /* must not be changed; first element */
             XKeyEvent xkey;
+            XButtonEvent xbutton;
+            XMotionEvent xmotion;
             /* NOTE: TODO: snipped: stuff we don't care about,
                 add it back as appropriate */
             long pad[24];
         } XEvent;
-        
-        
+     
         /*
          * Data structure used by color operations
          */
@@ -740,7 +794,7 @@ NOTE: currently this provides just enough bindings for the drawing lib
         );
 
         typedef int (*XIOErrorHandler) (    /* WARNING, this type not in Xlib spec */
-          Display*		/* display */
+          Display*      /* display */
         );
 
         XErrorHandler XSetErrorHandler (
@@ -2930,4 +2984,3 @@ NOTE: currently this provides just enough bindings for the drawing lib
         exports[name] = Xlib[name];
 
 })(exports);
-
