@@ -137,7 +137,7 @@ JSON.parse = function (
 
         // Consume opening {
         consume();
-    
+
         skipWhiteSpace();
         while (current() !== 125) // '}'
         {
@@ -146,7 +146,7 @@ JSON.parse = function (
             if (current() !== 34) // '"'
                 // FIXME: throw SyntaxError
                 return undefined;
-            
+
             var propName = parseString();
 
             skipWhiteSpace();
@@ -187,7 +187,7 @@ JSON.parse = function (
 
         // Consume opening [
         consume();
-    
+
         skipWhiteSpace();
 
         while (current() !== 93) // ']'
@@ -210,7 +210,7 @@ JSON.parse = function (
                 // FIXME: throw SyntaxError
                 return undefined;
         }
-        
+
         // Consume closing ]
         consume();
         return a;
@@ -225,7 +225,7 @@ JSON.parse = function (
 
         while (true)
         {
-            var c = current(); 
+            var c = current();
 
             if (c === 34) // '"'
             {
@@ -358,7 +358,7 @@ JSON.parse = function (
         if (current() === 69 || current() === 101) // 'e' | 'E'
         {
             consume();
-            
+
             // Parse exponent
             while (isDigit(current()))
                 consume();
@@ -476,10 +476,10 @@ JSON.stringify = function (
         else
             value = holder[key];
 
-        if (value !== null && 
-            value !== undefined && 
+        if (value !== null &&
+            value !== undefined &&
             typeof value.toJSON === "function")
-           value = value.toJSON(); 
+           value = value.toJSON();
 
         if (replacerFunction !== undefined)
             value = replacerFunction.call(holder, key, value);
@@ -553,7 +553,7 @@ JSON.stringify = function (
 
                 if (strp !== undefined)
                 {
-                    parts.push(quote(keys[i]));        
+                    parts.push(quote(keys[i]));
                     parts.push(":");
                     parts.push(strp);
                     parts.push(",");
@@ -577,7 +577,7 @@ JSON.stringify = function (
                     for (var j = 0; j < depth; ++j)
                         parts.push(espace);
 
-                    parts.push(quote(keys[i]));        
+                    parts.push(quote(keys[i]));
                     parts.push(": ");
                     parts.push(strp);
                     parts.push(",\n");
@@ -610,16 +610,14 @@ JSON.stringify = function (
         {
             parts.push("[");
 
+            var elems = [];
             for (var i = 0; i < a.length; ++i)
             {
                 var strp = toJSON(i.toString(), a, depth + 1);
-
-                parts.push(strp);
-                parts.push(",");
+                if (strp === undefined) continue;
+                elems.push(strp);
             }
-
-            if (a.length > 0)
-                parts.pop();
+            parts.push(elems.join(","));
 
             parts.push("]");
         }
@@ -627,18 +625,19 @@ JSON.stringify = function (
         {
             parts.push("[\n");
 
+            var elems = [];
             for (var i = 0; i < a.length; ++i)
             {
                 var strp = toJSON(i.toString(), a, depth + 1);
+                if (strp === undefined) continue;
 
+                var buff = [];
                 for (var j = 0; j < depth; ++j)
-                    parts.push(espace);
-                parts.push(strp);
-                parts.push(",\n");
+                    buff.push(espace);
+                buff.push(strp);
+                elems.push(buff.join(""));
             }
-
-            if (a.length > 0)
-                parts.pop();
+            parts.push(elems.join(",\n"));
 
             parts.push("\n");
             for (var j = 0; j < depth - 1; ++j)
@@ -719,4 +718,3 @@ JSON.stringify = function (
 
     return toJSON("", value, 1);
 }
-

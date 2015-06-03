@@ -42,6 +42,7 @@
 
 // Test case from mjsunit (http://v8.googlecode.com/svn/trunk/test/mjsunit/)
 // TODO: test invalid inputs
+require('lib/test');
 
 function equal(a, b)
 {
@@ -194,6 +195,18 @@ function test()
 }
 
 // TODO: convert this test to use assertions &
-// exceptions instead of return codes 
+// exceptions instead of return codes
 assert (test() === 0);
 
+// Test cyclic objects in arrays.
+var a = {qux: 'baz'};
+var b = [a, a, a];
+
+assertEq(JSON.stringify(b), `[{"qux":"baz"}]`);
+assertEq(JSON.stringify(b, null, 4),
+`[
+    {
+        "qux": "baz"
+    }
+]`
+);
