@@ -223,12 +223,12 @@ lib/draw - provides basic drawing API using xlib
               throw 'Argument not a function in onClick';
     }
 
-    WindowProto.onMouseMotion = function(cb)
+    WindowProto.onMouseMove = function(cb)
     {
         if (typeof cb === 'function')
             this.move_funs.push(cb);
         else
-            throw 'Argument not a function in onMouseMotion';
+            throw 'Argument not a function in onMouseMove';
     }
 
     /**
@@ -337,7 +337,7 @@ lib/draw - provides basic drawing API using xlib
                         click_funs[--click_funs_i](canvas, mouseX, mouseY);
                     }
                 }
-                // onMouseMotion
+                // onMouseMove
                 else if (event_type === XEvents.MotionNotify)
                 {         
                      mouseX = xmotion.get_x();
