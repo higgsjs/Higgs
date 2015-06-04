@@ -198,15 +198,73 @@ function test()
 // exceptions instead of return codes
 assert (test() === 0);
 
-// Test cyclic objects in arrays.
-var a = {qux: 'baz'};
-var b = [a, a, a];
+// Test circular references
+// should throw
+assertThrows(function () {
+    var a = [];
+    a.push(a);
+    JSON.stringify(a);
+});
 
-assertEq(JSON.stringify(b), `[{"qux":"baz"}]`);
-assertEq(JSON.stringify(b, null, 4),
-`[
-    {
-        "qux": "baz"
-    }
-]`
-);
+// should not throw
+(function () {
+    var a = [],
+        b = [],
+        c = [],
+        d = [],
+        e = [];
+        g = [];
+    a.push(b, c);
+    b.push(d, e);
+    c.push(g);
+    d.push(c, g);
+    JSON.stringify(a);
+})();
+
+// should throw
+assertThrows(function () {
+    var a = [],
+        b = [],
+        c = [],
+        d = [],
+        e = [];
+        g = [];
+    a.push(b, c);
+    b.push(d, e);
+    c.push(g);
+    d.push(a);
+    JSON.stringify(a);
+});
+
+// 2nd paragraph
+
+// should not throw
+(function () {
+    var a = [],
+        b = [],
+        c = [],
+        d = [],
+        e = [];
+        g = [];
+    a.push(b, c);
+    b.push(d, e);
+    c.push(g);
+    g.push(d);
+    JSON.stringify(a);
+})();
+
+// should throw
+assertThrows(function () {
+    var a = [],
+        b = [],
+        c = [],
+        d = [],
+        e = [];
+        g = [];
+    a.push(b, c);
+    b.push(d, e);
+    c.push(g);
+    d.push(a);
+    g.push(d);
+    JSON.stringify(a);
+});
