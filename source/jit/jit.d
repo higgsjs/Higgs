@@ -2389,6 +2389,24 @@ void compile(VM vm, IRInstr curInstr)
                 ver.state.fun.getName
             );
 
+            /*
+            // If this is a function entry block, align to a 64 byte boundary
+            if (block is ver.state.fun.entryBlock)
+            {
+                const ALIGN_BYTES = 64;
+
+                auto rem = as.getWritePos % ALIGN_BYTES;
+
+                if (rem != 0)
+                {
+                    auto pad = ALIGN_BYTES - rem;
+                    as.nop(pad);
+                }
+
+                assert (as.getWritePos % ALIGN_BYTES == 0);
+            }
+            */
+
             // Copy the instance's state object
             auto state = new CodeGenState(ver.state);
 

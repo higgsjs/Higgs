@@ -116,7 +116,26 @@ Marc leaves May 31st
 - Should be avail remotely June 5th
 - Comes back July 13th
 
-Meeting 2015-05-19:
+*** Code freeze until DLS if possible ***
+
+Meet Friday May 22 at 1PM to discuss scheme workshop paper
+
+Heisenbug: often happens in gc/... tests
+- Still may be due to restarts, gc tests do many of these
+- Log the restart steps
+  - crashes after VM restart is done
+- code changes affect where the crash happens
+- Try git bisect
+git bisect run repeatmaketest.py
+
+
+
+
+
+
+
+
+[DONE] Meeting 2015-05-19:
 - Added citations and text to paper, improved structure
 - Investigated cont spec
   - noticeable reduction in shape tests on some benchmarks
@@ -134,18 +153,14 @@ Meeting 2015-05-19:
   - Likely related to calls & returns, implemented with jumps
   - Tiny changes in code alignment affect cache performance
     - Instruction decoding performance
-Does the Truffle/JS v0.5 release incorporate the Truffle object storage model? As described in
-@Love2Code Yes, it does. It also includes additional techniques. Among them one that we call "speculative object shapes".
-- Can you look if there's a way to build Truffle without inlining?
+- Does the Truffle/JS v0.5 release incorporate the Truffle object storage model? As described in
+  @Love2Code Yes, it does. It also includes additional techniques. Among them one that we call "speculative object shapes".
+- To Marc: can you look if there's a way to build Truffle without inlining? ***
   - No command-line option that I can tell
 
-
-
-
-
-
-
-
+[DONE] TODO: try forcing 64 byte alignment at every function entry point?
+- do we ever fall through to a function entry? not directly?
+- can align with NOP slide just to try it out
 
 [DONE] TODO: study bits-in-byte
 - but don't spend too long!
