@@ -392,7 +392,7 @@ lib/draw - provides basic drawing API using xlib
                     // further qualify an onClick from onMouseUp
                     
                     if (button === "leftClick")
-                        
+                    {    
                         while (click_funs_i > 0)
                         {
                             click_funs[--click_funs_i](canvas, mouseX, mouseY, button);
