@@ -372,11 +372,11 @@ lib/draw - provides basic drawing API using xlib
                     button = xbutton.get_button();
                     
                     if (button === 1)
-                        button = "leftClick";
+                        button = "left";
                     else if (button === 2)
-                        button = "centerClick";
+                        button = "center";
                     else if (button === 3)
-                         button = "rightClick";
+                         button = "right";
                     else if (button === 4)
                          button = "wheelUp";
                     else if (button === 5)
@@ -391,7 +391,7 @@ lib/draw - provides basic drawing API using xlib
                     // TODO: Use timing and XEvent buffer to
                     // further qualify an onClick from onMouseUp
                     
-                    if (button === "leftClick")
+                    if (button === "left")
                     {    
                         while (click_funs_i > 0)
                         {
@@ -407,11 +407,11 @@ lib/draw - provides basic drawing API using xlib
                     button = xbutton.get_button();                    
                     
                     if (button === 1)
-                        button = "leftClick";
+                        button = "left";
                     else if (button === 2)
-                        button = "centerClick";
+                        button = "center";
                     else if (button === 3)
-                         button = "rightClick";
+                         button = "right";
                     else if (button === 4)
                          button = "wheelUp";
                     else if (button === 5)
