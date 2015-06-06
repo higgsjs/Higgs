@@ -569,6 +569,16 @@ lib/draw - provides basic drawing API using xlib
     */
     CanvasProto.drawPoint = function(x, y)
     {
+        // Convert FP to int
+        if (!$ir_is_int32(x))
+        {
+            x = $rt_toInt32(x);
+        }
+        if (!$ir_is_int32(y))
+        {
+            y = rt_toInt32(y);
+        }
+        
         Xlib.XDrawPoint(this.display, this.id, this.gc, x, y);
     };
 
