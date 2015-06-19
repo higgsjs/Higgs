@@ -106,6 +106,13 @@ TODO: setup paper template for interp BBV
 
 TODO: port heisenbug fix to dls2015 branch
 
+TODO: create dls2015 branch on github
+- clone locally
+
+TODO: copy ECOOP paper to Higgs ecoop2015 branch
+- make it work with relative directories
+- have Tommy or someone else pull and test it
+
 FIXME: Heisenbug: often happens in gc/... tests
 - Still may be due to restarts, gc tests do many of these
 - Log the restart steps
@@ -114,16 +121,10 @@ FIXME: Heisenbug: often happens in gc/... tests
 - Try git bisect
 
 TODO: look into more git bisect tutorials
-git bisect run source/repeatmaketest.py
-
-TODO: copy/migrate ECOOP paper to Higgs ecoop2015 branch
-- make it work with relative directories
-- have Tommy or someone else pull and test it
-
-TODO: create dls2015 branch on github
-- clone locally
-
-
+# git bisect start <bad_rev> <good_rev>
+- Going to start with March 23
+git bisect start a29138116e49cee91c28d488c677a32022e8b47b 1ed9b8c3f557f751a281cb823f27b4252c7e4a86
+git bisect run ../repeatmaketest.py
 
 
 
