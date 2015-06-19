@@ -37,20 +37,6 @@ gcc -O4 benchmarks/micro/fib42.c; time ./a.out => 1.165
 - Show machine code output for Higgs, GCC, V8
 TODO: look at machine code for fib42, ensure OK
 
-TODO: rename CodeGenState to CodeGenCtx
-
-TODO: look at notes wrt global obj threading
-- do we need this for thesis or publications?
-  - looks like typed shapes need to perform better, so yes
-- Marc suggests keeping current implementation with threading
-  - no special global obj register at first
-
-TODO: eliminate uses of VM reg
-TODO: implement store to moffs
-    A3 MOV moffs32, EAX
-    REX.W + A3 MOV moffs64, RAX
-- see existing load from moffs
-
 TODO: callbacks
 - push RA on JS stack when calling C code
 <maximecb> yawnt, I wanted to ask you what your use case for callbacks would be
@@ -58,17 +44,6 @@ TODO: callbacks
 <maximecb> and that C code would call into a JS function
 <yawnt> maximecb: libuv
 <yawnt> that's it
-
-TODO: think about shape types
-- Can reuse current capture_shape system, keep it mostly as-is
-- Extracting types from shapes mostly works as before
-  - But now we register block versions with prop reads on the shapes
-- If writing a mismatched type, make shape read blocks jump to stubs?
-  - When stubs compiled, need to update the jump addr
-- No more shape transition on new type
-- Can separate shapes with null proto from shapes with nonnull proto
-  - rename __proto__ to __nullproto__ for root obj
-  - use current type setup to keep this typed? or flag bits
 
 TODO: instr.getSucc(tIdx) => returns succ block
 TODO: rename BranchDesc.target to BranchDesc.block? or .succ?
@@ -93,9 +68,6 @@ TODO: implement basic meta stat test system
   - obj lit usage patterns that should have no shape tests whatsoever
   - init with --nostdlib should have no shape tests, no perf degradation
 
-Short blog post: PhD Musings - Versioning is Not Cloning
-- Short and sweet, KISS, musings
-
 TODO: simplified phi arg iteration?
 - phi.numArgs, phi.getArg(i)?
 
@@ -103,7 +75,64 @@ TODO: don't write ret tag register to type stack (in caller) if tag known
 - if tag known, set known tag, let the branch spill it if necessary
 - if tag unknown, write tag as before in cont branch
 
+TODO: rename CodeGenState to CodeGenCtx
+
+TODO: look at notes wrt global obj threading
+- do we need this for thesis or publications?
+  - looks like typed shapes need to perform better, so yes
+- Marc suggests keeping current implementation with threading
+  - no special global obj register at first
+
+TODO: eliminate uses of VM reg
+TODO: implement store to moffs
+    A3 MOV moffs32, EAX
+    REX.W + A3 MOV moffs64, RAX
+- see existing load from moffs
+
+------------------------------------------------------------------------------
+
+TODO: fastest objects in the whole wide web
+=> wait a minute! cache issue
+
 TODO: look at code point issue again
+
+TODO: if DLS paper rejected, rework it for CGO
+1. Abstract Submission: September 12, 2015
+2. Paper Submission: September 18, 2015
+
+TODO: setup paper template for interp BBV
+- perf graphs first
+- compile time
+
+TODO: port heisenbug fix to dls2015 branch
+
+FIXME: Heisenbug: often happens in gc/... tests
+- Still may be due to restarts, gc tests do many of these
+- Log the restart steps
+  - crashes after VM restart is done
+- code changes affect where the crash happens
+- Try git bisect
+
+TODO: look into more git bisect tutorials
+git bisect run source/repeatmaketest.py
+
+TODO: copy/migrate ECOOP paper to Higgs ecoop2015 branch
+- make it work with relative directories
+- have Tommy or someone else pull and test it
+
+TODO: create dls2015 branch on github
+- clone locally
+
+
+
+
+
+
+
+
+
+
+
 
 ------------------------------------------------------------------------------
 
@@ -112,28 +141,13 @@ DLS - June 7, 2015
 
 http://www.dynamic-languages-symposium.org/dls-15/cfp/index.html
 
+*** Code freeze until DLS if possible ***
+
 Marc leaves May 31st
 - Should be avail remotely June 5th
 - Comes back July 13th
 
-*** Code freeze until DLS if possible ***
-
-Meet Friday May 22 at 1PM to discuss scheme workshop paper
-
-Heisenbug: often happens in gc/... tests
-- Still may be due to restarts, gc tests do many of these
-- Log the restart steps
-  - crashes after VM restart is done
-- code changes affect where the crash happens
-- Try git bisect
-git bisect run repeatmaketest.py
-
-
-
-
-
-
-
+[DONE] Meet Friday May 22 at 1PM to discuss scheme workshop paper
 
 [DONE] Meeting 2015-05-19:
 - Added citations and text to paper, improved structure
