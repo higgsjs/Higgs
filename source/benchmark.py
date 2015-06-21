@@ -87,6 +87,12 @@ for benchmark in benchmarks:
         # Verify the return code
         ret = pipe.returncode
         if ret != 0:
+
+            print ''
+            print 'benchmark failed with output:'
+            print pipe.stdout.read()
+            print ''
+
             raise Exception('invalid return code: ' + str(ret))
 
         # Add an value for the wall clock time
