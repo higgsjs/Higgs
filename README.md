@@ -5,7 +5,7 @@ Instructions to build the Higgs binary from source are provided below.
 
 Binaries for V8 and TraceMonkey, as used in the ECOOP paper, are provided under the [bin](https://github.com/higgsjs/Higgs/tree/ecoop2015/bin) directory. These were built on an Ubuntu 12.04 64-bit x86 machine.
 
-The Truffle v0.5 distribution used could not be included due to Oracle's licensing restrictions.
+The Truffle v0.5 distribution used could not be included due to Oracle's licensing restrictions. It must be downloaded [from the Oracle website](http://www.oracle.com/technetwork/oracle-labs/program-languages/downloads/index.html).
 
 Sample data gathered on our test machine can be found under the [data](https://github.com/higgsjs/Higgs/tree/ecoop2015/data) directory. To regenerate the said data, you can use the run_benchmarks_* scripts found in the toplevel directory.
 
