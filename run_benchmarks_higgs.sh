@@ -11,21 +11,18 @@ cd "${HIGGS_DIR}"
 echo `pwd`
 
 # Perf stats (used for code size, compilation time)
-./benchmark.py --num_runs=10 --vm_cmd="./higgs --perf_stats --shape_novers --maxvers=0 --typeprop" --csv_file="${DATA_DIR}/perf_typeprop.csv"
 ./benchmark.py --num_runs=10 --vm_cmd="./higgs --perf_stats --shape_novers --maxvers=0" --csv_file="${DATA_DIR}/perf_maxvers0.csv"
 ./benchmark.py --num_runs=10 --vm_cmd="./higgs --perf_stats --shape_novers --maxvers=1" --csv_file="${DATA_DIR}/perf_maxvers1.csv"
 ./benchmark.py --num_runs=10 --vm_cmd="./higgs --perf_stats --shape_novers --maxvers=5" --csv_file="${DATA_DIR}/perf_maxvers5.csv"
 ./benchmark.py --num_runs=10 --vm_cmd="./higgs --perf_stats --shape_novers --maxvers=100" --csv_file="${DATA_DIR}/perf_maxvers100.csv"
 
 # Execution time stats with compilation time excluded
-./benchmark.py --vm_cmd="./higgs --shape_novers --maxvers=0 --typeprop" --bench_list="benchmarks/nocomptime/benchmark-list.csv" --csv_file="${DATA_DIR}/time_typeprop.csv"
 ./benchmark.py --vm_cmd="./higgs --shape_novers --maxvers=0" --bench_list="benchmarks/nocomptime/benchmark-list.csv" --csv_file="${DATA_DIR}/time_maxvers0.csv"
 ./benchmark.py --vm_cmd="./higgs --shape_novers --maxvers=1" --bench_list="benchmarks/nocomptime/benchmark-list.csv" --csv_file="${DATA_DIR}/time_maxvers1.csv"
 ./benchmark.py --vm_cmd="./higgs --shape_novers --maxvers=5" --bench_list="benchmarks/nocomptime/benchmark-list.csv" --csv_file="${DATA_DIR}/time_maxvers5.csv"
 ./benchmark.py --vm_cmd="./higgs --shape_novers --maxvers=100" --bench_list="benchmarks/nocomptime/benchmark-list.csv" --csv_file="${DATA_DIR}/time_maxvers100.csv"
 
 # Full stats (used for version counts)
-./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=0 --typeprop" --csv_file="${DATA_DIR}/typeprop.csv"
 ./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=0" --csv_file="${DATA_DIR}/maxvers0.csv"
 ./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=1" --csv_file="${DATA_DIR}/maxvers1.csv"
 ./benchmark.py --vm_cmd="./higgs --stats --shape_novers --maxvers=5" --csv_file="${DATA_DIR}/maxvers5.csv"
