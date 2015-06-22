@@ -1,0 +1,27 @@
+,exec time (ms),num itrs,wall time (ms)
+partial-sums,20.1625,80,8288
+v8-crypto,233.6,10,24231
+3d-morph,18.6,10,7758
+fasta,10.2,10,9528
+bits-in-byte,107.04375,640,74366
+crypto-md5,78.3,10,6937
+deltablue,80.9,20,7937
+recursive,3.865625,320,8356
+base64,188.4,10,8570
+3d-raytrace,298.4,10,13916
+navier-stokes,11.2,40,13341
+nbody,67.9,10,7301
+nsieve-bits,3.1,320,8501
+cordic,139.9109375,640,96909
+splay,236.3,10,22593
+spectral-norm,123,10,7234
+richards,66.525,40,10652
+bitwise-and,6.01875,320,10306
+fannkuch,5.3375,320,12620
+crypto-sha1,129.1,10,7536
+v8-raytrace,157.8,10,12257
+3bits-byte,0.00078125,1280,75377
+earley-boyer,72.8,10,17734
+3d-cube,191.4,10,9748
+nsieve,4.175,160,7016
+binary-trees,11.80625,160,9625
