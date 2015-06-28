@@ -88,6 +88,7 @@ These arguments will be evaluated as JS code in the global scope and the resulti
 
 **Notes:**
  - You may wish to use `rlwrap` for a better REPL experience.
+ - You will need to install `libx11-dev` to use the drawing library, or to run the [example programs](https://github.com/higgsjs/Higgs/blob/master/examples).
 
 More
 =====
