@@ -65,6 +65,8 @@ struct GCRoot
     private GCRoot* prev;
     private GCRoot* next;
 
+    @disable this();
+
     this(ValuePair pair)
     {
         // Use the assignment operator
@@ -82,32 +84,26 @@ struct GCRoot
         this(Word.ptrv(p), t);
     }
 
-    @disable this();
-
     ~this()
     {
-        assert (
-            vm !is null,
-            "vm is null"
-        );
+        //writeln("ptr=", ptr);
 
-        if (prev)
-            prev.next = next;
-        else
-            vm.firstRoot = next;
+        // Unregister this root
+        this = NULL;
 
-        if (next)
-            next.prev = prev;
+        //writeln("GCRoot destructor done");
     }
 
     GCRoot* opAssign(ValuePair v)
     {
-        // Store the value pair
-        pair = v;
-
-        // If the pointer isn't null and this root isn't listed yet
-        if (v.word.ptrVal && !this.next && !this.prev)
+        // If the new pointer is non-null and this root isn't listed yet
+        if (v.word.ptrVal && !ptr)
         {
+            assert (
+                vm !is null,
+                "vm is null"
+            );
+
             this.next = vm.firstRoot;
 
             if (vm.firstRoot)
@@ -118,6 +114,30 @@ struct GCRoot
 
             vm.firstRoot = &this;
         }
+
+        // If the new pointer is null but the old pointer was non-null
+        // The root needs to be unregistered
+        else if (!v.word.ptrVal && ptr)
+        {
+            assert (
+                vm !is null,
+                "vm is null"
+            );
+
+            if (prev)
+                prev.next = next;
+            else
+                vm.firstRoot = next;
+
+            if (next)
+                next.prev = prev;
+
+            this.prev = null;
+            this.next = null;
+        }
+
+        // Store the value pair
+        this.pair = v;
 
         return &this;
     }

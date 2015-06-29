@@ -104,36 +104,72 @@ TODO: setup paper template for interp BBV
 - perf graphs first
 - compile time
 
-TODO: port heisenbug fix to dls2015 branch
+------------------------------------------------------------------------------
 
-TODO: create dls2015 branch on github
-- clone locally
+TODO: push to master
 
-TODO: copy ECOOP paper to Higgs ecoop2015 branch
-- make it work with relative directories
-- have Tommy or someone else pull and test it
+TODO: push to dls2015
 
-FIXME: Heisenbug: often happens in gc/... tests
+
+
+
+
+
+
+[DONE] TODO: pull latest master into dev-maxime
+git pull origin master
+
+[DONE] TODO: port heisenbug fix to dls2015 branch
+- copy out repeatmake test
+- copy runtime/gc
+- VM changes
+- VM.free at end of main
+
+[DONE] FIXME: Heisenbug: often happens in gc/... tests
 - Still may be due to restarts, gc tests do many of these
 - Log the restart steps
   - crashes after VM restart is done
 - code changes affect where the crash happens
-- Try git bisect
+Where is the earliest failure?
+- Fails in many globals... is this during GC? no
+- Note that there is no failure in ANY of the benchmarks or more complex tests...
+- Has to be due to VM restart?
+- Facts:
+  - If not destroying IRFunctions, all succeeds
+  - Crash in many globals test happens when compiling
+    - One of the host data structures is corrupt
 
-TODO: look into more git bisect tutorials
-# git bisect start <bad_rev> <good_rev>
-- Going to start with March 23
-git bisect start a29138116e49cee91c28d488c677a32022e8b47b 1ed9b8c3f557f751a281cb823f27b4252c7e4a86
-git bisect run ../repeatmaketest.py
+[DONE] TODO: count number of registered refs, assert 0 as specific points
+- after unregistering
+- between VM re-inits
 
+[DONE] TODO: try adding asserts
+- enumTbl.ptr should be null in shape dtor
 
+[DONE] TODO: ask paulfryzel if he can help
 
+[DONE] TODO: ask for advice on the D forums
+- put breaking code on branch, with repeatmaketest
+git checkout -b heisenbug
+mv ../../repeatmaketest.py .
+git add repeatmaketest.py
+Kind of stumped. Memory corruption problem? Seems to be caused by explicit destruction of objects.
 
+[DONE] TODO: look at jit/ops.d, do we pass a pointer to fun anywhere?
+- no go
 
+[DONE] TODO: look at absolute memory addressing stuff again...
+- storing and loading tsp, wsp
 
+[DONE] TODO: try explicitly destroying versionMap when destroying functions
+- doesn't fix it
 
+[DONE] TODO: try freeing more of the dynamic structures in VMs
+- no success
 
-
+[DONE] TODO: try disabling call cont invalidation
+- leave it disabled
+- still fails
 
 ------------------------------------------------------------------------------
 

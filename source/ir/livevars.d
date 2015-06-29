@@ -287,7 +287,6 @@ class LiveInfo
 
         // Stack of blocks for DFS traversal
         IRBlock[] stack;
-        stack.reserve(32768);
 
         /**
         Traverse a basic block as part of a liveness analysis

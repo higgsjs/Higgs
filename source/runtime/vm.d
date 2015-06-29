@@ -720,6 +720,17 @@ class VM
     {
         with (vm)
         {
+            // Unregister all the GC roots to prevent them from
+            // touching the VM object after it is destroyed
+            for (auto root = firstRoot; root !is null;)
+            {
+                auto next = root.nextRoot;
+                *root = NULL;
+                root = next;
+            }
+
+            assert (firstRoot is null);
+
             // Free the stacks
             GC.free(wStack);
             GC.free(tStack);
@@ -736,18 +747,30 @@ class VM
             destroy(execHeap);
             destroy(subsHeap);
 
-            // Free the IRFunction references
+            GC.free(regSave);
+
+            destroy(retAddrMap);
+
+            // Destroy the code fragments
+            foreach (frag; fragList)
+                destroy(frag);
+
+            destroy(compQueue);
+            destroy(fragList);
+
+            // FIXME: freeing the IRFunctions causes a heisenbug
+            // with DMD 2.067.1, this may be due to a bug in the D GC.
+            // Try uncommenting after upgrading to a new DMD version.
+            /*
+            // Destroy the IRFunction objects
             foreach (ptr, fun; funRefs)
                 destroy(fun);
+            */
 
-            // Unregister all the GC roots to prevent them from
-            // touching the VM object after the it is destroyed
-            for (auto root = firstRoot; root !is null;)
-            {
-                auto next = root.nextRoot;
-                destroy(root);
-                root = next;
-            }
+            destroy(funRefs);
+            destroy(liveFuns);
+
+            destroy(refList);
         }
 
         // Destroy the VM object itself

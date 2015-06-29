@@ -159,6 +159,9 @@ void main(string[] args)
         // Start the REPL
         repl.repl(vm);
     }
+
+    // Free resources used by the VM instance
+    VM.free();
 }
 
 import ir.ir;
