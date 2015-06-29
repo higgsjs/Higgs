@@ -58,8 +58,8 @@ lib/draw - provides basic drawing API using xlib
     var Xlib = require('lib/x11');
     var XEventMask = Xlib.XEventMask;
     var XEvents = Xlib.XEvents;
-
-
+    
+    
     /**
     DrawError
     @constructor
@@ -74,7 +74,7 @@ lib/draw - provides basic drawing API using xlib
     /**
     Default settings
     */
-
+    
 
     /**
     CanvasWindow
@@ -84,7 +84,11 @@ lib/draw - provides basic drawing API using xlib
         ptr: CNULL,
         frame_rate: 60,
         render_funs: null,
-        key_funs: null
+        key_funs: null,
+        click_funs:null,
+        move_funs:null,
+        mousedown_funs:null,
+        mouseup_funs:null
     };
 
     function Window(x, y, width, height, title)
@@ -132,6 +136,10 @@ lib/draw - provides basic drawing API using xlib
         // Events
         cw.render_funs = [];
         cw.key_funs = [];
+        cw.click_funs = [];
+        cw.move_funs = [];
+        cw.mouseup_funs = [];
+        cw.mousedown_funs = [];
 
         return cw;
     }
@@ -164,7 +172,9 @@ lib/draw - provides basic drawing API using xlib
 
         // select what events to listen to
         Xlib.XSelectInput(display, win,
-                      XEventMask.ExposureMask | XEventMask.KeyPressMask);
+                      XEventMask.ExposureMask | XEventMask.KeyPressMask
+                          | XEventMask.ButtonPressMask | XEventMask.ButtonReleaseMask
+                          | XEventMask.PointerMotionMask);
 
         // we need to watch for the window closing
         atom_name = ffi.cstr('WM_DELETE_WINDOW');
@@ -208,7 +218,39 @@ lib/draw - provides basic drawing API using xlib
         else
             throw 'Argument not a function in onKeypress';
     };
+    
+    WindowProto.onClick = function(cb)
+    {
+          if (typeof cb === 'function')
+              this.click_funs.push(cb);
+          else
+              throw 'Argument not a function in onClick';
+    }
 
+    WindowProto.onMouseMove = function(cb)
+    {
+        if (typeof cb === 'function')
+            this.move_funs.push(cb);
+        else
+            throw 'Argument not a function in onMouseMove';
+    }
+    
+    WindowProto.onMouseUp = function(cb)
+    {
+        if (typeof cb ==='function')
+            this.mouseup_funs.push(cb);
+        else
+            throw 'Argument not a function in onMouseUp';
+    }
+    
+    WindowProto.onMouseDown = function(cb)
+    {
+        if (typeof cb ==='function')
+            this.mousedown_funs.push(cb);
+        else
+            throw 'Argument not a function in onMouseDown';
+    }
+    
     /**
     Show the window, and start the event loop
     */
@@ -226,6 +268,7 @@ lib/draw - provides basic drawing API using xlib
         // timing
         var work_time;
         var timeout;
+        
         // events
         var event = Xlib.XEvent();
         var event_type;
@@ -233,12 +276,28 @@ lib/draw - provides basic drawing API using xlib
         var key_name_c;
         var key_name;
         var e = event.ptr;
+        
+        // mouse events        
+        var xbutton = event.xbutton;
+        var xmotion = event.xmotion;
+        var mouseX;
+        var mouseY;
+        var button;                
+        
         // handlers
         var key_funs = this.key_funs;
         var render_funs = this.render_funs;
+        var click_funs = this.click_funs;
+        var move_funs = this.move_funs;
+        var mouseup_funs = this.mouseup_funs;
+        var mousedown_funs = this.mousedown_funs;
         var key_funs_i = 0;
         var render_funs_i = 0;
-
+        var click_funs_i = 0;
+        var move_funs_i = 0;
+        var mouseup_funs_i = 0;
+        var mousedown_funs_i = 0;
+        
         // event loop
         while (draw)
         {
@@ -247,6 +306,10 @@ lib/draw - provides basic drawing API using xlib
 
             key_funs_i = key_funs.length;
             render_funs_i = render_funs.length;
+            click_funs_i = click_funs.length;
+            move_funs_i = move_funs.length;
+            mouseup_funs_i = mouseup_funs.length;
+            mousedown_funs_i = mousedown_funs.length;
 
             // render
             while (render_funs_i > 0)
@@ -277,6 +340,7 @@ lib/draw - provides basic drawing API using xlib
                                    0, 0, width, height, 0, 0
                                   );
                 }
+                // onKeyPress
                 else if (event_type === XEvents.KeyPress)
                 {
                     // TODO: index? change to number?
@@ -289,6 +353,76 @@ lib/draw - provides basic drawing API using xlib
                         key_funs[--key_funs_i](canvas, key_name);
                     }
                 }
+                // onMouseMove
+                else if (event_type === XEvents.MotionNotify)
+                {         
+                     mouseX = xmotion.get_x();
+                     mouseY = xmotion.get_y();
+         
+                    while (move_funs_i > 0)
+                    {
+                        move_funs[--move_funs_i](canvas, mouseX, mouseY);                                
+                    }
+                }
+                //onMouseUp
+                else if (event_type === XEvents.ButtonRelease)
+                {
+                    mouseX = xbutton.get_x();
+                    mouseY = xbutton.get_y();                    
+                    button = xbutton.get_button();
+                    
+                    if (button === 1)
+                        button = "left";
+                    else if (button === 2)
+                        button = "center";
+                    else if (button === 3)
+                         button = "right";
+                    else if (button === 4)
+                         button = "wheelUp";
+                    else if (button === 5)
+                         button = "wheelDown"
+                    
+                    while (mouseup_funs_i > 0)
+                    {
+                        mouseup_funs[--mouseup_funs_i](canvas, mouseX, mouseY, button);
+                    }
+                                        
+                    // onClick (a normal left click)
+                    // TODO: Use timing and XEvent buffer to
+                    // further qualify an onClick from onMouseUp
+                    
+                    if (button === "left")
+                    {    
+                        while (click_funs_i > 0)
+                        {
+                            click_funs[--click_funs_i](canvas, mouseX, mouseY, button);
+                        }                   
+                    }                
+                }                
+                //OnMouseDown
+                   else if (event_type === XEvents.ButtonPress)
+                {                    
+                    mouseX = xbutton.get_x();
+                    mouseY = xbutton.get_y();                    
+                    button = xbutton.get_button();                    
+                    
+                    if (button === 1)
+                        button = "left";
+                    else if (button === 2)
+                        button = "center";
+                    else if (button === 3)
+                         button = "right";
+                    else if (button === 4)
+                         button = "wheelUp";
+                    else if (button === 5)
+                         button = "wheelDown";                
+                    
+                    while (mousedown_funs_i > 0)
+                    {
+                        mousedown_funs[--mousedown_funs_i](canvas, mouseX, mouseY, button);
+                    }                    
+                }                
+            
                 else if (event_type === XEvents.ClientMessage)
                 {
                     // TODO: Should check here for other client message types -
@@ -316,19 +450,15 @@ lib/draw - provides basic drawing API using xlib
         this.close();
     };
 
-
-
     /**
     Canvas
     An object that can be drawn on/has drawing functionality
      */
 
-    var CanvasProto = {
-    };
+    var CanvasProto = {};
 
     function Canvas(display, screen, window, width, height)
     {
-
         var canvas = Object.create(CanvasProto);
 
         // cleanup
@@ -439,6 +569,16 @@ lib/draw - provides basic drawing API using xlib
     */
     CanvasProto.drawPoint = function(x, y)
     {
+        // Convert FP to int
+        if (!$ir_is_int32(x))
+        {
+            x = $rt_toInt32(x);
+        }
+        if (!$ir_is_int32(y))
+        {
+            y = rt_toInt32(y);
+        }
+        
         Xlib.XDrawPoint(this.display, this.id, this.gc, x, y);
     };
 
@@ -584,4 +724,3 @@ lib/draw - provides basic drawing API using xlib
     exports.Window = Window;
 
 })(exports);
-
