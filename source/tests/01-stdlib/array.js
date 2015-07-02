@@ -449,6 +449,17 @@ function test_array_syntax()
     return 0;
 }
 
+function test_array_of()
+{
+    if(!array_eq(Array.of(2,3), [2,3]))
+        return 1;
+
+    if(!array_eq(Array.of("some",4), ["some",4]))
+        return 2;
+
+    return 0;
+}
+
 function test()
 {
     var r = test_ctor();
@@ -524,6 +535,10 @@ function test()
     var r = test_array_syntax();
     if (r != 0)
         return 1800 + r;
+
+    var r = test_array_of();
+    if (r != 0)
+        return 1900 + r;
 
     return 0;
 }
