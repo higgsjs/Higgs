@@ -632,6 +632,11 @@ function array_reduceRight(callbackfn, initialValue)
     return array_reduce_generic.call(this, callbackfn, initialValue, this.length - 1, -1, -1);
 }
 
+function array_of()
+{
+    return array_slice.call(arguments)
+}
+
 // Setup Array.prototype
 Array.prototype.toString          = array_toString;
 Array.prototype.toLocaleString    = array_toString;
@@ -654,6 +659,7 @@ Array.prototype.map               = array_map;
 Array.prototype.filter            = array_filter;
 Array.prototype.reduce            = array_reduce;
 Array.prototype.reduceRight       = array_reduceRight;
+Array.of                          = array_of;
 
 // Make the Array.prototype properties non-enumerable
 for (p in Array.prototype)
