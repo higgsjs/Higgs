@@ -1,9 +1,9 @@
 Conference deadlines:
 - ECOOP                 December
-- CC 2014               October
-- ESOP                  October (early Oct)
 - PLDI 2014             November
 - VEE 2014              ~November
+- CC 2014               October
+- ESOP                  October (early Oct)
 - CGO 2014              ~September
 - VMIL 2013             ~August
 - Intel Compiler...     ~July
@@ -91,9 +91,6 @@ TODO: implement store to moffs
 
 ------------------------------------------------------------------------------
 
-TODO: fastest objects in the whole wide web
-=> wait a minute! cache issue
-
 TODO: look at code point issue again
 
 TODO: if DLS paper rejected, rework it for CGO
@@ -104,17 +101,27 @@ TODO: setup paper template for interp BBV
 - perf graphs first
 - compile time
 
+push to master
+
+FIXME: benchmarks/frameworks/jquery-2.1.4.js
+parser.parser.ParseError@(0): expected "(" separator
+
+
+
+
+
+
+
+
+
+
+
+
 ------------------------------------------------------------------------------
 
-TODO: push to master
+[DONE] TODO: push to master
 
-TODO: push to dls2015
-
-
-
-
-
-
+[DONE] TODO: push to dls2015
 
 [DONE] TODO: pull latest master into dev-maxime
 git pull origin master

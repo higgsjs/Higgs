@@ -639,6 +639,12 @@ unittest
     testParseFile("benchmarks/kraken-1.1/ai-astar.js");
     testParseFile("benchmarks/kraken-1.1/ai-astar-data.js");
 
+    // Web frameworks
+    testParseFile("benchmarks/frameworks/jquery-1.3.2.js");
+    // FIXME: parsing fails
+  //testParseFile("benchmarks/frameworks/jquery-2.1.4.js");
+    testParseFile("benchmarks/frameworks/prototype-1.7.1.js");
+
     // Bones benchmark
     testParseFile("benchmarks/bones/bones.js");
 
