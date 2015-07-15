@@ -839,6 +839,11 @@ class CondExpr : ASTExpr
         this.falseExpr = falseExpr;
     }
 
+    override int getPrec()
+    {
+        return COND_PREC;
+    }
+
     override string toString()
     {
         return format("%s? %s:%s", testExpr, trueExpr, falseExpr);
@@ -910,6 +915,9 @@ class IndexExpr : ASTExpr
 
     override string toString()
     {
+        if (base.getPrec() < MAX_PREC)
+            return format("(%s)[%s]", base, index);
+
         return format("%s[%s]", base, index);
     }
 }

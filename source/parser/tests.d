@@ -145,7 +145,7 @@ ASTProgram testExprAST(string input, ASTExpr exprAst)
     return testAST(input, inAst);
 }
 
-/// Parenthesization test
+/// Parenthesization test (serialization)
 unittest
 {
     void hasParens(string input, bool needsParens)
@@ -174,6 +174,11 @@ unittest
     hasParens("a / (b%c)", true);
     hasParens("a / b / c", false);
     hasParens("a * b * c", false);
+
+    hasParens("a.b[c]", false);
+    hasParens("(a + b)[c]", true);
+
+    hasParens("a && (b? c:d)", true);
 }
 
 /// Test parsing of simple expressions
@@ -641,8 +646,7 @@ unittest
 
     // Web frameworks
     testParseFile("benchmarks/frameworks/jquery-1.3.2.js");
-    // FIXME: parsing fails
-  //testParseFile("benchmarks/frameworks/jquery-2.1.4.js");
+    testParseFile("benchmarks/frameworks/jquery-2.1.4.js");
     testParseFile("benchmarks/frameworks/prototype-1.7.1.js");
 
     // Bones benchmark

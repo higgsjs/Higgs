@@ -817,6 +817,7 @@ ASTExpr parseExpr(TokenStream input, int minPrec = 0)
                 {
                     wstring nameStr;
 
+                    // Traverse the lhs expression to generate the name
                     for (auto curExpr = lhsExpr; curExpr !is null;)
                     {
                         wstring subStr;
@@ -841,8 +842,18 @@ ASTExpr parseExpr(TokenStream input, int minPrec = 0)
                         nameStr = subStr ~ (nameStr? "_"w:"") ~ nameStr;
                     }
 
-                    if (nameStr)
+                    // If a name string was successfully produced
+                    if (nameStr.length > 0)
+                    {
+                        if (digit(nameStr[0]))
+                            nameStr = "_"w ~ nameStr;
+
+                        // Replace non alphanumerical characters
+                        auto nonAlnum = ctRegex!(`[^\w]`w);
+                        nameStr = replaceAll(nameStr, nonAlnum, "_");
+
                         funExpr.name = new IdentExpr(nameStr, funExpr.pos);
+                    }
                 }
             }
 

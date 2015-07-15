@@ -10,6 +10,6 @@ catch (e)
     if (!(e instanceof ReferenceError))
         throw e;
 
-    print('X11 library not installed');
+    print('X11 library not installed, skipping test');
 }
 

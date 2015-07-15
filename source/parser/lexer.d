@@ -78,6 +78,9 @@ const int COMMA_PREC = 0;
 // In operator precedence
 const int IN_PREC = 9;
 
+// Ternary conditional operator precedence (a? b:c)
+const int COND_PREC = 2;
+
 /**
 Operator table
 */
@@ -148,7 +151,7 @@ OpInfo[] operators = [
     { "||"w, 2, 3, 'l' },
 
     // Ternary conditional
-    { "?"w, 3, 2, 'r' },
+    { "?"w, 3, COND_PREC, 'r' },
 
     // Assignment
     { "="w   , 2, 1, 'r' },

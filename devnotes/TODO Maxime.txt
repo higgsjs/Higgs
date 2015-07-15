@@ -96,26 +96,65 @@ TODO: look at code point issue again
 TODO: if DLS paper rejected, rework it for CGO
 1. Abstract Submission: September 12, 2015
 2. Paper Submission: September 18, 2015
+- Show to CF Bolz for paper advice
 
-TODO: setup paper template for interp BBV
-- perf graphs first
-- compile time
+Meeting:
+- Put typed shapes paper on arxiv, to timestamp our work
+- Presentation went very smoothly, was filmed
+- Confronted by 5-6 Truffle people when presenting poster
+  - They may try to replicate our results
+- Met with CF Bolz of PyPy fame
+  - On Tracing
+    - Admits limitations of basic tracing scheme
+    - Traces call traces for recursion
+    - Tracing policy in PyPy is complex
+  - On PyPy
+    - PyPy uses tracing because it's the only way known
+    - Calling convention is expensive, stack frame obje3ct
+    - Does allocation sinking
+  - Showed genuine interest in BBV, seemed to think it was promising
+    - Seems to think incremental inlining would be very important
+    - Alloc sinking culd be done with BBV
+    - Partial alloc sinking, some paths only
+- Interp BBV: CC or CGO or PLDI
+  - CGO is mid-September, CC mid-October (but unconfirmed???)
+  - PLDI Nov 8th, could do more, add "perfect analysis"
+  - Could possibly resubmit from CGO to PLDI, but its tight
+  - But Computing Frontier, OOPSLA, Onward!
+  - If CC is confirmed, would rather go for that
+- Interp BBV: produced graphs
+  - Type tests and shape tests eliminated look really good
+  - Only very slight execution time improvement
+  - Cont spec does improve exec time a little bit
+- If DLS paper rejected, can also re-submit at CGO or CC
+  - Next step: improve calling convention
+  - Better performance will help typed shapes too, if rejected
+  - Code size in interp BBV should be improved by this
+  - Exec time should definitely be improved
+
+TODO: look at notes for global obj threading
+- could significantly reduce shape tests
+  - right now we eliminate 80% on average, but only 20% on earley-boyer
+- improved fib performance?
 
 push to master
 
-FIXME: benchmarks/frameworks/jquery-2.1.4.js
+
+
+
+
+
+
+
+
+[DONE] FIXME: ( e || (e = 1) )[t]   =>   e || (e = 1)[t];
+
+[DONE] FIXME: benchmarks/frameworks/jquery-2.1.4.js
 parser.parser.ParseError@(0): expected "(" separator
+- Issue is in serialization
+- Auto-generating function names, must replace anything not alphanumerical by underscore
 
-
-
-
-
-
-
-
-
-
-
+[DONT] TODO: setup paper template for interp BBV
 
 ------------------------------------------------------------------------------
 
