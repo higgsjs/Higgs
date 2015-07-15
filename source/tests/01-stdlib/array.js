@@ -449,6 +449,14 @@ function test_array_syntax()
     return 0;
 }
 
+function test_array_of()
+{
+    assert (array_eq(Array.of(), []))
+    assert (array_eq(Array.of(5), [5]))
+    assert (array_eq(Array.of(2,3), [2,3]))
+    assert (array_eq(Array.of("some",4), ["some",4]))
+}
+
 function test()
 {
     var r = test_ctor();
@@ -456,6 +464,8 @@ function test()
         return 100 + r;
 
     test_isArray();
+
+    test_array_of();
 
     var r = test_indexOf();
     if (r != 0)
