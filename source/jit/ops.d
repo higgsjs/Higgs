@@ -2284,7 +2284,6 @@ void gen_load_file(
 )
 {
     extern (C) CodePtr op_load_file(
-        VM vm,
         IRInstr instr,
         CodeFragment retTarget,
         CodeFragment excTarget
@@ -2382,12 +2381,11 @@ void gen_load_file(
             as.saveJITRegs();
 
             // Pass the instruction as an argument
-            as.mov(cargRegs[0], vmReg);
-            as.ptr(cargRegs[1], instr);
+            as.ptr(cargRegs[0], instr);
 
             // Pass the return and exception addresses as third arguments
-            as.ptr(cargRegs[2], target0);
-            as.ptr(cargRegs[3], target1);
+            as.ptr(cargRegs[1], target0);
+            as.ptr(cargRegs[2], target1);
 
             // Call the host function
             as.ptr(scrRegs[0], &op_load_file);
@@ -2411,7 +2409,6 @@ void gen_eval_str(
 )
 {
     extern (C) CodePtr op_eval_str(
-        VM vm,
         IRInstr instr,
         CodeFragment retTarget,
         CodeFragment excTarget
@@ -2498,12 +2495,11 @@ void gen_eval_str(
             as.saveJITRegs();
 
             // Pass the instruction as an argument
-            as.mov(cargRegs[0], vmReg);
-            as.ptr(cargRegs[1], instr);
+            as.ptr(cargRegs[0], instr);
 
             // Pass the return and exception addresses
-            as.ptr(cargRegs[2], target0);
-            as.ptr(cargRegs[3], target1);
+            as.ptr(cargRegs[1], target0);
+            as.ptr(cargRegs[2], target1);
 
             // Call the host function
             as.ptr(scrRegs[0], &op_eval_str);
@@ -2699,6 +2695,8 @@ void GetValOp(Tag tag, string fName)(
     auto outOpnd = ctx.getOutOpnd(as, instr, fSize);
     assert (outOpnd.isReg);
 
+    // FIXME: use load from 64-bit addr, no register or getMember
+
     as.getMember!("VM." ~ fName)(outOpnd.reg, vmReg);
 
     ctx.setOutTag(as, instr, tag);
@@ -2739,7 +2737,6 @@ void HeapAllocOp(Tag tag)(
 )
 {
     extern (C) static refptr allocFallback(
-        VM vm,
         IRInstr curInstr,
         uint32_t allocSize
     )
@@ -2805,9 +2802,8 @@ void HeapAllocOp(Tag tag)(
     //as.printStr("alloc bailout ***");
 
     // Call the fallback implementation
-    as.mov(cargRegs[0], vmReg);
-    as.ptr(cargRegs[1], instr);
-    as.mov(cargRegs[2].opnd(32), szOpnd);
+    as.ptr(cargRegs[0], instr);
+    as.mov(cargRegs[1].opnd(32), szOpnd);
     as.ptr(scrRegs[0], &allocFallback);
     as.call(scrRegs[0]);
 
@@ -4490,7 +4486,6 @@ void gen_get_asm_str(
 )
 {
     extern (C) static refptr op_get_asm_str(
-        VM vm,
         IRInstr curInstr,
         refptr closPtr
     )
@@ -4528,9 +4523,8 @@ void gen_get_asm_str(
 
     as.saveJITRegs();
 
-    as.mov(cargRegs[0], vmReg);
-    as.ptr(cargRegs[1], instr);
-    as.mov(cargRegs[2].opnd, opnd0);
+    as.ptr(cargRegs[0], instr);
+    as.mov(cargRegs[1].opnd, opnd0);
     as.ptr(scrRegs[0], &op_get_asm_str);
     as.call(scrRegs[0].opnd);
 
@@ -4548,10 +4542,7 @@ void gen_load_lib(
     CodeBlock as
 )
 {
-    extern (C) static CodePtr op_load_lib(
-        VM vm,
-        IRInstr instr
-    )
+    extern (C) static CodePtr op_load_lib(IRInstr instr)
     {
         // Library to load (JS string)
         auto strPtr = vm.getArgStr(instr, 0);
@@ -4609,8 +4600,7 @@ void gen_load_lib(
     auto outOpnd = ctx.getOutOpnd(as, instr, 64);
 
     as.saveJITRegs();
-    as.mov(cargRegs[0], vmReg);
-    as.ptr(cargRegs[1], instr);
+    as.ptr(cargRegs[0], instr);
     as.ptr(scrRegs[0], &op_load_lib);
     as.call(scrRegs[0].opnd);
     as.loadJITRegs();
@@ -4636,10 +4626,7 @@ void gen_close_lib(
     CodeBlock as
 )
 {
-    extern (C) static CodePtr op_close_lib(
-        VM vm,
-        IRInstr instr
-    )
+    extern (C) static CodePtr op_close_lib(IRInstr instr)
     {
         auto libArg = vm.getArgVal(instr, 0);
 
@@ -4672,8 +4659,7 @@ void gen_close_lib(
     );
 
     as.saveJITRegs();
-    as.mov(cargRegs[0], vmReg);
-    as.ptr(cargRegs[1], instr);
+    as.ptr(cargRegs[0], instr);
     as.ptr(scrRegs[0], &op_close_lib);
     as.call(scrRegs[0].opnd);
     as.loadJITRegs();
@@ -4692,10 +4678,7 @@ void gen_get_sym(
     CodeBlock as
 )
 {
-    extern (C) static CodePtr op_get_sym(
-        VM vm,
-        IRInstr instr
-    )
+    extern (C) static CodePtr op_get_sym(IRInstr instr)
     {
         auto libArg = vm.getArgVal(instr, 0);
 
@@ -4734,8 +4717,7 @@ void gen_get_sym(
     auto outOpnd = ctx.getOutOpnd(as, instr, 64);
 
     as.saveJITRegs();
-    as.mov(cargRegs[0], vmReg);
-    as.ptr(cargRegs[1], instr);
+    as.ptr(cargRegs[0], instr);
     as.ptr(scrRegs[0], &op_get_sym);
     as.call(scrRegs[0].opnd);
     as.loadJITRegs();

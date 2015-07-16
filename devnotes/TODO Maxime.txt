@@ -128,11 +128,16 @@ TODO: make getDefReg map arg vals to proper regs
 - define closArgReg, argcArgReg, thisArgReg
 - define argRegs, size 3 for now, can later try larger
 
+TODO: define globalReg
+
 push to master
 
-is vmReg really needed anywhere?
+TODO: completely eliminate vmReg in jit/ops.d, jit/jit.d
 
-TODO: completely eliminate vmReg in jit/ops.d
+TODO: getVMMember, setVMMember, or VMField?
+
+TODO: eliminate uses of vmReg in throw
+
 
 
 
