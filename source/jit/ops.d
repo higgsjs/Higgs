@@ -1542,16 +1542,11 @@ alias gen_jump_false = JumpOp!(1);
 Throw an exception and unwind the stack when one calls a non-function.
 Returns a pointer to an exception handler.
 */
-extern (C) CodePtr throwCallExc(
-    VM vm,
-    IRInstr instr,
-    BranchCode excHandler
-)
+extern (C) CodePtr throwCallExc(IRInstr instr, BranchCode excHandler)
 {
     auto fnName = getCalleeName(instr);
 
     return throwError(
-        vm,
         instr,
         excHandler,
         "TypeError",
@@ -1634,9 +1629,8 @@ void genCallBranch(
 
         // Throw the call exception, unwind the stack,
         // find the topmost exception handler
-        as.mov(cargRegs[0], vmReg);
-        as.ptr(cargRegs[1], callInstr);
-        as.ptr(cargRegs[2], excBranch);
+        as.ptr(cargRegs[0], callInstr);
+        as.ptr(cargRegs[1], excBranch);
         as.ptr(scrRegs[0], &throwCallExc);
         as.call(scrRegs[0].opnd);
 
@@ -2343,7 +2337,6 @@ void gen_load_file(
         catch (Exception err)
         {
             return throwError(
-                vm,
                 instr,
                 excTarget,
                 "ReferenceError",
@@ -2354,7 +2347,6 @@ void gen_load_file(
         catch (Error err)
         {
             return throwError(
-                vm,
                 instr,
                 excTarget,
                 "SyntaxError",
@@ -2468,7 +2460,6 @@ void gen_eval_str(
         catch (Error err)
         {
             return throwError(
-                vm,
                 instr,
                 excTarget,
                 "SyntaxError",
@@ -2650,11 +2641,10 @@ void gen_throw(
     as.saveJITRegs();
 
     // Call the host throwExc function
-    as.mov(cargRegs[0], vmReg);
-    as.ptr(cargRegs[1], instr);
-    as.mov(cargRegs[2].opnd, X86Opnd(0));
-    as.mov(cargRegs[3].opnd, excWordOpnd);
-    as.mov(cargRegs[4].opnd(8), excTypeOpnd);
+    as.ptr(cargRegs[0], instr);
+    as.mov(cargRegs[1].opnd, X86Opnd(0));
+    as.mov(cargRegs[2].opnd, excWordOpnd);
+    as.mov(cargRegs[3].opnd(8), excTypeOpnd);
     as.ptr(scrRegs[0], &throwExc);
     as.call(scrRegs[0]);
 
@@ -4574,7 +4564,6 @@ void gen_load_lib(
         if (lib is null)
         {
             return throwError(
-                vm,
                 instr,
                 null,
                 "ReferenceError",
@@ -4638,7 +4627,6 @@ void gen_close_lib(
         if (dlclose(libArg.word.ptrVal) != 0)
         {
             return throwError(
-                vm,
                 instr,
                 null,
                 "RuntimeError",
@@ -4698,7 +4686,6 @@ void gen_get_sym(
         if (sym is null)
         {
             return throwError(
-                vm,
                 instr,
                 null,
                 "RuntimeError",
@@ -4947,7 +4934,6 @@ void gen_get_c_fptr(
         if (fun.cEntryCode !is null)
         {
             return throwError(
-                vm,
                 instr,
                 null,
                 "RuntimeError",

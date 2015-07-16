@@ -132,17 +132,20 @@ TODO: define globalReg
 
 push to master
 
-TODO: completely eliminate vmReg in jit/ops.d, jit/jit.d
+TODO: eliminate vmReg
+
+TODO: eliminate uses of vmReg in jit/jit.d
+
+TODO: eliminate vmReg in jit/ops.d
 
 TODO: getVMMember, setVMMember, or VMField?
 
-TODO: eliminate uses of vmReg in throw
 
 
 
 
 
-
+[DONE] TODO: eliminate uses of vmReg in throw
 
 [DONE] FIXME: passing vmReg in apply
 
