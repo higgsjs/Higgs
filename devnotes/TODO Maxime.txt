@@ -35,15 +35,6 @@ gcc -O0 benchmarks/micro/fib42.c; time ./a.out => 2.274
 gcc -O4 benchmarks/micro/fib42.c; time ./a.out => 1.165
 - Mini blog post, Fibonacci in C - Higgs vs GCC, microbenchmark
 - Show machine code output for Higgs, GCC, V8
-TODO: look at machine code for fib42, ensure OK
-
-TODO: callbacks
-- push RA on JS stack when calling C code
-<maximecb> yawnt, I wanted to ask you what your use case for callbacks would be
-<maximecb> I imagine that we'd call from JS code into C code
-<maximecb> and that C code would call into a JS function
-<yawnt> maximecb: libuv
-<yawnt> that's it
 
 TODO: instr.getSucc(tIdx) => returns succ block
 TODO: rename BranchDesc.target to BranchDesc.block? or .succ?
@@ -75,20 +66,6 @@ TODO: don't write ret tag register to type stack (in caller) if tag known
 - if tag known, set known tag, let the branch spill it if necessary
 - if tag unknown, write tag as before in cont branch
 
-TODO: rename CodeGenState to CodeGenCtx
-
-TODO: look at notes wrt global obj threading
-- do we need this for thesis or publications?
-  - looks like typed shapes need to perform better, so yes
-- Marc suggests keeping current implementation with threading
-  - no special global obj register at first
-
-TODO: eliminate uses of VM reg
-TODO: implement store to moffs
-    A3 MOV moffs32, EAX
-    REX.W + A3 MOV moffs64, RAX
-- see existing load from moffs
-
 ------------------------------------------------------------------------------
 
 TODO: look at code point issue again
@@ -97,8 +74,79 @@ TODO: if DLS paper rejected, rework it for CGO
 1. Abstract Submission: September 12, 2015
 2. Paper Submission: September 18, 2015
 - Show to CF Bolz for paper advice
+- Try subtracting empty program code size, stdlib init
 
-Meeting:
+TODO: look at notes for global obj threading
+- could significantly reduce shape tests
+  - right now we eliminate 80% on average, but only 20% on earley-boyer
+- improved fib performance?
+- Is global obj threading difficult?
+  - Can we do it without VM reg fix? Unsure, kind of hack-ish?
+
+TODO: eliminate uses of VM reg
+TODO: implement store to moffs
+    A3 MOV moffs32, EAX
+    REX.W + A3 MOV moffs64, RAX
+- see existing load from moffs
+
+Meeting 2015-07-21:
+- asked me to subtract runtime&stdlib init for code size
+  - if we do this for code size, must do it for comp time
+    - but should we? comp time of stdlib matters too...
+  - perf of stdlib init actually matters
+  - runtime code is part of program too
+  - avoid making our metric more complex
+
+TODO: look at machine code for fib42
+
+TODO: test fib42 perf vs master branch
+make release; time ./higgs --nostdlib benchmarks/micro/fib42.js
+
+TODO: retest interp BBV speedup, are we better than 6.7% ?
+- code size, slight increase for entry and ret spec?
+
+TODO: bias getDefRegs for values flowing into arguments
+- Need some kind of getArgReg(callSite, idx) ?
+- verify if this has a performance impact
+
+TODO: retest interp BBV speedup, are we better than 6.7% ?
+- code size, slight increase for entry and ret spec?
+
+TODO: test benchmark.py vs master branch
+
+test, commit
+
+TODO: make call_prim pass args in regs
+- Passing args in regs... Will need register shuffling routine
+
+TODO: make CodeGenCtx map args to def regs, *for prim fns only*
+- Don't take usedness into account
+
+TODO: make getDefReg map arg vals to proper regs
+- define closArgReg, argcArgReg, thisArgReg
+- define argRegs, size 3 for now, can later try larger
+
+FIXME: passing vmReg in apply
+
+
+
+
+
+
+
+
+[DONE] FIXME: "state =" in jit/jit.d
+
+[DONE] FIXME: genState in jit/jit.d
+
+[DONE] FIXME: bailSt, trueSt, falseSt in jit/ops.d
+
+[DONE] FIXME CodeGenCtx st
+- both in ops and jit
+
+[DONE] TODO: rename CodeGenState to CodeGenCtx
+
+[DONE] Meeting:
 - Put typed shapes paper on arxiv, to timestamp our work
 - Presentation went very smoothly, was filmed
 - Confronted by 5-6 Truffle people when presenting poster
@@ -110,12 +158,13 @@ Meeting:
     - Tracing policy in PyPy is complex
   - On PyPy
     - PyPy uses tracing because it's the only way known
-    - Calling convention is expensive, stack frame obje3ct
+    - Calling convention is expensive, stack frame object
     - Does allocation sinking
   - Showed genuine interest in BBV, seemed to think it was promising
     - Seems to think incremental inlining would be very important
-    - Alloc sinking culd be done with BBV
+    - Alloc sinking could be done with BBV
     - Partial alloc sinking, some paths only
+- Started work on paper template for interprocedural BBV
 - Interp BBV: CC or CGO or PLDI
   - CGO is mid-September, CC mid-October (but unconfirmed???)
   - PLDI Nov 8th, could do more, add "perfect analysis"
@@ -131,21 +180,6 @@ Meeting:
   - Better performance will help typed shapes too, if rejected
   - Code size in interp BBV should be improved by this
   - Exec time should definitely be improved
-
-TODO: look at notes for global obj threading
-- could significantly reduce shape tests
-  - right now we eliminate 80% on average, but only 20% on earley-boyer
-- improved fib performance?
-
-push to master
-
-
-
-
-
-
-
-
 
 [DONE] FIXME: ( e || (e = 1) )[t]   =>   e || (e = 1)[t];
 

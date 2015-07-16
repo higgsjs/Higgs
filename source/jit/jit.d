@@ -296,10 +296,10 @@ struct ValState
 }
 
 /**
-Current code generation state. This includes register
+Current code generation context. This includes register
 allocation state and known type information.
 */
-class CodeGenState
+class CodeGenCtx
 {
     /// Associated IR function
     IRFunction fun;
@@ -312,7 +312,7 @@ class CodeGenState
     private IRDstValue[NUM_REGS] gpRegMap;
 
     /**
-    Constructor for a function entry code generation state
+    Constructor for a function entry code generation context
     */
     this(
         IRFunction fun,
@@ -369,7 +369,7 @@ class CodeGenState
     /**
     Copy constructor
     */
-    this(CodeGenState that)
+    this(CodeGenCtx that)
     {
         this.fun = that.fun;
         this.valMap = that.valMap.dup;
@@ -377,17 +377,17 @@ class CodeGenState
     }
 
     /**
-    Construct the successor state for a given predecessor state and branch edge
+    Construct the successor context for a given predecessor context and branch edge
     */
-    this(CodeGenState predState, BranchEdge branch)
+    this(CodeGenCtx predCtx, BranchEdge branch)
     {
         // Call the copy constructor
-        this(predState);
+        this(predCtx);
 
         auto liveInfo = fun.liveInfo;
 
         // Map each successor phi node on the stack or in its register
-        // in a way that best matches the predecessor state
+        // in a way that best matches the predecessor context
         for (auto phi = branch.target.firstPhi; phi !is null; phi = phi.next)
         {
             if (phi.hasNoUses)
@@ -420,7 +420,7 @@ class CodeGenState
             if (auto dstArg = cast(IRDstValue)arg)
             {
                 // Get the word operand for the argument
-                X86Opnd argOpnd = dstArg? predState.getWordOpnd(dstArg, 64):X86Opnd.NONE;
+                X86Opnd argOpnd = dstArg? predCtx.getWordOpnd(dstArg, 64):X86Opnd.NONE;
 
                 // If the argument is in a register which is about to become free
                 if (argOpnd.isReg && liveInfo.liveAfterPhi(dstArg, phi.block) is false)
@@ -457,7 +457,7 @@ class CodeGenState
             }
 
             // Set the phi type to the argument type
-            auto argType = predState.getType(arg);
+            auto argType = predCtx.getType(arg);
             phiState = phiState.setType(argType);
 
             // Set the phi node's new state
@@ -476,7 +476,7 @@ class CodeGenState
 
     /**
     Produce a string representation of the type information in
-    this code generation state
+    this code generation context
     */
     override string toString() const
     {
@@ -491,11 +491,11 @@ class CodeGenState
     }
 
     /**
-    Compute the difference (similarity) between this state and another
-    - If states are identical, 0 will be returned
-    - If states are incompatible, size_t.max will be returned
+    Compute the difference (similarity) between this context and another
+    - If contexts are identical, 0 will be returned
+    - If contexts are incompatible, size_t.max will be returned
     */
-    size_t diff(CodeGenState succ)
+    size_t diff(CodeGenCtx succ)
     {
         assert (this.fun is succ.fun);
 
@@ -1681,15 +1681,15 @@ class ContStub : CodeFragment
     BlockVersion callVer;
 
     /// State at call instruction
-    CodeGenState callState;
+    CodeGenCtx callCtx;
 
     /// Callee function, may be unknown
     IRFunction callee;
 
-    this(BlockVersion callVer, CodeGenState callState, IRFunction callee)
+    this(BlockVersion callVer, CodeGenCtx callCtx, IRFunction callee)
     {
         this.callVer = callVer;
-        this.callState = callState;
+        this.callCtx = callCtx;
         this.callee = callee;
     }
 }
@@ -1715,8 +1715,8 @@ Branch edge transition code
 */
 class BranchCode : CodeFragment
 {
-    /// Predecessor state
-    CodeGenState predState;
+    /// Predecessor context
+    CodeGenCtx predCtx;
 
     /// IR branch edge object
     BranchEdge branch;
@@ -1728,12 +1728,12 @@ class BranchCode : CodeFragment
     BlockVersion target = null;
 
     this(
-        CodeGenState predState,
+        CodeGenCtx predCtx,
         BranchEdge branch,
         PrelGenFn prelGenFn
     )
     {
-        this.predState = predState;
+        this.predCtx = predCtx;
         this.branch = branch;
         this.prelGenFn = prelGenFn;
     }
@@ -1767,8 +1767,8 @@ class BlockVersion : CodeFragment
     /// Associated block
     IRBlock block;
 
-    /// Code generation state at block entry
-    CodeGenState state;
+    /// Code generation context at block entry
+    CodeGenCtx ctx;
 
     /// Branch targets
     CodeFragment[] targets;
@@ -1776,10 +1776,10 @@ class BlockVersion : CodeFragment
     /// Inner code length, excluding final branches
     uint32_t codeLen;
 
-    this(IRBlock block, CodeGenState state)
+    this(IRBlock block, CodeGenCtx ctx)
     {
         this.block = block;
-        this.state = state;
+        this.ctx = ctx;
     }
 
     /**
@@ -1988,14 +1988,14 @@ string asmString(IRFunction fun)
 }
 
 /**
-Request a block version matching the incoming state
+Request a block version matching the incoming context
 */
 BlockVersion getBlockVersion(
     IRBlock block,
-    CodeGenState state
+    CodeGenCtx ctx
 )
 {
-    auto fun = state.fun;
+    auto fun = ctx.fun;
 
     // Get the list of versions for this block
     auto versions = fun.versionMap.get(block, []);
@@ -2009,8 +2009,8 @@ BlockVersion getBlockVersion(
     // For each successor version available
     foreach (ver; versions)
     {
-        // Compute the difference with the incoming state
-        auto diff = state.diff(ver.state);
+        // Compute the difference with the incoming context
+        auto diff = ctx.diff(ver.ctx);
 
         //writeln("diff: ", diff);
 
@@ -2039,37 +2039,37 @@ BlockVersion getBlockVersion(
         if (bestDiff < size_t.max)
         {
             // Return the best match found
-            assert (bestVer.state.fun is fun);
+            assert (bestVer.ctx.fun is fun);
             return bestVer;
         }
 
         //writeln("producing general version for: ", block.getName);
 
-        // Strip the state of known types and constants,
+        // Strip the context of known types and constants,
         // except for hidden function arguments
-        auto genState = new CodeGenState(state);
-        foreach (val, valSt; genState.valMap)
+        auto genCtx = new CodeGenCtx(ctx);
+        foreach (val, valSt; genCtx.valMap)
         {
             if (val !is fun.closVal &&
                 val !is fun.argcVal &&
                 val !is fun.raVal &&
                 (valSt.tagKnown || valSt.shapeKnown))
             {
-                genState.valMap[val] = valSt.clearType();
+                genCtx.valMap[val] = valSt.clearType();
             }
         }
 
         // Ensure that the general version matches
-        assert(state.diff(genState) !is size_t.max);
+        assert(ctx.diff(genCtx) !is size_t.max);
 
-        assert (genState.fun is fun);
-        state = genState;
+        assert (genCtx.fun is fun);
+        ctx = genCtx;
     }
 
     //writeln("best ver diff: ", bestDiff, " (", versions.length, ")");
 
-    // Create a new block version object using the predecessor's state
-    auto ver = new BlockVersion(block, state);
+    // Create a new block version object using the predecessor's context
+    auto ver = new BlockVersion(block, ctx);
 
     // Add the new version to the list for this block
     fun.versionMap[block] ~= ver;
@@ -2106,16 +2106,16 @@ BlockVersion getBlockVersion(
     vm.queue(ver);
 
     // Return the newly created block version
-    assert (ver.state.fun is fun);
+    assert (ver.ctx.fun is fun);
     return ver;
 }
 
 /**
-Request a branch edge transition matching the incoming state
+Request a branch edge transition matching the incoming context
 */
 BranchCode getBranchEdge(
     BranchEdge branch,
-    CodeGenState predState,
+    CodeGenCtx predCtx,
     bool noStub,
     PrelGenFn prelGenFn = null
 )
@@ -2127,7 +2127,7 @@ BranchCode getBranchEdge(
 
     // Return a branch edge code object for the successor
     auto branchCode = new BranchCode(
-        predState,
+        predCtx,
         branch,
         prelGenFn
     );
@@ -2140,24 +2140,24 @@ BranchCode getBranchEdge(
 }
 
 /**
-Generate the moves to transition from a predecessor to a successor state
+Generate the moves to transition from a predecessor to a successor context
 */
 void genBranchMoves(
     CodeBlock as,
-    CodeGenState predState,
-    CodeGenState succState,
+    CodeGenCtx predCtx,
+    CodeGenCtx succCtx,
     BranchEdge branch
 )
 {
-    // List of moves to transition to the successor state
+    // List of moves to transition to the successor context
     Move[] moveList;
 
     // String values and phi nodes for string moves
     IRString[] strVals;
     X86Opnd[] strDsts;
 
-    // For each value in the successor state
-    foreach (succVal, succSt; succState.valMap)
+    // For each value in the successor context
+    foreach (succVal, succSt; succCtx.valMap)
     {
         auto succPhi = (
             (branch.branch !is null && succVal.block is branch.target)?
@@ -2170,7 +2170,7 @@ void genBranchMoves(
         assert (succVal !is null);
         assert (predVal !is null);
 
-        auto predSt = predState.getState(succVal);
+        auto predSt = predCtx.getState(succVal);
 
         // Check if the predecessor is the same value and had its tag written
         auto predWritten = predVal is succVal && predSt.tagWritten;
@@ -2185,7 +2185,7 @@ void genBranchMoves(
         if (auto predStr = cast(IRString)predVal)
         {
             // Get the destionation operand for the phi word
-            X86Opnd dstWordOpnd = succState.getWordOpnd(succVal, 64);
+            X86Opnd dstWordOpnd = succCtx.getWordOpnd(succVal, 64);
 
             strVals ~= predStr;
             strDsts ~= dstWordOpnd;
@@ -2193,8 +2193,8 @@ void genBranchMoves(
         else
         {
             // Get the source and destination operands for the phi word
-            X86Opnd srcWordOpnd = predState.getWordOpnd(predVal, 64);
-            X86Opnd dstWordOpnd = succState.getWordOpnd(succVal, 64);
+            X86Opnd srcWordOpnd = predCtx.getWordOpnd(predVal, 64);
+            X86Opnd dstWordOpnd = succCtx.getWordOpnd(succVal, 64);
 
             if (srcWordOpnd != dstWordOpnd &&
                 !dstWordOpnd.isImm &&
@@ -2206,8 +2206,8 @@ void genBranchMoves(
         }
 
         // Get the source and destination operands for the phi type
-        X86Opnd srcTagOpnd = predState.getTagOpnd(predVal);
-        X86Opnd dstTagOpnd = succState.getTagOpnd(succVal);
+        X86Opnd srcTagOpnd = predCtx.getTagOpnd(predVal);
+        X86Opnd dstTagOpnd = succCtx.getTagOpnd(succVal);
         assert (!(opts.maxvers is 0 && !srcTagOpnd.isImm && dstTagOpnd.isImm));
 
         if (srcTagOpnd != dstTagOpnd &&
@@ -2386,12 +2386,12 @@ void compile(VM vm, IRInstr curInstr)
             auto block = ver.block;
             assert (
                 ver.block !is null,
-                ver.state.fun.getName
+                ver.ctx.fun.getName
             );
 
             /*
             // If this is a function entry block, align to a 64 byte boundary
-            if (block is ver.state.fun.entryBlock)
+            if (block is ver.ctx.fun.entryBlock)
             {
                 const ALIGN_BYTES = 64;
 
@@ -2407,8 +2407,8 @@ void compile(VM vm, IRInstr curInstr)
             }
             */
 
-            // Copy the instance's state object
-            auto state = new CodeGenState(ver.state);
+            // Copy the instance's context object
+            auto ctx = new CodeGenCtx(ver.ctx);
 
             // Store the code start index for this fragment
             if (ver.startIdx is ver.startIdx.max)
@@ -2464,7 +2464,7 @@ void compile(VM vm, IRInstr curInstr)
                 // Call the code generation function for the opcode
                 opcode.genFn(
                     ver,
-                    state,
+                    ctx,
                     instr,
                     as
                 );
@@ -2488,7 +2488,7 @@ void compile(VM vm, IRInstr curInstr)
         // If this is a branch code fragment
         else if (auto branch = cast(BranchCode)frag)
         {
-            assert (branch.predState !is null);
+            assert (branch.predCtx !is null);
 
             // Store the code start index
             branch.markStart(as);
@@ -2499,23 +2499,23 @@ void compile(VM vm, IRInstr curInstr)
             if (branch.prelGenFn)
                 branch.prelGenFn(as);
 
-            // Generate the successor state for this branch
-            auto succState = new CodeGenState(
-                branch.predState,
+            // Generate the successor context for this branch
+            auto succCtx = new CodeGenCtx(
+                branch.predCtx,
                 branch.branch
             );
 
-            // Get a version of the successor matching the incoming state
+            // Get a version of the successor matching the incoming context
             branch.target = getBlockVersion(
                 branch.branch.target,
-                succState
+                succCtx
             );
 
-            // Generate the moves to transition to the successor state
+            // Generate the moves to transition to the successor context
             genBranchMoves(
                 as,
-                branch.predState,
-                branch.target.state,
+                branch.predCtx,
+                branch.target.ctx,
                 branch.branch
             );
 
@@ -2682,7 +2682,7 @@ EntryFn compileUnit(VM vm, IRFunction fun)
     // Create a version instance object for the function entry
     auto entryInst = getBlockVersion(
         fun.entryBlock,
-        new CodeGenState(fun)
+        new CodeGenCtx(fun)
     );
 
     // Mark the code start index
@@ -2791,7 +2791,7 @@ extern (C) CodePtr compileEntry(IRFunction fun)
     // Request an instance for the function entry blocks
     auto entryInst = getBlockVersion(
         fun.entryBlock,
-        new CodeGenState(fun)
+        new CodeGenCtx(fun)
     );
 
     /*
@@ -2857,7 +2857,7 @@ extern (C) CodePtr compileBranch(BlockVersion srcBlock, uint32_t targetIdx)
     auto branchCode = cast(BranchCode)srcBlock.targets[targetIdx];
     assert (branchCode !is null);
     assert (branchCode.started is false, "branchCode already compiled");
-    auto predState = branchCode.predState;
+    auto predCtx = branchCode.predCtx;
     auto targetBlock = branchCode.branch.target;
 
     if (opts.dumpinfo)
@@ -2875,7 +2875,7 @@ extern (C) CodePtr compileBranch(BlockVersion srcBlock, uint32_t targetIdx)
     };
 
     // Spill the saved registers
-    predState.spillSavedRegs(spillTest);
+    predCtx.spillSavedRegs(spillTest);
 
     // Queue the branch edge to be compiled
     vm.queue(branchCode);
@@ -2887,7 +2887,7 @@ extern (C) CodePtr compileBranch(BlockVersion srcBlock, uint32_t targetIdx)
     vm.compile(branchCode.branch.target.firstInstr);
 
     // Reload the saved registers
-    predState.loadSavedRegs(spillTest);
+    predCtx.loadSavedRegs(spillTest);
 
     // Stop recording compilation time, resume recording execution time
     stats.compTimeStop();
@@ -2928,8 +2928,8 @@ extern (C) CodePtr compileCont(ContStub stub)
     //writeln("  (", callInstr.block.fun.getName, ")");
     */
 
-    // Clone the state at the call site
-    auto contSt = new CodeGenState(stub.callState);
+    // Clone the context at the call site
+    auto contSt = new CodeGenCtx(stub.callCtx);
 
     // If the callee is known
     if (!opts.noretspec && stub.callee)
@@ -3033,7 +3033,7 @@ void removeConts(IRFunction callee)
         auto contStub = getContStub(
             callVer,
             callVer.targets[1],
-            contBranch.predState,
+            contBranch.predCtx,
             callee
         );
 
@@ -3300,7 +3300,7 @@ Generate a continuation stub. Returns the executable heap position of the stub.
 ContStub getContStub(
     BlockVersion callVer,
     CodeFragment excTarget,
-    CodeGenState callSt,
+    CodeGenCtx callCtx,
     IRFunction callee
 )
 {
@@ -3312,11 +3312,11 @@ ContStub getContStub(
 
     auto callInstr = callVer.block.lastInstr;
 
-    // Create a call continuation stub with a copy of the call state
+    // Create a call continuation stub with a copy of the call context
     assert (callVer !is null);
     auto stub = new ContStub(
         callVer,
-        new CodeGenState(callSt),
+        new CodeGenCtx(callCtx),
         callee
     );
 
