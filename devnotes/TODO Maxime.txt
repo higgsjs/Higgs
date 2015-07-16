@@ -99,6 +99,8 @@ Meeting 2015-07-21:
 
 TODO: look at machine code for fib42
 
+TODO: try bezier curve program, mouse input
+
 TODO: test fib42 perf vs master branch
 make release; time ./higgs --nostdlib benchmarks/micro/fib42.js
 
@@ -126,14 +128,18 @@ TODO: make getDefReg map arg vals to proper regs
 - define closArgReg, argcArgReg, thisArgReg
 - define argRegs, size 3 for now, can later try larger
 
-FIXME: passing vmReg in apply
+push to master
+
+is vmReg really needed anywhere?
+
+TODO: completely eliminate vmReg in jit/ops.d
 
 
 
 
 
 
-
+[DONE] FIXME: passing vmReg in apply
 
 [DONE] FIXME: "state =" in jit/jit.d
 

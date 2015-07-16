@@ -646,7 +646,7 @@ void FPToStr(string fmt)(
     CodeBlock as
 )
 {
-    extern (C) static refptr toStrFn(VM vm, IRInstr curInstr, double f)
+    extern (C) static refptr toStrFn(IRInstr curInstr, double f)
     {
         vm.setCurInstr(curInstr);
 
@@ -667,9 +667,8 @@ void FPToStr(string fmt)(
     as.saveJITRegs();
 
     // Call the host function
-    as.mov(cargRegs[0], vmReg);
-    as.ptr(cargRegs[1], instr);
-    as.movq(X86Opnd(XMM0), opnd0);
+    as.ptr(cargRegs[0], instr);
+    as.movq(cfpArgRegs[0].opnd, opnd0);
     as.ptr(scrRegs[0], &toStrFn);
     as.call(scrRegs[0]);
 
@@ -2184,11 +2183,7 @@ void gen_call_apply(
     CodeBlock as
 )
 {
-    extern (C) CodePtr op_call_apply(
-        VM vm,
-        IRInstr instr,
-        CodePtr retAddr
-    )
+    extern (C) CodePtr op_call_apply(IRInstr instr, CodePtr retAddr)
     {
         // Increment the number of calls performed using apply
         stats.numCallApply++;
@@ -2261,12 +2256,11 @@ void gen_call_apply(
         {
             as.saveJITRegs();
 
-            // Pass the call vm and instruction as first two arguments
-            as.mov(cargRegs[0], vmReg);
-            as.ptr(cargRegs[1], instr);
+            // Pass the instruction as an argument
+            as.ptr(cargRegs[0], instr);
 
             // Pass the return address as third argument
-            as.movAbsRef(vm, cargRegs[2], block, target0, 0);
+            as.movAbsRef(vm, cargRegs[1], block, target0, 0);
 
             // Call the host function
             as.ptr(scrRegs[0], &op_call_apply);
@@ -4047,10 +4041,7 @@ void gen_obj_set_attrs(
     CodeBlock as
 )
 {
-    extern (C) static void op_obj_set_attrs(
-        VM vm, 
-        IRInstr instr
-    )
+    extern (C) static void op_obj_set_attrs(IRInstr instr)
     {
         auto objPair = vm.getArgVal(instr, 0);
         auto propName = vm.getArgVal(instr, 1).word.ptrVal;
@@ -4088,8 +4079,7 @@ void gen_obj_set_attrs(
     as.saveJITRegs();
 
     // Call the host function
-    as.mov(cargRegs[0].opnd(64), vmReg.opnd(64));
-    as.ptr(cargRegs[1], instr);
+    as.ptr(cargRegs[0], instr);
     as.ptr(scrRegs[0], &op_obj_set_attrs);
     as.call(scrRegs[0]);
 
