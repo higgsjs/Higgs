@@ -62,8 +62,8 @@ import jit.util;
 import jit.moves;
 import jit.ops;
 
-/// R15: VM object pointer (C callee-save) 
-alias vmReg = R15;
+/// R15: global object pointer (C callee-save) 
+alias globalReg = R15;
 
 /// R14: word stack pointer (C callee-save)
 alias wspReg = R14;
@@ -2647,9 +2647,12 @@ EntryFn compileUnit(VM vm, IRFunction fun)
     as.setWord(0, retWordReg.opnd);
     as.setTag(0, retTagReg.opnd);
 
+    // Load a pointer to the VM object
+    as.ptr(scrRegs[0], vm);
+
     // Store the stack pointers back in the VM
-    as.setMember!("VM.wsp")(vmReg, wspReg);
-    as.setMember!("VM.tsp")(vmReg, tspReg);
+    as.setMember!("VM.wsp")(scrRegs[0], wspReg);
+    as.setMember!("VM.tsp")(scrRegs[0], tspReg);
 
     // Restore the callee-save GP registers
     as.pop(R15);
@@ -2701,27 +2704,27 @@ EntryFn compileUnit(VM vm, IRFunction fun)
     as.push(R14);
     as.push(R15);
 
-    // Load a pointer to the VM object
-    as.ptr(vmReg, vm);
+    // r0 = vm
+    as.ptr(scrRegs[0], vm);
 
-    // Load the stack pointers into RBX and RBP
-    as.getMember!("VM.wsp")(wspReg, vmReg);
-    as.getMember!("VM.tsp")(tspReg, vmReg);
+    // Load the word and type stack pointers
+    as.getMember!("VM.wsp")(wspReg, scrRegs[0]);
+    as.getMember!("VM.tsp")(tspReg, scrRegs[0]);
 
     // Set the argument count (0)
     as.setWord(-1, X86Opnd(0));
 
     // Set the "this" argument (global object)
-    as.getMember!("VM.globalObj.word")(scrRegs[0], vmReg);
-    as.setWord(-2, scrRegs[0].opnd);
+    as.getMember!("VM.globalObj.word")(scrRegs[1], scrRegs[0]);
+    as.setWord(-2, scrRegs[1].opnd);
     as.setTag(-2, Tag.OBJECT);
 
     // Set the closure argument (null)
     as.setWord(-3, X86Opnd(0));
 
     // Set the return address
-    as.ptr(scrRegs[0], retAddr);
-    as.setWord(-4, scrRegs[0].opnd);
+    as.ptr(scrRegs[1], retAddr);
+    as.setWord(-4, scrRegs[1].opnd);
 
     // Push space for the callee locals
     as.sub(tspReg.opnd, X86Opnd(1 * fun.numLocals));

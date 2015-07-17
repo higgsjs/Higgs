@@ -90,12 +90,14 @@ TODO: implement store to moffs
 - see existing load from moffs
 
 Meeting 2015-07-21:
+- worked on paper a little more
 - asked me to subtract runtime&stdlib init for code size
   - if we do this for code size, must do it for comp time
     - but should we? comp time of stdlib matters too...
   - perf of stdlib init actually matters
   - runtime code is part of program too
   - avoid making our metric more complex
+- Refactored to eliminate vmReg
 
 TODO: look at machine code for fib42
 
@@ -128,22 +130,53 @@ TODO: make getDefReg map arg vals to proper regs
 - define closArgReg, argcArgReg, thisArgReg
 - define argRegs, size 3 for now, can later try larger
 
-TODO: define globalReg
+------------------------------------------------------------------------------
 
 push to master
 
-TODO: eliminate vmReg
+TODO: test benchmark.py vs master branch
+- perf, code size, num shape tests
+- code size: 328111 => 350765 => ???
+- shape tests: =>
+- perf: 23ms => 
 
-TODO: eliminate uses of vmReg in jit/jit.d
+TODO: remove IRFunction.globalVal
 
-TODO: eliminate vmReg in jit/ops.d
+TODO: threading global obj as arg
+- Do we want to alloc a stack slot?
+- Should not need to spill global val when calling
+- Can crease a pseudo-arg, or pass a "hidden arg"
+  - Hidden arg is complex, because stack slots, special rules for handling
+  - Would a pseudo-arg work?
 
-TODO: getVMMember, setVMMember, or VMField?
+TODO: load global reg when loading vm regs
+- should take care of GC
+- don't actually need to save the global reg
+
+test, commit
 
 
 
 
 
+
+
+
+[DONE] TODO: test benchmark.py vs master branch
+- code size: 328111 => 350765
+- no significant impact on compile time or performance
+
+[DONE] TODO: define globalReg
+
+[DONE] TODO: eliminate vmReg definition
+
+[DONE] TODO: eliminate vmReg uses in jit/util.d
+
+[DONE] TODO: eliminate vmReg use in heap alloc
+- can load into RAX when useful
+  - try to restructure heap alloc code
+
+[DONE] TODO: eliminate vmReg uses in jit/jit.d
 
 [DONE] TODO: eliminate uses of vmReg in throw
 

@@ -2685,9 +2685,8 @@ void GetValOp(Tag tag, string fName)(
     auto outOpnd = ctx.getOutOpnd(as, instr, fSize);
     assert (outOpnd.isReg);
 
-    // FIXME: use load from 64-bit addr, no register or getMember
-
-    as.getMember!("VM." ~ fName)(outOpnd.reg, vmReg);
+    as.ptr(scrRegs[0], vm);
+    as.getMember!("VM." ~ fName)(outOpnd.reg, scrRegs[0]);
 
     ctx.setOutTag(as, instr, tag);
 }
@@ -2709,8 +2708,9 @@ void gen_get_heap_free(
 {
     auto outOpnd = ctx.getOutOpnd(as, instr, 32);
 
-    as.getMember!("VM.allocPtr")(scrRegs[0], vmReg);
-    as.getMember!("VM.heapLimit")(scrRegs[1], vmReg);
+    as.ptr(scrRegs[1], vm);
+    as.getMember!("VM.allocPtr")(scrRegs[0], scrRegs[1]);
+    as.getMember!("VM.heapLimit")(scrRegs[1], scrRegs[1]);
 
     as.sub(scrRegs[1].opnd, scrRegs[0].opnd);
 
@@ -2758,28 +2758,33 @@ void HeapAllocOp(Tag tag)(
 
     // Get the output operand
     auto outOpnd = ctx.getOutOpnd(as, instr, 64);
+    assert (outOpnd.isReg);
 
-    as.getMember!("VM.allocPtr")(scrRegs[0], vmReg);
-    as.getMember!("VM.heapLimit")(scrRegs[1], vmReg);
+    // r0 = vm
+    as.ptr(scrRegs[0], vm);
 
-    // r2 = allocPtr + size
+    // The output of this instruction is the current allocPtr
+    // out = allocPtr
+    as.getMember!("VM.allocPtr")(outOpnd.reg, scrRegs[0]);
+
+    // r1 = allocPtr + size
     // Note: we zero extend the size operand to 64-bits
-    as.mov(scrRegs[2].opnd(32), szOpnd);
-    as.add(scrRegs[2].opnd(64), scrRegs[0].opnd(64));
+    as.mov(scrRegs[1].opnd(32), szOpnd);
+    as.add(scrRegs[1].opnd(64), outOpnd);
+
+    // r2 = heapLimit
+    as.getMember!("VM.heapLimit")(scrRegs[2], scrRegs[0]);
 
     // if (allocPtr + size > heapLimit) fallback
-    as.cmp(scrRegs[2].opnd(64), scrRegs[1].opnd(64));
+    as.cmp(scrRegs[1].opnd(64), scrRegs[2].opnd(64));
     as.jg(Label.FALLBACK);
 
-    // Move the allocation pointer to the output
-    as.mov(outOpnd, scrRegs[0].opnd(64));
-
-    // Align the incremented allocation pointer
-    as.add(scrRegs[2].opnd(64), X86Opnd(7));
-    as.and(scrRegs[2].opnd(64), X86Opnd(-8));
+    // Align the new incremented allocation pointer
+    as.add(scrRegs[1].opnd(64), X86Opnd(7));
+    as.and(scrRegs[1].opnd(64), X86Opnd(-8));
 
     // Store the incremented and aligned allocation pointer
-    as.setMember!("VM.allocPtr")(vmReg, scrRegs[2]);
+    as.setMember!("VM.allocPtr")(scrRegs[0], scrRegs[1]);
 
     // Done allocating
     as.jmp(Label.DONE);
