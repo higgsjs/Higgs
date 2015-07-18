@@ -104,6 +104,9 @@ class IRFunction : IdObject
     /// Total number of locals, including parameters and temporaries
     uint32_t numLocals = 0;
 
+    /// Global object value
+    IRInstr globalVal = null;
+
     /// Hidden parameter SSA values
     FunParam raVal;
     FunParam closVal;
@@ -118,9 +121,6 @@ class IRFunction : IdObject
 
     /// Map of identifiers to SSA cell values (closure/shared variables)
     IRValue[IdentExpr] cellMap;
-
-    /// Global object value
-    IRInstr globalVal = null;
 
     /// Liveness information
     LiveInfo liveInfo = null;
@@ -1150,6 +1150,29 @@ class PhiNode : IRDstValue
         output ~= "]";
 
         return output;
+    }
+}
+
+/**
+Global object value
+@extents PhiNode
+*/
+class GlobalVal : PhiNode
+{
+    wstring name;
+    uint32_t idx;
+
+    this()
+    {
+    }
+
+    /// Get the short name string associated with this argument
+    override string getName()
+    {
+        if (outSlot !is NULL_STACK)
+            return "$" ~ to!string(outSlot);
+
+        return "global_obj";
     }
 }
 

@@ -370,6 +370,9 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
         initLocalMap
     );
 
+    // Create the global object value
+    fun.globalVal = bodyCtx.addInstr(new IRInstr(&GET_GLOBAL_OBJ));
+
     // Create values for the hidden arguments
     fun.raVal   = cast(FunParam)entry.addPhi(new FunParam("ra"  , 0));
     fun.closVal = cast(FunParam)entry.addPhi(new FunParam("clos", 1));
@@ -398,9 +401,6 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
             bodyCtx.localMap[ident] = IRConst.undefCst;
         }
     }
-
-    // Fetch the global object value
-    fun.globalVal = bodyCtx.addInstr(new IRInstr(&GET_GLOBAL_OBJ));
 
     // Initialize global variable declarations to undefined
     if (auto unit = cast(ASTProgram)ast)

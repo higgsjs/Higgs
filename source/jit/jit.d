@@ -330,6 +330,10 @@ class CodeGenCtx
         setTag(fun.closVal, Tag.CLOSURE);
         setTag(fun.argcVal, Tag.INT32);
 
+        // Map the global object to the global register
+        //mapReg(globalReg, fun.globalVal, 64);
+        //setTag(fun.globalVal, Tag.OBJECT);
+
         // If interprocedural type prop is enabled
         if (!opts.noentryspec)
         {
@@ -2710,6 +2714,9 @@ EntryFn compileUnit(VM vm, IRFunction fun)
     // Load the word and type stack pointers
     as.getMember!("VM.wsp")(wspReg, scrRegs[0]);
     as.getMember!("VM.tsp")(tspReg, scrRegs[0]);
+
+    // Load the global object pointer
+    as.getMember!("VM.globalObj.word")(globalReg, scrRegs[0]);
 
     // Set the argument count (0)
     as.setWord(-1, X86Opnd(0));

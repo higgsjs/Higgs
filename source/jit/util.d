@@ -323,8 +323,13 @@ void loadJITRegs(CodeBlock as)
     // tspReg = vm
     as.ptr(tspReg, vm);
 
-    // Load the word and type stack pointers from the VM object
+    // Load the word stack pointer
     as.getMember!("VM.wsp")(wspReg, tspReg);
+
+    // Load the global object pointer
+    as.getMember!("VM.globalObj.word")(globalReg, tspReg);
+
+    // Load the type stack pointer
     as.getMember!("VM.tsp")(tspReg, tspReg);
 }
 

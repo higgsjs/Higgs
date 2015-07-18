@@ -132,7 +132,7 @@ TODO: make getDefReg map arg vals to proper regs
 
 ------------------------------------------------------------------------------
 
-push to master
+push to master?
 
 TODO: test benchmark.py vs master branch
 - perf, code size, num shape tests
@@ -140,18 +140,20 @@ TODO: test benchmark.py vs master branch
 - shape tests: =>
 - perf: 23ms => 
 
-TODO: remove IRFunction.globalVal
+test, commit
 
-TODO: threading global obj as arg
-- Do we want to alloc a stack slot?
-- Should not need to spill global val when calling
-- Can crease a pseudo-arg, or pass a "hidden arg"
-  - Hidden arg is complex, because stack slots, special rules for handling
-  - Would a pseudo-arg work?
+TODO: modify slotalloc to not alloc a slot to globalVal
 
-TODO: load global reg when loading vm regs
-- should take care of GC
-- don't actually need to save the global reg
+TODO: modify globalVal so it isn't spilled
+
+TODO: modify globalVal to be a noop, mapped to globalReg in CodeGenCtx ctor
+- later, can thread the type separately
+- Alternative: make globalVal a hidden arg
+  - but it is literally threaded *everywhere*
+  - try to keep it as a normal instr for now
+- assert that mapped to reg in gen_get_global_obj
+
+globalVal as pseudo-arg? try it?
 
 test, commit
 
@@ -160,7 +162,8 @@ test, commit
 
 
 
-
+[DONE] TODO: load globalReg when loading vm regs, calling unit function
+- don't need to save globalReg
 
 [DONE] TODO: test benchmark.py vs master branch
 - code size: 328111 => 350765
