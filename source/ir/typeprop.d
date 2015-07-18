@@ -417,8 +417,7 @@ class TypeProp
             }
 
             // Get root VM objects
-            if (op is &GET_GLOBAL_OBJ ||
-                op is &GET_OBJ_PROTO ||
+            if (op is &GET_OBJ_PROTO ||
                 op is &GET_ARR_PROTO ||
                 op is &GET_FUN_PROTO ||
                 op is &GET_STR_PROTO )

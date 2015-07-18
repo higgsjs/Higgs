@@ -330,6 +330,9 @@ PhiNode inlineCall(IRInstr callSite, IRFunction callee)
     // Map of callee instructions and phi nodes to copies
     IRValue[IRValue] valMap;
 
+    // Map the global object value
+    valMap[callee.globalVal] = caller.globalVal;
+
     // Map the hidden argument values to call site parameters
     valMap[callee.raVal] = IRConst.nullCst;
     valMap[callee.closVal] = callSite.getArg(0);
@@ -363,7 +366,7 @@ PhiNode inlineCall(IRInstr callSite, IRFunction callee)
         for (auto phi = block.firstPhi; phi !is null; phi = phi.next)
         {
             // If this not a function parameter
-            if (cast(FunParam)phi is null)
+            if (cast(FunParam)phi is null && cast(GlobalVal)phi is null)
             {
                 // Create a new phi node (copy)
                 valMap[phi] = newBlock.addPhi(new PhiNode());

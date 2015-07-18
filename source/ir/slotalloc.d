@@ -80,7 +80,7 @@ void allocSlots(IRFunction fun)
             //writefln("phi: %s", phi.toString());
 
             // If this is not a function parameter
-            if (cast(FunParam)phi is null)
+            if (!cast(FunParam)phi && !cast(GlobalVal)phi)
             {
                 // Assign the phi node to a variable slot
                 phi.outSlot = numVarSlots++;
@@ -163,12 +163,21 @@ void allocSlots(IRFunction fun)
         // For each phi node
         for (auto phi = block.firstPhi; phi !is null; phi = phi.next)
         {
+            // If this is a global object value
+            if (cast(GlobalVal)phi)
+            {
+                // Allocate no stack slot
+                phi.outSlot = NULL_STACK;
+            }
+
             // If this is a function parameter
-            if (auto param = cast(FunParam)phi)
+            else if (auto param = cast(FunParam)phi)
             {
                 // Assign the corresponding parameter slot index
                 param.outSlot = fun.numLocals - numTotalArgs + param.idx;
             }
+
+            // All other phi nodes
             else
             {
                 // Remap the phi node's variable slot

@@ -371,7 +371,7 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
     );
 
     // Create the global object value
-    fun.globalVal = bodyCtx.addInstr(new IRInstr(&GET_GLOBAL_OBJ));
+    fun.globalVal = cast(GlobalVal)entry.addPhi(new GlobalVal());
 
     // Create values for the hidden arguments
     fun.raVal   = cast(FunParam)entry.addPhi(new FunParam("ra"  , 0));

@@ -188,7 +188,11 @@ struct ValState
         if (type.tagKnown)
             return X86Opnd(type.tag);
 
-        assert (stackIdx !is StackIdx.max);
+        assert (
+            stackIdx !is StackIdx.max,
+            "type tag unknown and value has no stack slot"
+        );
+
         return tagStackOpnd(stackIdx);
     }
 
@@ -331,8 +335,8 @@ class CodeGenCtx
         setTag(fun.argcVal, Tag.INT32);
 
         // Map the global object to the global register
-        //mapReg(globalReg, fun.globalVal, 64);
-        //setTag(fun.globalVal, Tag.OBJECT);
+        mapReg(globalReg, fun.globalVal, 64);
+        setTag(fun.globalVal, Tag.OBJECT);
 
         // If interprocedural type prop is enabled
         if (!opts.noentryspec)
@@ -801,6 +805,8 @@ class CodeGenCtx
     */
     void mapToStack(IRDstValue value, bool tagWritten = true)
     {
+        assert (value.outSlot !is NULL_STACK);
+
         if (tagWritten)
             valMap[value] = ValState.stack().writeTag();
         else
@@ -827,6 +833,8 @@ class CodeGenCtx
             "value not mapped to reg in spillReg:\n" ~
             regVal.toString
         );
+
+        assert (regVal.outSlot !is NULL_STACK);
 
         // Mark the value as being on the stack
         valMap[regVal] = state.toStack();
@@ -879,6 +887,10 @@ class CodeGenCtx
             if (value is null)
                 continue;
 
+            // If this is the global object value, it is never spilled
+            if (cast(GlobalVal)value)
+                continue;
+
             // If the value should be spilled, spill it
             if (spillTest(liveInfo, value) is true)
                 spillReg(as, reg);
@@ -887,6 +899,10 @@ class CodeGenCtx
         // For each value in the value map
         foreach (value, state; valMap)
         {
+            // If this is the global object value, it is never spilled
+            if (cast(GlobalVal)value)
+                continue;
+
             // If the value has a known type and is not in a register
             if (state.tagKnown && !state.tagWritten && !state.isReg)
             {
@@ -2054,7 +2070,8 @@ BlockVersion getBlockVersion(
         auto genCtx = new CodeGenCtx(ctx);
         foreach (val, valSt; genCtx.valMap)
         {
-            if (val !is fun.closVal &&
+            if (val !is fun.globalVal &&
+                val !is fun.closVal &&
                 val !is fun.argcVal &&
                 val !is fun.raVal &&
                 (valSt.tagKnown || valSt.shapeKnown))
@@ -2181,7 +2198,7 @@ void genBranchMoves(
 
         // Test if the successor value is a parameter
         // We don't need to move parameter values to the stack
-        bool succParam = cast(FunParam)succVal !is null;
+        bool succParam = cast(FunParam)succVal || cast(GlobalVal)succVal;
 
         bool moveAdded = false;
 

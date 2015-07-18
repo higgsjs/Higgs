@@ -780,6 +780,12 @@ void visitStackRoots(VM vm)
             if (val is curInstr)
                 continue;
 
+            if (val is fun.globalVal)
+            {
+                // The global object doesn't need forwarding
+                continue;
+            }
+
             if (val is fun.closVal)
             {
                 // Forward the closure pointer

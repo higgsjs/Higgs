@@ -2695,7 +2695,6 @@ alias gen_get_obj_proto = GetValOp!(Tag.OBJECT, "objProto.word");
 alias gen_get_arr_proto = GetValOp!(Tag.OBJECT, "arrProto.word");
 alias gen_get_fun_proto = GetValOp!(Tag.OBJECT, "funProto.word");
 alias gen_get_str_proto = GetValOp!(Tag.OBJECT, "strProto.word");
-alias gen_get_global_obj = GetValOp!(Tag.OBJECT, "globalObj.word");
 alias gen_get_heap_size = GetValOp!(Tag.INT32, "heapSize");
 alias gen_get_gc_count = GetValOp!(Tag.INT32, "gcCount");
 

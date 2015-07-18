@@ -105,7 +105,7 @@ class IRFunction : IdObject
     uint32_t numLocals = 0;
 
     /// Global object value
-    IRInstr globalVal = null;
+    GlobalVal globalVal = null;
 
     /// Hidden parameter SSA values
     FunParam raVal;
@@ -1159,19 +1159,18 @@ Global object value
 */
 class GlobalVal : PhiNode
 {
-    wstring name;
-    uint32_t idx;
-
     this()
     {
     }
 
-    /// Get the short name string associated with this argument
     override string getName()
     {
-        if (outSlot !is NULL_STACK)
-            return "$" ~ to!string(outSlot);
+        return toString();
+    }
 
+    override string toString()
+    {
+        assert (outSlot is NULL_STACK);
         return "global_obj";
     }
 }

@@ -948,6 +948,12 @@ class VM
     */
     ValuePair getValue(IRValue val)
     {
+        // If the value is the global object
+        if (cast(GlobalVal)val)
+        {
+            return globalObj;
+        }
+
         // If the value has an associated output slot
         if (auto dstVal = cast(IRDstValue)val)
         {
