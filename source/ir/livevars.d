@@ -54,7 +54,7 @@ class LiveInfo
     /**
     Live variable set implementation
     */
-    struct LiveSet
+    private struct LiveSet
     {
         IRDstValue* arr;
         uint32_t arrLen;
@@ -151,7 +151,13 @@ class LiveInfo
     {
         assert (afterInstr in liveSets);
 
-        return liveSets[afterInstr].elems;
+        auto liveSet = liveSets[afterInstr].elems;
+
+        // The global value and argument count value are live everywhere
+        liveSet.assumeSafeAppend ~= afterInstr.block.fun.globalVal;
+        liveSet.assumeSafeAppend ~= afterInstr.block.fun.argcVal;
+
+        return liveSet;
     }
 
     /**
@@ -243,6 +249,11 @@ class LiveInfo
             liveSet !is null,
             "no live set for instr: " ~ afterInstr.toString
         );
+
+        // The global value and argument count value are live everywhere
+        if (val is val.block.fun.globalVal ||
+            val is val.block.fun.argcVal)
+            return true;
 
         // Values with no uses are never live
         if (val.hasNoUses)

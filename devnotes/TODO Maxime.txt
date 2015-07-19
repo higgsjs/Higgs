@@ -76,19 +76,6 @@ TODO: if DLS paper rejected, rework it for CGO
 - Show to CF Bolz for paper advice
 - Try subtracting empty program code size, stdlib init
 
-TODO: look at notes for global obj threading
-- could significantly reduce shape tests
-  - right now we eliminate 80% on average, but only 20% on earley-boyer
-- improved fib performance?
-- Is global obj threading difficult?
-  - Can we do it without VM reg fix? Unsure, kind of hack-ish?
-
-TODO: eliminate uses of VM reg
-TODO: implement store to moffs
-    A3 MOV moffs32, EAX
-    REX.W + A3 MOV moffs64, RAX
-- see existing load from moffs
-
 Meeting 2015-07-21:
 - worked on paper a little more
 - asked me to subtract runtime&stdlib init for code size
@@ -98,6 +85,18 @@ Meeting 2015-07-21:
   - runtime code is part of program too
   - avoid making our metric more complex
 - Refactored to eliminate vmReg
+- implemented global obj threading
+  - behaves as expected on fib
+    - almost no shape tests
+    - perf improved by ~3%
+  - code size increases
+  - earley-boyer, max versions goes from 28 to 53
+    - perf improved by ~1%
+    - comp time goes down a bit
+    - shape tests increase, max vers blown
+  - comp time always increases with entry spec and cont spec
+  - not clear that this is a net win, removed it
+  - used freed vmReg to have one more allocReg
 
 TODO: look at machine code for fib42
 
@@ -134,24 +133,60 @@ TODO: make getDefReg map arg vals to proper regs
 
 push to master?
 
-TODO: test benchmark.py vs master branch
-- perf, code size, num shape tests
-- code size: 328111 => 350765 => ???
-- shape tests: =>
-- perf: 23ms => 
-
 test, commit
 
-TODO: pass global obj shape to CodeGenCtx ctor when callee known
+TODO: why does VM reg freed increase code size so much?
+- What is the most common fallback?
+  - Can we avoid saveJITRegs there?
 
-FIXME: globalVal should be mapped as live everywhere
+benchmark vs master
+
+TODO: add one more alloc reg
+
+TODO: revert to vm reg freed commit
+
+TODO: create branch for global obj threading
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: test perf in paper template
+
+[DONE] TODO: test benchmark.py vs master branch
+- perf, code size, num shape tests
+- code size: 328111 => 350765 => 389687
+- shape tests: 40042 => 26923
+- perf: 23ms => 22ms
+
+[DONE] FIXME: earley-boyer time increases over 10x?
+- could be version blowup?
+- performs a tiny bit better
+- max versions goes from 28 to 53
+
+[DONE] FIXME: code size is much bigger?
+- there's an increase in tag tests on benchmark.py
+  - not in stdlib or fib42
+- global obj threading is working as expected in fib42
+  - making small perf difference, ~3%
+
+[DONE] FIXME: Assertion failed (jit/jit.d@1383): getType: value not in val map: global_obj
+- possibly filtered out because no uses?
+
+[DONE] TODO: pass global obj shape to CodeGenCtx ctor when callee known
+
+[DONE] FIXME: globalVal should be mapped as live everywhere
 - otherwise known info will be discarded when this value is removed
-
-
-
-
-
-
+- handle this in the same way as argc?
 
 [DONE] FIXME: GC issue, should not be forwarding global obj
 

@@ -1709,6 +1709,7 @@ void gen_call_prim(
     // Create a context taking into account the argument types
     auto entrySt = new CodeGenCtx(
         fun,
+        ctx.getType(ctx.fun.globalVal),
         ValType(),
         argTypes
     );
@@ -1858,6 +1859,7 @@ void gen_call(
         // Create a context taking into account the argument types
         auto entrySt = new CodeGenCtx(
             fun,
+            ctx.getType(ctx.fun.globalVal),
             ctx.getType(instr.getArg(1)),
             argTypes
         );

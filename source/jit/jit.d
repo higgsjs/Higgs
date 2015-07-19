@@ -320,6 +320,7 @@ class CodeGenCtx
     */
     this(
         IRFunction fun,
+        ValType globalType = ValType(Tag.OBJECT),
         ValType thisType = ValType(),
         ValType[] argTypes = null
     )
@@ -341,6 +342,9 @@ class CodeGenCtx
         // If interprocedural type prop is enabled
         if (!opts.noentryspec)
         {
+            // Set the type for the global object value
+            //setType(fun.globalVal, globalType);
+
             // Tag of "this" value is written only if it's unknown
             mapToStack(fun.thisVal, !thisType.tagKnown);
 
@@ -1372,13 +1376,15 @@ class CodeGenCtx
         if (auto dstVal = cast(IRDstValue)value)
         {
             assert (
-                dstVal.hasUses,
+                dstVal.hasUses || dstVal is fun.globalVal,
                 "getType: value has no uses: " ~ value.toString
             );
+
             assert (
                 dstVal in valMap,
                 "getType: value not in val map: " ~ value.toString
             );
+
             ValState state = getState(dstVal);
             return state.type;
         }

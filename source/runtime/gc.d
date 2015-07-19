@@ -766,6 +766,8 @@ void visitStackRoots(VM vm)
         // Visit the function this stack frame belongs to
         visitFun(vm, fun);
 
+        // TODO: eliminate valsLiveBefore, valsLiveAfter?
+        //       problem is, iterating through all IR is fairly slow?
         // Get the values live at the current instruction
         IRDstValue[] liveVals;
         if (depth is 0)
