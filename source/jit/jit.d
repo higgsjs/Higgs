@@ -62,12 +62,6 @@ import jit.util;
 import jit.moves;
 import jit.ops;
 
-/// R14: word stack pointer (C callee-save)
-alias wspReg = R14;
-
-/// R13: type stack pointer (C callee-save)
-alias tspReg = R13;
-
 // RSP: C stack pointer (used for C calls only)
 alias cspReg = RSP;
 
@@ -80,11 +74,29 @@ immutable X86Reg[] cfpArgRegs = [XMM0, XMM1, XMM2, XMM3, XMM4, XMM5, XMM6, XMM7]
 /// C return value register
 alias cretReg = RAX;
 
+/// R14: word stack pointer (C callee-save)
+alias wspReg = R14;
+
+/// R13: type stack pointer (C callee-save)
+alias tspReg = R13;
+
 /// Scratch registers, these do not conflict with the C argument registers
 immutable X86Reg[] scrRegs = [RAX, RBX, RBP];
 
 /// RCX, RBX, RBP, R8-R12, R15: 10 allocatable registers
 immutable X86Reg[] allocRegs = [RDI, RSI, RCX, RDX, R8, R9, R10, R11, R12, R15];
+
+/// Visible argument registers, subset of allocatable registers
+immutable X86Reg[] argRegs = allocRegs[$-4..$];
+
+/// Closure pointer argument register
+X86Reg closReg = allocRegs[$-argRegs.length-1];
+
+/// This pointer argument register
+X86Reg thisReg = allocRegs[$-argRegs.length-2];
+
+/// Argument count register
+X86Reg argcReg = allocRegs[$-argRegs.length-3];
 
 /// Return word register
 alias retWordReg = RCX;

@@ -63,6 +63,7 @@ import runtime.string;
 import runtime.gc;
 import jit.codeblock;
 import jit.x86;
+import jit.moves;
 import jit.util;
 import jit.jit;
 import core.sys.posix.dlfcn;
@@ -1716,11 +1717,22 @@ void gen_call_prim(
     // Request an instance for the function entry block
     auto entryVer = getBlockVersion(fun.entryBlock, entrySt);
 
-    // Copy the function arguments
+
+
+    // List of argument moves
+    Move[] argMoves;
+
+
+
+    // For each visible argument
     for (size_t i = 0; i < numArgs; ++i)
     {
         auto instrArgIdx = 1 + i;
         auto dstIdx = -numArgs + cast(int32_t)i;
+
+        // TODO: get the ValState for each param?
+
+
 
         // Copy the argument word
         auto argOpnd = ctx.getWordOpnd(
@@ -1754,6 +1766,19 @@ void gen_call_prim(
 
     // Spill the values that are live after the call
     ctx.spillLiveAfter(as, instr);
+
+
+    // TODO
+    // Execute the argument moves
+    //execMoves(moves, scrRegs[0]);
+
+
+
+
+
+
+
+
 
     // Push space for the callee arguments and locals
     as.sub(X86Opnd(tspReg), X86Opnd(fun.numLocals));
