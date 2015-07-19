@@ -766,8 +766,6 @@ void visitStackRoots(VM vm)
         // Visit the function this stack frame belongs to
         visitFun(vm, fun);
 
-        // TODO: eliminate valsLiveBefore, valsLiveAfter?
-        //       problem is, iterating through all IR is fairly slow?
         // Get the values live at the current instruction
         IRDstValue[] liveVals;
         if (depth is 0)
@@ -781,12 +779,6 @@ void visitStackRoots(VM vm)
             // The current instruction hasn't completed, skip it
             if (val is curInstr)
                 continue;
-
-            if (val is fun.globalVal)
-            {
-                // The global object doesn't need forwarding
-                continue;
-            }
 
             if (val is fun.closVal)
             {

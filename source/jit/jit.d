@@ -62,8 +62,8 @@ import jit.util;
 import jit.moves;
 import jit.ops;
 
-/// R15: global object pointer (C callee-save) 
-alias globalReg = R15;
+/// R15: VM object pointer (C callee-save) 
+alias vmReg = R15;
 
 /// R14: word stack pointer (C callee-save)
 alias wspReg = R14;
@@ -188,11 +188,7 @@ struct ValState
         if (type.tagKnown)
             return X86Opnd(type.tag);
 
-        assert (
-            stackIdx !is StackIdx.max,
-            "type tag unknown and value has no stack slot"
-        );
-
+        assert (stackIdx !is StackIdx.max);
         return tagStackOpnd(stackIdx);
     }
 
@@ -320,7 +316,6 @@ class CodeGenCtx
     */
     this(
         IRFunction fun,
-        ValType globalType = ValType(Tag.OBJECT),
         ValType thisType = ValType(),
         ValType[] argTypes = null
     )
@@ -335,16 +330,9 @@ class CodeGenCtx
         setTag(fun.closVal, Tag.CLOSURE);
         setTag(fun.argcVal, Tag.INT32);
 
-        // Map the global object to the global register
-        mapReg(globalReg, fun.globalVal, 64);
-        setTag(fun.globalVal, Tag.OBJECT);
-
         // If interprocedural type prop is enabled
         if (!opts.noentryspec)
         {
-            // Set the type for the global object value
-            //setType(fun.globalVal, globalType);
-
             // Tag of "this" value is written only if it's unknown
             mapToStack(fun.thisVal, !thisType.tagKnown);
 
@@ -809,8 +797,6 @@ class CodeGenCtx
     */
     void mapToStack(IRDstValue value, bool tagWritten = true)
     {
-        assert (value.outSlot !is NULL_STACK);
-
         if (tagWritten)
             valMap[value] = ValState.stack().writeTag();
         else
@@ -837,8 +823,6 @@ class CodeGenCtx
             "value not mapped to reg in spillReg:\n" ~
             regVal.toString
         );
-
-        assert (regVal.outSlot !is NULL_STACK);
 
         // Mark the value as being on the stack
         valMap[regVal] = state.toStack();
@@ -891,10 +875,6 @@ class CodeGenCtx
             if (value is null)
                 continue;
 
-            // If this is the global object value, it is never spilled
-            if (cast(GlobalVal)value)
-                continue;
-
             // If the value should be spilled, spill it
             if (spillTest(liveInfo, value) is true)
                 spillReg(as, reg);
@@ -903,10 +883,6 @@ class CodeGenCtx
         // For each value in the value map
         foreach (value, state; valMap)
         {
-            // If this is the global object value, it is never spilled
-            if (cast(GlobalVal)value)
-                continue;
-
             // If the value has a known type and is not in a register
             if (state.tagKnown && !state.tagWritten && !state.isReg)
             {
@@ -1376,15 +1352,13 @@ class CodeGenCtx
         if (auto dstVal = cast(IRDstValue)value)
         {
             assert (
-                dstVal.hasUses || dstVal is fun.globalVal,
+                dstVal.hasUses,
                 "getType: value has no uses: " ~ value.toString
             );
-
             assert (
                 dstVal in valMap,
                 "getType: value not in val map: " ~ value.toString
             );
-
             ValState state = getState(dstVal);
             return state.type;
         }
@@ -2076,8 +2050,7 @@ BlockVersion getBlockVersion(
         auto genCtx = new CodeGenCtx(ctx);
         foreach (val, valSt; genCtx.valMap)
         {
-            if (val !is fun.globalVal &&
-                val !is fun.closVal &&
+            if (val !is fun.closVal &&
                 val !is fun.argcVal &&
                 val !is fun.raVal &&
                 (valSt.tagKnown || valSt.shapeKnown))
@@ -2204,7 +2177,7 @@ void genBranchMoves(
 
         // Test if the successor value is a parameter
         // We don't need to move parameter values to the stack
-        bool succParam = cast(FunParam)succVal || cast(GlobalVal)succVal;
+        bool succParam = cast(FunParam)succVal !is null;
 
         bool moveAdded = false;
 
@@ -2674,12 +2647,9 @@ EntryFn compileUnit(VM vm, IRFunction fun)
     as.setWord(0, retWordReg.opnd);
     as.setTag(0, retTagReg.opnd);
 
-    // Load a pointer to the VM object
-    as.ptr(scrRegs[0], vm);
-
     // Store the stack pointers back in the VM
-    as.setMember!("VM.wsp")(scrRegs[0], wspReg);
-    as.setMember!("VM.tsp")(scrRegs[0], tspReg);
+    as.setMember!("VM.wsp")(vmReg, wspReg);
+    as.setMember!("VM.tsp")(vmReg, tspReg);
 
     // Restore the callee-save GP registers
     as.pop(R15);
@@ -2731,30 +2701,27 @@ EntryFn compileUnit(VM vm, IRFunction fun)
     as.push(R14);
     as.push(R15);
 
-    // r0 = vm
-    as.ptr(scrRegs[0], vm);
+    // Load a pointer to the VM object
+    as.ptr(vmReg, vm);
 
-    // Load the word and type stack pointers
-    as.getMember!("VM.wsp")(wspReg, scrRegs[0]);
-    as.getMember!("VM.tsp")(tspReg, scrRegs[0]);
-
-    // Load the global object pointer
-    as.getMember!("VM.globalObj.word")(globalReg, scrRegs[0]);
+    // Load the stack pointers into RBX and RBP
+    as.getMember!("VM.wsp")(wspReg, vmReg);
+    as.getMember!("VM.tsp")(tspReg, vmReg);
 
     // Set the argument count (0)
     as.setWord(-1, X86Opnd(0));
 
     // Set the "this" argument (global object)
-    as.getMember!("VM.globalObj.word")(scrRegs[1], scrRegs[0]);
-    as.setWord(-2, scrRegs[1].opnd);
+    as.getMember!("VM.globalObj.word")(scrRegs[0], vmReg);
+    as.setWord(-2, scrRegs[0].opnd);
     as.setTag(-2, Tag.OBJECT);
 
     // Set the closure argument (null)
     as.setWord(-3, X86Opnd(0));
 
     // Set the return address
-    as.ptr(scrRegs[1], retAddr);
-    as.setWord(-4, scrRegs[1].opnd);
+    as.ptr(scrRegs[0], retAddr);
+    as.setWord(-4, scrRegs[0].opnd);
 
     // Push space for the callee locals
     as.sub(tspReg.opnd, X86Opnd(1 * fun.numLocals));

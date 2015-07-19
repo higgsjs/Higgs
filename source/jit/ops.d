@@ -1542,11 +1542,16 @@ alias gen_jump_false = JumpOp!(1);
 Throw an exception and unwind the stack when one calls a non-function.
 Returns a pointer to an exception handler.
 */
-extern (C) CodePtr throwCallExc(IRInstr instr, BranchCode excHandler)
+extern (C) CodePtr throwCallExc(
+    VM vm,
+    IRInstr instr,
+    BranchCode excHandler
+)
 {
     auto fnName = getCalleeName(instr);
 
     return throwError(
+        vm,
         instr,
         excHandler,
         "TypeError",
@@ -1629,8 +1634,9 @@ void genCallBranch(
 
         // Throw the call exception, unwind the stack,
         // find the topmost exception handler
-        as.ptr(cargRegs[0], callInstr);
-        as.ptr(cargRegs[1], excBranch);
+        as.mov(cargRegs[0], vmReg);
+        as.ptr(cargRegs[1], callInstr);
+        as.ptr(cargRegs[2], excBranch);
         as.ptr(scrRegs[0], &throwCallExc);
         as.call(scrRegs[0].opnd);
 
@@ -1709,7 +1715,6 @@ void gen_call_prim(
     // Create a context taking into account the argument types
     auto entrySt = new CodeGenCtx(
         fun,
-        ctx.getType(ctx.fun.globalVal),
         ValType(),
         argTypes
     );
@@ -1859,7 +1864,6 @@ void gen_call(
         // Create a context taking into account the argument types
         auto entrySt = new CodeGenCtx(
             fun,
-            ctx.getType(ctx.fun.globalVal),
             ctx.getType(instr.getArg(1)),
             argTypes
         );
@@ -2339,6 +2343,7 @@ void gen_load_file(
         catch (Exception err)
         {
             return throwError(
+                vm,
                 instr,
                 excTarget,
                 "ReferenceError",
@@ -2349,6 +2354,7 @@ void gen_load_file(
         catch (Error err)
         {
             return throwError(
+                vm,
                 instr,
                 excTarget,
                 "SyntaxError",
@@ -2462,6 +2468,7 @@ void gen_eval_str(
         catch (Error err)
         {
             return throwError(
+                vm,
                 instr,
                 excTarget,
                 "SyntaxError",
@@ -2643,10 +2650,11 @@ void gen_throw(
     as.saveJITRegs();
 
     // Call the host throwExc function
-    as.ptr(cargRegs[0], instr);
-    as.mov(cargRegs[1].opnd, X86Opnd(0));
-    as.mov(cargRegs[2].opnd, excWordOpnd);
-    as.mov(cargRegs[3].opnd(8), excTypeOpnd);
+    as.mov(cargRegs[0], vmReg);
+    as.ptr(cargRegs[1], instr);
+    as.mov(cargRegs[2].opnd, X86Opnd(0));
+    as.mov(cargRegs[3].opnd, excWordOpnd);
+    as.mov(cargRegs[4].opnd(8), excTypeOpnd);
     as.ptr(scrRegs[0], &throwExc);
     as.call(scrRegs[0]);
 
@@ -2687,8 +2695,9 @@ void GetValOp(Tag tag, string fName)(
     auto outOpnd = ctx.getOutOpnd(as, instr, fSize);
     assert (outOpnd.isReg);
 
-    as.ptr(scrRegs[0], vm);
-    as.getMember!("VM." ~ fName)(outOpnd.reg, scrRegs[0]);
+    // FIXME: use load from 64-bit addr, no register or getMember
+
+    as.getMember!("VM." ~ fName)(outOpnd.reg, vmReg);
 
     ctx.setOutTag(as, instr, tag);
 }
@@ -2697,6 +2706,7 @@ alias gen_get_obj_proto = GetValOp!(Tag.OBJECT, "objProto.word");
 alias gen_get_arr_proto = GetValOp!(Tag.OBJECT, "arrProto.word");
 alias gen_get_fun_proto = GetValOp!(Tag.OBJECT, "funProto.word");
 alias gen_get_str_proto = GetValOp!(Tag.OBJECT, "strProto.word");
+alias gen_get_global_obj = GetValOp!(Tag.OBJECT, "globalObj.word");
 alias gen_get_heap_size = GetValOp!(Tag.INT32, "heapSize");
 alias gen_get_gc_count = GetValOp!(Tag.INT32, "gcCount");
 
@@ -2709,9 +2719,8 @@ void gen_get_heap_free(
 {
     auto outOpnd = ctx.getOutOpnd(as, instr, 32);
 
-    as.ptr(scrRegs[1], vm);
-    as.getMember!("VM.allocPtr")(scrRegs[0], scrRegs[1]);
-    as.getMember!("VM.heapLimit")(scrRegs[1], scrRegs[1]);
+    as.getMember!("VM.allocPtr")(scrRegs[0], vmReg);
+    as.getMember!("VM.heapLimit")(scrRegs[1], vmReg);
 
     as.sub(scrRegs[1].opnd, scrRegs[0].opnd);
 
@@ -2759,33 +2768,28 @@ void HeapAllocOp(Tag tag)(
 
     // Get the output operand
     auto outOpnd = ctx.getOutOpnd(as, instr, 64);
-    assert (outOpnd.isReg);
 
-    // r0 = vm
-    as.ptr(scrRegs[0], vm);
+    as.getMember!("VM.allocPtr")(scrRegs[0], vmReg);
+    as.getMember!("VM.heapLimit")(scrRegs[1], vmReg);
 
-    // The output of this instruction is the current allocPtr
-    // out = allocPtr
-    as.getMember!("VM.allocPtr")(outOpnd.reg, scrRegs[0]);
-
-    // r1 = allocPtr + size
+    // r2 = allocPtr + size
     // Note: we zero extend the size operand to 64-bits
-    as.mov(scrRegs[1].opnd(32), szOpnd);
-    as.add(scrRegs[1].opnd(64), outOpnd);
-
-    // r2 = heapLimit
-    as.getMember!("VM.heapLimit")(scrRegs[2], scrRegs[0]);
+    as.mov(scrRegs[2].opnd(32), szOpnd);
+    as.add(scrRegs[2].opnd(64), scrRegs[0].opnd(64));
 
     // if (allocPtr + size > heapLimit) fallback
-    as.cmp(scrRegs[1].opnd(64), scrRegs[2].opnd(64));
+    as.cmp(scrRegs[2].opnd(64), scrRegs[1].opnd(64));
     as.jg(Label.FALLBACK);
 
-    // Align the new incremented allocation pointer
-    as.add(scrRegs[1].opnd(64), X86Opnd(7));
-    as.and(scrRegs[1].opnd(64), X86Opnd(-8));
+    // Move the allocation pointer to the output
+    as.mov(outOpnd, scrRegs[0].opnd(64));
+
+    // Align the incremented allocation pointer
+    as.add(scrRegs[2].opnd(64), X86Opnd(7));
+    as.and(scrRegs[2].opnd(64), X86Opnd(-8));
 
     // Store the incremented and aligned allocation pointer
-    as.setMember!("VM.allocPtr")(scrRegs[0], scrRegs[1]);
+    as.setMember!("VM.allocPtr")(vmReg, scrRegs[2]);
 
     // Done allocating
     as.jmp(Label.DONE);
@@ -4570,6 +4574,7 @@ void gen_load_lib(
         if (lib is null)
         {
             return throwError(
+                vm,
                 instr,
                 null,
                 "ReferenceError",
@@ -4633,6 +4638,7 @@ void gen_close_lib(
         if (dlclose(libArg.word.ptrVal) != 0)
         {
             return throwError(
+                vm,
                 instr,
                 null,
                 "RuntimeError",
@@ -4692,6 +4698,7 @@ void gen_get_sym(
         if (sym is null)
         {
             return throwError(
+                vm,
                 instr,
                 null,
                 "RuntimeError",
@@ -4940,6 +4947,7 @@ void gen_get_c_fptr(
         if (fun.cEntryCode !is null)
         {
             return throwError(
+                vm,
                 instr,
                 null,
                 "RuntimeError",

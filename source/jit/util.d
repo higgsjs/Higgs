@@ -302,35 +302,28 @@ void setTag(CodeBlock as, int32_t idx, Tag tag)
     as.mov(tagStackOpnd(idx), X86Opnd(tag));
 }
 
-/// Store/save the JIT state registers
+/// Store/save the JIT state register
 void saveJITRegs(CodeBlock as)
 {
-    as.push(scrRegs[0]);
-
-    // r0 = vm
-    as.ptr(scrRegs[0], vm);
-
     // Save word and type stack pointers on the VM object
-    as.setMember!("VM.wsp")(scrRegs[0], wspReg);
-    as.setMember!("VM.tsp")(scrRegs[0], tspReg);
+    as.setMember!("VM.wsp")(vmReg, wspReg);
+    as.setMember!("VM.tsp")(vmReg, tspReg);
 
-    as.pop(scrRegs[0]);
+    // Push the VM register on the stack
+    as.push(vmReg);
+    as.push(vmReg);
 }
 
 // Load/restore the JIT state registers
 void loadJITRegs(CodeBlock as)
 {
-    // tspReg = vm
-    as.ptr(tspReg, vm);
+    // Pop the VM register from the stack
+    as.pop(vmReg);
+    as.pop(vmReg);
 
-    // Load the word stack pointer
-    as.getMember!("VM.wsp")(wspReg, tspReg);
-
-    // Load the global object pointer
-    as.getMember!("VM.globalObj.word")(globalReg, tspReg);
-
-    // Load the type stack pointer
-    as.getMember!("VM.tsp")(tspReg, tspReg);
+    // Load the word and type stack pointers from the VM object
+    as.getMember!("VM.wsp")(wspReg, vmReg);
+    as.getMember!("VM.tsp")(tspReg, vmReg);
 }
 
 /// Save the allocatable registers to the VM register save space
@@ -338,8 +331,7 @@ void saveAllocRegs(CodeBlock as)
 {
     as.push(scrRegs[0]);
 
-    assert (scrRegs[0] == RAX);
-    as.mov(scrRegs[0], &vm.regSave);
+    as.getMember!("VM.regSave")(scrRegs[0], vmReg);
 
     foreach (uint regIdx, reg; allocRegs)
     {
@@ -358,8 +350,7 @@ void loadAllocRegs(CodeBlock as)
 {
     as.push(scrRegs[0]);
 
-    assert (scrRegs[0] == RAX);
-    as.mov(scrRegs[0], &vm.regSave);
+    as.getMember!("VM.regSave")(scrRegs[0], vmReg);
 
     foreach (uint regIdx, reg; allocRegs)
     {
@@ -541,7 +532,7 @@ void printStack(CodeBlock as, VM vm, IRInstr curInstr)
     as.pushRegs();
     as.saveJITRegs();
 
-    as.ptr(cargRegs[0], vm);
+    as.mov(cargRegs[0].opnd, vmReg.opnd);
     as.ptr(cargRegs[1], curInstr);
 
     as.ptr(scrRegs[0], &printStackFn);

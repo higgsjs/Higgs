@@ -231,7 +231,7 @@ void optIR(IRFunction fun)
                 //writeln("phi: ", phi.getName());
 
                 // If this phi node is a function parameter, skip it
-                if (cast(FunParam)phi || cast(GlobalVal)phi)
+                if (cast(FunParam)phi)
                     continue;
 
                 // If this phi node has no uses, remove it

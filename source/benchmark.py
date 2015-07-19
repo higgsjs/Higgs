@@ -12,7 +12,7 @@ from optparse import OptionParser
 # Configuration
 MAKE_CMD = 'make release'
 DEF_NUM_RUNS = 1
-DEF_VM_CMD = './higgs --stats'
+DEF_VM_CMD = './higgs --stats --maxvers=20'
 DEF_BENCH_LIST = 'benchmark-list.csv'
 DEF_CSV_FILE = ''
 
