@@ -2842,13 +2842,7 @@ void gen_gc_collect(
     }
 
     // Spill the values live before the instruction
-    ctx.spillValues(
-        as,
-        delegate bool(LiveInfo liveInfo, IRDstValue value)
-        {
-            return liveInfo.liveBefore(value, instr);
-        }
-    );
+    ctx.spillLiveBefore(as, instr);
 
     // Get the string pointer
     auto heapSizeOpnd = ctx.getWordOpnd(as, instr, 0, 32, X86Opnd.NONE, true, false);
@@ -3265,16 +3259,12 @@ void gen_obj_init_shape(
     // Spill the values live before this instruction
     ctx.spillLiveBefore(as, instr);
 
-    as.saveJITRegs();
-
     // Call the host function
     // Note: we move objOpnd first to avoid corruption
     as.mov(cargRegs[0].opnd(64), objOpnd);
     as.mov(cargRegs[1].opnd(8), tagOpnd);
     as.ptr(scrRegs[0], &op_obj_init_shape);
     as.call(scrRegs[0]);
-
-    as.loadJITRegs();
 
     assert (!ctx.shapeKnown(cast(IRDstValue)instr.getArg(0)));
 }
@@ -3477,7 +3467,7 @@ void gen_obj_set_prop(
     if (!defShape.writable)
         return gen_jump(ver, ctx, instr, as);
 
-    // If the property exists on the object
+    // If the property already exists on the object
     if (slotIdx <= objShape.slotIdx)
     {
         auto objOpnd = ctx.getWordOpnd(as, instr, 0, 64);
@@ -3985,17 +3975,13 @@ void gen_obj_get_attrs(
 
         // If no property name is specified
         if (propName is null)
-        {
             return objShape.attrs;
-        }
 
         auto defShape = objShape.getDefShape(extractWStr(propName));
 
         // If the property doesn't exist
         if (defShape is null)
-        {
             return ATTR_DELETED;
-        }
 
         return defShape.attrs;
     }
@@ -4007,7 +3993,7 @@ void gen_obj_get_attrs(
     auto propOpnd = ctx.getWordOpnd(as, instr, 1, 64, scrRegs[1].opnd, false, false);
     auto outOpnd = ctx.getOutOpnd(as, instr, 32);
 
-    as.saveJITRegs();
+    //as.saveJITRegs();
 
     // Call the host function
     as.mov(cargRegs[0].opnd(64), objOpnd);
@@ -4019,7 +4005,7 @@ void gen_obj_get_attrs(
     as.mov(outOpnd, cretReg.opnd(32));
     ctx.setOutTag(as, instr, Tag.INT32);
 
-    as.loadJITRegs();
+    //as.loadJITRegs();
 }
 
 /// Sets the attributes for a given property
@@ -4182,13 +4168,7 @@ void gen_set_global(
     }
 
     // Spill the values that are live before the call
-    ctx.spillValues(
-        as,
-        delegate bool(LiveInfo liveInfo, IRDstValue value)
-        {
-            return liveInfo.liveBefore(value, instr);
-        }
-    );
+    ctx.spillLiveBefore(as, instr);
 
     as.saveJITRegs();
 

@@ -3081,14 +3081,14 @@ void removeConts(IRFunction callee)
 }
 
 /**
-Generate the generic JIT stubs
+Generate the generic branch stubs
 */
 void genStubs(VM vm)
 {
     auto as = vm.execHeap;
 
     //
-    // Generic entry stub
+    // Generic function entry stub
     //
 
     assert (vm.entryStub is null);

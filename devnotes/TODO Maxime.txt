@@ -62,6 +62,13 @@ TODO: implement basic meta stat test system
 TODO: simplified phi arg iteration?
 - phi.numArgs, phi.getArg(i)?
 
+TODO: set_prop slow path does save/load JIT regs, is inefficient
+- right now, if some property is new, but above some guaranteed minimum
+  capacity, we trigger a fallback
+- could technically know for some slotIdxs that there must already be an
+  extension table, e.g., propIdx = 9, propIdx=8 triggered the extension
+- should profile the frequency of these too-far-along property additions
+
 TODO: don't write ret tag register to type stack (in caller) if tag known
 - if tag known, set known tag, let the branch spill it if necessary
 - if tag unknown, write tag as before in cont branch
@@ -102,6 +109,10 @@ TODO: look at machine code for fib42
 
 TODO: try bezier curve program, mouse input
 
+------------------------------------------------------------------------------
+
+TODO: blog about perf improvement, importance of CC
+
 TODO: test fib42 perf vs master branch
 make release; time ./higgs --nostdlib benchmarks/micro/fib42.js
 
@@ -127,22 +138,22 @@ TODO: make CodeGenCtx map args to def regs, *for prim fns only*
 
 TODO: make getDefReg map arg vals to proper regs
 - define closArgReg, argcArgReg, thisArgReg
-- define argRegs, size 3 for now, can later try larger
+  - not gonna pass RA through this mechanism
+- define argRegs, size 4 for now, can later try larger
 
 ------------------------------------------------------------------------------
 
 push to master?
 
 test, commit
+- started test
 
-TODO: why does VM reg freed increase code size so much?
+
+
+
+[DONE] TODO: why does VM reg freed increase code size so much?
 - What is the most common fallback?
   - Can we avoid saveJITRegs there?
-
-
-
-
-
 
 [DONE] TODO: benchmark vs master
 - are max versions, shape tests and type tests the same? yes
