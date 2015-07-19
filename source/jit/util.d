@@ -302,28 +302,30 @@ void setTag(CodeBlock as, int32_t idx, Tag tag)
     as.mov(tagStackOpnd(idx), X86Opnd(tag));
 }
 
-/// Store/save the JIT state register
+/// Store/save the JIT state registers
 void saveJITRegs(CodeBlock as)
 {
-    // Save word and type stack pointers on the VM object
-    as.setMember!("VM.wsp")(vmReg, wspReg);
-    as.setMember!("VM.tsp")(vmReg, tspReg);
+    as.push(scrRegs[0]);
 
-    // Push the VM register on the stack
-    as.push(vmReg);
-    as.push(vmReg);
+    // r0 = vm
+    as.ptr(scrRegs[0], vm);
+
+    // Save word and type stack pointers on the VM object
+    as.setMember!("VM.wsp")(scrRegs[0], wspReg);
+    as.setMember!("VM.tsp")(scrRegs[0], tspReg);
+
+    as.pop(scrRegs[0]);
 }
 
 // Load/restore the JIT state registers
 void loadJITRegs(CodeBlock as)
 {
-    // Pop the VM register from the stack
-    as.pop(vmReg);
-    as.pop(vmReg);
+    // tspReg = vm
+    as.ptr(tspReg, vm);
 
     // Load the word and type stack pointers from the VM object
-    as.getMember!("VM.wsp")(wspReg, vmReg);
-    as.getMember!("VM.tsp")(tspReg, vmReg);
+    as.getMember!("VM.wsp")(wspReg, tspReg);
+    as.getMember!("VM.tsp")(tspReg, tspReg);
 }
 
 /// Save the allocatable registers to the VM register save space
@@ -331,7 +333,8 @@ void saveAllocRegs(CodeBlock as)
 {
     as.push(scrRegs[0]);
 
-    as.getMember!("VM.regSave")(scrRegs[0], vmReg);
+    assert (scrRegs[0] == RAX);
+    as.mov(scrRegs[0], &vm.regSave);
 
     foreach (uint regIdx, reg; allocRegs)
     {
@@ -350,7 +353,8 @@ void loadAllocRegs(CodeBlock as)
 {
     as.push(scrRegs[0]);
 
-    as.getMember!("VM.regSave")(scrRegs[0], vmReg);
+    assert (scrRegs[0] == RAX);
+    as.mov(scrRegs[0], &vm.regSave);
 
     foreach (uint regIdx, reg; allocRegs)
     {
@@ -532,7 +536,7 @@ void printStack(CodeBlock as, VM vm, IRInstr curInstr)
     as.pushRegs();
     as.saveJITRegs();
 
-    as.mov(cargRegs[0].opnd, vmReg.opnd);
+    as.ptr(cargRegs[0], vm);
     as.ptr(cargRegs[1], curInstr);
 
     as.ptr(scrRegs[0], &printStackFn);
