@@ -4175,7 +4175,7 @@ void gen_set_global(
 {
     extern (C) static void op_set_global(IRInstr instr)
     {
-        // Property string (D string)
+        // Property string (constant)
         auto strArg = cast(IRString)instr.getArg(0);
         assert (strArg !is null);
         auto propStr = strArg.str;

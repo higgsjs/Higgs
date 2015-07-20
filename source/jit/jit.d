@@ -839,20 +839,15 @@ class CodeGenCtx
         // Mark the register as free
         gpRegMap[reg.regNo] = null;
 
-        // If the value is a function parameter, we don't need to
-        // spill the word value because it's already on the stack
-        if (!cast(FunParam)regVal)
-        {
-            // Spill the value currently in the register
-            if (opts.genasm)
-                as.comment("Spilling " ~ regVal.getName);
+        // Spill the value currently in the register
+        if (opts.genasm)
+            as.comment("Spilling " ~ regVal.getName);
 
-            //as.printStr("spilling " ~ regVal.toString);
-            //as.printStr("spilling " ~ reg.toString);
-            //writefln("spilling: %s (%s)", regVal, reg);
-            auto mem = wordStackOpnd(regVal.outSlot);
-            as.mov(mem, reg.opnd(64));
-        }
+        //as.printStr("spilling " ~ regVal.toString);
+        //as.printStr("spilling " ~ reg.toString);
+        //writefln("spilling: %s (%s)", regVal, reg);
+        auto mem = wordStackOpnd(regVal.outSlot);
+        as.mov(mem, reg.opnd(64));
 
         // If the type is known and not written on the stack, spill it
         if (state.tagKnown && !state.tagWritten)
@@ -2184,10 +2179,6 @@ void genBranchMoves(
         // Check if the predecessor is the same value and had its tag written
         auto predWritten = predVal is succVal && predSt.tagWritten;
 
-        // Test if the successor value is a parameter
-        // We don't need to move parameter values to the stack
-        bool succParam = cast(FunParam)succVal !is null;
-
         bool moveAdded = false;
 
         // If the pred value is a string
@@ -2205,9 +2196,7 @@ void genBranchMoves(
             X86Opnd srcWordOpnd = predCtx.getWordOpnd(predVal, 64);
             X86Opnd dstWordOpnd = succCtx.getWordOpnd(succVal, 64);
 
-            if (srcWordOpnd != dstWordOpnd &&
-                !dstWordOpnd.isImm &&
-                !(succParam && dstWordOpnd.isMem))
+            if (srcWordOpnd != dstWordOpnd && !dstWordOpnd.isImm)
             {
                 moveList ~= Move(dstWordOpnd, srcWordOpnd);
                 moveAdded = true;
@@ -2397,24 +2386,6 @@ void compile(VM vm, IRInstr curInstr)
                 ver.block !is null,
                 ver.ctx.fun.getName
             );
-
-            /*
-            // If this is a function entry block, align to a 64 byte boundary
-            if (block is ver.ctx.fun.entryBlock)
-            {
-                const ALIGN_BYTES = 64;
-
-                auto rem = as.getWritePos % ALIGN_BYTES;
-
-                if (rem != 0)
-                {
-                    auto pad = ALIGN_BYTES - rem;
-                    as.nop(pad);
-                }
-
-                assert (as.getWritePos % ALIGN_BYTES == 0);
-            }
-            */
 
             // Copy the instance's context object
             auto ctx = new CodeGenCtx(ver.ctx);

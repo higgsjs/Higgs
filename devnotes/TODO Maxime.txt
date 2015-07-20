@@ -146,7 +146,7 @@ Test perf on paper
 test, commit
 
 TODO: test benchmark.py vs master branch
-./benchmark.py --bench_list=benchmarks/nocomptime/benchmark-list.csv
+./benchmark.py --vm_cmd="./higgs" --bench_list=benchmarks/nocomptime/benchmark-list.csv
 - note results
 
 TODO: make call_prim pass args in regs
@@ -160,17 +160,18 @@ TODO: make CodeGenCtx map args to def regs
 
 test, commit
 
-TODO: remove code that says FunParam must not be spilled
 
 
 
 
 
+[DONE] FIXME: segfault once FunParam spill code is removed
+- handling like regular phi nodes?
+- trace instructions
+  - crashes immediately in entry block of runtime/layout
+  - not hitting a phi node
 
-
-
-
-
+[DONE] TODO: remove code that says FunParam must not be spilled
 
 [DONE] TODO: define hidden and visible arg regs
 - define closArgReg, argcArgReg, thisArgReg
