@@ -331,48 +331,61 @@ class CodeGenCtx
     {
         this.fun = fun;
 
+        // If interprocedural type prop is disabled
+        if (opts.noentryspec)
+        {
+            // Remove type information
+            thisType = ValType();
+            argTypes = null;
+        }
+
+
+
+
+        // Tag of "this" value is written only if it's unknown
+        mapToStack(fun.thisVal, !thisType.tagKnown);
+
+        // Set the type for the "this" value
+        setType(fun.thisVal, thisType);
+
+
+        // TODO: for now
+        // hidden args don't matter for prim
+
+        // Map the other hidden arguments to the stack
         mapToStack(fun.raVal);
         mapToStack(fun.closVal);
         mapToStack(fun.argcVal);
-
         setTag(fun.raVal, Tag.RETADDR);
         setTag(fun.closVal, Tag.CLOSURE);
         setTag(fun.argcVal, Tag.INT32);
 
-        // If interprocedural type prop is enabled
-        if (!opts.noentryspec)
-        {
-            // Tag of "this" value is written only if it's unknown
-            mapToStack(fun.thisVal, !thisType.tagKnown);
 
-            // Set the type for the "this" value
-            setType(fun.thisVal, thisType);
-        }
-        else
-        {
-            mapToStack(fun.thisVal);
-        }
 
-        // If argument types were specified
-        if (!opts.noentryspec && argTypes)
-        {
-            assert (argTypes.length is fun.paramVals.length);
 
-            // Set the argument value types
-            foreach (argIdx, argType; argTypes)
+
+
+
+        // For each visible parameter
+        foreach (argIdx, paramVal; fun.paramVals)
+        {
+            // Get the argument type, if specified
+            auto argType = argTypes? argTypes[argIdx]:ValType();
+
+            mapToStack(paramVal, !argType.tagKnown);
+            setType(paramVal, argType);
+
+            // TODO: generalize to non-primitives
+            if (fun.isPrim && argIdx < argRegs.length)
             {
-                auto paramVal = fun.paramVals[argIdx];
-                mapToStack(paramVal, !argType.tagKnown);
-                setType(paramVal, argType);
+                mapReg(argRegs[argIdx], paramVal);
             }
         }
-        else
-        {
-            // Map all arguments to the stack
-            // and mark their type tags as written
-            foreach (param; fun.paramVals)
-                mapToStack(param);
-        }
+
+
+
+
+
     }
 
     /**
@@ -598,7 +611,11 @@ class CodeGenCtx
     /**
     Map a register to a value
     */
-    X86Reg mapReg(X86Reg reg, IRDstValue value, size_t numBits)
+    X86Reg mapReg(
+        X86Reg reg,
+        IRDstValue value,
+        size_t numBits = 64
+    )
     {
         assert (
             getState(value).isReg is false,
@@ -1034,7 +1051,10 @@ class CodeGenCtx
     }
 
     /**
-    Get an operand for any IR value without allocating a register
+    Get an operand for any IR value without allocating a register or
+    generating any code.
+    Note: This can't be done for IRString values, because they are
+    garbage collected and string pointers can change.
     */
     X86Opnd getWordOpnd(IRValue value, size_t numBits)
     {
@@ -2156,10 +2176,6 @@ void genBranchMoves(
     // List of moves to transition to the successor context
     Move[] moveList;
 
-    // String values and phi nodes for string moves
-    IRString[] strVals;
-    X86Opnd[] strDsts;
-
     // For each value in the successor context
     foreach (succVal, succSt; succCtx.valMap)
     {
@@ -2181,20 +2197,19 @@ void genBranchMoves(
 
         bool moveAdded = false;
 
+        // Get the destination operand for the phi word
+        X86Opnd dstWordOpnd = succCtx.getWordOpnd(succVal, 64);
+
         // If the pred value is a string
         if (auto predStr = cast(IRString)predVal)
         {
-            // Get the destionation operand for the phi word
-            X86Opnd dstWordOpnd = succCtx.getWordOpnd(succVal, 64);
-
-            strVals ~= predStr;
-            strDsts ~= dstWordOpnd;
+            moveList ~= Move(dstWordOpnd, predStr);
+            moveAdded = true;
         }
         else
         {
-            // Get the source and destination operands for the phi word
+            // Get the source operand for the phi word
             X86Opnd srcWordOpnd = predCtx.getWordOpnd(predVal, 64);
-            X86Opnd dstWordOpnd = succCtx.getWordOpnd(succVal, 64);
 
             if (srcWordOpnd != dstWordOpnd && !dstWordOpnd.isImm)
             {
@@ -2238,27 +2253,6 @@ void genBranchMoves(
 
     // Execute the moves
     execMoves(as, moveList, scrRegs[0], scrRegs[1]);
-
-    // For each string value
-    foreach (idx, strVal; strVals)
-    {
-        auto dstOpnd = strDsts[idx];
-
-        // Ensure that the string is allocated
-        strVal.getPtr(vm);
-
-        as.ptr(scrRegs[0], strVal);
-
-        if (dstOpnd.isReg)
-        {
-            as.getMember!("IRString.ptr")(dstOpnd.reg, scrRegs[0]);
-        }
-        else
-        {
-            as.getMember!("IRString.ptr")(scrRegs[0], scrRegs[0]);
-            as.mov(dstOpnd, scrRegs[0].opnd);
-        }
-    }
 }
 
 /// Return address metainformation entry
@@ -2830,6 +2824,7 @@ extern (C) CodePtr compileBranch(BlockVersion srcBlock, uint32_t targetIdx)
 
     if (opts.dumpinfo)
     {
+        writeln();
         writeln("entering compileBranch");
         writeln("srcBlock name: ", srcBlock.getName);
         writeln("targetIdx=", targetIdx);
@@ -2897,6 +2892,7 @@ extern (C) CodePtr compileCont(ContStub stub)
 
     if (opts.dumpinfo)
     {
+        writeln();
         writeln("entering compileCont");
     }
 

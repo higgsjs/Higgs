@@ -68,6 +68,7 @@ TODO: set_prop slow path does save/load JIT regs, is inefficient
 - could technically know for some slotIdxs that there must already be an
   extension table, e.g., propIdx = 9, propIdx=8 triggered the extension
 - should profile the frequency of these too-far-along property additions
+- should check who has the most set prop hosts, how many? is this worthwhile?
 
 TODO: don't write ret tag register to type stack (in caller) if tag known
 - if tag known, set known tag, let the branch spill it if necessary
@@ -126,6 +127,41 @@ TODO: bias getDefRegs for values flowing into arguments
 TODO: retest interp BBV speedup, are we better than 6.7% ?
 - code size, slight increase for entry and ret spec?
 
+TODO: implement calling convention for regular calls
+
+ISSUE: param count
+- would rather avoid passing supernumerary args in registers
+- already have more efficient calling convention for known callees
+  - typed shapes already provide this
+- but, no way to really know if specialized entry point?
+- check if argc is known, if so, specialize, if not, don't
+
+ISSUE: argc
+- needs to be spilled, kept live
+  - make all rets use it
+  - but not for primitives?
+  - but when argc is known, it's not actually live?
+- does not affect primitive calls
+- implement basic constant prop for ints?
+
+If the perf of Higgs is good enough, may want to just go and write the paper
+- At least get some good progress done
+- Keep other improvements for later, so we can be sure to make the deadline
+
+TODO: implement argc prop first?
+- should provide good speedup
+- useful for new calling convention
+- needed for primitives also!
+  - and perfect use case, primitives don't care about argc
+  - but we still have to map it as live everywhere
+
+TODO: pass argc through register
+
+TODO: make all rets use argc
+- need to spill this for GC
+
+------------------------------------------------------------------------------
+
 test, commit
 
 TODO: modify execMoves to only use one temp reg?
@@ -140,6 +176,9 @@ TODO: make getDefReg map arg vals to proper regs
 - does this matter? yes, if spilled and reloaded
 - check perf again
 
+TODO: rename mapReg to mapToReg?
+- look at uses
+
 Test perf on paper
 - will also serve to test other configs/params, further validate code
 
@@ -149,21 +188,45 @@ TODO: test benchmark.py vs master branch
 ./benchmark.py --vm_cmd="./higgs" --bench_list=benchmarks/nocomptime/benchmark-list.csv
 - note results
 
-TODO: make call_prim pass args in regs
-- For call_prim, all calls are fast calls
-- Passing args in regs... Will need to use register shuffling routine
-- if arg is expected in a reg, insert move to reg
-  - otherwise insert move to stack loc
-
-TODO: make CodeGenCtx map args to def regs
-- for prim fns only
-
 test, commit
 
+- implementing register arg passing for runtime functions
+- improved string constant handling
+- fixed bug in execMoves
 
 
 
 
+
+
+
+[DONE] FIXME: bug wrt strings
+- string loading frees up reg immediately, performs dynamic load, returns reg as opnd
+- this isn't okay because we might have already inserted a move for this argument...
+- issue: can't just free up a register...
+    r10 <= rdi
+    r11 <= rdi
+
+[DONE] TODO: generalize execMoves to deal with strings directly?
+- optional IRValue
+- Look at phi use case
+  - may simplify things for phis also, shorter code
+
+[DONE] TODO: try using the direct getWordOpnd, get rid of acceptImm64
+
+[DONE] FIXME: bug wrt FP values
+
+[DONE] FIXME: higgs init with stdlib segfaults
+- fails while compiling a primitive call
+- small bug in execMoves wrt identity moves
+
+[DONE] TODO: make call_prim pass visible args in regs
+- For call_prim, all calls are fast calls
+- Passing args in regs... Will need to use register shuffling routine
+
+[DONE] TODO: make CodeGenCtx map args to def regs
+- for prim fns only
+  - put the whole thing in an if stmt
 
 [DONE] FIXME: segfault once FunParam spill code is removed
 - handling like regular phi nodes?

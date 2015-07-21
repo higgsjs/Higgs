@@ -573,7 +573,8 @@ struct X86Opnd
             case REG: return reg.toString();
             case IMM: return imm.toString();
             case MEM: return mem.toString();
-            case NONE, IPREL: assert(false);
+            case NONE: return "NONE";
+            case IPREL: assert(false);
         }
     }
 
@@ -905,7 +906,15 @@ void writeRMMulti(
     }
     else if (opnd1.isImm)
     {
-        assert (opnd1.imm.immSize <= opndSize, "immediate too large for dst");
+        assert (
+            opnd1.imm.immSize <= opndSize,
+            format(
+                "immediate too large for dst %s (%s <= %s)",
+                mnem,
+                opnd0,
+                opnd1
+            )
+        );
     }
 
     assert (opndSize is 8 || opndSize is 16 || opndSize is 32 || opndSize is 64);

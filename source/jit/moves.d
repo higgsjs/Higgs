@@ -42,16 +42,30 @@ import std.array;
 import std.stdint;
 import std.typecons;
 import ir.ir;
+import runtime.vm;
 import jit.codeblock;
 import jit.x86;
 import jit.util;
 import options;
 
-alias Move = Tuple!(X86Opnd, "dst", X86Opnd, "src");
+/*
+Represents a move to be executed
+*/
+struct Move
+{
+    this(X86Opnd dst, X86Opnd src) { this.dst = dst; this.src = src; }
+    this(X86Opnd dst, IRString str) { this.dst = dst; this.srcStr = str; }
+
+    X86Opnd dst;
+
+    X86Opnd src;
+
+    IRString srcStr;
+}
 
 /**
 Execute a list of moves as if occurring simultaneously,
-preventing memory locations from being overwritten
+preventing memory locations and registers from being overwritten
 */
 void execMoves(CodeBlock as, Move[] moveList, X86Reg tmp0, X86Reg tmp1)
 {
@@ -61,6 +75,10 @@ void execMoves(CodeBlock as, Move[] moveList, X86Reg tmp0, X86Reg tmp1)
             !move.dst.isImm,
             "move dst is an immediate"
         );
+
+        assert (!move.srcStr || move.src == X86Opnd.NONE);
+
+        //writeln("executing move: ", move);
 
         auto src = move.src;
         auto dst = move.dst;
@@ -77,15 +95,7 @@ void execMoves(CodeBlock as, Move[] moveList, X86Reg tmp0, X86Reg tmp1)
             return;
         }
 
-        if (src.isImm && src.imm.immSize > 32 && dst.isMem)
-        {
-            assert (dst.mem.size == 64);
-            as.mov(tmp1.opnd(64), src);
-            as.mov(dst, tmp1.opnd(64));
-            return;
-        }
-
-        if (dst.isReg && src.isImm)
+        if (src.isImm && src.imm.immSize <= 32 && dst.isReg)
         {
             auto regDst32 = dst.reg.opnd(32);
 
@@ -104,12 +114,46 @@ void execMoves(CodeBlock as, Move[] moveList, X86Reg tmp0, X86Reg tmp1)
             }
         }
 
-        as.mov(move.dst, move.src);
+        // mem <= imm64
+        if (src.isImm && src.imm.immSize > 32 && dst.isMem)
+        {
+            assert (dst.mem.size == 64);
+            as.mov(tmp1.opnd(64), src);
+            as.mov(dst, tmp1.opnd(64));
+            return;
+        }
+
+        // If the source is a string value
+        if (move.srcStr)
+        {
+            // Ensure that the string is allocated
+            move.srcStr.getPtr(vm);
+
+            as.ptr(tmp1, move.srcStr);
+
+            if (dst.isReg)
+            {
+                as.getMember!("IRString.ptr")(dst.reg, tmp1);
+            }
+            else
+            {
+                as.getMember!("IRString.ptr")(tmp1, tmp1);
+                as.mov(dst, tmp1.opnd);
+            }
+
+            return;
+        }
+
+        as.mov(dst, src);
+
+        //writeln("move executed");
     }
 
     // Remove identity moves from the list
-    foreach (idx, move; moveList)
+    for (auto idx = 0; idx < moveList.length; ++idx)
     {
+        auto move = moveList[idx];
+
         if (move.src == move.dst)
         {
             moveList[idx] = moveList[$-1];
@@ -117,6 +161,14 @@ void execMoves(CodeBlock as, Move[] moveList, X86Reg tmp0, X86Reg tmp1)
             continue;
         }
     }
+
+
+    // FIXME: want to use just one temp
+    // execMove should not have its own temp?
+    // break up mem/mem moves and impossible imms
+    // mem or imm to tmpReg, then tmpReg -> whatever
+
+
 
     // Until all moves are executed
     EXEC_LOOP:

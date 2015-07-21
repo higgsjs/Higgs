@@ -1717,12 +1717,10 @@ void gen_call_prim(
     // Request an instance for the function entry block
     auto entryVer = getBlockVersion(fun.entryBlock, entrySt);
 
-
-
     // List of argument moves
     Move[] argMoves;
 
-
+    //writeln();
 
     // For each visible argument
     for (size_t i = 0; i < numArgs; ++i)
@@ -1730,24 +1728,31 @@ void gen_call_prim(
         auto instrArgIdx = 1 + i;
         auto dstIdx = -numArgs + cast(int32_t)i;
 
-        // TODO: get the ValState for each param?
+        auto argVal = instr.getArg(instrArgIdx);
 
+        //writeln(argVal);
 
+        // Get the value state for this parameter
+        auto argSt = entryVer.ctx.getState(fun.paramVals[i]);
 
-        // Copy the argument word
-        auto argOpnd = ctx.getWordOpnd(
-            as,
-            instr,
-            instrArgIdx,
-            64,
-            scrRegs[1].opnd(64),
-            true,
-            false
-        );
-        as.setWord(dstIdx, argOpnd);
+        // Get the destination operand
+        auto dstOpnd = argSt.isReg? argRegs[i].opnd:wordStackOpnd(dstIdx);
+
+        // If the argument is a string constant
+        if (auto argStr = cast(IRString)argVal)
+        {
+            argMoves.assumeSafeAppend ~= Move(dstOpnd, argStr);
+        }
+        else
+        {
+            auto argOpnd = ctx.getWordOpnd(argVal, 64);
+
+            if (dstOpnd != argOpnd)
+                argMoves.assumeSafeAppend ~= Move(dstOpnd, argOpnd);
+        }
 
         // If the entry context doesn't know the type tag
-        if (!entryVer.ctx.getType(fun.paramVals[i]).tagKnown)
+        if (!argSt.tagKnown)
         {
             // Copy the argument type
             auto tagOpnd = ctx.getTagOpnd(
@@ -1761,24 +1766,23 @@ void gen_call_prim(
         }
     }
 
+    // TODO: argc propagation
     // Write the argument count
     as.setWord(-numArgs - 1, numArgs);
 
     // Spill the values that are live after the call
     ctx.spillLiveAfter(as, instr);
 
+    /*
+    writeln("executing arg moves");
+    writeln("argMoves.length=", argMoves.length);
+    foreach (move; argMoves)
+        writeln(move.dst, " <= ", move.src);
+    writeln();
+    */
 
-    // TODO
     // Execute the argument moves
-    //execMoves(moves, scrRegs[0]);
-
-
-
-
-
-
-
-
+    as.execMoves(argMoves, scrRegs[0], scrRegs[1]);
 
     // Push space for the callee arguments and locals
     as.sub(X86Opnd(tspReg), X86Opnd(fun.numLocals));
