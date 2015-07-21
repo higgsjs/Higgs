@@ -1589,7 +1589,7 @@ void genCallBranch(
     ctx.mapToStack(callInstr);
 
     // Map the return value to the return word register
-    ctx.mapReg(retWordReg, callInstr, 64);
+    ctx.mapToReg(retWordReg, callInstr, 64);
 
     BranchCode excBranch = null;
 
@@ -1719,6 +1719,7 @@ void gen_call_prim(
 
     // List of argument moves
     Move[] argMoves;
+    argMoves.reserve(numArgs);
 
     //writeln();
 

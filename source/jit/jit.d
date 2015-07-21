@@ -378,7 +378,7 @@ class CodeGenCtx
             // TODO: generalize to non-primitives
             if (fun.isPrim && argIdx < argRegs.length)
             {
-                mapReg(argRegs[argIdx], paramVal);
+                mapToReg(argRegs[argIdx], paramVal);
             }
         }
 
@@ -601,6 +601,20 @@ class CodeGenCtx
             }
         }
 
+        // If this is a function parameter value
+        if (auto paramVal = cast(FunParam)value)
+        {
+            // TODO: handle hidden args
+
+            // TODO: switch stmt
+
+            if (paramVal.idx >= NUM_HIDDEN_ARGS &&
+                paramVal.idx - NUM_HIDDEN_ARGS < argRegs.length)
+            {
+                return argRegs[paramVal.idx - NUM_HIDDEN_ARGS];
+            }
+        }
+
         // Choose a register based on the output slot
         auto regIdx = value.outSlot % allocRegs.length;
         auto reg = allocRegs[regIdx];
@@ -611,7 +625,7 @@ class CodeGenCtx
     /**
     Map a register to a value
     */
-    X86Reg mapReg(
+    X86Reg mapToReg(
         X86Reg reg,
         IRDstValue value,
         size_t numBits = 64
@@ -619,12 +633,12 @@ class CodeGenCtx
     {
         assert (
             getState(value).isReg is false,
-            "mapReg: value already mapped to reg"
+            "mapToReg: value already mapped to reg"
         );
 
         assert (
             gpRegMap[reg.regNo] is null,
-            "mapReg: reg already mapped"
+            "mapToReg: reg already mapped"
         );
 
         // Map the register to the new value
@@ -755,7 +769,7 @@ class CodeGenCtx
         auto reg = freeReg(as, instr, defReg.reg);
 
         // Map the value to the chosen register
-        return mapReg(reg, value, numBits);
+        return mapToReg(reg, value, numBits);
     }
 
     /**

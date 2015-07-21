@@ -84,6 +84,55 @@ TODO: if DLS paper rejected, rework it for CGO
 - Show to CF Bolz for paper advice
 - Try subtracting empty program code size, stdlib init
 
+TODO: try bezier curve program, mouse input
+
+------------------------------------------------------------------------------
+
+TODO: blog about perf improvement, importance of calling convention
+
+TODO: look at machine code for fib42
+
+TODO: test fib42 perf vs master branch
+make release; time ./higgs --nostdlib benchmarks/micro/fib42.js
+
+TODO: handle hidden args in getDefReg
+
+TODO: retest interp BBV speedup, are we better than 6.7% ?
+- code size, slight increase for entry and ret spec?
+
+TODO: implement calling convention for regular calls
+- fast calls only
+- check if argc is known, if so, specialize, if not, don't
+  - known argc means specialized entry point
+
+ISSUE: argc
+- needs to be spilled, kept live
+  - make all rets use it
+  - but not for primitives?
+  - but when argc is known, it's not actually live?
+- implement basic constant prop for ints?
+
+If the perf of Higgs is good enough, may want to just go and write the paper
+- At least get some good progress done
+- Keep other improvements for later, so we can be sure to make the deadline
+
+TODO: implement argc prop
+- should provide good speedup
+- useful for new calling convention
+- needed for primitives also!
+  - and perfect use case, primitives don't care about argc
+  - but we still have to map it as live everywhere
+
+------------------------------------------------------------------------------
+
+test, commit
+
+TODO: modify execMoves to only use one temp reg
+- should be feasible to break down moves?
+- we already break down mem to mem
+- imm to mem is really no problem
+- add some validMove function?
+
 Meeting 2015-07-21:
 - worked on paper a little more
 - asked me to subtract runtime&stdlib init for code size
@@ -105,100 +154,45 @@ Meeting 2015-07-21:
   - comp time always increases with entry spec and cont spec
   - not clear that this is a net win, removed it
   - used freed vmReg to have one more allocReg
+- Implemented register calling convention for primitives
+  - Not much speedup yet, unfortunately, on the order of 2-4%
+  - Inefficient returns?
+  - Passing both argc and return address through stack
+  - Could prop argc as constant when known, pass ret addr in register
+    - ra in register could improve branch prediction
+  - regular calls over 3x slower than primitive calls
 
-TODO: look at machine code for fib42
-
-TODO: try bezier curve program, mouse input
-
-------------------------------------------------------------------------------
-
-TODO: blog about perf improvement, importance of CC
-
-TODO: test fib42 perf vs master branch
-make release; time ./higgs --nostdlib benchmarks/micro/fib42.js
-
-TODO: retest interp BBV speedup, are we better than 6.7% ?
-- code size, slight increase for entry and ret spec?
+test, commit
 
 TODO: bias getDefRegs for values flowing into arguments
 - Need some kind of getArgReg(callSite, idx) ?
 - verify if this has a performance impact
-
-TODO: retest interp BBV speedup, are we better than 6.7% ?
-- code size, slight increase for entry and ret spec?
-
-TODO: implement calling convention for regular calls
-
-ISSUE: param count
-- would rather avoid passing supernumerary args in registers
-- already have more efficient calling convention for known callees
-  - typed shapes already provide this
-- but, no way to really know if specialized entry point?
-- check if argc is known, if so, specialize, if not, don't
-
-ISSUE: argc
-- needs to be spilled, kept live
-  - make all rets use it
-  - but not for primitives?
-  - but when argc is known, it's not actually live?
-- does not affect primitive calls
-- implement basic constant prop for ints?
-
-If the perf of Higgs is good enough, may want to just go and write the paper
-- At least get some good progress done
-- Keep other improvements for later, so we can be sure to make the deadline
-
-TODO: implement argc prop first?
-- should provide good speedup
-- useful for new calling convention
-- needed for primitives also!
-  - and perfect use case, primitives don't care about argc
-  - but we still have to map it as live everywhere
-
-TODO: pass argc through register
-
-TODO: make all rets use argc
-- need to spill this for GC
-
-------------------------------------------------------------------------------
-
-test, commit
-
-TODO: modify execMoves to only use one temp reg?
-- should be feasible to break down moves?
-- we already break down mem to mem
-- imm to mem is really no problem
-- add some validMove function?
 
 test, commit
 
 TODO: make getDefReg map arg vals to proper regs
 - does this matter? yes, if spilled and reloaded
 - check perf again
+- this might fix the code size issue?
+code size: 360245 => 360173
 
-TODO: rename mapReg to mapToReg?
+
+
+
+
+
+
+[DONE] TODO: rename mapReg to mapToReg?
 - look at uses
 
-Test perf on paper
+[DONE] TODO: test perf on paper
 - will also serve to test other configs/params, further validate code
+- perf looks slightly worse, probably not very significant
 
-test, commit
-
-TODO: test benchmark.py vs master branch
+[DONE] TODO: test benchmark.py vs master branch
 ./benchmark.py --vm_cmd="./higgs" --bench_list=benchmarks/nocomptime/benchmark-list.csv
-- note results
-
-test, commit
-
-- implementing register arg passing for runtime functions
-- improved string constant handling
-- fixed bug in execMoves
-
-
-
-
-
-
+- small speedup
+- code size is larger than on master
 
 [DONE] FIXME: bug wrt strings
 - string loading frees up reg immediately, performs dynamic load, returns reg as opnd
