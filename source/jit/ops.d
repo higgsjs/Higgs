@@ -70,7 +70,7 @@ import core.sys.posix.dlfcn;
 /// Instruction code generation function
 alias GenFn = void function(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 );
@@ -78,7 +78,7 @@ alias GenFn = void function(
 /// Get an argument by index
 void gen_get_arg(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
@@ -87,13 +87,13 @@ void gen_get_arg(
     auto argSlot = instr.block.fun.argcVal.outSlot + 1;
 
     // Get the argument index
-    auto idxOpnd = st.getWordOpnd(as, instr, 0, 32, scrRegs[0].opnd(32), false);
+    auto idxOpnd = ctx.getWordOpnd(as, instr, 0, 32, scrRegs[0].opnd(32), false);
     assert (idxOpnd.isGPR);
     auto idxReg32 = idxOpnd.reg.opnd(32);
     auto idxReg64 = idxOpnd.reg.opnd(64);
 
     // Get the output operand
-    auto opndOut = st.getOutOpnd(as, instr, 64);
+    auto opndOut = ctx.getOutOpnd(as, instr, 64);
 
     // Zero-extend the index to 64-bit
     as.mov(idxReg32, idxReg32);
@@ -105,53 +105,53 @@ void gen_get_arg(
     // Copy the type value
     auto typeSlot = X86Opnd(8, tspReg, 1 * argSlot, 1, idxReg64.reg);
     as.mov(scrRegs[1].opnd(8), typeSlot);
-    st.setOutTag(as, instr, scrRegs[1].reg(8));
+    ctx.setOutTag(as, instr, scrRegs[1].reg(8));
 }
 
 void gen_make_value(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
 {
     // Move the word value into the output word,
     // allow reusing the input register
-    auto wordOpnd = st.getWordOpnd(as, instr, 0, 64, scrRegs[0].opnd(64), true);
-    auto outOpnd = st.getOutOpnd(as, instr, 64, true);
+    auto wordOpnd = ctx.getWordOpnd(as, instr, 0, 64, scrRegs[0].opnd(64), true);
+    auto outOpnd = ctx.getOutOpnd(as, instr, 64, true);
     if (outOpnd != wordOpnd)
         as.mov(outOpnd, wordOpnd);
 
     // Get the type value from the second operand
-    auto tagOpnd = st.getWordOpnd(as, instr, 1, 8, scrRegs[0].opnd(8));
+    auto tagOpnd = ctx.getWordOpnd(as, instr, 1, 8, scrRegs[0].opnd(8));
     assert (tagOpnd.isGPR);
-    st.setOutTag(as, instr, tagOpnd.reg);
+    ctx.setOutTag(as, instr, tagOpnd.reg);
 }
 
 void gen_get_word(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
 {
-    auto wordOpnd = st.getWordOpnd(as, instr, 0, 64, scrRegs[0].opnd(64), true);
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    auto wordOpnd = ctx.getWordOpnd(as, instr, 0, 64, scrRegs[0].opnd(64), true);
+    auto outOpnd = ctx.getOutOpnd(as, instr, 64);
 
     as.mov(outOpnd, wordOpnd);
 
-    st.setOutTag(as, instr, Tag.INT64);
+    ctx.setOutTag(as, instr, Tag.INT64);
 }
 
 void gen_get_tag(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
 {
-    auto tagOpnd = st.getTagOpnd(as, instr, 0, scrRegs[0].opnd(8), true);
-    auto outOpnd = st.getOutOpnd(as, instr, 32);
+    auto tagOpnd = ctx.getTagOpnd(as, instr, 0, scrRegs[0].opnd(8), true);
+    auto outOpnd = ctx.getOutOpnd(as, instr, 32);
 
     if (tagOpnd.isImm)
     {
@@ -167,19 +167,19 @@ void gen_get_tag(
         as.mov(outOpnd, scrRegs[0].opnd(32));
     }
 
-    st.setOutTag(as, instr, Tag.INT32);
+    ctx.setOutTag(as, instr, Tag.INT32);
 }
 
 void gen_i32_to_f64(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
 {
-    auto opnd0 = st.getWordOpnd(as, instr, 0, 32, scrRegs[0].opnd(32), false, false);
+    auto opnd0 = ctx.getWordOpnd(as, instr, 0, 32, scrRegs[0].opnd(32), false, false);
     assert (opnd0.isReg);
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    auto outOpnd = ctx.getOutOpnd(as, instr, 64);
 
     // Sign-extend the 32-bit integer to 64-bit
     as.movsx(scrRegs[1].opnd(64), opnd0);
@@ -187,18 +187,18 @@ void gen_i32_to_f64(
     as.cvtsi2sd(X86Opnd(XMM0), opnd0);
 
     as.movq(outOpnd, X86Opnd(XMM0));
-    st.setOutTag(as, instr, Tag.FLOAT64);
+    ctx.setOutTag(as, instr, Tag.FLOAT64);
 }
 
 void gen_f64_to_i32(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
 {
-    auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd(XMM0), false, false);
-    auto outOpnd = st.getOutOpnd(as, instr, 32);
+    auto opnd0 = ctx.getWordOpnd(as, instr, 0, 64, X86Opnd(XMM0), false, false);
+    auto outOpnd = ctx.getOutOpnd(as, instr, 32);
 
     if (!opnd0.isXMM)
         as.movq(X86Opnd(XMM0), opnd0);
@@ -207,18 +207,18 @@ void gen_f64_to_i32(
     as.cvttsd2si(scrRegs[0].opnd(64), X86Opnd(XMM0));
     as.mov(outOpnd, scrRegs[0].opnd(32));
 
-    st.setOutTag(as, instr, Tag.INT32);
+    ctx.setOutTag(as, instr, Tag.INT32);
 }
 
 void RMMOp(string op, size_t numBits, Tag tag)(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
 {
     // Should be mem or reg
-    auto opnd0 = st.getWordOpnd(
+    auto opnd0 = ctx.getWordOpnd(
         as,
         instr,
         0,
@@ -228,7 +228,7 @@ void RMMOp(string op, size_t numBits, Tag tag)(
     );
 
     // May be reg or immediate
-    auto opnd1 = st.getWordOpnd(
+    auto opnd1 = ctx.getWordOpnd(
         as,
         instr,
         1,
@@ -238,11 +238,11 @@ void RMMOp(string op, size_t numBits, Tag tag)(
     );
 
     // Get type information about the first argument
-    auto arg0Type = st.getType(instr.getArg(0));
+    auto arg0Type = ctx.getType(instr.getArg(0));
 
     // Allow reusing an input register for the output,
     // except for subtraction which is not commutative
-    auto opndOut = st.getOutOpnd(as, instr, numBits, op != "sub");
+    auto opndOut = ctx.getOutOpnd(as, instr, numBits, op != "sub");
 
     if (op == "imul")
     {
@@ -301,7 +301,7 @@ void RMMOp(string op, size_t numBits, Tag tag)(
     }
 
     // Set the output type tag
-    st.setOutTag(as, instr, tag);
+    ctx.setOutTag(as, instr, tag);
 
     // If the instruction has no exception/overflow target, stop
     if (instr.getTarget(0) is null)
@@ -315,11 +315,11 @@ void RMMOp(string op, size_t numBits, Tag tag)(
         if (arg1Cst && arg1Cst.isInt32 && arg1Cst.int32Val == 1)
         {
             // If the type analysis shows that there can be no overflow
-            if (opts.typeprop && st.fun.typeInfo.argNotIntMax(instr, 0))
+            if (opts.typeprop && ctx.fun.typeInfo.argNotIntMax(instr, 0))
             {
                 // Jump directly to the successor block
                 //writeln("TI ovf elim: ", instr.block.fun.getName);
-                return gen_jump(ver, st, instr, as);
+                return gen_jump(ver, ctx, instr, as);
             }
 
             // If there can be no overflow
@@ -327,13 +327,13 @@ void RMMOp(string op, size_t numBits, Tag tag)(
             {
                 // Jump directly to the successor block
                 //writeln("BBV ovf elim: ", instr.block.fun.getName);
-                return gen_jump(ver, st, instr, as);
+                return gen_jump(ver, ctx, instr, as);
             }
         }
     }
 
-    auto branchNO = getBranchEdge(instr.getTarget(0), st, false);
-    auto branchOV = getBranchEdge(instr.getTarget(1), st, false);
+    auto branchNO = getBranchEdge(instr.getTarget(0), ctx, false);
+    auto branchOV = getBranchEdge(instr.getTarget(1), ctx, false);
 
     // Generate the branch code
     ver.genBranch(
@@ -379,13 +379,13 @@ alias gen_mul_i32_ovf = RMMOp!("imul", 32, Tag.INT32);
 
 void gen_add_ptr_i32(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
 {
     // Should be mem or reg
-    auto opnd0 = st.getWordOpnd(
+    auto opnd0 = ctx.getWordOpnd(
         as,
         instr,
         0,
@@ -395,7 +395,7 @@ void gen_add_ptr_i32(
     );
 
     // May be reg or immediate
-    auto opnd1 = st.getWordOpnd(
+    auto opnd1 = ctx.getWordOpnd(
         as,
         instr,
         1,
@@ -404,7 +404,7 @@ void gen_add_ptr_i32(
         true
     );
 
-    auto opndOut = st.getOutOpnd(as, instr, 64);
+    auto opndOut = ctx.getOutOpnd(as, instr, 64);
 
     // Zero-extend the integer operand to 64-bits
     as.mov(scrRegs[1].opnd(32), opnd1);
@@ -413,23 +413,23 @@ void gen_add_ptr_i32(
     as.add(opndOut, scrRegs[1].opnd);
 
     // Set the output type tag
-    st.setOutTag(as, instr, Tag.RAWPTR);
+    ctx.setOutTag(as, instr, Tag.RAWPTR);
 }
 
 void divOp(string op)(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
 {
     // Spill EAX and EDX (used by the idiv instruction)
-    st.spillReg(as, EAX);
-    st.spillReg(as, EDX);
+    ctx.spillReg(as, EAX);
+    ctx.spillReg(as, EDX);
 
-    auto opnd0 = st.getWordOpnd(as, instr, 0, 32, X86Opnd.NONE, true, false);
-    auto opnd1 = st.getWordOpnd(as, instr, 1, 32, scrRegs[1].opnd(32), false, false);
-    auto outOpnd = st.getOutOpnd(as, instr, 32);
+    auto opnd0 = ctx.getWordOpnd(as, instr, 0, 32, X86Opnd.NONE, true, false);
+    auto opnd1 = ctx.getWordOpnd(as, instr, 1, 32, scrRegs[1].opnd(32), false, false);
+    auto outOpnd = ctx.getOutOpnd(as, instr, 32);
 
     as.mov(EAX.opnd, opnd0);
 
@@ -455,7 +455,7 @@ void divOp(string op)(
         assert (false);
 
     // Set the output type tag
-    st.setOutTag(as, instr, Tag.INT32);
+    ctx.setOutTag(as, instr, Tag.INT32);
 }
 
 alias gen_div_i32 = divOp!("div");
@@ -463,24 +463,24 @@ alias gen_mod_i32 = divOp!("mod");
 
 void gen_not_i32(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
 {
-    auto opnd0 = st.getWordOpnd(as, instr, 0, 32, scrRegs[0].opnd(32), true);
-    auto outOpnd = st.getOutOpnd(as, instr, 32);
+    auto opnd0 = ctx.getWordOpnd(as, instr, 0, 32, scrRegs[0].opnd(32), true);
+    auto outOpnd = ctx.getOutOpnd(as, instr, 32);
 
     as.mov(outOpnd, opnd0);
     as.not(outOpnd);
 
     // Set the output type tag
-    st.setOutTag(as, instr, Tag.INT32);
+    ctx.setOutTag(as, instr, Tag.INT32);
 }
 
 void ShiftOp(string op)(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
@@ -488,9 +488,9 @@ void ShiftOp(string op)(
     //auto startPos = as.getWritePos;
 
     // TODO: need way to allow reusing arg 0 reg only, but not arg1
-    auto opnd0 = st.getWordOpnd(as, instr, 0, 32, X86Opnd.NONE, true);
-    auto opnd1 = st.getWordOpnd(as, instr, 1, 8, X86Opnd.NONE, true);
-    auto outOpnd = st.getOutOpnd(as, instr, 32, false);
+    auto opnd0 = ctx.getWordOpnd(as, instr, 0, 32, X86Opnd.NONE, true);
+    auto opnd1 = ctx.getWordOpnd(as, instr, 1, 8, X86Opnd.NONE, true);
+    auto outOpnd = ctx.getOutOpnd(as, instr, 32, false);
 
     auto shiftOpnd = outOpnd;
 
@@ -508,7 +508,7 @@ void ShiftOp(string op)(
     {
         // Spill the CL register if needed
         if (opnd1 != CL.opnd(8) && outOpnd != CL.opnd(32))
-            st.spillReg(as, CL);
+            ctx.spillReg(as, CL);
 
         // If outOpnd is CL, the shift amount register
         if (outOpnd == CL.opnd(32))
@@ -542,7 +542,7 @@ void ShiftOp(string op)(
         as.mov(outOpnd, shiftOpnd);
 
     // Set the output type tag
-    st.setOutTag(as, instr, Tag.INT32);
+    ctx.setOutTag(as, instr, Tag.INT32);
 }
 
 alias gen_lsft_i32 = ShiftOp!("sal");
@@ -551,14 +551,14 @@ alias gen_ursft_i32 = ShiftOp!("shr");
 
 void FPOp(string op)(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
 {
-    X86Opnd opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd(XMM0));
-    X86Opnd opnd1 = st.getWordOpnd(as, instr, 1, 64, X86Opnd(XMM1));
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    X86Opnd opnd0 = ctx.getWordOpnd(as, instr, 0, 64, X86Opnd(XMM0));
+    X86Opnd opnd1 = ctx.getWordOpnd(as, instr, 1, 64, X86Opnd(XMM1));
+    auto outOpnd = ctx.getOutOpnd(as, instr, 64);
 
     assert (opnd0.isReg && opnd1.isReg);
 
@@ -581,7 +581,7 @@ void FPOp(string op)(
     as.movq(outOpnd, X86Opnd(XMM0));
 
     // Set the output type tag
-    st.setOutTag(as, instr, Tag.FLOAT64);
+    ctx.setOutTag(as, instr, Tag.FLOAT64);
 }
 
 alias gen_add_f64 = FPOp!("add");
@@ -591,7 +591,7 @@ alias gen_div_f64 = FPOp!("div");
 
 void HostFPOp(alias cFPFun, size_t arity = 1)(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
@@ -599,7 +599,7 @@ void HostFPOp(alias cFPFun, size_t arity = 1)(
     assert (arity is 1 || arity is 2);
 
     // Spill the values live before the instruction
-    st.spillValues(
+    ctx.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -607,16 +607,16 @@ void HostFPOp(alias cFPFun, size_t arity = 1)(
         }
     );
 
-    auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
+    auto opnd0 = ctx.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
     as.movq(X86Opnd(XMM0), opnd0);
 
     static if (arity is 2)
     {
-        auto opnd1 = st.getWordOpnd(as, instr, 1, 64, X86Opnd.NONE, false, false);
+        auto opnd1 = ctx.getWordOpnd(as, instr, 1, 64, X86Opnd.NONE, false, false);
         as.movq(X86Opnd(XMM1), opnd1);
     }
 
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    auto outOpnd = ctx.getOutOpnd(as, instr, 64);
 
     // Call the host function
     // Note: we do not save the JIT regs because they are callee-saved
@@ -626,7 +626,7 @@ void HostFPOp(alias cFPFun, size_t arity = 1)(
     // Store the output value into the output operand
     as.movq(outOpnd, X86Opnd(XMM0));
 
-    st.setOutTag(as, instr, Tag.FLOAT64);
+    ctx.setOutTag(as, instr, Tag.FLOAT64);
 }
 
 alias gen_sin_f64 = HostFPOp!(std.c.math.sin);
@@ -641,12 +641,12 @@ alias gen_mod_f64 = HostFPOp!(std.c.math.fmod, 2);
 
 void FPToStr(string fmt)(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
 {
-    extern (C) static refptr toStrFn(VM vm, IRInstr curInstr, double f)
+    extern (C) static refptr toStrFn(IRInstr curInstr, double f)
     {
         vm.setCurInstr(curInstr);
 
@@ -658,18 +658,17 @@ void FPToStr(string fmt)(
     }
 
     // Spill the values that are live before this instruction
-    st.spillLiveBefore(as, instr);
+    ctx.spillLiveBefore(as, instr);
 
-    auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
+    auto opnd0 = ctx.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
 
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    auto outOpnd = ctx.getOutOpnd(as, instr, 64);
 
     as.saveJITRegs();
 
     // Call the host function
-    as.mov(cargRegs[0], vmReg);
-    as.ptr(cargRegs[1], instr);
-    as.movq(X86Opnd(XMM0), opnd0);
+    as.ptr(cargRegs[0], instr);
+    as.movq(cfpArgRegs[0].opnd, opnd0);
     as.ptr(scrRegs[0], &toStrFn);
     as.call(scrRegs[0]);
 
@@ -678,7 +677,7 @@ void FPToStr(string fmt)(
     // Store the output value into the output operand
     as.mov(outOpnd, cretReg.opnd);
 
-    st.setOutTag(as, instr, Tag.STRING);
+    ctx.setOutTag(as, instr, Tag.STRING);
 }
 
 alias gen_f64_to_str = FPToStr!("%G");
@@ -686,19 +685,19 @@ alias gen_f64_to_str_lng = FPToStr!(format("%%.%sf", float64.dig));
 
 void LoadOp(size_t memSize, bool signed, Tag tag)(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
 {
     // The pointer operand must be a register
-    auto opnd0 = st.getWordOpnd(as, instr, 0, 64, scrRegs[0].opnd(64));
+    auto opnd0 = ctx.getWordOpnd(as, instr, 0, 64, scrRegs[0].opnd(64));
     assert (opnd0.isGPR);
 
     // The offset operand may be a register or an immediate
-    auto opnd1 = st.getWordOpnd(as, instr, 1, 32, scrRegs[1].opnd(32), true);
+    auto opnd1 = ctx.getWordOpnd(as, instr, 1, 32, scrRegs[1].opnd(32), true);
 
-    auto outOpnd = st.getOutOpnd(as, instr, (memSize < 64)? 32:64);
+    auto outOpnd = ctx.getOutOpnd(as, instr, (memSize < 64)? 32:64);
 
     // Create the memory operand
     X86Opnd memOpnd;
@@ -755,7 +754,7 @@ void LoadOp(size_t memSize, bool signed, Tag tag)(
     }
 
     // Set the output type tag
-    st.setOutTag(as, instr, tag);
+    ctx.setOutTag(as, instr, tag);
 }
 
 alias gen_load_u8 = LoadOp!(8, false, Tag.INT32);
@@ -774,20 +773,20 @@ alias gen_load_funptr = LoadOp!(64, false, Tag.FUNPTR);
 
 void StoreOp(size_t memSize, Tag tag)(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
 {
     // The pointer operand must be a register
-    auto opnd0 = st.getWordOpnd(as, instr, 0, 64, scrRegs[0].opnd(64));
+    auto opnd0 = ctx.getWordOpnd(as, instr, 0, 64, scrRegs[0].opnd(64));
     assert (opnd0.isGPR);
 
     // The offset operand may be a register or an immediate
-    auto opnd1 = st.getWordOpnd(as, instr, 1, 32, scrRegs[1].opnd(32), true);
+    auto opnd1 = ctx.getWordOpnd(as, instr, 1, 32, scrRegs[1].opnd(32), true);
 
     // The value operand may be a register or an immediate
-    auto opnd2 = st.getWordOpnd(as, instr, 2, memSize, scrRegs[2].opnd(memSize), true);
+    auto opnd2 = ctx.getWordOpnd(as, instr, 2, memSize, scrRegs[2].opnd(memSize), true);
 
     // Create the memory operand
     X86Opnd memOpnd;
@@ -825,7 +824,7 @@ alias gen_store_funptr = StoreOp!(64, Tag.FUNPTR);
 
 void TagTestOp(Tag tag)(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
@@ -834,7 +833,7 @@ void TagTestOp(Tag tag)(
     //as.printStr("    " ~ instr.block.fun.getName);
 
     // Get an operand for the value's type
-    auto tagOpnd = st.getTagOpnd(as, instr, 0, X86Opnd.NONE, true);
+    auto tagOpnd = ctx.getTagOpnd(as, instr, 0, X86Opnd.NONE, true);
 
     auto testResult = TestResult.UNKNOWN;
 
@@ -852,7 +851,7 @@ void TagTestOp(Tag tag)(
     if (opts.typeprop)
     {
         // Get the type analysis result for this value at this instruction
-        auto propResult = st.fun.typeInfo.argIsType(instr, 0, tag);
+        auto propResult = ctx.fun.typeInfo.argIsType(instr, 0, tag);
 
         //writeln("result: ", propResult);
 
@@ -903,10 +902,10 @@ void TagTestOp(Tag tag)(
         // If this instruction has many uses or is not followed by an if
         if (instr.hasManyUses || ifUseNext(instr) is false)
         {
-            auto outOpnd = st.getOutOpnd(as, instr, 64);
+            auto outOpnd = ctx.getOutOpnd(as, instr, 64);
             auto outVal = boolResult? TRUE:FALSE;
             as.mov(outOpnd, X86Opnd(outVal.word.int8Val));
-            st.setOutTag(as, instr, Tag.CONST);
+            ctx.setOutTag(as, instr, Tag.CONST);
         }
 
         // If our only use is an immediately following if_true
@@ -914,7 +913,7 @@ void TagTestOp(Tag tag)(
         {
             // Get the branch edge
             auto targetIdx = boolResult? 0:1;
-            auto branch = getBranchEdge(instr.next.getTarget(targetIdx), st, true);
+            auto branch = getBranchEdge(instr.next.getTarget(targetIdx), ctx, true);
 
             // Generate the branch code
             ver.genBranch(
@@ -955,7 +954,7 @@ void TagTestOp(Tag tag)(
     if (instr.hasManyUses || ifUseNext(instr) is false)
     {
         // We must have a register for the output (so we can use cmov)
-        auto outOpnd = st.getOutOpnd(as, instr, 64);
+        auto outOpnd = ctx.getOutOpnd(as, instr, 64);
         X86Opnd outReg = outOpnd.isReg? outOpnd.reg.opnd(32):scrRegs[0].opnd(32);
 
         // Generate a boolean output value
@@ -968,7 +967,7 @@ void TagTestOp(Tag tag)(
             as.mov(outOpnd, outReg.reg.opnd(64));
 
         // Set the output type tag
-        st.setOutTag(as, instr, Tag.CONST);
+        ctx.setOutTag(as, instr, Tag.CONST);
     }
 
     // If our only use is an immediately following if_true
@@ -976,16 +975,16 @@ void TagTestOp(Tag tag)(
     {
         // If the argument is not a constant, add type information
         // about the argument's type along the true branch
-        CodeGenState trueSt = st;
+        CodeGenCtx trueCtx = ctx;
         if (auto dstArg = cast(IRDstValue)instr.getArg(0))
         {
-            trueSt = new CodeGenState(trueSt);
-            trueSt.setTag(dstArg, tag);
+            trueCtx = new CodeGenCtx(trueCtx);
+            trueCtx.setTag(dstArg, tag);
         }
 
         // Get branch edges for the true and false branches
-        auto branchT = getBranchEdge(instr.next.getTarget(0), trueSt, false);
-        auto branchF = getBranchEdge(instr.next.getTarget(1), st, false);
+        auto branchT = getBranchEdge(instr.next.getTarget(0), trueCtx, false);
+        auto branchF = getBranchEdge(instr.next.getTarget(1), ctx, false);
 
         // Generate the branch code
         ver.genBranch(
@@ -1033,7 +1032,7 @@ alias gen_is_rope = TagTestOp!(Tag.ROPE);
 
 void CmpOp(string op, size_t numBits)(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
@@ -1042,7 +1041,7 @@ void CmpOp(string op, size_t numBits)(
     static bool isFP = op.startsWith("f");
 
     // The first operand must be memory or register, but not immediate
-    auto opnd0 = st.getWordOpnd(
+    auto opnd0 = ctx.getWordOpnd(
         as,
         instr,
         0,
@@ -1052,7 +1051,7 @@ void CmpOp(string op, size_t numBits)(
     );
 
     // The second operand may be an immediate, unless FP comparison
-    auto opnd1 = st.getWordOpnd(
+    auto opnd1 = ctx.getWordOpnd(
         as,
         instr,
         1,
@@ -1072,7 +1071,7 @@ void CmpOp(string op, size_t numBits)(
     }
 
     // We must have a register for the output (so we can use cmov)
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    auto outOpnd = ctx.getOutOpnd(as, instr, 64);
     X86Opnd outReg = outOpnd.isReg? outOpnd.reg.opnd(32):scrRegs[0].opnd(32);
 
     auto tmpReg = scrRegs[1].opnd(32);
@@ -1235,7 +1234,7 @@ void CmpOp(string op, size_t numBits)(
             as.mov(outOpnd, outReg.reg.opnd(64));
 
         // Set the output type tag
-        st.setOutTag(as, instr, Tag.CONST);
+        ctx.setOutTag(as, instr, Tag.CONST);
     }
 
     // If there is an immediately following if_true using this value
@@ -1244,21 +1243,21 @@ void CmpOp(string op, size_t numBits)(
         // If this is a less-than comparison and the argument
         // is not a constant, mark the argument as being
         // submaximal along the true branch
-        CodeGenState trueSt = st;
+        CodeGenCtx trueCtx = ctx;
         static if (op == "lt")
         {
             if (auto dstArg = cast(IRDstValue)instr.getArg(0))
             {
-                trueSt = new CodeGenState(trueSt);
-                ValType argType = trueSt.getType(dstArg);
+                trueCtx = new CodeGenCtx(trueCtx);
+                ValType argType = trueCtx.getType(dstArg);
                 argType.subMax = true;
-                trueSt.setType(dstArg, argType);
+                trueCtx.setType(dstArg, argType);
             }
         }
 
         // Get branch edges for the true and false branches
-        auto branchT = getBranchEdge(instr.next.getTarget(0), trueSt, false);
-        auto branchF = getBranchEdge(instr.next.getTarget(1), st, false);
+        auto branchT = getBranchEdge(instr.next.getTarget(0), trueCtx, false);
+        auto branchF = getBranchEdge(instr.next.getTarget(1), ctx, false);
 
         // Generate the branch code
         ver.genBranch(
@@ -1447,7 +1446,7 @@ alias gen_ge_f64 = CmpOp!("fge", 64);
 
 void gen_if_true(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
@@ -1458,11 +1457,11 @@ void gen_if_true(
         return;
 
     // Compare the argument to the true boolean value
-    auto argOpnd = st.getWordOpnd(as, instr, 0, 8, scrRegs[0].opnd(8));
+    auto argOpnd = ctx.getWordOpnd(as, instr, 0, 8, scrRegs[0].opnd(8));
     as.cmp(argOpnd, X86Opnd(TRUE.word.int8Val));
 
-    auto branchT = getBranchEdge(instr.getTarget(0), st, false);
-    auto branchF = getBranchEdge(instr.getTarget(1), st, false);
+    auto branchT = getBranchEdge(instr.getTarget(0), ctx, false);
+    auto branchF = getBranchEdge(instr.getTarget(1), ctx, false);
 
     // Generate the branch code
     ver.genBranch(
@@ -1497,14 +1496,14 @@ void gen_if_true(
 
 void JumpOp(size_t succIdx)(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
 {
     auto branch = getBranchEdge(
         instr.getTarget(succIdx),
-        st,
+        ctx,
         true
     );
 
@@ -1543,16 +1542,11 @@ alias gen_jump_false = JumpOp!(1);
 Throw an exception and unwind the stack when one calls a non-function.
 Returns a pointer to an exception handler.
 */
-extern (C) CodePtr throwCallExc(
-    VM vm,
-    IRInstr instr,
-    BranchCode excHandler
-)
+extern (C) CodePtr throwCallExc(IRInstr instr, BranchCode excHandler)
 {
     auto fnName = getCalleeName(instr);
 
     return throwError(
-        vm,
         instr,
         excHandler,
         "TypeError",
@@ -1567,7 +1561,7 @@ Generate the final branch and exception handler for a call instruction
 */
 void genCallBranch(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr callInstr,
     CodeBlock as,
     BranchGenFn genFn,
@@ -1583,7 +1577,7 @@ void genCallBranch(
     }
 
     // Remove information about values dead after the call
-    st.removeDead(
+    ctx.removeDead(
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
             return liveInfo.liveAfter(value, callInstr);
@@ -1591,10 +1585,10 @@ void genCallBranch(
     );
 
     // Map the return value tag to a register
-    st.mapToStack(callInstr);
+    ctx.mapToStack(callInstr);
 
     // Map the return value to the return word register
-    st.mapReg(retWordReg, callInstr, 64);
+    ctx.mapReg(retWordReg, callInstr, 64);
 
     BranchCode excBranch = null;
 
@@ -1603,7 +1597,7 @@ void genCallBranch(
     {
         excBranch = getBranchEdge(
             callInstr.getTarget(1),
-            st,
+            ctx,
             false,
             delegate void(CodeBlock as)
             {
@@ -1622,7 +1616,7 @@ void genCallBranch(
     }
 
     // Create a call continuation stub
-    auto contStub = getContStub(ver, excBranch, st, callee);
+    auto contStub = getContStub(ver, excBranch, ctx, callee);
 
     // If the call may throw an exception
     if (mayThrow)
@@ -1635,9 +1629,8 @@ void genCallBranch(
 
         // Throw the call exception, unwind the stack,
         // find the topmost exception handler
-        as.mov(cargRegs[0], vmReg);
-        as.ptr(cargRegs[1], callInstr);
-        as.ptr(cargRegs[2], excBranch);
+        as.ptr(cargRegs[0], callInstr);
+        as.ptr(cargRegs[1], excBranch);
         as.ptr(scrRegs[0], &throwCallExc);
         as.call(scrRegs[0].opnd);
 
@@ -1662,7 +1655,7 @@ void genCallBranch(
 
 void gen_call_prim(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
@@ -1711,10 +1704,10 @@ void gen_call_prim(
     // Get the argument value type
     auto argTypes = new ValType[fun.numParams];
     for (size_t argIdx = 0; argIdx < numArgs; ++argIdx)
-        argTypes[argIdx] = st.getType(instr.getArg(1 + argIdx));
+        argTypes[argIdx] = ctx.getType(instr.getArg(1 + argIdx));
 
-    // Create a code gen state taking into account the argument types
-    auto entrySt = new CodeGenState(
+    // Create a context taking into account the argument types
+    auto entrySt = new CodeGenCtx(
         fun,
         ValType(),
         argTypes
@@ -1730,7 +1723,7 @@ void gen_call_prim(
         auto dstIdx = -numArgs + cast(int32_t)i;
 
         // Copy the argument word
-        auto argOpnd = st.getWordOpnd(
+        auto argOpnd = ctx.getWordOpnd(
             as,
             instr,
             instrArgIdx,
@@ -1741,11 +1734,11 @@ void gen_call_prim(
         );
         as.setWord(dstIdx, argOpnd);
 
-        // If the entry state doesn't know the type tag
-        if (!entryVer.state.getType(fun.paramVals[i]).tagKnown)
+        // If the entry context doesn't know the type tag
+        if (!entryVer.ctx.getType(fun.paramVals[i]).tagKnown)
         {
             // Copy the argument type
-            auto tagOpnd = st.getTagOpnd(
+            auto tagOpnd = ctx.getTagOpnd(
                 as,
                 instr,
                 instrArgIdx,
@@ -1760,14 +1753,14 @@ void gen_call_prim(
     as.setWord(-numArgs - 1, numArgs);
 
     // Spill the values that are live after the call
-    st.spillLiveAfter(as, instr);
+    ctx.spillLiveAfter(as, instr);
 
     // Push space for the callee arguments and locals
     as.sub(X86Opnd(tspReg), X86Opnd(fun.numLocals));
     as.sub(X86Opnd(wspReg), X86Opnd(8 * fun.numLocals));
 
     ver.genCallBranch(
-        st,
+        ctx,
         instr,
         as,
         delegate void(
@@ -1796,7 +1789,7 @@ void gen_call_prim(
 
 void gen_call(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
@@ -1806,7 +1799,7 @@ void gen_call(
     //
 
     // Get the type information for the closure value
-    auto closType = st.getType(instr.getArg(0)).propType();
+    auto closType = ctx.getType(instr.getArg(0)).propType();
 
     // This may throw an exception if the callee is not a closure
     auto mayThrow = !closType.tagKnown || closType.tag !is Tag.CLOSURE;
@@ -1857,15 +1850,15 @@ void gen_call(
         for (size_t argIdx = 0; argIdx < argTypes.length; ++argIdx)
         {
             if (argIdx < numArgs)
-                argTypes[argIdx] = st.getType(instr.getArg(2 + argIdx));
+                argTypes[argIdx] = ctx.getType(instr.getArg(2 + argIdx));
             else
                 argTypes[argIdx] = ValType(UNDEF);
         }
 
-        // Create a code gen state taking into account the argument types
-        auto entrySt = new CodeGenState(
+        // Create a context taking into account the argument types
+        auto entrySt = new CodeGenCtx(
             fun,
-            st.getType(instr.getArg(1)),
+            ctx.getType(instr.getArg(1)),
             argTypes
         );
 
@@ -1879,7 +1872,7 @@ void gen_call(
             auto dstIdx = -(numPassed - i);
 
             // Copy the argument word
-            auto argOpnd = st.getWordOpnd(
+            auto argOpnd = ctx.getWordOpnd(
                 as,
                 instr,
                 instrArgIdx,
@@ -1890,14 +1883,14 @@ void gen_call(
             );
             as.setWord(dstIdx, argOpnd);
 
-            // If the entry state doesn't know the type tag
+            // If the entry context doesn't know the type tag
             if (fun.usesVarArg ||
                 i >= fun.numParams ||
                 fun.paramVals[i].hasNoUses ||
-                !entryVer.state.getType(fun.paramVals[i]).tagKnown)
+                !entryVer.ctx.getType(fun.paramVals[i]).tagKnown)
             {
                 // Copy the argument type
-                auto tagOpnd = st.getTagOpnd(
+                auto tagOpnd = ctx.getTagOpnd(
                     as,
                     instr,
                     instrArgIdx,
@@ -1923,7 +1916,7 @@ void gen_call(
         // Write the "this" argument
         if (fun.thisVal.hasUses)
         {
-            auto thisReg = st.getWordOpnd(
+            auto thisReg = ctx.getWordOpnd(
                 as,
                 instr,
                 1,
@@ -1934,10 +1927,10 @@ void gen_call(
             );
             as.setWord(-numPassed - 2, thisReg);
 
-            // If the entry state doesn't know the type tag
-            if (!entryVer.state.getType(fun.thisVal).tagKnown)
+            // If the entry context doesn't know the type tag
+            if (!entryVer.ctx.getType(fun.thisVal).tagKnown)
             {
-                auto tagOpnd = st.getTagOpnd(
+                auto tagOpnd = ctx.getTagOpnd(
                     as,
                     instr,
                     1,
@@ -1951,7 +1944,7 @@ void gen_call(
         // Write the closure argument
         if (fun.closVal.hasUses)
         {
-            auto closReg = st.getWordOpnd(
+            auto closReg = ctx.getWordOpnd(
                 as,
                 instr,
                 0,
@@ -1964,14 +1957,14 @@ void gen_call(
         }
 
         // Spill the values that are live after the call
-        st.spillLiveAfter(as, instr);
+        ctx.spillLiveAfter(as, instr);
 
         // Push space for the callee arguments and locals
         as.sub(X86Opnd(tspReg), X86Opnd(frameSize));
         as.sub(X86Opnd(wspReg), X86Opnd(8 * frameSize));
 
         ver.genCallBranch(
-            st,
+            ctx,
             instr,
             as,
             delegate void(
@@ -2006,7 +1999,7 @@ void gen_call(
     if (mayThrow)
     {
         // Get the type tag for the closure value
-        auto closTag = st.getTagOpnd(
+        auto closTag = ctx.getTagOpnd(
             as,
             instr,
             0,
@@ -2021,10 +2014,10 @@ void gen_call(
     }
 
     // Free an extra register to use as scratch
-    auto scrReg3 = st.freeReg(as, instr);
+    auto scrReg3 = ctx.freeReg(as, instr);
 
     // Get the closure pointer in a register
-    auto closReg = st.getWordOpnd(
+    auto closReg = ctx.getWordOpnd(
         as,
         instr,
         0,
@@ -2078,7 +2071,7 @@ void gen_call(
         auto instrArgIdx = instr.numArgs - (1+i);
 
         // Copy the argument word
-        auto argOpnd = st.getWordOpnd(
+        auto argOpnd = ctx.getWordOpnd(
             as,
             instr,
             instrArgIdx,
@@ -2090,7 +2083,7 @@ void gen_call(
         movArgWord(as, i, argOpnd);
 
         // Copy the argument type
-        auto tagOpnd = st.getTagOpnd(
+        auto tagOpnd = ctx.getTagOpnd(
             as,
             instr,
             instrArgIdx,
@@ -2104,7 +2097,7 @@ void gen_call(
     movArgWord(as, numArgs + 0, X86Opnd(numArgs));
 
     // Write the "this" argument
-    auto thisReg = st.getWordOpnd(
+    auto thisReg = ctx.getWordOpnd(
         as,
         instr,
         1,
@@ -2114,7 +2107,7 @@ void gen_call(
         false
     );
     movArgWord(as, numArgs + 1, thisReg);
-    auto tagOpnd = st.getTagOpnd(
+    auto tagOpnd = ctx.getTagOpnd(
         as,
         instr,
         1,
@@ -2144,10 +2137,10 @@ void gen_call(
     as.label(Label.FALSE2);
 
     // Spill the values that are live after the call
-    st.spillLiveAfter(as, instr);
+    ctx.spillLiveAfter(as, instr);
 
     ver.genCallBranch(
-        st,
+        ctx,
         instr,
         as,
         delegate void(
@@ -2179,16 +2172,12 @@ void gen_call(
 
 void gen_call_apply(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
 {
-    extern (C) CodePtr op_call_apply(
-        VM vm,
-        IRInstr instr,
-        CodePtr retAddr
-    )
+    extern (C) CodePtr op_call_apply(IRInstr instr, CodePtr retAddr)
     {
         // Increment the number of calls performed using apply
         stats.numCallApply++;
@@ -2245,10 +2234,10 @@ void gen_call_apply(
     }
 
     // Spill the values that are live before the call
-    st.spillLiveBefore(as, instr);
+    ctx.spillLiveBefore(as, instr);
 
     ver.genCallBranch(
-        st,
+        ctx,
         instr,
         as,
         delegate void(
@@ -2261,12 +2250,11 @@ void gen_call_apply(
         {
             as.saveJITRegs();
 
-            // Pass the call context and instruction as first two arguments
-            as.mov(cargRegs[0], vmReg);
-            as.ptr(cargRegs[1], instr);
+            // Pass the instruction as an argument
+            as.ptr(cargRegs[0], instr);
 
             // Pass the return address as third argument
-            as.movAbsRef(vm, cargRegs[2], block, target0, 0);
+            as.movAbsRef(vm, cargRegs[1], block, target0, 0);
 
             // Call the host function
             as.ptr(scrRegs[0], &op_call_apply);
@@ -2284,13 +2272,12 @@ void gen_call_apply(
 
 void gen_load_file(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
 {
     extern (C) CodePtr op_load_file(
-        VM vm,
         IRInstr instr,
         CodeFragment retTarget,
         CodeFragment excTarget
@@ -2324,7 +2311,7 @@ void gen_load_file(
             // Create a version instance object for the unit function entry
             auto entryInst = getBlockVersion(
                 fun.entryBlock,
-                new CodeGenState(fun)
+                new CodeGenCtx(fun)
             );
 
             // Compile the unit entry version
@@ -2350,7 +2337,6 @@ void gen_load_file(
         catch (Exception err)
         {
             return throwError(
-                vm,
                 instr,
                 excTarget,
                 "ReferenceError",
@@ -2361,7 +2347,6 @@ void gen_load_file(
         catch (Error err)
         {
             return throwError(
-                vm,
                 instr,
                 excTarget,
                 "SyntaxError",
@@ -2371,10 +2356,10 @@ void gen_load_file(
     }
 
     // Spill the values that are live before the call
-    st.spillLiveBefore(as, instr);
+    ctx.spillLiveBefore(as, instr);
 
     ver.genCallBranch(
-        st,
+        ctx,
         instr,
         as,
         delegate void(
@@ -2387,13 +2372,12 @@ void gen_load_file(
         {
             as.saveJITRegs();
 
-            // Pass the call context and instruction as first two arguments
-            as.mov(cargRegs[0], vmReg);
-            as.ptr(cargRegs[1], instr);
+            // Pass the instruction as an argument
+            as.ptr(cargRegs[0], instr);
 
             // Pass the return and exception addresses as third arguments
-            as.ptr(cargRegs[2], target0);
-            as.ptr(cargRegs[3], target1);
+            as.ptr(cargRegs[1], target0);
+            as.ptr(cargRegs[2], target1);
 
             // Call the host function
             as.ptr(scrRegs[0], &op_load_file);
@@ -2411,13 +2395,12 @@ void gen_load_file(
 
 void gen_eval_str(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
 {
     extern (C) CodePtr op_eval_str(
-        VM vm,
         IRInstr instr,
         CodeFragment retTarget,
         CodeFragment excTarget
@@ -2451,7 +2434,7 @@ void gen_eval_str(
             // Create a version instance object for the unit function entry
             auto entryInst = getBlockVersion(
                 fun.entryBlock,
-                new CodeGenState(fun)
+                new CodeGenCtx(fun)
             );
 
             // Compile the unit entry version
@@ -2477,7 +2460,6 @@ void gen_eval_str(
         catch (Error err)
         {
             return throwError(
-                vm,
                 instr,
                 excTarget,
                 "SyntaxError",
@@ -2487,10 +2469,10 @@ void gen_eval_str(
     }
 
     // Spill the values that are live before the call
-    st.spillLiveBefore(as, instr);
+    ctx.spillLiveBefore(as, instr);
 
     ver.genCallBranch(
-        st,
+        ctx,
         instr,
         as,
         delegate void(
@@ -2503,13 +2485,12 @@ void gen_eval_str(
         {
             as.saveJITRegs();
 
-            // Pass the call context and instruction as first two arguments
-            as.mov(cargRegs[0], vmReg);
-            as.ptr(cargRegs[1], instr);
+            // Pass the instruction as an argument
+            as.ptr(cargRegs[0], instr);
 
             // Pass the return and exception addresses
-            as.ptr(cargRegs[2], target0);
-            as.ptr(cargRegs[3], target1);
+            as.ptr(cargRegs[1], target0);
+            as.ptr(cargRegs[2], target1);
 
             // Call the host function
             as.ptr(scrRegs[0], &op_eval_str);
@@ -2527,7 +2508,7 @@ void gen_eval_str(
 
 void gen_ret(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
@@ -2540,7 +2521,7 @@ void gen_ret(
     auto numLocals = fun.numLocals;
 
     // Get type information about the return value
-    auto retType = st.getType(instr.getArg(0)).propType;
+    auto retType = ctx.getType(instr.getArg(0)).propType;
 
     // If there is only one caller (return not yet executed)
     if (fun.numRets is 0)
@@ -2564,7 +2545,7 @@ void gen_ret(
     fun.numRets++;
 
     // Get the return value word operand
-    auto retOpnd = st.getWordOpnd(
+    auto retOpnd = ctx.getWordOpnd(
         as,
         instr,
         0,
@@ -2575,7 +2556,7 @@ void gen_ret(
     );
 
     // Get the return value type operand
-    auto tagOpnd = st.getTagOpnd(
+    auto tagOpnd = ctx.getTagOpnd(
         as,
         instr,
         0,
@@ -2639,17 +2620,17 @@ void gen_ret(
 
 void gen_throw(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
 {
     // Get the string pointer
-    auto excWordOpnd = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, true, false);
-    auto excTypeOpnd = st.getTagOpnd(as, instr, 0, X86Opnd.NONE, true);
+    auto excWordOpnd = ctx.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, true, false);
+    auto excTypeOpnd = ctx.getTagOpnd(as, instr, 0, X86Opnd.NONE, true);
 
     // Spill the values live before the instruction
-    st.spillValues(
+    ctx.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -2660,11 +2641,10 @@ void gen_throw(
     as.saveJITRegs();
 
     // Call the host throwExc function
-    as.mov(cargRegs[0], vmReg);
-    as.ptr(cargRegs[1], instr);
-    as.mov(cargRegs[2].opnd, X86Opnd(0));
-    as.mov(cargRegs[3].opnd, excWordOpnd);
-    as.mov(cargRegs[4].opnd(8), excTypeOpnd);
+    as.ptr(cargRegs[0], instr);
+    as.mov(cargRegs[1].opnd, X86Opnd(0));
+    as.mov(cargRegs[2].opnd, excWordOpnd);
+    as.mov(cargRegs[3].opnd(8), excTypeOpnd);
     as.ptr(scrRegs[0], &throwExc);
     as.call(scrRegs[0]);
 
@@ -2679,35 +2659,36 @@ void gen_throw(
 
 void gen_catch(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
 {
-    auto wordOpnd = st.getWordOpnd(as, instr, 0, 64, scrRegs[0].opnd(64), true);
-    auto outOpnd = st.getOutOpnd(as, instr, 64, true);
+    auto wordOpnd = ctx.getWordOpnd(as, instr, 0, 64, scrRegs[0].opnd(64), true);
+    auto outOpnd = ctx.getOutOpnd(as, instr, 64, true);
     if (outOpnd != wordOpnd)
         as.mov(outOpnd, wordOpnd);
 
-    auto tagOpnd = st.getTagOpnd(as, instr, 0, scrRegs[0].opnd(8), true);
-    st.setOutTag(as, instr, tagOpnd.reg);
+    auto tagOpnd = ctx.getTagOpnd(as, instr, 0, scrRegs[0].opnd(8), true);
+    ctx.setOutTag(as, instr, tagOpnd.reg);
 }
 
 void GetValOp(Tag tag, string fName)(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
 {
     auto fSize = 8 * mixin("VM." ~ fName ~ ".sizeof");
 
-    auto outOpnd = st.getOutOpnd(as, instr, fSize);
+    auto outOpnd = ctx.getOutOpnd(as, instr, fSize);
     assert (outOpnd.isReg);
 
-    as.getMember!("VM." ~ fName)(outOpnd.reg, vmReg);
+    as.ptr(scrRegs[0], vm);
+    as.getMember!("VM." ~ fName)(outOpnd.reg, scrRegs[0]);
 
-    st.setOutTag(as, instr, tag);
+    ctx.setOutTag(as, instr, tag);
 }
 
 alias gen_get_obj_proto = GetValOp!(Tag.OBJECT, "objProto.word");
@@ -2720,32 +2701,32 @@ alias gen_get_gc_count = GetValOp!(Tag.INT32, "gcCount");
 
 void gen_get_heap_free(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
 {
-    auto outOpnd = st.getOutOpnd(as, instr, 32);
+    auto outOpnd = ctx.getOutOpnd(as, instr, 32);
 
-    as.getMember!("VM.allocPtr")(scrRegs[0], vmReg);
-    as.getMember!("VM.heapLimit")(scrRegs[1], vmReg);
+    as.ptr(scrRegs[1], vm);
+    as.getMember!("VM.allocPtr")(scrRegs[0], scrRegs[1]);
+    as.getMember!("VM.heapLimit")(scrRegs[1], scrRegs[1]);
 
     as.sub(scrRegs[1].opnd, scrRegs[0].opnd);
 
     as.mov(outOpnd, scrRegs[1].opnd(32));
 
-    st.setOutTag(as, instr, Tag.INT32);
+    ctx.setOutTag(as, instr, Tag.INT32);
 }
 
 void HeapAllocOp(Tag tag)(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
 {
     extern (C) static refptr allocFallback(
-        VM vm,
         IRInstr curInstr,
         uint32_t allocSize
     )
@@ -2762,7 +2743,7 @@ void HeapAllocOp(Tag tag)(
     }
 
     // Spill the values live before the instruction
-    st.spillValues(
+    ctx.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -2773,38 +2754,40 @@ void HeapAllocOp(Tag tag)(
     as.incStatCnt(&stats.numHeapAllocs, scrRegs[0]);
 
     // Get the allocation size operand
-    auto szOpnd = st.getWordOpnd(as, instr, 0, 32, X86Opnd.NONE, true, false);
+    auto szOpnd = ctx.getWordOpnd(as, instr, 0, 32, X86Opnd.NONE, true, false);
 
     // Get the output operand
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    auto outOpnd = ctx.getOutOpnd(as, instr, 64);
+    assert (outOpnd.isReg);
 
-    as.getMember!("VM.allocPtr")(scrRegs[0], vmReg);
-    as.getMember!("VM.heapLimit")(scrRegs[1], vmReg);
+    // r0 = vm
+    as.ptr(scrRegs[0], vm);
 
-    // r2 = allocPtr + size
+    // The output of this instruction is the current allocPtr
+    // out = allocPtr
+    as.getMember!("VM.allocPtr")(outOpnd.reg, scrRegs[0]);
+
+    // r1 = allocPtr + size
     // Note: we zero extend the size operand to 64-bits
-    as.mov(scrRegs[2].opnd(32), szOpnd);
-    as.add(scrRegs[2].opnd(64), scrRegs[0].opnd(64));
+    as.mov(scrRegs[1].opnd(32), szOpnd);
+    as.add(scrRegs[1].opnd(64), outOpnd);
+
+    // r2 = heapLimit
+    as.getMember!("VM.heapLimit")(scrRegs[2], scrRegs[0]);
 
     // if (allocPtr + size > heapLimit) fallback
-    as.cmp(scrRegs[2].opnd(64), scrRegs[1].opnd(64));
+    as.cmp(scrRegs[1].opnd(64), scrRegs[2].opnd(64));
     as.jg(Label.FALLBACK);
 
-    // Move the allocation pointer to the output
-    as.mov(outOpnd, scrRegs[0].opnd(64));
-
-    // Align the incremented allocation pointer
-    as.add(scrRegs[2].opnd(64), X86Opnd(7));
-    as.and(scrRegs[2].opnd(64), X86Opnd(-8));
+    // Align the new incremented allocation pointer
+    as.add(scrRegs[1].opnd(64), X86Opnd(7));
+    as.and(scrRegs[1].opnd(64), X86Opnd(-8));
 
     // Store the incremented and aligned allocation pointer
-    as.setMember!("VM.allocPtr")(vmReg, scrRegs[2]);
+    as.setMember!("VM.allocPtr")(scrRegs[0], scrRegs[1]);
 
     // Done allocating
     as.jmp(Label.DONE);
-
-    // Clone the state for the bailout case, which will spill for GC
-    auto bailSt = new CodeGenState(st);
 
     // Allocation fallback
     as.label(Label.FALLBACK);
@@ -2814,9 +2797,8 @@ void HeapAllocOp(Tag tag)(
     //as.printStr("alloc bailout ***");
 
     // Call the fallback implementation
-    as.mov(cargRegs[0], vmReg);
-    as.ptr(cargRegs[1], instr);
-    as.mov(cargRegs[2].opnd(32), szOpnd);
+    as.ptr(cargRegs[0], instr);
+    as.mov(cargRegs[1].opnd(32), szOpnd);
     as.ptr(scrRegs[0], &allocFallback);
     as.call(scrRegs[0]);
 
@@ -2831,7 +2813,7 @@ void HeapAllocOp(Tag tag)(
     as.label(Label.DONE);
 
     // Set the output type tag
-    st.setOutTag(as, instr, tag);
+    ctx.setOutTag(as, instr, tag);
 }
 
 alias gen_alloc_refptr = HeapAllocOp!(Tag.REFPTR);
@@ -2843,7 +2825,7 @@ alias gen_alloc_rope = HeapAllocOp!(Tag.ROPE);
 
 void gen_gc_collect(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
@@ -2860,16 +2842,10 @@ void gen_gc_collect(
     }
 
     // Spill the values live before the instruction
-    st.spillValues(
-        as,
-        delegate bool(LiveInfo liveInfo, IRDstValue value)
-        {
-            return liveInfo.liveBefore(value, instr);
-        }
-    );
+    ctx.spillLiveBefore(as, instr);
 
     // Get the string pointer
-    auto heapSizeOpnd = st.getWordOpnd(as, instr, 0, 32, X86Opnd.NONE, true, false);
+    auto heapSizeOpnd = ctx.getWordOpnd(as, instr, 0, 32, X86Opnd.NONE, true, false);
 
     as.saveJITRegs();
 
@@ -2884,7 +2860,7 @@ void gen_gc_collect(
 
 void gen_get_str(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
@@ -2906,13 +2882,13 @@ void gen_get_str(
     }
 
     // Spill the values live before this instruction
-    st.spillLiveBefore(as, instr);
+    ctx.spillLiveBefore(as, instr);
 
     // Get the string pointer
-    auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, true, false);
+    auto opnd0 = ctx.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, true, false);
 
     // Allocate the output operand
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    auto outOpnd = ctx.getOutOpnd(as, instr, 64);
 
     as.saveJITRegs();
 
@@ -2928,12 +2904,12 @@ void gen_get_str(
     as.mov(outOpnd, cretReg.opnd);
 
     // The output is a reference pointer
-    st.setOutTag(as, instr, Tag.STRING);
+    ctx.setOutTag(as, instr, Tag.STRING);
 }
 
 void gen_break(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
@@ -2941,7 +2917,7 @@ void gen_break(
     assert (instr.getTarget(0) && instr.getTarget(1));
     assert (instr.getTarget(0).target is instr.getTarget(1).target);
 
-    auto branch = getBranchEdge(instr.getTarget(0), st, false);
+    auto branch = getBranchEdge(instr.getTarget(0), ctx, false);
 
     // Generate the branch code
     ver.genBranch(
@@ -2976,14 +2952,14 @@ void gen_break(
 /// Implements a dynamic type tag dispatch/guard mechanism
 void gen_capture_tag(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
 {
     // If shape tag specialization is disabled, do nothing
     if (opts.shape_notagspec)
-        return gen_jump_false(ver, st, instr, as);
+        return gen_jump_false(ver, ctx, instr, as);
 
     assert (instr.getTarget(0).args.length is 0);
 
@@ -2991,13 +2967,13 @@ void gen_capture_tag(
     auto argVal = instr.getArg(0);
 
     // Get type information about the argument
-    ValType argType = st.getType(argVal);
+    ValType argType = ctx.getType(argVal);
 
     // If the type tag is marked as known
     if (argType.tagKnown)
     {
         // Jump directly to the false successor block
-        return gen_jump_false(ver, st, instr, as);
+        return gen_jump_false(ver, ctx, instr, as);
     }
 
     auto argDst = cast(IRDstValue)argVal;
@@ -3007,7 +2983,7 @@ void gen_capture_tag(
     auto argTag = argDst? vm.getTag(argDst.outSlot):argType.tag;
 
     // Get the type operand
-    auto tagOpnd = st.getTagOpnd(as, instr, 0);
+    auto tagOpnd = ctx.getTagOpnd(as, instr, 0);
 
     // Increment the capture_tag count
     as.incStatCnt(&stats.numTagTests, scrRegs[0]);
@@ -3020,13 +2996,13 @@ void gen_capture_tag(
     as.cmp(tagOpnd, X86Opnd(argTag));
 
     // On the recursive branch, no information is gained
-    auto branchT = getBranchEdge(instr.getTarget(0), st, false);
+    auto branchT = getBranchEdge(instr.getTarget(0), ctx, false);
 
     // Mark the value's type tag as known on the loop exit branch,
     // and queue this branch for immediate compilation (fall through)
-    auto falseSt = new CodeGenState(st);
-    falseSt.setTag(argDst, argTag);
-    auto branchF = getBranchEdge(instr.getTarget(1), falseSt, true);
+    auto falseCtx = new CodeGenCtx(ctx);
+    falseCtx.setTag(argDst, argTag);
+    auto branchF = getBranchEdge(instr.getTarget(1), falseCtx, true);
 
     // Generate the branch code
     ver.genBranch(
@@ -3065,7 +3041,7 @@ void gen_capture_tag(
 /// Implements a dynamic shape dispatch/guard mechanism
 void gen_capture_shape(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
@@ -3079,20 +3055,20 @@ void gen_capture_shape(
     assert (shapeIdxVal !is null);
 
     // If the object shape is already known
-    if (st.shapeKnown(objVal))
+    if (ctx.shapeKnown(objVal))
     {
         // Increment the count of known shape instances
         as.incStatCnt(&stats.numShapeKnown, scrRegs[0]);
 
         // Exit the capture_chape chain early
-        return gen_jump(ver, st, instr, as);
+        return gen_jump(ver, ctx, instr, as);
     }
 
     // If we hit the version limit and we're in a generic block version,
     // exit the capture_shape chain without capturing the shape
-    if (!st.shapeKnown(shapeIdxVal))
+    if (!ctx.shapeKnown(shapeIdxVal))
     {
-        return gen_jump(ver, st, instr, as);
+        return gen_jump(ver, ctx, instr, as);
     }
 
     // Increment the count of shape tests
@@ -3103,23 +3079,23 @@ void gen_capture_shape(
     auto curShapeIdx = vm.getWord(shapeIdxVal.outSlot).uint32Val;
 
     // Get the shape index operand
-    auto shapeIdxOpnd = st.getWordOpnd(as, instr, 1, 32);
+    auto shapeIdxOpnd = ctx.getWordOpnd(as, instr, 1, 32);
 
     // Compare the shape index operand with the observed shape index
     as.cmp(shapeIdxOpnd, X86Opnd(curShapeIdx));
 
     // On the exit (true) branch, mark the object shape as known
     // and queue this branch for immediate compilation (fall through)
-    auto trueSt = new CodeGenState(st);
-    trueSt.setShape(objVal, vm.objShapes[curShapeIdx]);
-    auto branchT = getBranchEdge(instr.getTarget(0), trueSt, true);
+    auto trueCtx = new CodeGenCtx(ctx);
+    trueCtx.setShape(objVal, vm.objShapes[curShapeIdx]);
+    auto branchT = getBranchEdge(instr.getTarget(0), trueCtx, true);
 
     // On the recursive (false) branch, no info about the object shape gained
     // We mark the shape idx as having the shape we just tested, this is a
     // hack to create new block versions during the shape dispatch
-    auto falseSt = new CodeGenState(st);
-    falseSt.setShape(shapeIdxVal, vm.objShapes[curShapeIdx]);
-    auto branchF = getBranchEdge(instr.getTarget(1), falseSt, false);
+    auto falseCtx = new CodeGenCtx(ctx);
+    falseCtx.setShape(shapeIdxVal, vm.objShapes[curShapeIdx]);
+    auto branchF = getBranchEdge(instr.getTarget(1), falseCtx, false);
 
     // Generate the branch code
     ver.genBranch(
@@ -3154,7 +3130,7 @@ void gen_capture_shape(
 
 void gen_clear_shape(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
@@ -3166,12 +3142,12 @@ void gen_clear_shape(
     ObjShape[ObjShape] shapes;
 
     // Gather all distinct shapes for the object value
-    foreach (blockVer; st.fun.versionMap.get(instr.block, []))
+    foreach (blockVer; ctx.fun.versionMap.get(instr.block, []))
     {
-        auto blockSt = blockVer.state;
-        if (blockSt.shapeKnown(objVal))
+        auto blockCtx = blockVer.ctx;
+        if (blockCtx.shapeKnown(objVal))
         {
-            auto shape = blockSt.getShape(objVal);
+            auto shape = blockCtx.getShape(objVal);
             shapes[shape] = shape;
         }
     }
@@ -3180,7 +3156,7 @@ void gen_clear_shape(
     if (shapes.length > opts.maxshapes)
     {
         // Clear any known shape for this object
-        st.shapeChg(as, objVal);
+        ctx.shapeChg(as, objVal);
     }
 }
 
@@ -3188,7 +3164,7 @@ void gen_clear_shape(
 /// Inputs: obj
 void gen_read_shape_idx(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
@@ -3197,39 +3173,39 @@ void gen_read_shape_idx(
     assert (objVal !is null);
 
     // Get the object operand
-    auto opnd0 = st.getWordOpnd(as, instr, 0, 64);
+    auto opnd0 = ctx.getWordOpnd(as, instr, 0, 64);
     assert (opnd0.isReg);
 
     // Get the output operand
-    auto outOpnd = st.getOutOpnd(as, instr, 32);
+    auto outOpnd = ctx.getOutOpnd(as, instr, 32);
     assert (outOpnd.isReg);
 
     // TODO: find way to have instr in valMap without allocating outOpnd?
     // want to avoid spilling reg if obj shape is known
-    // st.noOutOpnd() ?
+    // ctx.noOutOpnd() ?
 
     // If the shape is known, do nothing
-    if (st.shapeKnown(objVal))
+    if (ctx.shapeKnown(objVal))
     {
-        st.setOutTag(as, instr, Tag.INT32);
+        ctx.setOutTag(as, instr, Tag.INT32);
         return;
     }
 
     // Read the object shape index
     as.getField(outOpnd.reg, opnd0.reg, obj_ofs_shape_idx(null));
 
-    st.setOutTag(as, instr, Tag.INT32);
+    ctx.setOutTag(as, instr, Tag.INT32);
 
     // Mark the shape of this instructon's output as null
     // We do this to signal to capture_shape that the shape was just read
-    st.setShape(instr, null);
+    ctx.setShape(instr, null);
 }
 
 /// Initializes an object to the empty shape
 /// Inputs: obj
 void gen_obj_init_shape(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
@@ -3253,11 +3229,11 @@ void gen_obj_init_shape(
     }
 
     // Get the object operand
-    auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
+    auto objOpnd = ctx.getWordOpnd(as, instr, 0, 64);
     assert (objOpnd.isReg);
 
     // Get the type operand for the prototype argument
-    auto tagOpnd = st.getTagOpnd(as, instr, 1);
+    auto tagOpnd = ctx.getTagOpnd(as, instr, 1);
 
     // If the prototype tag is a known constant or
     // property tag specialization is disabled
@@ -3275,15 +3251,13 @@ void gen_obj_init_shape(
         as.mov(X86Opnd(32, objOpnd.reg, obj_ofs_shape_idx(null)), X86Opnd(shape.shapeIdx));
 
         // Propagate the object shape
-        st.setShape(cast(IRDstValue)instr.getArg(0), shape);
+        ctx.setShape(cast(IRDstValue)instr.getArg(0), shape);
 
         return;
     }
 
     // Spill the values live before this instruction
-    st.spillLiveBefore(as, instr);
-
-    as.saveJITRegs();
+    ctx.spillLiveBefore(as, instr);
 
     // Call the host function
     // Note: we move objOpnd first to avoid corruption
@@ -3292,22 +3266,20 @@ void gen_obj_init_shape(
     as.ptr(scrRegs[0], &op_obj_init_shape);
     as.call(scrRegs[0]);
 
-    as.loadJITRegs();
-
-    assert (!st.shapeKnown(cast(IRDstValue)instr.getArg(0)));
+    assert (!ctx.shapeKnown(cast(IRDstValue)instr.getArg(0)));
 }
 
 /// Initializes an array to the initial shape
 /// Inputs: arr
 void gen_arr_init_shape(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
 {
     // Get the object operand
-    auto opnd0 = st.getWordOpnd(as, instr, 0, 64);
+    auto opnd0 = ctx.getWordOpnd(as, instr, 0, 64);
     assert (opnd0.isReg);
 
     // Set the array shape
@@ -3317,14 +3289,14 @@ void gen_arr_init_shape(
     );
 
     // Propagate the array shape
-    st.setShape(cast(IRDstValue)instr.getArg(0), vm.arrayShape);
+    ctx.setShape(cast(IRDstValue)instr.getArg(0), vm.arrayShape);
 }
 
 /// Sets the value of a property
 /// Inputs: obj, propName, val
 void gen_obj_set_prop(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
@@ -3364,7 +3336,7 @@ void gen_obj_set_prop(
 
     static void gen_slow_path(
         BlockVersion ver,
-        CodeGenState st,
+        CodeGenCtx ctx,
         IRInstr instr,
         CodeBlock as
     )
@@ -3373,7 +3345,7 @@ void gen_obj_set_prop(
         auto objVal = cast(IRDstValue)instr.getArg(0);
 
         // Spill the values live before this instruction
-        st.spillLiveBefore(as, instr);
+        ctx.spillLiveBefore(as, instr);
 
         as.saveJITRegs();
 
@@ -3385,13 +3357,13 @@ void gen_obj_set_prop(
         as.loadJITRegs();
 
         // Clear any known shape for this object
-        st.shapeChg(as, objVal);
+        ctx.shapeChg(as, objVal);
 
         // Check the success flag
         as.cmp(cretReg.opnd(8), X86Opnd(1));
 
-        auto branchT = getBranchEdge(instr.getTarget(0), st, false);
-        auto branchF = getBranchEdge(instr.getTarget(1), st, false);
+        auto branchT = getBranchEdge(instr.getTarget(0), ctx, false);
+        auto branchF = getBranchEdge(instr.getTarget(1), ctx, false);
 
         // Generate the branch code
         ver.genBranch(
@@ -3430,30 +3402,30 @@ void gen_obj_set_prop(
 
     // Increment the number of set prop operations
     as.incStatCnt(&stats.numSetProp, scrRegs[1]);
-    if (objVal is st.fun.globalVal)
+    if (objVal is ctx.fun.globalVal)
         as.incStatCnt(&stats.numSetGlobal, scrRegs[1]);
 
     // Extract the property name, if known
     auto propName = instr.getArgStrCst(1);
 
     // Get the type for the property value
-    auto valType = st.getType(propVal).propType;
+    auto valType = ctx.getType(propVal).propType;
 
     // If the property name is unknown, use the slow path
     if (propName is null)
-        return gen_slow_path(ver, st, instr, as);
+        return gen_slow_path(ver, ctx, instr, as);
 
     // If the object shape is unknown, use the slow path
-    if (!st.shapeKnown(objVal))
-        return gen_slow_path(ver, st, instr, as);
+    if (!ctx.shapeKnown(objVal))
+        return gen_slow_path(ver, ctx, instr, as);
 
     // If we type of the property value is unknown and
     // shape tag specialization is enabled, use the slow path
     if (!valType.tagKnown && !opts.shape_notagspec)
-        return gen_slow_path(ver, st, instr, as);
+        return gen_slow_path(ver, ctx, instr, as);
 
     // Get the object and defining shapes
-    auto objShape = st.getShape(objVal);
+    auto objShape = ctx.getShape(objVal);
     assert (objShape !is null);
 
     // Try a lookup for an existing property
@@ -3465,7 +3437,7 @@ void gen_obj_set_prop(
         // If the object is not extensible, jump to the
         // true branch without adding the new property
         if (!objShape.extensible)
-            return gen_jump(ver, st, instr, as);
+            return gen_jump(ver, ctx, instr, as);
 
         // Create a new shape for the property
         defShape = objShape.defProp(
@@ -3482,25 +3454,25 @@ void gen_obj_set_prop(
 
     // Compute the minimum object capacity we can guarantee
     auto minObjCap = (
-        (objVal is st.fun.globalVal)?
+        (objVal is ctx.fun.globalVal)?
         obj_get_cap(vm.globalObj.word.ptrVal):
         OBJ_MIN_CAP
     );
 
     // If the property has accessors, jump to the false branch
     if (defShape.isGetSet)
-        return gen_jump_false(ver, st, instr, as);
+        return gen_jump_false(ver, ctx, instr, as);
 
     // If the shape is not writable, do nothing, jump to the true branch
     if (!defShape.writable)
-        return gen_jump(ver, st, instr, as);
+        return gen_jump(ver, ctx, instr, as);
 
-    // If the property exists on the object
+    // If the property already exists on the object
     if (slotIdx <= objShape.slotIdx)
     {
-        auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
-        auto valOpnd = st.getWordOpnd(as, instr, 2, 64, scrRegs[2].opnd(64), true);
-        auto tagOpnd = st.getTagOpnd(as, instr, 2, X86Opnd.NONE, true);
+        auto objOpnd = ctx.getWordOpnd(as, instr, 0, 64);
+        auto valOpnd = ctx.getWordOpnd(as, instr, 2, 64, scrRegs[2].opnd(64), true);
+        auto tagOpnd = ctx.getTagOpnd(as, instr, 2, X86Opnd.NONE, true);
         assert (objOpnd.isReg);
 
         // Check if we need to write the type tag
@@ -3570,26 +3542,26 @@ void gen_obj_set_prop(
                 X86Opnd(objShape.shapeIdx)
             );
 
-            // Set the new object shape in the code gen state
-            st.shapeChg(as, objVal, objShape);
+            // Set the new object shape in the context
+            ctx.shapeChg(as, objVal, objShape);
 
             // Increment the number of shape changes due to type
             as.incStatCnt(&stats.numShapeFlips, scrRegs[0]);
-            if (objVal is st.fun.globalVal)
+            if (objVal is ctx.fun.globalVal)
                 as.incStatCnt(&stats.numShapeFlipsGlobal, scrRegs[0]);
         }
 
         // Property successfully set, jump to the true branch
-        return gen_jump(ver, st, instr, as);
+        return gen_jump(ver, ctx, instr, as);
     }
 
     // This is a new property being added to the object
     // If the slot index is within the guaranteed object capacity
     if (slotIdx < minObjCap)
     {
-        auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
-        auto valOpnd = st.getWordOpnd(as, instr, 2, 64, scrRegs[0].opnd(64), true);
-        auto tagOpnd = st.getTagOpnd(as, instr, 2, scrRegs[1].opnd(8), true);
+        auto objOpnd = ctx.getWordOpnd(as, instr, 0, 64);
+        auto valOpnd = ctx.getWordOpnd(as, instr, 2, 64, scrRegs[0].opnd(64), true);
+        auto tagOpnd = ctx.getTagOpnd(as, instr, 2, scrRegs[1].opnd(8), true);
         assert (objOpnd.isReg);
 
         // Get the object capacity into r2
@@ -3608,24 +3580,24 @@ void gen_obj_set_prop(
         );
 
         // Set the new object shape
-        st.shapeChg(as, objVal, defShape);
+        ctx.shapeChg(as, objVal, defShape);
 
         // Property successfully set, jump to the true branch
-        return gen_jump(ver, st, instr, as);
+        return gen_jump(ver, ctx, instr, as);
     }
 
     // Use the slow path
     // Note: we don't check if the property goes in the extended
     // table because we cant guarantee the object size is sufficient
     // or that the extended table even exists
-    return gen_slow_path(ver, st, instr, as);
+    return gen_slow_path(ver, ctx, instr, as);
 }
 
 /// Gets the value of a property
 /// Inputs: obj, propName
 void gen_obj_get_prop(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
@@ -3689,19 +3661,19 @@ void gen_obj_get_prop(
 
     static void gen_slow_path(
         BlockVersion ver,
-        CodeGenState st,
+        CodeGenCtx ctx,
         IRInstr instr,
         CodeBlock as
     )
     {
         // Spill the values live before this instruction
-        st.spillLiveBefore(as, instr);
+        ctx.spillLiveBefore(as, instr);
 
         // Get the object and string operands
-        auto objOpnd = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
-        auto strOpnd = st.getWordOpnd(as, instr, 1, 64, scrRegs[0].opnd, false, false);
+        auto objOpnd = ctx.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
+        auto strOpnd = ctx.getWordOpnd(as, instr, 1, 64, scrRegs[0].opnd, false, false);
 
-        auto outOpnd = st.getOutOpnd(as, instr, 64);
+        auto outOpnd = ctx.getOutOpnd(as, instr, 64);
 
         as.saveJITRegs();
 
@@ -3728,13 +3700,13 @@ void gen_obj_get_prop(
         // Set the output word and tag
         as.mov(outOpnd, wordMem);
         as.mov(scrRegs[1].opnd(8), tagMem);
-        st.setOutTag(as, instr, scrRegs[1].reg(8));
+        ctx.setOutTag(as, instr, scrRegs[1].reg(8));
 
         // Check the success flag
         as.cmp(flagMem, X86Opnd(1));
 
-        auto branchT = getBranchEdge(instr.getTarget(0), st, false);
-        auto branchF = getBranchEdge(instr.getTarget(1), st, false);
+        auto branchT = getBranchEdge(instr.getTarget(0), ctx, false);
+        auto branchF = getBranchEdge(instr.getTarget(1), ctx, false);
 
         // Generate the branch code
         ver.genBranch(
@@ -3772,7 +3744,7 @@ void gen_obj_get_prop(
 
     // Increment the number of get prop operations
     as.incStatCnt(&stats.numGetProp, scrRegs[1]);
-    if (objVal is st.fun.globalVal)
+    if (objVal is ctx.fun.globalVal)
         as.incStatCnt(&stats.numGetGlobal, scrRegs[1]);
 
     // Extract the property name, if known
@@ -3780,14 +3752,14 @@ void gen_obj_get_prop(
 
     // If the property name is unknown, use the slow path
     if (propName is null)
-        return gen_slow_path(ver, st, instr, as);
+        return gen_slow_path(ver, ctx, instr, as);
 
     // If the object shape is unknown, use the slow path
-    if (!st.shapeKnown(objVal))
-        return gen_slow_path(ver, st, instr, as);
+    if (!ctx.shapeKnown(objVal))
+        return gen_slow_path(ver, ctx, instr, as);
 
     // Get the object and defining shapes
-    auto objShape = st.getShape(objVal);
+    auto objShape = ctx.getShape(objVal);
     assert (objShape !is null);
 
     // Try a lookup for an existing property
@@ -3796,13 +3768,13 @@ void gen_obj_get_prop(
     // If the property doesn't exist
     if (defShape is null)
     {
-        auto outOpnd = st.getOutOpnd(as, instr, 64);
+        auto outOpnd = ctx.getOutOpnd(as, instr, 64);
 
         // Set the output type tag to const (undefined)
-        st.setOutTag(as, instr, Tag.CONST);
+        ctx.setOutTag(as, instr, Tag.CONST);
 
         // Jump to the false branch
-        return gen_jump_false(ver, st, instr, as);
+        return gen_jump_false(ver, ctx, instr, as);
     }
 
     // Get the property slot index
@@ -3810,15 +3782,15 @@ void gen_obj_get_prop(
 
     // Compute the minimum object capacity we can guarantee
     auto minObjCap = (
-        (objVal is st.fun.globalVal)?
+        (objVal is ctx.fun.globalVal)?
         obj_get_cap(vm.globalObj.word.ptrVal):
         OBJ_MIN_CAP
     );
 
     // No need to get the shape operand
-    auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
+    auto objOpnd = ctx.getWordOpnd(as, instr, 0, 64);
     assert (objOpnd.isReg);
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    auto outOpnd = ctx.getOutOpnd(as, instr, 64);
     assert (outOpnd.isReg);
 
     // If we need to read the type tag or check the object capacity
@@ -3865,41 +3837,41 @@ void gen_obj_get_prop(
     {
         // Propagate the shape type
         assert (!opts.shape_notagspec);
-        st.setType(instr, defShape.type);
+        ctx.setType(instr, defShape.type);
     }
     else
     {
         // Load the type value
         auto typeMem = X86Opnd(8, tblOpnd.reg, OBJ_WORD_OFS + slotIdx, 8, scrRegs[1]);
         as.mov(scrRegs[1].opnd(8), typeMem);
-        st.setOutTag(as, instr, scrRegs[1].reg(8));
+        ctx.setOutTag(as, instr, scrRegs[1].reg(8));
     }
 
     // If the property has accessors, jump to the false branch
     if (defShape.isGetSet)
-        return gen_jump_false(ver, st, instr, as);
+        return gen_jump_false(ver, ctx, instr, as);
 
     // Normal property successfully read, jump to the true branch
-    return gen_jump(ver, st, instr, as);
+    return gen_jump(ver, ctx, instr, as);
 }
 
 /// Get the prototype of an object
 /// Inputs: obj
 void gen_obj_get_proto(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
 {
     // No need to get the shape operand
-    auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
+    auto objOpnd = ctx.getWordOpnd(as, instr, 0, 64);
     assert (objOpnd.isReg);
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    auto outOpnd = ctx.getOutOpnd(as, instr, 64);
     assert (outOpnd.isReg);
 
     // Get the object type
-    auto objType = st.getType(instr.getArg(0));
+    auto objType = ctx.getType(instr.getArg(0));
 
     auto slotIdx = PROTO_SLOT_IDX;
 
@@ -3918,7 +3890,7 @@ void gen_obj_get_proto(
             as.mov(outOpnd, wordMem);
 
             // Set the output type tag
-            st.setOutTag(as, instr, defShape.type.tag);
+            ctx.setOutTag(as, instr, defShape.type.tag);
 
             return;
         }
@@ -3934,14 +3906,14 @@ void gen_obj_get_proto(
     as.mov(scrRegs[2].opnd(8), typeMem);
 
     // Set the output type tag
-    st.setOutTag(as, instr, scrRegs[2].reg(8));
+    ctx.setOutTag(as, instr, scrRegs[2].reg(8));
 }
 
 /// Define a constant property
 /// Inputs: obj, propName, val, enumerable
 void gen_obj_def_const(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
@@ -3968,7 +3940,7 @@ void gen_obj_def_const(
     auto objDst = cast(IRDstValue)instr.getArg(0);
  
     // Spill the values live before this instruction
-    st.spillLiveBefore(as, instr);
+    ctx.spillLiveBefore(as, instr);
 
     as.saveJITRegs();
 
@@ -3980,7 +3952,7 @@ void gen_obj_def_const(
     as.loadJITRegs();
 
     // Clear any known shape for this object
-    st.shapeChg(as, objDst);
+    ctx.shapeChg(as, objDst);
 }
 
 /// Get the attributes associated with a given property
@@ -3989,7 +3961,7 @@ void gen_obj_def_const(
 /// Inputs: obj, propName
 void gen_obj_get_attrs(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
@@ -4003,29 +3975,25 @@ void gen_obj_get_attrs(
 
         // If no property name is specified
         if (propName is null)
-        {
             return objShape.attrs;
-        }
 
         auto defShape = objShape.getDefShape(extractWStr(propName));
 
         // If the property doesn't exist
         if (defShape is null)
-        {
             return ATTR_DELETED;
-        }
 
         return defShape.attrs;
     }
 
     // Spill the values live before this instruction
-    st.spillLiveBefore(as, instr);
+    ctx.spillLiveBefore(as, instr);
 
-    auto objOpnd = st.getWordOpnd(as, instr, 0, 64, scrRegs[0].opnd, false, false);
-    auto propOpnd = st.getWordOpnd(as, instr, 1, 64, scrRegs[1].opnd, false, false);
-    auto outOpnd = st.getOutOpnd(as, instr, 32);
+    auto objOpnd = ctx.getWordOpnd(as, instr, 0, 64, scrRegs[0].opnd, false, false);
+    auto propOpnd = ctx.getWordOpnd(as, instr, 1, 64, scrRegs[1].opnd, false, false);
+    auto outOpnd = ctx.getOutOpnd(as, instr, 32);
 
-    as.saveJITRegs();
+    //as.saveJITRegs();
 
     // Call the host function
     as.mov(cargRegs[0].opnd(64), objOpnd);
@@ -4035,9 +4003,9 @@ void gen_obj_get_attrs(
 
     // Set the output value
     as.mov(outOpnd, cretReg.opnd(32));
-    st.setOutTag(as, instr, Tag.INT32);
+    ctx.setOutTag(as, instr, Tag.INT32);
 
-    as.loadJITRegs();
+    //as.loadJITRegs();
 }
 
 /// Sets the attributes for a given property
@@ -4045,15 +4013,12 @@ void gen_obj_get_attrs(
 /// Inputs: obj, propName, attrBits
 void gen_obj_set_attrs(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
 {
-    extern (C) static void op_obj_set_attrs(
-        VM vm, 
-        IRInstr instr
-    )
+    extern (C) static void op_obj_set_attrs(IRInstr instr)
     {
         auto objPair = vm.getArgVal(instr, 0);
         auto propName = vm.getArgVal(instr, 1).word.ptrVal;
@@ -4086,27 +4051,26 @@ void gen_obj_set_attrs(
     }
 
     // Spill the values live before this instruction
-    st.spillLiveBefore(as, instr);
+    ctx.spillLiveBefore(as, instr);
 
     as.saveJITRegs();
 
     // Call the host function
-    as.mov(cargRegs[0].opnd(64), vmReg.opnd(64));
-    as.ptr(cargRegs[1], instr);
+    as.ptr(cargRegs[0], instr);
     as.ptr(scrRegs[0], &op_obj_set_attrs);
     as.call(scrRegs[0]);
 
     as.loadJITRegs();
 
     // Clear any known shape for this object
-    st.shapeChg(as, cast(IRDstValue)instr.getArg(0));
+    ctx.shapeChg(as, cast(IRDstValue)instr.getArg(0));
 }
 
 /// Get a table of enumerable property names for an object
 /// Inputs: shape
 void gen_obj_enum_tbl(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
@@ -4134,32 +4098,32 @@ void gen_obj_enum_tbl(
     assert (objVal !is null);
 
     // If the object shape is known
-    if (st.shapeKnown(objVal))
+    if (ctx.shapeKnown(objVal))
     {
-        auto objShape = st.getShape(objVal);
+        auto objShape = ctx.getShape(objVal);
         objShape.genEnumTbl();
 
-        auto outOpnd = st.getOutOpnd(as, instr, 64);
+        auto outOpnd = ctx.getOutOpnd(as, instr, 64);
         assert (outOpnd.isReg);
 
         // Load the enum table pointer
         as.mov(RAX, &objShape.enumTbl.pair.word);
         as.mov(outOpnd, RAX.opnd);
 
-        st.setOutTag(as, instr, Tag.REFPTR);
+        ctx.setOutTag(as, instr, Tag.REFPTR);
 
         return;
     }
 
-    auto objOpnd = st.getWordOpnd(as, instr, 0, 64);
+    auto objOpnd = ctx.getWordOpnd(as, instr, 0, 64);
     assert (objOpnd.isReg);
 
     // Spill the values live after this instruction
-    st.spillLiveAfter(as, instr);
+    ctx.spillLiveAfter(as, instr);
 
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    auto outOpnd = ctx.getOutOpnd(as, instr, 64);
 
-    st.setOutTag(as, instr, Tag.REFPTR);
+    ctx.setOutTag(as, instr, Tag.REFPTR);
 
     as.saveJITRegs();
 
@@ -4179,7 +4143,7 @@ void gen_obj_enum_tbl(
 
 void gen_set_global(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
@@ -4204,13 +4168,7 @@ void gen_set_global(
     }
 
     // Spill the values that are live before the call
-    st.spillValues(
-        as,
-        delegate bool(LiveInfo liveInfo, IRDstValue value)
-        {
-            return liveInfo.liveBefore(value, instr);
-        }
-    );
+    ctx.spillLiveBefore(as, instr);
 
     as.saveJITRegs();
 
@@ -4224,7 +4182,7 @@ void gen_set_global(
 
 void gen_new_clos(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
@@ -4275,7 +4233,7 @@ void gen_new_clos(
     }
 
     // Spill all values live before this instruction
-    st.spillValues(
+    ctx.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -4296,19 +4254,19 @@ void gen_new_clos(
 
     as.loadJITRegs();
 
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    auto outOpnd = ctx.getOutOpnd(as, instr, 64);
     as.mov(outOpnd, X86Opnd(cretReg));
 
     // Set the output type and mark the function pointer as known
     ValType outType = ValType(Tag.CLOSURE);
     outType.fptrKnown = true;
     outType.fptr = funArg.fun;
-    st.setType(instr, outType);
+    ctx.setType(instr, outType);
 }
 
 void gen_print_str(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
@@ -4322,7 +4280,7 @@ void gen_print_str(
         write(str);
     }
 
-    auto strOpnd = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
+    auto strOpnd = ctx.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
 
     as.pushRegs();
 
@@ -4335,19 +4293,19 @@ void gen_print_str(
 
 void gen_print_ptr(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
 {
-    auto opnd = st.getWordOpnd(as, instr, 0, 64, scrRegs[0].opnd, false, false);
+    auto opnd = ctx.getWordOpnd(as, instr, 0, 64, scrRegs[0].opnd, false, false);
 
     as.printPtr(opnd);
 }
 
 void gen_get_time_ms(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
@@ -4361,7 +4319,7 @@ void gen_get_time_ms(
     }
 
     // Spill the values live after this instruction
-    st.spillValues(
+    ctx.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -4376,14 +4334,14 @@ void gen_get_time_ms(
 
     as.loadJITRegs();
 
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    auto outOpnd = ctx.getOutOpnd(as, instr, 64);
     as.movq(outOpnd, X86Opnd(XMM0));
-    st.setOutTag(as, instr, Tag.FLOAT64);
+    ctx.setOutTag(as, instr, Tag.FLOAT64);
 }
 
 void gen_get_ast_str(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
@@ -4411,7 +4369,7 @@ void gen_get_ast_str(
     }
 
     // Spill the values live before this instruction
-    st.spillValues(
+    ctx.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -4419,7 +4377,7 @@ void gen_get_ast_str(
         }
     );
 
-    auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
+    auto opnd0 = ctx.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
 
     as.saveJITRegs();
 
@@ -4430,14 +4388,14 @@ void gen_get_ast_str(
 
     as.loadJITRegs();
 
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    auto outOpnd = ctx.getOutOpnd(as, instr, 64);
     as.mov(outOpnd, X86Opnd(RAX));
-    st.setOutTag(as, instr, Tag.STRING);
+    ctx.setOutTag(as, instr, Tag.STRING);
 }
 
 void gen_get_ir_str(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
@@ -4471,7 +4429,7 @@ void gen_get_ir_str(
     }
 
     // Spill the values live before this instruction
-    st.spillValues(
+    ctx.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -4479,7 +4437,7 @@ void gen_get_ir_str(
         }
     );
 
-    auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
+    auto opnd0 = ctx.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
 
     as.saveJITRegs();
 
@@ -4490,20 +4448,19 @@ void gen_get_ir_str(
 
     as.loadJITRegs();
 
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    auto outOpnd = ctx.getOutOpnd(as, instr, 64);
     as.mov(outOpnd, X86Opnd(RAX));
-    st.setOutTag(as, instr, Tag.STRING);
+    ctx.setOutTag(as, instr, Tag.STRING);
 }
 
 void gen_get_asm_str(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
 {
     extern (C) static refptr op_get_asm_str(
-        VM vm,
         IRInstr curInstr,
         refptr closPtr
     )
@@ -4529,7 +4486,7 @@ void gen_get_asm_str(
     }
 
     // Spill the values live before this instruction
-    st.spillValues(
+    ctx.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -4537,34 +4494,30 @@ void gen_get_asm_str(
         }
     );
 
-    auto opnd0 = st.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
+    auto opnd0 = ctx.getWordOpnd(as, instr, 0, 64, X86Opnd.NONE, false, false);
 
     as.saveJITRegs();
 
-    as.mov(cargRegs[0], vmReg);
-    as.ptr(cargRegs[1], instr);
-    as.mov(cargRegs[2].opnd, opnd0);
+    as.ptr(cargRegs[0], instr);
+    as.mov(cargRegs[1].opnd, opnd0);
     as.ptr(scrRegs[0], &op_get_asm_str);
     as.call(scrRegs[0].opnd);
 
     as.loadJITRegs();
 
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    auto outOpnd = ctx.getOutOpnd(as, instr, 64);
     as.mov(outOpnd, X86Opnd(RAX));
-    st.setOutTag(as, instr, Tag.STRING);
+    ctx.setOutTag(as, instr, Tag.STRING);
 }
 
 void gen_load_lib(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
 {
-    extern (C) static CodePtr op_load_lib(
-        VM vm,
-        IRInstr instr
-    )
+    extern (C) static CodePtr op_load_lib(IRInstr instr)
     {
         // Library to load (JS string)
         auto strPtr = vm.getArgStr(instr, 0);
@@ -4596,7 +4549,6 @@ void gen_load_lib(
         if (lib is null)
         {
             return throwError(
-                vm,
                 instr,
                 null,
                 "ReferenceError",
@@ -4611,7 +4563,7 @@ void gen_load_lib(
     }
 
     // Spill the values live before this instruction
-    st.spillValues(
+    ctx.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -4619,11 +4571,10 @@ void gen_load_lib(
         }
     );
 
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    auto outOpnd = ctx.getOutOpnd(as, instr, 64);
 
     as.saveJITRegs();
-    as.mov(cargRegs[0], vmReg);
-    as.ptr(cargRegs[1], instr);
+    as.ptr(cargRegs[0], instr);
     as.ptr(scrRegs[0], &op_load_lib);
     as.call(scrRegs[0].opnd);
     as.loadJITRegs();
@@ -4639,20 +4590,17 @@ void gen_load_lib(
     as.add(wspReg, Word.sizeof);
     as.add(tspReg, Tag.sizeof);
     as.mov(outOpnd, scrRegs[0].opnd);
-    st.setOutTag(as, instr, Tag.RAWPTR);
+    ctx.setOutTag(as, instr, Tag.RAWPTR);
 }
 
 void gen_close_lib(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
 {
-    extern (C) static CodePtr op_close_lib(
-        VM vm,
-        IRInstr instr
-    )
+    extern (C) static CodePtr op_close_lib(IRInstr instr)
     {
         auto libArg = vm.getArgVal(instr, 0);
 
@@ -4664,7 +4612,6 @@ void gen_close_lib(
         if (dlclose(libArg.word.ptrVal) != 0)
         {
             return throwError(
-                vm,
                 instr,
                 null,
                 "RuntimeError",
@@ -4676,7 +4623,7 @@ void gen_close_lib(
     }
 
     // Spill the values live before this instruction
-    st.spillValues(
+    ctx.spillValues(
         as,
         delegate bool(LiveInfo liveInfo, IRDstValue value)
         {
@@ -4685,8 +4632,7 @@ void gen_close_lib(
     );
 
     as.saveJITRegs();
-    as.mov(cargRegs[0], vmReg);
-    as.ptr(cargRegs[1], instr);
+    as.ptr(cargRegs[0], instr);
     as.ptr(scrRegs[0], &op_close_lib);
     as.call(scrRegs[0].opnd);
     as.loadJITRegs();
@@ -4700,15 +4646,12 @@ void gen_close_lib(
 
 void gen_get_sym(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
 {
-    extern (C) static CodePtr op_get_sym(
-        VM vm,
-        IRInstr instr
-    )
+    extern (C) static CodePtr op_get_sym(IRInstr instr)
     {
         auto libArg = vm.getArgVal(instr, 0);
 
@@ -4728,7 +4671,6 @@ void gen_get_sym(
         if (sym is null)
         {
             return throwError(
-                vm,
                 instr,
                 null,
                 "RuntimeError",
@@ -4742,13 +4684,12 @@ void gen_get_sym(
     }
 
     // Spill the values live before this instruction
-    st.spillLiveBefore(as, instr);
+    ctx.spillLiveBefore(as, instr);
 
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    auto outOpnd = ctx.getOutOpnd(as, instr, 64);
 
     as.saveJITRegs();
-    as.mov(cargRegs[0], vmReg);
-    as.ptr(cargRegs[1], instr);
+    as.ptr(cargRegs[0], instr);
     as.ptr(scrRegs[0], &op_get_sym);
     as.call(scrRegs[0].opnd);
     as.loadJITRegs();
@@ -4764,7 +4705,7 @@ void gen_get_sym(
     as.add(wspReg, Word.sizeof);
     as.add(tspReg, Tag.sizeof);
     as.mov(outOpnd, scrRegs[0].opnd);
-    st.setOutTag(as, instr, Tag.RAWPTR);
+    ctx.setOutTag(as, instr, Tag.RAWPTR);
 
 }
 
@@ -4802,7 +4743,7 @@ static this()
 
 void gen_call_ffi(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
@@ -4831,10 +4772,10 @@ void gen_call_ffi(
     );
 
     // Spill the values live before this instruction
-    st.spillLiveBefore(as, instr);
+    ctx.spillLiveBefore(as, instr);
 
     // outOpnd
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    auto outOpnd = ctx.getOutOpnd(as, instr, 64);
 
     // Indices of arguments to be pushed on the stack
     size_t[] stackArgs;
@@ -4846,7 +4787,7 @@ void gen_call_ffi(
         // or set it to be pushed to the stack later
         if (argTypes[idx] == "f64" && fArgIdx < cfpArgRegs.length)
         {
-            auto argOpnd = st.getWordOpnd(
+            auto argOpnd = ctx.getWordOpnd(
                 as,
                 instr,
                 idx + 2,
@@ -4860,7 +4801,7 @@ void gen_call_ffi(
         else if (iArgIdx < cargRegs.length)
         {
             auto argSize = sizeMap[argTypes[idx]];
-            auto argOpnd = st.getWordOpnd(
+            auto argOpnd = ctx.getWordOpnd(
                 as,
                 instr,
                 idx + 2,
@@ -4889,7 +4830,7 @@ void gen_call_ffi(
     foreach_reverse (idx; stackArgs)
     {
         auto argSize = sizeMap[argTypes[idx]];
-        auto argOpnd = st.getWordOpnd(
+        auto argOpnd = ctx.getWordOpnd(
             as,
             instr,
             idx + 2,
@@ -4903,7 +4844,7 @@ void gen_call_ffi(
     }
 
     // Pointer to function to call
-    auto funArg = st.getWordOpnd(
+    auto funArg = ctx.getWordOpnd(
         as,
         instr,
         0,
@@ -4936,26 +4877,26 @@ void gen_call_ffi(
     if (retType == "f64")
     {
         as.movq(outOpnd, X86Opnd(XMM0));
-        st.setOutTag(as, instr, typeMap[retType]);
+        ctx.setOutTag(as, instr, typeMap[retType]);
     }
     else if (retType == "void")
     {
         as.mov(outOpnd, X86Opnd(UNDEF.word.int8Val));
-        st.setOutTag(as, instr, Tag.CONST);
+        ctx.setOutTag(as, instr, Tag.CONST);
     }
     else
     {
         as.mov(outOpnd, X86Opnd(RAX));
-        st.setOutTag(as, instr, typeMap[retType]);
+        ctx.setOutTag(as, instr, typeMap[retType]);
     }
 
     // Jump directly to the successor block
-    return gen_jump(ver, st, instr, as);
+    return gen_jump(ver, ctx, instr, as);
 }
 
 void gen_get_c_fptr(
     BlockVersion ver,
-    CodeGenState st,
+    CodeGenCtx ctx,
     IRInstr instr,
     CodeBlock as
 )
@@ -4978,7 +4919,6 @@ void gen_get_c_fptr(
         if (fun.cEntryCode !is null)
         {
             return throwError(
-                vm,
                 instr,
                 null,
                 "RuntimeError",
@@ -5031,7 +4971,7 @@ void gen_get_c_fptr(
             auto dstIdx = -(numArgs - i);
 
             // Copy the argument word
-            auto argOpnd = st.getWordOpnd(
+            auto argOpnd = ctx.getWordOpnd(
                 as,
                 instr,
                 instrArgIdx,
@@ -5043,7 +4983,7 @@ void gen_get_c_fptr(
             as.setWord(dstIdx, argOpnd);
 
             // Copy the argument type
-            auto tagOpnd = st.getTagOpnd(
+            auto tagOpnd = ctx.getTagOpnd(
                 as,
                 instr,
                 instrArgIdx,
@@ -5068,7 +5008,7 @@ void gen_get_c_fptr(
         // Write the "this" argument
         if (fun.thisVal.hasUses)
         {
-            auto thisReg = st.getWordOpnd(
+            auto thisReg = ctx.getWordOpnd(
                 as,
                 instr,
                 1,
@@ -5078,7 +5018,7 @@ void gen_get_c_fptr(
                 false
             );
             as.setWord(-numArgs - 2, thisReg);
-            auto tagOpnd = st.getTagOpnd(
+            auto tagOpnd = ctx.getTagOpnd(
                 as,
                 instr,
                 1,
@@ -5091,7 +5031,7 @@ void gen_get_c_fptr(
         // Write the closure argument
         if (fun.closVal.hasUses)
         {
-            auto closReg = st.getWordOpnd(
+            auto closReg = ctx.getWordOpnd(
                 as,
                 instr,
                 0,
@@ -5104,10 +5044,10 @@ void gen_get_c_fptr(
         }
 
         // Spill the values that are live after the call
-        st.spillLiveBefore(as, instr);
+        ctx.spillLiveBefore(as, instr);
 
         // Clear the known shape information
-        st.clearShapes();
+        ctx.clearShapes();
 
         // Push space for the callee arguments and locals
         as.sub(X86Opnd(tspReg), X86Opnd(frameSize));
@@ -5116,7 +5056,7 @@ void gen_get_c_fptr(
         // Request an instance for the function entry block
         auto entryVer = getBlockVersion(
             fun.entryBlock,
-            new CodeGenState(fun)
+            new CodeGenCtx(fun)
         );
         */
 
@@ -5178,10 +5118,10 @@ void gen_get_c_fptr(
     }
 
     // Spill the values live before this instruction
-    st.spillLiveBefore(as, instr);
+    ctx.spillLiveBefore(as, instr);
 
     // Allocate the output operand
-    auto outOpnd = st.getOutOpnd(as, instr, 64);
+    auto outOpnd = ctx.getOutOpnd(as, instr, 64);
 
     as.saveJITRegs();
     as.ptr(cargRegs[0], instr);
@@ -5200,6 +5140,6 @@ void gen_get_c_fptr(
     as.add(wspReg, Word.sizeof);
     as.add(tspReg, Tag.sizeof);
     as.mov(outOpnd, scrRegs[0].opnd);
-    st.setOutTag(as, instr, Tag.RAWPTR);
+    ctx.setOutTag(as, instr, Tag.RAWPTR);
 }
 

@@ -1308,7 +1308,6 @@ Throw an exception, unwinding the stack until an exception handler
 is found. Returns a pointer to the exception handler code.
 */
 extern (C) CodePtr throwExc(
-    VM vm,
     IRInstr throwInstr,
     CodeFragment throwHandler,
     Word excWord,
@@ -1466,7 +1465,6 @@ extern (C) CodePtr throwExc(
 Throw a JavaScript error object as an exception
 */
 extern (C) CodePtr throwError(
-    VM vm,
     IRInstr throwInstr,
     CodeFragment throwHandler,
     string ctorName,
@@ -1513,7 +1511,6 @@ extern (C) CodePtr throwError(
             vm.setCurInstr(null);
 
             return throwExc(
-                vm,
                 throwInstr,
                 throwHandler,
                 excObj.word,
@@ -1526,7 +1523,6 @@ extern (C) CodePtr throwError(
 
     // Throw the error string directly
     return throwExc(
-        vm,
         throwInstr,
         throwHandler,
         errStr.word,
