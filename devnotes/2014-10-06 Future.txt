@@ -2,6 +2,13 @@ TODO: Blog post, "In Hindsight - How I'd do it Even Better"
 Slowly but surely nearing the end of my PhD. Many ideas I won't have time
 to explore.
 
+Reg alloc:
+- Each block could begin with live value mappings?
+- Maybe just a list of live values, ValState nodes
+- No liveness analysis, keep live until proven dead?
+- Can basically have some kill nodes in the IR
+  - or uses that signal they are the last use
+
 TypeSet:
 - Negative info should be propagated using bit sets. This would allow having a
   type test, is_object() for all objects at once, and still gain type information.
@@ -10,6 +17,8 @@ TypeSet:
   for many simple cases. Booleans come to mind. Constant shapes.
 - May want to be able to represent uninf types as upposed to unknown/any?
   - Useful for return type inf
+- 32-bit index into type table, compact and detailed types
+  - can still define basic types, use identity comparison
 
 May want something more sophisticated than a TypeSet bit set
 - Propagate constants, shapes, numerical ranges
@@ -34,6 +43,7 @@ Def-use chains:
 - Could insert spill and load instructions
   - Encourages us to use IR instructions with lower granularity
   - Spills become external to IR instructions
+=> Should probably have ValState nodes in the IR
 
 Liveness:
 - Can compute it with heuristics
@@ -52,6 +62,10 @@ Memory allocation of AST & IR nodes should be thought of from the beginning
 - Type tags, reg/slot alloc, metainf, should be encoded in the IR if possible
   - instr output can specify reg,slot,tag
   - no external data structures for liveness and metainfo
+- Dump it all into big buffer, with pointers
+  - or use a table, each entry big enough for any kind of IR node
+  - 16 or 32KB, whatever is appropriate for most functions
+- *Data-oriented*
 
 Should do transformations at the IR level
 - IR needs new constructs to integrate versioning

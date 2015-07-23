@@ -151,7 +151,12 @@ class LiveInfo
     {
         assert (afterInstr in liveSets);
 
-        return liveSets[afterInstr].elems;
+        auto liveSet = liveSets[afterInstr].elems;
+
+        // The return address is always live
+        liveSet ~= afterInstr.block.fun.raVal;
+
+        return liveSet;
     }
 
     /**
@@ -215,6 +220,10 @@ class LiveInfo
     */
     public bool liveBefore(IRDstValue val, IRInstr beforeInstr)
     {
+        // The return address is always live
+        if (val is val.block.fun.raVal)
+            return true;
+
         // Values with no uses are never live
         if (val.hasNoUses)
             return false;
@@ -237,16 +246,20 @@ class LiveInfo
     */
     public bool liveAfter(IRDstValue val, IRInstr afterInstr)
     {
+        // The return address is always live
+        if (val is val.block.fun.raVal)
+            return true;
+
+        // Values with no uses are never live
+        if (val.hasNoUses)
+            return false;
+
         auto liveSet = afterInstr in liveSets;
 
         assert (
             liveSet !is null,
             "no live set for instr: " ~ afterInstr.toString
         );
-
-        // Values with no uses are never live
-        if (val.hasNoUses)
-            return false;
 
         return (*liveSet).has(val);
     }

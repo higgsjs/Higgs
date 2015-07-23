@@ -84,7 +84,9 @@ TODO: if DLS paper rejected, rework it for CGO
 - Show to CF Bolz for paper advice
 - Try subtracting empty program code size, stdlib init
 
-TODO: try bezier curve program, mouse input
+TODO: bias getDefRegs for values flowing into arguments
+- Need some kind of getArgReg(callSite, idx) ?
+- verify if this has a performance impact
 
 ------------------------------------------------------------------------------
 
@@ -97,20 +99,23 @@ make release; time ./higgs --nostdlib benchmarks/micro/fib42.js
 
 TODO: handle hidden args in getDefReg
 
+------------------------------------------------------------------------------
+
 TODO: retest interp BBV speedup, are we better than 6.7% ?
 - code size, slight increase for entry and ret spec?
 
 TODO: implement calling convention for regular calls
 - fast calls only
-- check if argc is known, if so, specialize, if not, don't
+- check if argc is known, if so, avoid passing, if not, don't
   - known argc means specialized entry point
+  - caller only needs to worry as to whether each arg is in a reg or not
+    in the entry ctx we get
 
-ISSUE: argc
-- needs to be spilled, kept live
-  - make all rets use it
-  - but not for primitives?
-  - but when argc is known, it's not actually live?
-- implement basic constant prop for ints?
+TODO: start by implementing not passing argc in primitives
+
+TODO: check code size
+
+------------------------------------------------------------------------------
 
 If the perf of Higgs is good enough, may want to just go and write the paper
 - At least get some good progress done
@@ -123,6 +128,15 @@ TODO: implement argc prop
   - and perfect use case, primitives don't care about argc
   - but we still have to map it as live everywhere
 
+TODO: pass argc through reg, like RA
+
+TODO: make argc live everywhere
+- modify liveness analysis like for RA
+- passing as arg makes IR inefficient...
+
+Meeting 2015-07-28:
+- Mozilla trip, present work?
+
 ------------------------------------------------------------------------------
 
 test, commit
@@ -133,14 +147,57 @@ TODO: modify execMoves to only use one temp reg
 - imm to mem is really no problem
 - add some validMove function?
 
-Meeting 2015-07-21:
+test, commit
+
+TODO: write blog post now, improving calling convention in Higgs
+- gen asm code for fib calls from master branch
+
+TODO: check perf vs master on 200m-primcalls, 200m-calls
+./higgs --perf_stats benchmarks/micro/200m-primcalls.js
+
+TODO: special case in spill, do not tag RA
+
+test, commit
+
+TODO: test fib42
+
+TODO: implement passing of RA in raReg
+- start with primitives only
+- code size: 360173 => ???
+
+test, commit
+
+
+
+
+
+
+
+[DONE] TODO: make ret use getWordOpnd for RA, not directly stack slot
+
+[DONE] TODO: modify liveness to make RA live everywhere
+
+[DONE] TODO: add RA as argument to throw
+
+[DONE] FIXME: stdlib init fails with RA as ret arg
+
+[DONE] TODO: add RA as argument to ret
+
+[DONE] TODO: un-modify livevars
+
+[DONE] TODO: check code size on benchmark.py
+
+[DONE] TODO: make RA live everywhere
+
+[DONE] Meeting 2015-07-21:
 - worked on paper a little more
-- asked me to subtract runtime&stdlib init for code size
+- asked me to subtract runtime&stdlib init for code size, examined issue
+  - avoid making our metric more complex
+   - approximate dissociation of runtime, stdlib and program code
+   - what's compiled depends on features too
+   - runtime code is part of program too
   - if we do this for code size, must do it for comp time
     - but should we? comp time of stdlib matters too...
-  - perf of stdlib init actually matters
-  - runtime code is part of program too
-  - avoid making our metric more complex
 - Refactored to eliminate vmReg
 - implemented global obj threading
   - behaves as expected on fib
@@ -161,26 +218,20 @@ Meeting 2015-07-21:
   - Could prop argc as constant when known, pass ret addr in register
     - ra in register could improve branch prediction
   - regular calls over 3x slower than primitive calls
+- Next steps
+  - Passing RA in reg
+  - argc const prop, avoid passing argc at all in most cases
+    - make return more efficient, might speed up regular calls
+  - reg calling convention for regular calls
+- CGO paper due mid september
+  - Should not be an issue to write paper in one month
+  - Until mid august, will focus on working to improve perf
 
-test, commit
-
-TODO: bias getDefRegs for values flowing into arguments
-- Need some kind of getArgReg(callSite, idx) ?
-- verify if this has a performance impact
-
-test, commit
-
-TODO: make getDefReg map arg vals to proper regs
+[DONE] TODO: make getDefReg map arg vals to proper regs
 - does this matter? yes, if spilled and reloaded
 - check perf again
 - this might fix the code size issue?
 code size: 360245 => 360173
-
-
-
-
-
-
 
 [DONE] TODO: rename mapReg to mapToReg?
 - look at uses

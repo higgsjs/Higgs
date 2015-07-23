@@ -89,14 +89,17 @@ immutable X86Reg[] allocRegs = [RDI, RSI, RCX, RDX, R8, R9, R10, R11, R12, R15];
 /// Visible argument registers, subset of allocatable registers
 immutable X86Reg[] argRegs = allocRegs[$-4..$];
 
+/// Return address argument register
+X86Reg raReg = allocRegs[$-argRegs.length-1];
+
 /// Closure pointer argument register
-X86Reg closReg = allocRegs[$-argRegs.length-1];
+X86Reg closReg = allocRegs[$-argRegs.length-2];
 
 /// This pointer argument register
-X86Reg thisReg = allocRegs[$-argRegs.length-2];
+X86Reg thisReg = allocRegs[$-argRegs.length-3];
 
 /// Argument count register
-X86Reg argcReg = allocRegs[$-argRegs.length-3];
+X86Reg argcReg = allocRegs[$-argRegs.length-4];
 
 /// Return word register
 alias retWordReg = RCX;

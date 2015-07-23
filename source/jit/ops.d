@@ -2545,7 +2545,6 @@ void gen_ret(
 {
     auto fun = instr.block.fun;
 
-    auto raSlot    = fun.raVal.outSlot;
     auto argcSlot  = fun.argcVal.outSlot;
     auto numParams = fun.numParams;
     auto numLocals = fun.numLocals;
@@ -2596,6 +2595,9 @@ void gen_ret(
         true
     );
 
+    // Get the return address operand
+    auto raOpnd = ctx.getWordOpnd(fun.raVal, 64);
+
     //as.printStr("ret from " ~ fun.getName);
 
     // Move the return word and tag to the return registers
@@ -2607,8 +2609,12 @@ void gen_ret(
     // If this is a runtime primitive function
     if (fun.isPrim)
     {
-        // Get the return address into r1
-        as.getWord(scrRegs[1], raSlot);
+        // Get the return address into a register
+        if (!raOpnd.isReg)
+        {
+            as.mov(scrRegs[1].opnd, raOpnd);
+            raOpnd = scrRegs[1].opnd;
+        }
 
         // Pop all local stack slots
         as.add(tspReg.opnd(64), X86Opnd(Tag.sizeof * numLocals));
@@ -2630,8 +2636,12 @@ void gen_ret(
         // Compute the total number of stack slots to pop into r0
         as.add(scrRegs[0].opnd(32), X86Opnd(numLocals));
 
-        // Get the return address into r1
-        as.getWord(scrRegs[1], raSlot);
+        // Get the return address into a register
+        if (!raOpnd.isReg)
+        {
+            as.mov(scrRegs[1].opnd, raOpnd);
+            raOpnd = scrRegs[1].opnd;
+        }
 
         // Pop all local stack slots and arguments
         //as.printStr("popping");
@@ -2642,7 +2652,7 @@ void gen_ret(
     }
 
     // Jump to the return address
-    as.jmp(scrRegs[1].opnd);
+    as.jmp(raOpnd);
 
     // Mark the end of the fragment
     ver.markEnd(as);
