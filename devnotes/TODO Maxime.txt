@@ -104,6 +104,9 @@ TODO: handle hidden args in getDefReg
 TODO: retest interp BBV speedup, are we better than 6.7% ?
 - code size, slight increase for entry and ret spec?
 
+TODO: make raReg change for regular calls
+- issue, apply relies on old/simple calling convention
+
 TODO: implement calling convention for regular calls
 - fast calls only
 - check if argc is known, if so, avoid passing, if not, don't
@@ -128,14 +131,9 @@ TODO: implement argc prop
   - and perfect use case, primitives don't care about argc
   - but we still have to map it as live everywhere
 
-TODO: pass argc through reg, like RA
-
-TODO: make argc live everywhere
-- modify liveness analysis like for RA
-- passing as arg makes IR inefficient...
-
 Meeting 2015-07-28:
 - Mozilla trip, present work?
+- Got invited to apply to be a prof at TELUQ by Daniel Lemire
 
 ------------------------------------------------------------------------------
 
@@ -152,26 +150,44 @@ test, commit
 TODO: write blog post now, improving calling convention in Higgs
 - gen asm code for fib calls from master branch
 
-TODO: check perf vs master on 200m-primcalls, 200m-calls
-./higgs --perf_stats benchmarks/micro/200m-primcalls.js
+TODO: pass argc through reg, like RA
 
-TODO: special case in spill, do not tag RA
+TODO: make argc live everywhere
+- modify liveness analysis like for RA
+- passing as arg makes IR inefficient...
 
-test, commit
+TODO: mapToReg, flip ordering of first two args
 
-TODO: test fib42
 
-TODO: implement passing of RA in raReg
+
+
+
+
+[DONE] TODO: implement passing of RA in raReg
 - start with primitives only
-- code size: 360173 => ???
+- code size: 360173 => 359891
 
-test, commit
+[DONE] TODO: benchmark fib 40 prim
 
+    # V8
+    time ~/Dropbox/Linux/bin/d8 fib40call.js 
+    real	0m1.822s
 
+    # SpiderMonkey
+    time ~/Dropbox/Linux/bin/js-c40 fib40call.js 
+    real	0m1.503s
 
+    # Primitive calls, not fully optimized yet:
+    ./higgs --nostdlib --perf_stats fib40prim.js 
+    comp time (ms): 56
+    exec time (ms): 1259
 
+    # User calls, not at all optimized yet:
+    ./higgs --nostdlib --perf_stats fib40call.js 
+    comp time (ms): 56
+    exec time (ms): 2719
 
-
+    Donc je pense battre V8 et SpiderMonkey quand mon refactoring sera complet.
 
 [DONE] TODO: make ret use getWordOpnd for RA, not directly stack slot
 

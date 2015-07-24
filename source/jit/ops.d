@@ -1805,9 +1805,8 @@ void gen_call_prim(
             auto raSlot = entryVer.block.fun.raVal.outSlot;
             assert (raSlot !is NULL_STACK);
 
-            // Write the return address on the stack
-            as.movAbsRef(vm, scrRegs[0], block, target0, 0);
-            as.setWord(raSlot, scrRegs[0].opnd(64));
+            // Place the return address in the return address register
+            as.movAbsRef(vm, raReg, block, target0, 0);
 
             // Jump to the function entry block
             jmp32Ref(as, vm, block, entryVer, 0);

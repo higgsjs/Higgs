@@ -356,7 +356,16 @@ class CodeGenCtx
         // hidden args don't matter for prim
 
         // Map the other hidden arguments to the stack
-        mapToStack(fun.raVal);
+
+        if (fun.isPrim)
+        {
+            mapToReg(raReg, fun.raVal, 64);
+        }
+        else
+        {
+            mapToStack(fun.raVal);
+        }
+
         mapToStack(fun.closVal);
         mapToStack(fun.argcVal);
         setTag(fun.raVal, Tag.RETADDR);
