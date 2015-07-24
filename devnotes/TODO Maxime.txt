@@ -116,13 +116,21 @@ TODO: implement calling convention for regular calls
 
 TODO: start by implementing not passing argc in primitives
 
-TODO: check code size
+test, commit
+
+TODO: modify execMoves to only use one temp reg
+- should be feasible to break down moves?
+- we already break down mem to mem
+- imm to mem is really no problem
+- add some validMove function?
 
 ------------------------------------------------------------------------------
 
 If the perf of Higgs is good enough, may want to just go and write the paper
 - At least get some good progress done
 - Keep other improvements for later, so we can be sure to make the deadline
+
+TODO: check code size
 
 TODO: implement argc prop
 - should provide good speedup
@@ -134,35 +142,59 @@ TODO: implement argc prop
 Meeting 2015-07-28:
 - Mozilla trip, present work?
 - Got invited to apply to be a prof at TELUQ by Daniel Lemire
+- The code size increase may be biting us in the ass...
+  - but we get close to the C speed with stack args...
+- Passing of prim args through regs, no perf difference
+- Passing RA through reg, no perf difference
+- Changed current focus: getting normal calls as fast as prim calls...
+  - Wrong ordering of priorities!
+  - Why the 3x difference? Should understand this first
+- Writing arg tags in fast calls... Why?
 
 ------------------------------------------------------------------------------
 
-test, commit
-
-TODO: modify execMoves to only use one temp reg
-- should be feasible to break down moves?
-- we already break down mem to mem
-- imm to mem is really no problem
-- add some validMove function?
-
-test, commit
+Idea: GC opt, if you had the context object, would that not be sufficient?
+- Only need a version/branch pointer?
+- Need this at every level, all the way down
 
 TODO: write blog post now, improving calling convention in Higgs
 - gen asm code for fib calls from master branch
 
-TODO: pass argc through reg, like RA
+TODO: twitter, byte moves vs word moves?
 
-TODO: make argc live everywhere
+FIXME: 200m-calls.js, tagging integer args when types known, this is wrong...
+- byte spills may be extra costly...
+
+
+
+
+
+
+
+[PASS] TODO: create new branch from dev-maxime, newcallconv?
+- For now, prim calls are actually a little faster, keep as is
+- We're actually about 20% faster. Keep it!
+- Also faster on fib40prim
+
+[DONE] TODO: revert argc reg changes
+
+[DONE] TODO: add fib40.js, fib40.c to master
+
+[DONE] TODO: check perf on master, 200m-calls-local.js
+- about as slow as 200m-calls
+- tagging both integer args... Isn't that wrong?
+  - Do primitives do this? No
+
+[DONE] FIXME: conflict with ret word reg, argc reg, c arg regs
+
+[DONE] TODO: pass argc through reg, like RA, for primitives only
+- make gen_ret use argcOpnd
+
+[DONE] TODO: make argc live everywhere
 - modify liveness analysis like for RA
 - passing as arg makes IR inefficient...
 
-TODO: mapToReg, flip ordering of first two args
-
-
-
-
-
-
+[DONE] TODO: mapToReg, flip ordering of first two args
 
 [DONE] TODO: try 200m-calls in C
 ~1000ms

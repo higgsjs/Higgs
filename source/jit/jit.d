@@ -98,9 +98,6 @@ X86Reg closReg = allocRegs[$-argRegs.length-2];
 /// This pointer argument register
 X86Reg thisReg = allocRegs[$-argRegs.length-3];
 
-/// Argument count register
-X86Reg argcReg = allocRegs[$-argRegs.length-4];
-
 /// Return word register
 alias retWordReg = RCX;
 
