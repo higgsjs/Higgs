@@ -1731,13 +1731,23 @@ void gen_call_prim(
 
         auto argVal = instr.getArg(instrArgIdx);
 
-        //writeln(argVal);
+        auto paramVal = fun.paramVals[i];
+
+        // If the parameter has no uses
+        if (paramVal.hasNoUses)
+        {
+            writefln(
+                "Primitive function parameter is unused: %s in %s",
+                paramVal,
+                fun.getName
+            );
+        }
 
         // Get the value state for this parameter
-        auto argSt = entryVer.ctx.getState(fun.paramVals[i]);
+        auto paramSt = entryVer.ctx.getState(paramVal);
 
         // Get the destination operand
-        auto dstOpnd = argSt.isReg? argRegs[i].opnd:wordStackOpnd(dstIdx);
+        auto dstOpnd = paramSt.isReg? argRegs[i].opnd:wordStackOpnd(dstIdx);
 
         // If the argument is a string constant
         if (auto argStr = cast(IRString)argVal)
@@ -1752,19 +1762,19 @@ void gen_call_prim(
                 argMoves.assumeSafeAppend ~= Move(dstOpnd, argOpnd);
         }
 
-        // If the entry context doesn't know the type tag
-        if (!argSt.tagKnown)
-        {
-            // Copy the argument type
-            auto tagOpnd = ctx.getTagOpnd(
-                as,
-                instr,
-                instrArgIdx,
-                scrRegs[1].opnd(8),
-                true
-            );
-            as.setTag(dstIdx, tagOpnd);
-        }
+        // If the entry context knows the type tag
+        if (paramSt.tagKnown)
+            continue;
+
+        // Copy the argument type
+        auto tagOpnd = ctx.getTagOpnd(
+            as,
+            instr,
+            instrArgIdx,
+            scrRegs[1].opnd(8),
+            true
+        );
+        as.setTag(dstIdx, tagOpnd);
     }
 
     // TODO: argc propagation
@@ -1900,6 +1910,15 @@ void gen_call(
             auto instrArgIdx = 2 + i;
             auto dstIdx = -(numPassed - i);
 
+            auto paramVal = (i < fun.numParams)? fun.paramVals[i]:null;
+
+            // Get the value state for this parameter
+            auto paramSt = paramVal? entryVer.ctx.getState(paramVal):ValState();
+
+            // If the parameter is unused, skip it
+            if (paramVal && paramVal.hasNoUses && !fun.usesVarArg)
+                continue;
+
             // Copy the argument word
             auto argOpnd = ctx.getWordOpnd(
                 as,
@@ -1913,21 +1932,18 @@ void gen_call(
             as.setWord(dstIdx, argOpnd);
 
             // If the entry context doesn't know the type tag
-            if (fun.usesVarArg ||
-                i >= fun.numParams ||
-                fun.paramVals[i].hasNoUses ||
-                !entryVer.ctx.getType(fun.paramVals[i]).tagKnown)
-            {
-                // Copy the argument type
-                auto tagOpnd = ctx.getTagOpnd(
-                    as,
-                    instr,
-                    instrArgIdx,
-                    scrRegs[1].opnd(8),
-                    true
-                );
-                as.setTag(dstIdx, tagOpnd);
-            }
+            if (paramVal && paramSt.tagKnown && !fun.usesVarArg)
+                continue;
+
+            // Copy the argument type
+            auto tagOpnd = ctx.getTagOpnd(
+                as,
+                instr,
+                instrArgIdx,
+                scrRegs[1].opnd(8),
+                true
+            );
+            as.setTag(dstIdx, tagOpnd);
         }
 
         // Write undefined values for the missing arguments

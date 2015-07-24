@@ -70,6 +70,10 @@ TODO: set_prop slow path does save/load JIT regs, is inefficient
 - should profile the frequency of these too-far-along property additions
 - should check who has the most set prop hosts, how many? is this worthwhile?
 
+Idea: GC opt, if you had the context object, would that not be sufficient?
+- Only need a version/branch pointer?
+- Need this at every level, all the way down
+
 TODO: don't write ret tag register to type stack (in caller) if tag known
 - if tag known, set known tag, let the branch spill it if necessary
 - if tag unknown, write tag as before in cont branch
@@ -131,6 +135,7 @@ If the perf of Higgs is good enough, may want to just go and write the paper
 - Keep other improvements for later, so we can be sure to make the deadline
 
 TODO: check code size
+- previously bigger than master
 
 TODO: implement argc prop
 - should provide good speedup
@@ -139,13 +144,15 @@ TODO: implement argc prop
   - and perfect use case, primitives don't care about argc
   - but we still have to map it as live everywhere
 
+
+
 Meeting 2015-07-28:
 - Mozilla trip, present work?
 - Got invited to apply to be a prof at TELUQ by Daniel Lemire
 - The code size increase may be biting us in the ass...
   - but we get close to the C speed with stack args...
-- Passing of prim args through regs, no perf difference
-- Passing RA through reg, no perf difference
+- Passing of prim args, RA through regs
+  - Fairly small difference, prim calls about 20% faster
 - Changed current focus: getting normal calls as fast as prim calls...
   - Wrong ordering of priorities!
   - Why the 3x difference? Should understand this first
@@ -153,23 +160,28 @@ Meeting 2015-07-28:
 
 ------------------------------------------------------------------------------
 
-Idea: GC opt, if you had the context object, would that not be sufficient?
-- Only need a version/branch pointer?
-- Need this at every level, all the way down
-
-TODO: write blog post now, improving calling convention in Higgs
+TODO: write blog post, improving calling convention in Higgs
 - gen asm code for fib calls from master branch
 
 TODO: twitter, byte moves vs word moves?
 
-FIXME: 200m-calls.js, tagging integer args when types known, this is wrong...
+pull master
+
+TODO: add 200m-calls.c, on master branch
+asm("") // Don't inline me, bro!
+
+test, commit
+
+
+
+
+
+
+[DONE] TODO: avoid passing unused params
+
+[DONE] FIXME: 200m-calls.js, tagging integer args when types known, this is wrong...
 - byte spills may be extra costly...
-
-
-
-
-
-
+- param has no uses
 
 [PASS] TODO: create new branch from dev-maxime, newcallconv?
 - For now, prim calls are actually a little faster, keep as is
