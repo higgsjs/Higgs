@@ -163,6 +163,11 @@ TODO: mapToReg, flip ordering of first two args
 
 
 
+
+[DONE] TODO: try 200m-calls in C
+~1000ms
+- C does not gain speed by using call and ret instructions
+
 [DONE] TODO: implement passing of RA in raReg
 - start with primitives only
 - code size: 360173 => 359891
