@@ -3,6 +3,8 @@ function fun(x, y)
     for (var i = 0; i < 0; ++i)
     {
     }
+
+    return x + y;
 }
 
 function test()
