@@ -112,6 +112,9 @@ Type and allocation state of a live value
 */
 struct ValState
 {
+    // ValState is at most 3 words long
+    static assert (ValState.sizeof <= 24);
+
     /// Value kind
     enum Kind
     {
@@ -120,24 +123,25 @@ struct ValState
         CONST
     }
 
-    /// Bit field for compact encoding
+    /// Value type, may be unknown
+    ValType type;
+
+    /// Bit field for compact encoding, 32 bits long
     mixin(bitfields!(
 
         /// Value kind
         Kind, "kind", 2,
 
-        /// Type written to stack flag
+        /// Type written to type stack
         bool, "tagWritten", 1,
 
-        /// Local index, or register number, or constant value
+        // TODO: rename to idx
+        /// Local index, or register number
         int, "val", 24,
 
         /// Padding bits
         uint, "", 5
     ));
-
-    /// Value type, may be unknown
-    ValType type;
 
     /// Stack value constructor
     static ValState stack()

@@ -141,8 +141,12 @@ Value type representation
 */
 struct ValType
 {
+    // ValType is at most 2 words long
+    static assert (ValType.sizeof <= 16);
+
     static const ValType ANY = ValType();
 
+    // TODO: replace by Word value;
     union
     {
         /// Shape (null if unknown)
@@ -152,7 +156,7 @@ struct ValType
         IRFunction fptr;
     }
 
-    /// Bit field for compact encoding
+    /// Bit field for compact encoding, 32 bits long
     mixin(bitfields!(
 
         /// Type tag bits, if known
@@ -168,7 +172,10 @@ struct ValType
         bool, "fptrKnown", 1,
 
         /// Submaximal flag (overflow check elimination)
-        bool, "subMax", 1
+        bool, "subMax", 1,
+
+        /// Padding bits
+        uint, "", 24
     ));
 
     /// Constructor taking a value pair

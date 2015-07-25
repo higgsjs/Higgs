@@ -137,15 +137,6 @@ If the perf of Higgs is good enough, may want to just go and write the paper
 TODO: check code size
 - previously bigger than master
 
-TODO: implement argc prop
-- should provide good speedup
-- useful for new calling convention
-- needed for primitives also!
-  - and perfect use case, primitives don't care about argc
-  - but we still have to map it as live everywhere
-
-
-
 Meeting 2015-07-28:
 - Mozilla trip, present work?
 - Got invited to apply to be a prof at TELUQ by Daniel Lemire
@@ -158,24 +149,43 @@ Meeting 2015-07-28:
   - Why the 3x difference? Should understand this first
 - Writing arg tags in fast calls... Why?
 
+TODO: align function entry points to 16 bytes? benchmark
+- Fib again?
+
 ------------------------------------------------------------------------------
 
-TODO: write blog post, improving calling convention in Higgs
+TODO: write blog post , improving calling convention in Higgs
 - gen asm code for fib calls from master branch
 
-TODO: twitter, byte moves vs word moves?
+TODO: implement argc prop
+- should provide good speedup
+- useful for new calling convention
+- needed for primitives also!
+  - and perfect use case, primitives don't care about argc
+  - but we still have to map it as live everywhere
 
-pull master
+TODO: propType strips const values
 
-TODO: add 200m-calls.c, on master branch
+TODO: extend ValType to handle consts
+- For now, only int32Cst value
+- Should ideally store a whole Word object in there ***
+  - Start by refactoring for that
+
+TODO: replace ValType union by Word value
+
+TODO: rename ValState.val to ValState.idx
+
+
+
+
+
+
+
+
+[DONE] TODO: twitter, byte moves vs word moves?
+
+[DONE] TODO: add 200m-calls.c, on master branch
 asm("") // Don't inline me, bro!
-
-test, commit
-
-
-
-
-
 
 [DONE] TODO: avoid passing unused params
 

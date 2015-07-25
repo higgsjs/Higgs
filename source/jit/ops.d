@@ -1733,16 +1733,6 @@ void gen_call_prim(
 
         auto paramVal = fun.paramVals[i];
 
-        // If the parameter has no uses
-        if (paramVal.hasNoUses)
-        {
-            writefln(
-                "Primitive function parameter is unused: %s in %s",
-                paramVal,
-                fun.getName
-            );
-        }
-
         // Get the value state for this parameter
         auto paramSt = entryVer.ctx.getState(paramVal);
 
