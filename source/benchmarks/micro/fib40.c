@@ -1,6 +1,6 @@
 int fib(int n)
 {
-    asm("");
+    asm(""); // Don't inline me, bro!
 
     if (n < 2)
         return n;
