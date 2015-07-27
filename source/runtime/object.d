@@ -146,7 +146,6 @@ struct ValType
 
     static const ValType ANY = ValType();
 
-    // TODO: replace by Word value;
     union
     {
         /// Shape (null if unknown)
@@ -154,6 +153,9 @@ struct ValType
 
         /// IR function pointer
         IRFunction fptr;
+
+        /// Constant value word, if known
+        Word word;
     }
 
     /// Bit field for compact encoding, 32 bits long
@@ -162,20 +164,23 @@ struct ValType
         /// Type tag bits, if known
         Tag, "tag", 4,
 
-        /// Known tag flag
+        /// Type tag known flag
         bool, "tagKnown", 1,
 
-        /// Known shape flag
+        /// Shape known flag
         bool, "shapeKnown", 1,
 
-        /// Function pointer known (closures only)
+        /// Function pointer known flag (closures and fptrs only)
         bool, "fptrKnown", 1,
+
+        /// Constant value known flag
+        bool, "valKnown", 1,
 
         /// Submaximal flag (overflow check elimination)
         bool, "subMax", 1,
 
         /// Padding bits
-        uint, "", 24
+        uint, "", 23
     ));
 
     /// Constructor taking a value pair
@@ -200,6 +205,11 @@ struct ValType
             this.fptr = val.word.funVal;
             this.fptrKnown = true;
         }
+        else if (this.tag is Tag.INT32)
+        {
+            this.word = val.word;
+            this.valKnown = true;
+        }
 
         assert (!this.shapeKnown || !this.fptrKnown);
     }
@@ -214,8 +224,11 @@ struct ValType
 
         this.tag = tag;
         this.tagKnown = true;
+
         this.shape = null;
         this.shapeKnown = false;
+
+        this.valKnown = false;
     }
 
     /// Constructor taking a type tag and shape
@@ -228,23 +241,41 @@ struct ValType
 
         this.tag = tag;
         this.tagKnown = true;
+
         this.shape = shape;
         this.shapeKnown = true;
+
+        this.valKnown = false;
     }
 
     string toString() const
     {
         if (this.tagKnown)
+        {
             if (isObject(this.tag))
+            {
                 return format(
                     "%s (%s)",
                     this.tag,
                     this.shapeKnown? to!string(cast(void*)this.shape):"---"
                 );
-            else
-                return to!string(this.tag);
+            }
+
+            if (this.tag is Tag.INT32)
+            {
+                return format(
+                    "%s (%s)",
+                    this.tag,
+                    this.valKnown? to!string(this.word.int32Val):"---"
+                );
+            }
+
+            return to!string(this.tag);
+        }
         else
+        {
             return "---";
+        }
     }
 
     /**
@@ -252,8 +283,8 @@ struct ValType
     */
     ValType join(ValType that)
     {
-        assert (!this.shapeKnown || !this.fptrKnown);
-        assert (!that.shapeKnown || !that.fptrKnown);
+        assert (!this.shapeKnown || !this.fptrKnown || !this.valKnown);
+        assert (!that.shapeKnown || !that.fptrKnown || !that.valKnown);
         assert (!this.fptrKnown || this.fptr);
         assert (!that.fptrKnown || that.fptr);
 
@@ -289,6 +320,13 @@ struct ValType
         else
         {
             join.fptrKnown = false;
+        }
+
+        // Known constant, exact value known
+        if (this.valKnown && that.valKnown && this.word == that.word)
+        {
+            join.word = this.word;
+            join.valKnown = true;
         }
 
         return join;
@@ -327,6 +365,13 @@ struct ValType
             that.shapeKnown = false;
         }
 
+        // Remove constant information
+        if (that.valKnown)
+        {
+            that.word.int64Val = 0;
+            that.valKnown = false;
+        }
+
         // If function identity specialization of shapes is disabled
         if (opts.shape_nofptrspec)
         {
@@ -350,7 +395,7 @@ struct ValType
             }
         }
 
-        assert (!that.shapeKnown || !that.fptrKnown);
+        assert (!that.shapeKnown || !that.fptrKnown || !that.valKnown);
         assert (!that.fptrKnown || that.fptr);
 
         return that;

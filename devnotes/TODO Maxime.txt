@@ -157,6 +157,9 @@ TODO: align function entry points to 16 bytes? benchmark
 TODO: write blog post , improving calling convention in Higgs
 - gen asm code for fib calls from master branch
 
+TODO: avoid tagging raVal, argcVal when spilling
+- consts should probably not be spilled at all
+
 TODO: implement argc prop
 - should provide good speedup
 - useful for new calling convention
@@ -164,23 +167,46 @@ TODO: implement argc prop
   - and perfect use case, primitives don't care about argc
   - but we still have to map it as live everywhere
 
-TODO: propType strips const values
+We don't have to propagate consts through phi nodes... But this can
+possibly be handled automatically.
 
-TODO: extend ValType to handle consts
+TODO: make version diff function take constants into account
+- look at number of versions
+
+
+
+
+Problem with const prop: can re-spill
+
+Blog about calling conventions
+
+
+
+TODO: submit CGO abstract
+
+TODO: look where ValType ctor is used
+- Don't want to create int consts where there were none
+- May want separate ctor for int consts
+
+
+TODO: try specializing with a boolean
+- Still write the arg count value on the stack
+- Study perf impact***
+
+before:
+code size (bytes): 359887
+comp time (ms): 778
+exec time (ms): 22
+
+
+
+
+
+
+[DONE] TODO: extend ValType to handle consts
 - For now, only int32Cst value
-- Should ideally store a whole Word object in there ***
-  - Start by refactoring for that
 
-TODO: replace ValType union by Word value
-
-TODO: rename ValState.val to ValState.idx
-
-
-
-
-
-
-
+[DONE] TODO: rename ValState.val to ValState.idx
 
 [DONE] TODO: twitter, byte moves vs word moves?
 

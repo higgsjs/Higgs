@@ -135,9 +135,8 @@ struct ValState
         /// Type written to type stack
         bool, "tagWritten", 1,
 
-        // TODO: rename to idx
         /// Local index, or register number
-        int, "val", 24,
+        int, "idx", 24,
 
         /// Padding bits
         uint, "", 5
@@ -149,7 +148,7 @@ struct ValState
         ValState val;
         val.kind = Kind.STACK;
         val.tagWritten = false;
-        val.val = 0xFFFF;
+        val.idx = 0xFFFF;
         return val;
     }
 
@@ -159,13 +158,14 @@ struct ValState
         ValState val;
         val.kind = Kind.REG;
         val.tagWritten = false;
-        val.val = reg.regNo;
+        val.idx = reg.regNo;
         return val;
     }
 
     bool isStack() const { return kind is Kind.STACK; }
     bool isReg() const { return kind is Kind.REG; }
     bool isConst() const { return kind is Kind.CONST; }
+    uint regNo() const { assert (kind is Kind.REG); return idx; }
 
     bool tagKnown() const { return type.tagKnown; }
     Tag tag() const { assert (tagKnown); return type.tag; }
@@ -187,7 +187,7 @@ struct ValState
             return wordStackOpnd(stackIdx, numBits);
 
             case Kind.REG:
-            return X86Reg(X86Reg.GP, val, numBits).opnd;
+            return X86Reg(X86Reg.GP, idx, numBits).opnd;
 
             // TODO: const kind
             default:
@@ -286,7 +286,7 @@ struct ValState
     {
         ValState val = cast(ValState)this;
         val.kind = Kind.STACK;
-        val.val = 0xFFFF;
+        val.idx = 0xFFFF;
         return val;
     }
 
@@ -295,7 +295,7 @@ struct ValState
     {
         ValState val = cast(ValState)this;
         val.kind = Kind.REG;
-        val.val = reg.regNo;
+        val.idx = reg.regNo;
         return val;
     }
 
@@ -444,7 +444,7 @@ class CodeGenCtx
             auto predPhiState = getState(phi);
             if (predPhiState.isReg)
             {
-                auto regNo = predPhiState.val;
+                auto regNo = predPhiState.regNo;
                 gpRegMap[regNo] = null;
             }
 
