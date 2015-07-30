@@ -923,6 +923,13 @@ class CodeGenCtx
         // If the type is known and not written on the stack, spill it
         if (state.tagKnown && !state.tagWritten)
         {
+            // Should not be spilling the type tag for
+            // the return address or the argument count
+            assert (
+                regVal !is fun.raVal &&
+                regVal !is fun.argcVal
+            );
+
             // Write the type tag to the type stack
             //if (opts.genasm)
             //    as.comment("Spilling type for " ~ regVal.getName);

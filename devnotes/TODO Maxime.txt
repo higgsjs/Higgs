@@ -94,8 +94,6 @@ TODO: bias getDefRegs for values flowing into arguments
 
 ------------------------------------------------------------------------------
 
-TODO: blog about perf improvement, importance of calling convention
-
 TODO: look at machine code for fib42
 
 TODO: test fib42 perf vs master branch
@@ -114,8 +112,6 @@ TODO: implement calling convention for regular calls
   - known argc means specialized entry point
   - caller only needs to worry as to whether each arg is in a reg or not
     in the entry ctx we get
-
-TODO: start by implementing not passing argc in primitives
 
 ------------------------------------------------------------------------------
 
@@ -163,6 +159,9 @@ TODO: perf comparison against TraceMonkey
 TODO: update tech reports on blog
 
 TODO: CF Bolz recommends thinking about inlining
+Inlining: do it incrementally, but still at the IR level?
+- transform the IR so it's easier?
+- in the end, still want a recursive CodeGenCtx
 
 For interprocedural paper:
 - fib toy example?
@@ -195,33 +194,31 @@ TODO: Blog about calling conventions => KISS, short and sweet
 
 ------------------------------------------------------------------------------
 
+Try perfect analysis *on different branch*
+- KISS
+
 TODO: make raReg change for regular calls
 - issue, apply relies on old/simple calling convention
   - check if argcMatch
 
-Try perfect analysis on different branch
-
-Inlining: do it incrementally, but still at the IR level?
-
 TODO: try bbv with 1K per fn heuristic? bytes per block?
 - add counter, log stats... gonna be interesting
 
-TODO: avoid tagging raVal, argcVal when spilling. Should be easy!
-before:
+TODO: per-fn counter for bytes compiled
+- update in compile() after versions and branch edges compiled
+
+
+
+
+
+
+[DONE] TODO: check code size
 ./benchmark.py --vm_cmd="./higgs --perf_stats"
     code size (bytes): 278804
     comp time (ms): 768
     exec time (ms): 21
 
-
-
-
-
-
-
-
-
-
+[DONE] TODO: avoid tagging raVal, argcVal when spilling.
 
 [DONE] TODO: watch Ben Titzer's talk:
 https://www.youtube.com/watch?v=z92Xm9VlPjM
