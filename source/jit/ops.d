@@ -1711,7 +1711,8 @@ void gen_call_prim(
     auto entrySt = new CodeGenCtx(
         fun,
         ValType(),
-        argTypes
+        argTypes,
+        true
     );
 
     // Request an instance for the function entry block
@@ -1888,7 +1889,8 @@ void gen_call(
         auto entrySt = new CodeGenCtx(
             fun,
             ctx.getType(instr.getArg(1)),
-            argTypes
+            argTypes,
+            (numArgs == fun.numParams)
         );
 
         // Request an instance for the function entry block
@@ -2611,8 +2613,14 @@ void gen_ret(
     if (retTagReg.opnd(8) != tagOpnd)
         as.mov(retTagReg.opnd(8), tagOpnd);
 
+
+
+    //writeln("argcMatch=", ctx.argcMatch);
+
+
+
     // If this is a runtime primitive function
-    if (fun.isPrim)
+    if (fun.isPrim || ctx.argcMatch)
     {
         // Get the return address into a register
         if (!raOpnd.isReg)

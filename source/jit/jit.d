@@ -324,13 +324,17 @@ class CodeGenCtx
     /// If a register is free, its value is null
     private IRDstValue[NUM_REGS] gpRegMap;
 
+    /// Argument count matches formal parameter count
+    bool argcMatch;
+
     /**
     Constructor for a function entry code generation context
     */
     this(
         IRFunction fun,
         ValType thisType = ValType(),
-        ValType[] argTypes = null
+        ValType[] argTypes = null,
+        bool argcMatch = false
     )
     {
         this.fun = fun;
@@ -341,10 +345,18 @@ class CodeGenCtx
             // Remove type information
             thisType = ValType();
             argTypes = null;
+            argcMatch = false;
         }
 
+        // Store the argument count match flag
+        this.argcMatch = argcMatch;
 
+        /*
+        writeln(argcMatch);
 
+        if (!argcMatch)
+            writeln("  ", fun.getName);
+        */
 
         // Tag of "this" value is written only if it's unknown
         mapToStack(fun.thisVal, !thisType.tagKnown);
@@ -409,6 +421,7 @@ class CodeGenCtx
         this.fun = that.fun;
         this.valMap = that.valMap.dup;
         this.gpRegMap = that.gpRegMap;
+        this.argcMatch = that.argcMatch;
     }
 
     /**
@@ -547,6 +560,20 @@ class CodeGenCtx
                     value in succ.valMap,
                     "value not in succ valMap: " ~ value.toString
                 );
+            }
+        }
+
+        // If the argument count match flags are not equal
+        if (pred.argcMatch != succ.argcMatch)
+        {
+            // We can go from match to mismatch but not the reverse
+            if (pred.argcMatch is true && succ.argcMatch is false)
+            {
+                diff += 1;
+            }
+            else
+            {
+                return size_t.max;
             }
         }
 
@@ -2109,6 +2136,9 @@ BlockVersion getBlockVersion(
                 genCtx.valMap[val] = valSt.clearType();
             }
         }
+
+        // Clear the argument count match flag
+        genCtx.argcMatch = false;
 
         // Ensure that the general version matches
         assert(ctx.diff(genCtx) !is size_t.max);

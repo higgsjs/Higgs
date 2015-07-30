@@ -108,9 +108,6 @@ TODO: handle hidden args in getDefReg
 TODO: retest interp BBV speedup, are we better than 6.7% ?
 - code size, slight increase for entry and ret spec?
 
-TODO: make raReg change for regular calls
-- issue, apply relies on old/simple calling convention
-
 TODO: implement calling convention for regular calls
 - fast calls only
 - check if argc is known, if so, avoid passing, if not, don't
@@ -120,7 +117,66 @@ TODO: implement calling convention for regular calls
 
 TODO: start by implementing not passing argc in primitives
 
-test, commit
+------------------------------------------------------------------------------
+
+TODO: read reviews more attentively
+- Marc says:
+  - Quand quelqu'un ecrit beaucoup, c'est un bon signe
+    Il prend de son temps pour te donner son opinion
+  - Resume des critiques? La semaine prochaine
+  - Possible qu'on etait proche de l'acceptation
+  - Petits deltas
+
+TODO: submit CGO abstracts
+
+TODO: cite Psyco in new paper, typed shapes?
+- copy into cited
+- add bib entry
+
+Meeting 2015-08-04:
+- Typed shapes, replication?
+
+    What I always find helpful when thinking about such comparisons is to
+    think about them in terms of a hypothesis (or several) and an experiment
+    for the hypothesis. What is the precise yes-or-no question this
+    experiment is trying to answer? What outcomes would lead you to answer
+    the question with yes? and what with no? This is probably not the final
+    one, but maybe something along the lines of:
+
+    "Interprocedural BBV is better at eliminating type tests than a
+    hypothetical perfect type analysis that gives the correct type for every
+    monomorphic type test."
+
+    Also, it helps me to try to take the opposite position: What if I was
+    trying to prove that the perfect analysis was really better. Would I
+    design the experiment differently?
+
+TODO: JS shell for Higgs? Bitmap font
+- Fun
+- Mouse input...
+- Canvases
+- Make it a library? Not at first
+
+TODO: perf comparison against V8 baseline, noinline, full V8
+TODO: perf comparison against TraceMonkey
+
+TODO: update tech reports on blog
+
+TODO: CF Bolz recommends thinking about inlining
+
+For interprocedural paper:
+- fib toy example?
+  - Make it compact
+- BBV is only concerned with the parts of the CFG that get executed, and it
+  knows exactly which they are ***
+- Appendix: addressing criticism
+  - Or just submit an extra document if you can
+
+------------------------------------------------------------------------------
+
+Marc says: keep going with what you were doing, call conv improvements
+- Coding may help you
+- Already on a roll
 
 TODO: modify execMoves to only use one temp reg
 - should be feasible to break down moves?
@@ -128,80 +184,65 @@ TODO: modify execMoves to only use one temp reg
 - imm to mem is really no problem
 - add some validMove function?
 
+TODO: Blog about calling conventions => KISS, short and sweet
+- Not as straightforward as expected
+- Works well for small functions, no difference in the general case
+- Advantage to stack arg passing: no need to spill arg values
+- Spill, re-load, re-spill
+- Useful for leaf functions
+  - There's gotta be more of those?
+  - But, not obvious, re-spill on every call?
+
 ------------------------------------------------------------------------------
 
-If the perf of Higgs is good enough, may want to just go and write the paper
-- At least get some good progress done
-- Keep other improvements for later, so we can be sure to make the deadline
+TODO: make raReg change for regular calls
+- issue, apply relies on old/simple calling convention
+  - check if argcMatch
 
-TODO: check code size
-- previously bigger than master
+Try perfect analysis on different branch
 
-Meeting 2015-07-28:
+Inlining: do it incrementally, but still at the IR level?
+
+TODO: try bbv with 1K per fn heuristic? bytes per block?
+- add counter, log stats... gonna be interesting
+
+TODO: avoid tagging raVal, argcVal when spilling. Should be easy!
+before:
+./benchmark.py --vm_cmd="./higgs --perf_stats"
+    code size (bytes): 278804
+    comp time (ms): 768
+    exec time (ms): 21
+
+
+
+
+
+
+
+
+
+
+
+[DONE] TODO: watch Ben Titzer's talk:
+https://www.youtube.com/watch?v=z92Xm9VlPjM
+
+[DONE] Meeting 2015-07-28:
 - Mozilla trip, present work?
 - Got invited to apply to be a prof at TELUQ by Daniel Lemire
-- The code size increase may be biting us in the ass...
-  - but we get close to the C speed with stack args...
+- Contacted by Apple GPU team, JIT compiler
 - Passing of prim args, RA through regs
   - Fairly small difference, prim calls about 20% faster
+- The code size increase may be biting us in the ass...?
+  - noticeable speedup on microbenchmarks, nothing on large benchmarks
+  - but we get close to the C speed with stack args...
 - Changed current focus: getting normal calls as fast as prim calls...
   - Wrong ordering of priorities!
   - Why the 3x difference? Should understand this first
-- Writing arg tags in fast calls... Why?
-
-TODO: align function entry points to 16 bytes? benchmark
-- Fib again?
-
-------------------------------------------------------------------------------
-
-TODO: write blog post , improving calling convention in Higgs
-- gen asm code for fib calls from master branch
-
-TODO: avoid tagging raVal, argcVal when spilling
-- consts should probably not be spilled at all
-
-TODO: implement argc prop
-- should provide good speedup
-- useful for new calling convention
-- needed for primitives also!
-  - and perfect use case, primitives don't care about argc
-  - but we still have to map it as live everywhere
-
-We don't have to propagate consts through phi nodes... But this can
-possibly be handled automatically.
-
-TODO: make version diff function take constants into account
-- look at number of versions
-
-
-
-
-Problem with const prop: can re-spill
-
-Blog about calling conventions
-
-
-
-TODO: submit CGO abstract
-
-TODO: look where ValType ctor is used
-- Don't want to create int consts where there were none
-- May want separate ctor for int consts
-
-
-TODO: try specializing with a boolean
-- Still write the arg count value on the stack
-- Study perf impact***
-
-before:
-code size (bytes): 359887
-comp time (ms): 778
-exec time (ms): 22
-
-
-
-
-
+- Argc match spec:
+  28-40% speedup on recursive, fib
+  9.1% speedup on average
+  fib42? args still on stack, 33% slower than SM, 2.2x GCC-O1
+- Interprocedural time, code size and compile time not so great?
 
 [DONE] TODO: extend ValType to handle consts
 - For now, only int32Cst value
@@ -255,7 +296,7 @@ asm("") // Don't inline me, bro!
 [DONE] TODO: benchmark fib 40 prim
 
     # V8
-    time ~/Dropbox/Linux/bin/d8 fib40call.js 
+    time ~/Dropbox/Linux/bin/d8 fib40call.js
     real	0m1.822s
 
     # SpiderMonkey
@@ -268,7 +309,7 @@ asm("") // Don't inline me, bro!
     exec time (ms): 1259
 
     # User calls, not at all optimized yet:
-    ./higgs --nostdlib --perf_stats fib40call.js 
+    ./higgs --nostdlib --perf_stats fib40call.js
     comp time (ms): 56
     exec time (ms): 2719
 
