@@ -55,7 +55,7 @@ import ir.ir;
 import ir.ops;
 import ir.ast;
 import ir.livevars;
-import ir.typeprop;
+import ir.analysis;
 import runtime.vm;
 import runtime.layout;
 import runtime.object;
@@ -311,25 +311,15 @@ void RMMOp(string op, size_t numBits, Tag tag)(
     // If this is an add operation
     static if (op == "add")
     {
-        // If we are adding something to 1
+        // If we are adding something to 1 and there can be no overflow
         auto arg1Cst = cast(IRConst)instr.getArg(1);
-        if (arg1Cst && arg1Cst.isInt32 && arg1Cst.int32Val == 1)
+        if (arg1Cst && arg1Cst.isInt32 && 
+            arg1Cst.int32Val == 1 &&
+            arg0Type.subMax)
         {
-            // If the type analysis shows that there can be no overflow
-            if (opts.typeprop && ctx.fun.typeInfo.argNotIntMax(instr, 0))
-            {
-                // Jump directly to the successor block
-                //writeln("TI ovf elim: ", instr.block.fun.getName);
-                return gen_jump(ver, ctx, instr, as);
-            }
-
-            // If there can be no overflow
-            if (arg0Type.subMax)
-            {
-                // Jump directly to the successor block
-                //writeln("BBV ovf elim: ", instr.block.fun.getName);
-                return gen_jump(ver, ctx, instr, as);
-            }
+            // Jump directly to the successor block
+            //writeln("BBV ovf elim: ", instr.block.fun.getName);
+            return gen_jump(ver, ctx, instr, as);
         }
     }
 
@@ -833,6 +823,9 @@ void TagTestOp(Tag tag)(
     //as.printStr(instr.toString);
     //as.printStr("    " ~ instr.block.fun.getName);
 
+    if (opts.save_tag_tests)
+        regTagTest(ver);
+
     // Get an operand for the value's type
     auto tagOpnd = ctx.getTagOpnd(as, instr, 0, X86Opnd.NONE, true);
 
@@ -849,30 +842,18 @@ void TagTestOp(Tag tag)(
     }
 
     // If the type analysis was run
-    if (opts.typeprop)
+    if (opts.load_tag_tests)
     {
+        // TODO
         // Get the type analysis result for this value at this instruction
-        auto propResult = ctx.fun.typeInfo.argIsType(instr, 0, tag);
+        //auto propResult = ctx.fun.typeInfo.argIsType(instr, 0, tag);
+        auto propResult = testResult;
 
         //writeln("result: ", propResult);
 
         // If the analysis yields a known result
         if (propResult != TestResult.UNKNOWN)
         {
-            // Warn if the analysis knows more than BBV
-            if (testResult == TestResult.UNKNOWN && opts.maxvers > 0)
-            {
-                writeln(
-                    "analysis yields more info than BBV for:\n",
-                    instr, "\n",
-                    "prop result:\n",
-                    propResult, "\n",
-                    "in:\n",
-                    instr.block.fun,
-                    "\n"
-                );
-            }
-
             // If there is a contradiction between versioning and the analysis
             if (testResult != TestResult.UNKNOWN && propResult != testResult)
             {

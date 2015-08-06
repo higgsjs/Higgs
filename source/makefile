@@ -45,7 +45,7 @@ ir/peephole.d       \
 ir/slotalloc.d      \
 ir/livevars.d       \
 ir/inlining.d       \
-ir/typeprop.d       \
+ir/analysis.d       \
 runtime/vm.d        \
 runtime/layout.d    \
 runtime/string.d    \

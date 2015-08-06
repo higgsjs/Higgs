@@ -65,8 +65,11 @@ struct Options
 
     /* Compiler options */
 
-    /// Enable IR-level type propagation analysis
-    bool typeprop = false;
+    /// Save type tag test information to a file
+    bool save_tag_tests = false;
+
+    /// Load type tag test information from a file
+    bool load_tag_tests = false;
 
     /// Maximum number of specialized versions to compile per basic block
     uint maxvers = 100;
@@ -133,7 +136,9 @@ void parseCmdArgs(ref string[] args)
         "noruntime"         , &opts.noruntime,
         "nostdlib"          , &opts.nostdlib,
 
-        "typeprop"          , &opts.typeprop,
+        "save_tag_tests"    , &opts.save_tag_tests,
+        "load_tag_tests"    , &opts.load_tag_tests,
+
         "maxvers"           , &opts.maxvers,
         "maxshapes"         , &opts.maxshapes,
         "shape_notagspec"   , &opts.shape_notagspec,
@@ -157,5 +162,11 @@ void parseCmdArgs(ref string[] args)
     // If dumping the ASM, we must first generate the ASM strings
     if (opts.dumpasm)
         opts.genasm = true;
+
+    // Ensure that the load/save tag test options are valid
+    if ((opts.save_tag_tests && (!opts.shape_notagspec || opts.maxvers != 0)) ||
+        (opts.load_tag_tests && (!opts.shape_notagspec || opts.maxvers != 0)) ||
+        (opts.save_tag_tests && opts.load_tag_tests))
+        throw new Error("invalid load/save tag test options");
 }
 

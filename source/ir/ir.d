@@ -50,7 +50,6 @@ import parser.lexer;
 import parser.ast;
 import ir.ops;
 import ir.livevars;
-import ir.typeprop;
 import runtime.gc;
 import runtime.vm;
 import runtime.layout;
@@ -124,9 +123,6 @@ class IRFunction : IdObject
 
     /// Liveness information
     LiveInfo liveInfo = null;
-
-    /// Type analysis results (may be null)
-    TypeProp typeInfo = null;
 
     /// Generic function entry point
     CodePtr entryCode = null;

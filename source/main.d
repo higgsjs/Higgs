@@ -46,6 +46,7 @@ import std.algorithm;
 import std.conv;
 import std.string;
 import parser.parser;
+import ir.analysis;
 import runtime.vm;
 import util.string;
 import util.os;
@@ -158,6 +159,13 @@ void main(string[] args)
     {
         // Start the REPL
         repl.repl(vm);
+    }
+
+    // Save the type tag test results
+    if (opts.save_tag_tests)
+    {
+        // TODO: determine name
+        saveTests("tag_tests.csv");
     }
 
     // Free resources used by the VM instance
