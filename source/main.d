@@ -164,8 +164,10 @@ void main(string[] args)
     // Save the type tag test results
     if (opts.save_tag_tests)
     {
-        // TODO: determine name
-        saveTests("tag_tests.csv");
+        auto tagFileName = (fileNames.length > 0)? (fileNames[$-1]~"_"):"";
+        tagFileName = tagFileName.replace(".js", "") ~ "tags.csv";
+
+        saveTests(tagFileName);
     }
 
     // Free resources used by the VM instance

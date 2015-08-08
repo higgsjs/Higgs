@@ -117,16 +117,27 @@ void saveTests(string fileName)
         auto exec0 = branch0 && branch0.ended;
         auto exec1 = branch1 && branch1.ended;
 
-        //writeln(exec0, " ", exec1);
-
         if (exec0 && exec1)
             numUnknown++;
 
-        // TODO: write both block id and instruction name
+        string state;
+        if (exec0 && !exec1)
+            state = "TRUE";
+        else if (!exec0 && exec1)
+            state = "FALSE";
+        else
+            state = "UNKNOWN";
 
+        auto testInstr = cast(IRInstr)ver.block.lastInstr.getArg(0);
+        assert (testInstr);
 
-
-
+        f.writefln(
+            "%s,%s,%s,%s",
+            ver.block.id,
+            testInstr.outSlot,
+            testInstr.opcode.mnem,
+            state
+        );
     }
 
     writefln(
