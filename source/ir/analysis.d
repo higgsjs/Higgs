@@ -49,6 +49,16 @@ import runtime.vm;
 import jit.jit;
 import options;
 
+/// Type test info struct
+struct TestInfo
+{
+    StackIdx outSlot;
+
+    string mnem;
+
+    TestResult result;
+}
+
 /// Type test result
 enum TestResult
 {
@@ -57,11 +67,11 @@ enum TestResult
     UNKNOWN
 }
 
-/// Block versions registered as containing a type test, indexed by name
+/// Block versions registered as containing a type test, indexed by block id
 private BlockVersion[uint64_t] versions;
 
-/// Loaded test results, indexed by block version name
-private TestResult[uint64_t] testResults;
+/// Loaded test results, indexed by block id
+private TestInfo[uint64_t] testResults;
 
 /// Register a block version containing a tag test
 void regTagTest(BlockVersion ver)
@@ -71,13 +81,8 @@ void regTagTest(BlockVersion ver)
     // Assert type test present
     assert (ver.block.lastInstr.opcode is &IF_TRUE);
     auto testInstr = cast(IRInstr)ver.block.lastInstr.getArg(0);
-
-    //writeln(testInstr);
-
     assert (testInstr);
     assert (testInstr.opcode.mnem.startsWith("is_"));
-
-
 
     assert (ver.block.id !in versions);
     versions[ver.block.id] = ver;
@@ -87,10 +92,19 @@ void regTagTest(BlockVersion ver)
 TestResult getTestResult(BlockVersion ver)
 {
     assert (ver.block.id in testResults);
-    return testResults[ver.block.id];
+
+    auto testInfo = ver.block.id in testResults;
+
+    assert (ver.block.lastInstr.opcode is &IF_TRUE);
+    auto testInstr = cast(IRInstr)ver.block.lastInstr.getArg(0);
+    assert (testInstr);
+    assert (testInstr.outSlot is testInfo.outSlot);
+    assert (testInstr.opcode.mnem is testInfo.mnem);
+
+    return testInfo.result;
 }
 
-void saveTests(string fileName)
+void saveTagTests(string fileName)
 {
     writefln("saving tag tests");
     writefln("%s tests registered", versions.length);
@@ -120,13 +134,13 @@ void saveTests(string fileName)
         if (exec0 && exec1)
             numUnknown++;
 
-        string state;
+        TestResult testResult;
         if (exec0 && !exec1)
-            state = "TRUE";
+            testResult = TestResult.TRUE;
         else if (!exec0 && exec1)
-            state = "FALSE";
+            testResult = TestResult.FALSE;
         else
-            state = "UNKNOWN";
+            testResult = TestResult.UNKNOWN;
 
         auto testInstr = cast(IRInstr)ver.block.lastInstr.getArg(0);
         assert (testInstr);
@@ -136,7 +150,7 @@ void saveTests(string fileName)
             ver.block.id,
             testInstr.outSlot,
             testInstr.opcode.mnem,
-            state
+            testResult
         );
     }
 
@@ -147,15 +161,27 @@ void saveTests(string fileName)
     );
 }
 
-void loadTests(string fileName)
+void loadTagTests(string fileName)
 {
     import std.stdio;
     auto f = File(fileName, "r");
 
+    for (;;)
+    {
+        auto line = f.readln();
+        if (line is null)
+            break;
 
+        auto cols = line.strip().split(",");
+        assert (cols.length == 4);
 
+        TestInfo info;
+        ulong blockId = to!ulong(cols[0]);
+        info.outSlot = to!StackIdx(cols[1]);
+        info.mnem = cols[2];
+        info.result = to!TestResult(cols[3]);
 
-
-
+        testResults[blockId] = info;
+    }
 }
 

@@ -89,6 +89,9 @@ void main(string[] args)
     // Get the names of files to execute
     auto fileNames = hostArgs[1..$];
 
+    auto tagFileName = (fileNames.length > 0)? (fileNames[$-1]~"_"):"";
+    tagFileName = tagFileName.replace(".js", "") ~ "tags.csv";
+
     // Register the segmentation fault handler
     sigaction_t sa;
     memset(&sa, 0, sa.sizeof);
@@ -96,6 +99,12 @@ void main(string[] args)
     sa.sa_sigaction = &segfaultHandler;
     sa.sa_flags = SA_SIGINFO;
     sigaction(SIGSEGV, &sa, null);
+
+    // Load the tag tests, if requested
+    if (opts.load_tag_tests)
+    {
+        loadTagTests(tagFileName);
+    }
 
     // Initialize the VM instance
     VM.init(!opts.noruntime, !opts.nostdlib);
@@ -164,10 +173,7 @@ void main(string[] args)
     // Save the type tag test results
     if (opts.save_tag_tests)
     {
-        auto tagFileName = (fileNames.length > 0)? (fileNames[$-1]~"_"):"";
-        tagFileName = tagFileName.replace(".js", "") ~ "tags.csv";
-
-        saveTests(tagFileName);
+        saveTagTests(tagFileName);
     }
 
     // Free resources used by the VM instance
