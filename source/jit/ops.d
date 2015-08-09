@@ -844,10 +844,8 @@ void TagTestOp(Tag tag)(
     // If the type analysis was run
     if (opts.load_tag_tests)
     {
-        // TODO
         // Get the type analysis result for this value at this instruction
-        //auto propResult = ctx.fun.typeInfo.argIsType(instr, 0, tag);
-        auto propResult = testResult;
+        auto propResult = getTagTestResult(ver);;
 
         //writeln("result: ", propResult);
 

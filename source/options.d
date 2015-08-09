@@ -163,10 +163,15 @@ void parseCmdArgs(ref string[] args)
     if (opts.dumpasm)
         opts.genasm = true;
 
-    // Ensure that the load/save tag test options are valid
-    if ((opts.save_tag_tests && (!opts.shape_notagspec || opts.maxvers != 0)) ||
-        (opts.load_tag_tests && (!opts.shape_notagspec || opts.maxvers != 0)) ||
-        (opts.save_tag_tests && opts.load_tag_tests))
-        throw new Error("invalid load/save tag test options");
+    // If saving or loading tag tests, set the relevant options
+    if (opts.save_tag_tests || opts.load_tag_tests)
+    {
+        opts.maxvers = 0;
+        opts.maxshapes = 0;
+        opts.shape_notagspec = true;
+        opts.shape_nofptrspec = true;
+        opts.noentryspec = true;
+        opts.noretspec = true;
+    }
 }
 

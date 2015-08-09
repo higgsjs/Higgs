@@ -76,7 +76,8 @@ private TestInfo[uint64_t] testResults;
 /// Register a block version containing a tag test
 void regTagTest(BlockVersion ver)
 {
-    //writeln(ver.block.lastInstr.opcode.mnem);
+    //writeln(ver.block.lastInstr.opcode.mnem, " ", ver.block.id);
+    //writeln(" ", ver.block);
 
     // Assert type test present
     assert (ver.block.lastInstr.opcode is &IF_TRUE);
@@ -84,12 +85,17 @@ void regTagTest(BlockVersion ver)
     assert (testInstr);
     assert (testInstr.opcode.mnem.startsWith("is_"));
 
-    assert (ver.block.id !in versions);
+    if (ver.block.id in versions)
+        writeln(ver.block);
+
+
+
+    assert (ver.block.id !in versions, format("block.id=%s", ver.block.id));
     versions[ver.block.id] = ver;
 }
 
 /// Get the type test result for a given tag test
-TestResult getTestResult(BlockVersion ver)
+TestResult getTagTestResult(BlockVersion ver)
 {
     assert (ver.block.id in testResults);
 
