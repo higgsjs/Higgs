@@ -278,6 +278,31 @@ struct ValType
         }
     }
 
+    // Comparison operator
+    bool opEquals(const ValType that) const
+    {
+        if (this.tagKnown != that.tagKnown)
+            return false;
+
+        if (this.shapeKnown != that.shapeKnown)
+            return false;
+
+        if (this.fptrKnown != that.fptrKnown)
+            return false;
+
+        if (this.valKnown != that.valKnown)
+            return false;
+
+        if (this.tagKnown && this.tag != that.tag)
+            return false;
+
+        if ((this.shapeKnown || this.fptrKnown || this.valKnown) &&
+            (this.word != that.word))
+            return false;
+
+        return true;
+    }
+
     /**
     Compute the union with another type
     */
