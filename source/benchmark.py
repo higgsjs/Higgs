@@ -100,7 +100,9 @@ for benchmark in benchmarks:
         for line in output:
 
             # If this line contains the string "error" or "exception", abort
-            if line.lower().find("error") != -1 or line.lower().find("exception") != -1:
+            if line.lower().find("error") != -1 or \
+               line.lower().find("exception") != -1 or \
+               line.lower().find("fault") != -1:
                 raise Exception(line)
 
             # If the line doesn't match, continue

@@ -2111,6 +2111,14 @@ BlockVersion getBlockVersion(
         }
     }
 
+    assert (
+        !(opts.maxvers is 0 && versions.length > 0),
+        format(
+            "generic version doesn't match when maxvers=0, block.id=%s",
+            block.id
+        )
+    );
+
     // If the block version cap is hit
     if (versions.length >= opts.maxvers)
     {
