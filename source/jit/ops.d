@@ -845,31 +845,31 @@ void TagTestOp(Tag tag)(
     if (opts.load_tag_tests)
     {
         // Get the type analysis result for this value at this instruction
-        auto propResult = getTagTestResult(ver);;
+        auto anaResult = getTagTestResult(ver);;
 
-        //writeln("result: ", propResult);
+        //writeln("result: ", anaResult);
 
         // If the analysis yields a known result
-        if (propResult != TestResult.UNKNOWN)
+        if (anaResult != TestResult.UNKNOWN)
         {
             // If there is a contradiction between versioning and the analysis
-            if (testResult != TestResult.UNKNOWN && propResult != testResult)
+            if (testResult != TestResult.UNKNOWN && anaResult != testResult)
             {
                 writeln(
                     "type analysis contradiction for:\n",
                      instr, "\n",
-                    "prop result:\n",
-                    propResult, "\n",
-                    "vers result:\n",
+                    "analysis result:\n",
+                    anaResult, "\n",
+                    "versioning result:\n",
                     testResult, "\n",
                     "in:\n",
-                    instr.block.fun,
+                    instr.block,
                     "\n"
                 );
                 assert (false);
             }
 
-            testResult = propResult;
+            testResult = anaResult;
         }
     }
 

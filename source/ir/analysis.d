@@ -105,7 +105,7 @@ TestResult getTagTestResult(BlockVersion ver)
     auto testInstr = cast(IRInstr)ver.block.lastInstr.getArg(0);
     assert (testInstr);
     assert (testInstr.outSlot is testInfo.outSlot);
-    assert (testInstr.opcode.mnem is testInfo.mnem);
+    assert (testInstr.opcode.mnem == testInfo.mnem);
 
     return testInfo.result;
 }
@@ -125,17 +125,26 @@ void saveTagTests(string fileName)
     foreach (ver; versions)
     {
         auto targets = ver.targets;
-        auto branch0 = cast(BranchCode)targets[0];
-        auto branch1 = cast(BranchCode)targets[1];
 
-        //writeln();
-        //writeln(ver.block);
+        auto branchInstr = ver.block.lastInstr;
+        auto block0 = branchInstr.getTarget(0).target;
+        auto block1 = branchInstr.getTarget(1).target;
 
-        assert (!(targets[0] && !branch0));
-        assert (!(targets[1] && !branch1));
+        bool exec0 = false;
+        bool exec1 = false;
 
-        auto exec0 = branch0 && branch0.ended;
-        auto exec1 = branch1 && branch1.ended;
+        foreach (target; ver.targets)
+        {
+            auto branch = cast(BranchCode)target;
+            assert (branch || target is null);
+
+            if (!branch || !branch.ended)
+                continue;
+            if (branch.target.block is block0)
+                exec0 = true;
+            if (branch.target.block is block1)
+                exec1 = true;
+        }
 
         if (exec0 && exec1)
             numUnknown++;
