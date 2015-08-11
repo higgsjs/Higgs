@@ -391,9 +391,9 @@ argument is expressed in radians.
 */
 Math.cos = function (x)
 {
-    if ($ir_is_int32(x) === true)
+    if ($ir_is_int32(x))
         x = $ir_i32_to_f64(x);
-    else if ($ir_is_float64(x) === false)
+    else if (!$ir_is_float64(x))
         return NaN;
 
     return $ir_cos_f64(x);
