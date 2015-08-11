@@ -2111,14 +2111,6 @@ BlockVersion getBlockVersion(
         }
     }
 
-    assert (
-        !(opts.maxvers is 0 && versions.length > 0),
-        format(
-            "generic version doesn't match when maxvers=0, block.id=%s",
-            block.id
-        )
-    );
-
     // If the block version cap is hit
     if (versions.length >= opts.maxvers)
     {
@@ -2135,6 +2127,15 @@ BlockVersion getBlockVersion(
             assert (bestVer.ctx.fun is fun);
             return bestVer;
         }
+
+        // Ensure that we never create multiple versions when maxvers=0
+        assert (
+            !(opts.maxvers is 0 && versions.length > 0),
+            format(
+                "generic version doesn't match when maxvers=0, block.id=%s",
+                block.id
+            )
+        );
 
         //writeln("producing general version for: ", block.getName);
 
