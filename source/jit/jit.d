@@ -2128,15 +2128,6 @@ BlockVersion getBlockVersion(
             return bestVer;
         }
 
-        // Ensure that we never create multiple versions when maxvers=0
-        assert (
-            !(opts.maxvers is 0 && versions.length > 0),
-            format(
-                "generic version doesn't match when maxvers=0, block.id=%s",
-                block.id
-            )
-        );
-
         //writeln("producing general version for: ", block.getName);
 
         // Strip the context of known types and constants,
@@ -2162,6 +2153,15 @@ BlockVersion getBlockVersion(
         assert (genCtx.fun is fun);
         ctx = genCtx;
     }
+
+    // Ensure that we never create multiple versions when maxvers=0
+    assert (
+        !(opts.maxvers is 0 && versions.length > 0),
+        format(
+            "generic version doesn't match when maxvers=0, block.id=%s",
+            block.id
+        )
+    );
 
     //writeln("best ver diff: ", bestDiff, " (", versions.length, ")");
 

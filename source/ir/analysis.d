@@ -90,7 +90,15 @@ void regTagTest(BlockVersion ver)
 
 
 
-    assert (ver.block.id !in versions, format("block.id=%s", ver.block.id));
+    assert (
+        ver.block.id !in versions, 
+        format(
+            "block.id=%s\nfun.getName=%s",
+            ver.block.id,
+            ver.block.fun.getName
+        )
+    );
+
     versions[ver.block.id] = ver;
 }
 
