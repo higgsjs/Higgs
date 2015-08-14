@@ -364,13 +364,8 @@ class CodeGenCtx
         // Set the type for the "this" value
         setType(fun.thisVal, thisType);
 
-
-        // TODO: for now
-        // hidden args don't matter for prim
-
-        // Map the other hidden arguments to the stack
-
-        if (fun.isPrim)
+        // If the function is a primitive or this is a specialized entry point
+        if (fun.isPrim|| argcMatch)
         {
             mapToReg(raReg, fun.raVal, 64);
         }
@@ -384,12 +379,6 @@ class CodeGenCtx
         setTag(fun.raVal, Tag.RETADDR);
         setTag(fun.closVal, Tag.CLOSURE);
         setTag(fun.argcVal, Tag.INT32);
-
-
-
-
-
-
 
         // For each visible parameter
         foreach (argIdx, paramVal; fun.paramVals)
@@ -406,11 +395,6 @@ class CodeGenCtx
                 mapToReg(argRegs[argIdx], paramVal);
             }
         }
-
-
-
-
-
     }
 
     /**
