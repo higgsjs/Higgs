@@ -351,29 +351,13 @@ class CodeGenCtx
         // Store the argument count match flag
         this.argcMatch = argcMatch;
 
-        /*
-        writeln(argcMatch);
-
-        if (!argcMatch)
-            writeln("  ", fun.getName);
-        */
-
         // Tag of "this" value is written only if it's unknown
         mapToStack(fun.thisVal, !thisType.tagKnown);
 
         // Set the type for the "this" value
         setType(fun.thisVal, thisType);
 
-        // If the function is a primitive or this is a specialized entry point
-        if (fun.isPrim|| argcMatch)
-        {
-            mapToReg(raReg, fun.raVal, 64);
-        }
-        else
-        {
-            mapToStack(fun.raVal);
-        }
-
+        mapToReg(raReg, fun.raVal, 64);
         mapToStack(fun.closVal);
         mapToStack(fun.argcVal);
         setTag(fun.raVal, Tag.RETADDR);
@@ -2754,8 +2738,7 @@ EntryFn compileUnit(VM vm, IRFunction fun)
     as.setWord(-3, X86Opnd(0));
 
     // Set the return address
-    as.ptr(scrRegs[1], retAddr);
-    as.setWord(-4, scrRegs[1].opnd);
+    as.ptr(raReg, retAddr);
 
     // Push space for the callee locals
     as.sub(tspReg.opnd, X86Opnd(1 * fun.numLocals));
@@ -3133,6 +3116,8 @@ void genStubs(VM vm)
 
     vm.entryStub.markStart(as);
 
+    as.push(raReg);
+    as.push(raReg);
     as.saveJITRegs();
 
     debug
@@ -3151,6 +3136,8 @@ void genStubs(VM vm)
     as.call(scrRegs[0]);
 
     as.loadJITRegs();
+    as.pop(raReg);
+    as.pop(raReg);
 
     // Jump to the compiled version
     as.jmp(cretReg.opnd);

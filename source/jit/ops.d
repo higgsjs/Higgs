@@ -1991,22 +1991,8 @@ void gen_call(
                 BranchShape shape
             )
             {
-                // Get the return address slot of the callee
-                auto raSlot = entryVer.block.fun.raVal.outSlot;
-                assert (raSlot !is NULL_STACK);
-
-                // If this is a specialized entry point
-                if (entryVer.ctx.argcMatch)
-                {
-                    // Place the return address in the return address register
-                    as.movAbsRef(vm, raReg, block, target0, 0);
-                }
-                else
-                {
-                    // Write the return address on the stack
-                    as.movAbsRef(vm, scrRegs[0], block, target0, 0);
-                    as.setWord(raSlot, scrRegs[0].opnd(64));
-                }
+                // Place the return address in the return address register
+                as.movAbsRef(vm, raReg, block, target0, 0);
 
                 // Jump to the function entry block
                 jmp32Ref(as, vm, block, entryVer, 0);
@@ -2176,9 +2162,8 @@ void gen_call(
             BranchShape shape
         )
         {
-            // Write the return address on the stack
-            as.movAbsRef(vm, scrReg3, block, target0, 0);
-            movArgWord(as, numArgs + 3, scrReg3.opnd);
+            // Pass the return address in the return address register
+            as.movAbsRef(vm, raReg, block, target0, 0);
 
             // Adjust the stack pointers
             as.sub(X86Opnd(tspReg), scrRegs[0].opnd(64));
@@ -2287,6 +2272,9 @@ void gen_call_apply(
 
             as.loadJITRegs();
 
+            // Pass the return address in the return address register
+            as.movAbsRef(vm, raReg, block, target0, 0);
+
             // Jump to the address returned by the host function
             as.jmp(cretReg.opnd);
         },
@@ -2330,7 +2318,7 @@ void gen_load_file(
             auto fun = astToIR(ast);
 
             // Create a GC root for the function to prevent it from
-            // being collected if the GC runs during its own compilation
+            // being collected if the GC runs during its compilation
             auto funPtr = GCRoot(Word.funv(fun), Tag.FUNPTR);
 
             // Create a version instance object for the unit function entry
@@ -2400,7 +2388,7 @@ void gen_load_file(
             // Pass the instruction as an argument
             as.ptr(cargRegs[0], instr);
 
-            // Pass the return and exception addresses as third arguments
+            // Pass the return and exception targets as third arguments
             as.ptr(cargRegs[1], target0);
             as.ptr(cargRegs[2], target1);
 
@@ -2409,6 +2397,9 @@ void gen_load_file(
             as.call(scrRegs[0]);
 
             as.loadJITRegs();
+
+            // Pass the return address in the return address register
+            as.movAbsRef(vm, raReg, block, target0, 0);
 
             // Jump to the address returned by the host function
             as.jmp(cretReg.opnd);
@@ -2453,7 +2444,7 @@ void gen_eval_str(
             auto fun = astToIR(ast);
 
             // Create a GC root for the function to prevent it from
-            // being collected if the GC runs during its own compilation
+            // being collected if the GC runs during its compilation
             auto funPtr = GCRoot(Word.funv(fun), Tag.FUNPTR);
 
             // Create a version instance object for the unit function entry
@@ -2513,7 +2504,7 @@ void gen_eval_str(
             // Pass the instruction as an argument
             as.ptr(cargRegs[0], instr);
 
-            // Pass the return and exception addresses
+            // Pass the return and exception targets
             as.ptr(cargRegs[1], target0);
             as.ptr(cargRegs[2], target1);
 
@@ -2522,6 +2513,9 @@ void gen_eval_str(
             as.call(scrRegs[0]);
 
             as.loadJITRegs();
+
+            // Pass the return address in the return address register
+            as.movAbsRef(vm, raReg, block, target0, 0);
 
             // Jump to the address returned by the host function
             as.jmp(cretReg.opnd);
@@ -2601,11 +2595,7 @@ void gen_ret(
     if (retTagReg.opnd(8) != tagOpnd)
         as.mov(retTagReg.opnd(8), tagOpnd);
 
-
-
     //writeln("argcMatch=", ctx.argcMatch);
-
-
 
     // If this is a runtime primitive function
     if (fun.isPrim || ctx.argcMatch)
