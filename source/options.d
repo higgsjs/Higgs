@@ -65,6 +65,9 @@ struct Options
 
     /* Compiler options */
 
+    /// Log tag tests executed
+    bool log_tag_tests = false;
+
     /// Save type tag test information to a file
     bool save_tag_tests = false;
 
@@ -136,6 +139,7 @@ void parseCmdArgs(ref string[] args)
         "noruntime"         , &opts.noruntime,
         "nostdlib"          , &opts.nostdlib,
 
+        "log_tag_tests"     , &opts.log_tag_tests,
         "save_tag_tests"    , &opts.save_tag_tests,
         "load_tag_tests"    , &opts.load_tag_tests,
 

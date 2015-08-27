@@ -927,6 +927,12 @@ void TagTestOp(Tag tag)(
     // Increment the stat counter for this specific kind of type test
     as.incStatCnt(stats.getTagTestCtr(instr.opcode.mnem), scrRegs[1]);
 
+    if (opts.log_tag_tests)
+    {
+        writeln(instr);
+        writeln("  ", instr.block.fun.getName);
+    }
+
     // Compare against the tested type
     as.cmp(tagOpnd, X86Opnd(tag));
 
@@ -2007,7 +2013,7 @@ void gen_call(
     as.incStatCnt(&stats.numCallSlow, scrRegs[0]);
 
     // If an exception may be thrown
-    if (mayThrow)
+    if (mayThrow && !opts.load_tag_tests)
     {
         // Get the type tag for the closure value
         auto closTag = ctx.getTagOpnd(
