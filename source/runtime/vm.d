@@ -410,9 +410,9 @@ immutable UNDEF   = ValuePair(Word(0x03), Tag.CONST);
 /// Stack size, 256K words (2MB)
 immutable size_t STACK_SIZE = 2^^18;
 
-/// Initial object heap size, release 128M, debug 16M bytes
+/// Initial object heap size, release 256M, debug 16M bytes
 version (release)
-    immutable size_t HEAP_INIT_SIZE = 2 ^^ 27;
+    immutable size_t HEAP_INIT_SIZE = 2 ^^ 28;
 else
     immutable size_t HEAP_INIT_SIZE = 2 ^^ 24;
 
