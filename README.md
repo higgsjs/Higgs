@@ -1,8 +1,6 @@
 Higgs
 =====
 
-[![Build Status](https://travis-ci.org/higgsjs/Higgs.png?branch=master)](https://travis-ci.org/higgsjs/Higgs)
-
 A JIT compiler for JavaScript targetting x86-64 platforms.
 
 **Requirements:**
