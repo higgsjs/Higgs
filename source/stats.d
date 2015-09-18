@@ -111,6 +111,18 @@ ulong numCallSlow = 0;
 /// Number of calls performed using apply
 ulong numCallApply = 0;
 
+/// Number of functions (not closures) compiled
+ulong numFunsComp = 0;
+
+/// Number of call continuation invalidations
+ulong numContInvs = 0;
+
+/// Dynamic count of returns
+ulong numRet = 0;
+
+/// Dynamic count of known return type tags
+ulong numRetTagKnown = 0;
+
 /// Number of non-primitive calls by function name
 private ulong*[string] numCalls;
 
@@ -310,6 +322,11 @@ static ~this()
         writefln("num call fast: %s", numCallFast);
         writefln("num call slow: %s", numCallSlow);
         writefln("num call apply: %s", numCallApply);
+
+        writefln("num funs comp: %s", numFunsComp);
+        writefln("num cont invs: %s", numContInvs);
+        writefln("num ret: %s", numRet);
+        writefln("num ret tag known: %s", numRetTagKnown);
 
         //sortedCounts(numCalls, "calls");
 

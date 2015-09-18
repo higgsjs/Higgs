@@ -356,6 +356,9 @@ IRFunction astToIR(FunExpr ast, IRFunction fun = null)
         "function already has an entry block"
     );
 
+    // Increment the number of functions compiled
+    stats.numFunsComp++;
+
     // Create the function entry block
     auto entry = fun.newBlock("entry");
     fun.entryBlock = entry;

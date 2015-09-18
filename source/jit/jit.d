@@ -2980,6 +2980,13 @@ extern (C) CodePtr compileCont(ContStub stub)
             // Move the return value tag into the instruction's output slot
             if (callInstr.hasUses)
             {
+                // Increment the dynamic count of returns
+                as.incStatCnt(&stats.numRet, scrRegs[0]);
+
+                // Increment the dynamic count of known return type tags
+                if (!opts.noretspec && stub.callee && stub.callee.retType.tagKnown)
+                    as.incStatCnt(&stats.numRetTagKnown, scrRegs[0]);
+
                 //as.setWord(callInstr.outSlot, retWordReg.opnd(64));
                 as.setTag(callInstr.outSlot, retTagReg.opnd(8));
             }
@@ -3035,6 +3042,9 @@ void removeConts(IRFunction callee)
     // If there are no direct call sites, do nothing
     if (callee.callSites.length is 0)
         return;
+
+    // Increment the number of call continuation invalidations
+    stats.numContInvs++;
 
     // For each call site block version
     foreach (callVer; callee.callSites)
