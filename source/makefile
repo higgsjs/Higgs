@@ -1,4 +1,5 @@
-DC = dmd
+DMD?=dmd
+
 ifndef PYTHON
 	PYTHON = python
 endif
@@ -68,25 +69,25 @@ ffi/os.d            \
 ffi/tests.d         \
 
 all: layout
-	$(DC) $(LIBS) $(COPTS) -of$(BIN_NAME) $(SRC)
+	$(DMD) $(LIBS) $(COPTS) -of$(BIN_NAME) $(SRC)
 
 ffidev:
-	$(DC) $(LIBS) $(COPTS) -of$(BIN_NAME_TEST) $(SRC) -gc -version=FFIdev
+	$(DMD) $(LIBS) $(COPTS) -of$(BIN_NAME_TEST) $(SRC) -gc -version=FFIdev
 
 test: layout
-	$(DC) $(LIBS) $(TESTOPTS) -of$(BIN_NAME_TEST) $(SRC)
+	$(DMD) $(LIBS) $(TESTOPTS) -of$(BIN_NAME_TEST) $(SRC)
 	./$(BIN_NAME_TEST) test-runner.js
 	rm $(BIN_NAME_TEST)
 
 prof: layout
-	$(DC) $(LIBS) $(PROFOPTS) -of$(BIN_NAME_PROF) $(SRC)
+	$(DMD) $(LIBS) $(PROFOPTS) -of$(BIN_NAME_PROF) $(SRC)
 
 debug: layout
-	$(DC) $(LIBS) $(DBGOPTS) -of$(BIN_NAME_DEBUG) $(SRC)
+	$(DMD) $(LIBS) $(DBGOPTS) -of$(BIN_NAME_DEBUG) $(SRC)
 
 release: layout
 	printf $(LIB_DIR) > ./libdir.txt;
-	$(DC) $(LIBS) $(RELOPTS) -of$(BIN_NAME) $(SRC)
+	$(DMD) $(LIBS) $(RELOPTS) -of$(BIN_NAME) $(SRC)
 
 layout:
 	$(PYTHON) runtime/layout.py
