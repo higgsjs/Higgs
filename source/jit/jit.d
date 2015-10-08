@@ -555,6 +555,10 @@ class CodeGenCtx
             if (predSt == succSt)
                 continue;
 
+            // If the spill state differs, add a penalty
+            if (!opts.noregver && predSt.isStack != succSt.isStack)
+                diff += 1;
+
             // If the types do not match perfectly
             if (predSt.type != succSt.type)
             {

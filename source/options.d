@@ -89,6 +89,9 @@ struct Options
     /// Disable overflow check elimination
     bool noovfelim = false;
 
+    /// Disable versioning based on register allocation status
+    bool noregver = false;
+
     /// Disable function entry point specialication (interprocedural)
     bool noentryspec = false;
 
