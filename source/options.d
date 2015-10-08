@@ -151,6 +151,7 @@ void parseCmdArgs(ref string[] args)
         "shape_notagspec"   , &opts.shape_notagspec,
         "shape_nofptrspec"  , &opts.shape_nofptrspec,
         "noovfelim"         , &opts.noovfelim,
+        "noregver"          , &opts.noregver,
         "noentryspec"       , &opts.noentryspec,
         "noretspec"         , &opts.noretspec,
         "nopeephole"        , &opts.nopeephole,
