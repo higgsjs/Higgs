@@ -98,6 +98,9 @@ struct Options
     /// Disable return/continuation specialication (interprocedural)
     bool noretspec = false;
 
+    /// Disable shape change tracking (interprocedural)
+    bool noshapechg = false;
+
     /// Disable peephole optimizations
     bool nopeephole = false;
 
@@ -154,6 +157,7 @@ void parseCmdArgs(ref string[] args)
         "noregver"          , &opts.noregver,
         "noentryspec"       , &opts.noentryspec,
         "noretspec"         , &opts.noretspec,
+        "noshapechg"        , &opts.noshapechg,
         "nopeephole"        , &opts.nopeephole,
         "noinline"          , &opts.noinline,
         "dumpinfo"          , &opts.dumpinfo,

@@ -57,6 +57,7 @@ import runtime.object;
 import runtime.string;
 import jit.codeblock;
 import jit.jit;
+import options;
 
 /// Runtime name prefix
 const wstring RT_PREFIX = "$rt_";
@@ -150,6 +151,10 @@ class IRFunction : IdObject
     {
         // Register this function in the live function reference set
         vm.funRefs[cast(void*)this] = this;
+
+        // If shape change tracking is disabled
+        if (opts.noshapechg)
+            this.shapeChg = true;
 
         this.ast = ast;
         this.name = ast.getName();
