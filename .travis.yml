@@ -9,7 +9,3 @@ branches:
  # only run for these branches
  only:
   - master
-
-# notify the irc channel
-notifications:
-  irc: "chat.freenode.net#higgsjs"

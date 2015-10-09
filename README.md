@@ -23,7 +23,7 @@ A JIT compiler for JavaScript targetting x86-64 platforms.
 
 *Compile a binary:*
 
-NOTE: if you run a non-Linux OS like FreeBSD you may not have `GNU make` installed. You may need to install the "gmake" package or otherwise aquire `GNU make`.
+NOTE: if you run a non-Linux OS like FreeBSD you may not have `GNU make` installed. You may need to install the "gmake" package or otherwise acquire `GNU make`.
 
 NOTE: if your default python version is 3.x, just append `PYTHON=$PATH_TO_PYTHON2` to the `make` commands
 
@@ -96,5 +96,3 @@ More
 Documentation for Higgs and included libraries can be found in the [Higgs Wiki](https://github.com/higgsjs/Higgs/wiki).
 
 You can follow the development of Higgs on [Maxime's blog](http://pointersgonewild.com/category/higgs/).
-
-Come chat with us in [\#higgsjs](http://webchat.freenode.net/?channels=higgsjs) on [Freenode](http://freenode.net/).
