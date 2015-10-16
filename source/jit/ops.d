@@ -323,6 +323,14 @@ void RMMOp(string op, size_t numBits, Tag tag)(
         }
     }
 
+    // Increment the count of overflow checks
+    if (opts.stats)
+    {
+        as.pushfq();
+        as.incStatCnt(&stats.numOvfChecks, scrRegs[0]);
+        as.popfq();
+    }
+
     auto branchNO = getBranchEdge(instr.getTarget(0), ctx, false);
     auto branchOV = getBranchEdge(instr.getTarget(1), ctx, false);
 

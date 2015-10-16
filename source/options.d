@@ -78,7 +78,7 @@ struct Options
     uint maxvers = 100;
 
     /// Maximum number of shapes to be propagated
-    uint maxshapes = 100;
+    uint maxshapes = 2;
 
     /// Disable type tag specialization in shapes
     bool shape_notagspec = false;

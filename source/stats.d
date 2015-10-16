@@ -99,6 +99,9 @@ ulong numShapeFlips = 0;
 /// Number of global object shape changes due to a type mismatch
 ulong numShapeFlipsGlobal = 0;
 
+/// Number of overflow checks
+ulong numOvfChecks = 0;
+
 /// Number of heap allocations
 ulong numHeapAllocs = 0;
 
@@ -317,6 +320,7 @@ static ~this()
         writefln("num get prop host: %s", numGetPropHost);
         writefln("num shape flips: %s", numShapeFlips);
         writefln("num shape flips global: %s", numShapeFlipsGlobal);
+        writefln("num ovf checks: %s", numOvfChecks);
         writefln("num heap allocs: %s", numHeapAllocs);
 
         writefln("num call fast: %s", numCallFast);
