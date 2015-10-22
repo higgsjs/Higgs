@@ -1784,15 +1784,20 @@ class BranchCode : CodeFragment
     /// Target block version (null until compiled)
     BlockVersion target = null;
 
+    /// Force the generation of a unique block version
+    bool forceNew;
+
     this(
         CodeGenCtx predCtx,
         BranchEdge branch,
-        PrelGenFn prelGenFn
+        PrelGenFn prelGenFn,
+        bool forceNew
     )
     {
         this.predCtx = predCtx;
         this.branch = branch;
         this.prelGenFn = prelGenFn;
+        this.forceNew = forceNew;
     }
 }
 
@@ -2046,129 +2051,145 @@ string asmString(IRFunction fun)
 
 /**
 Request a block version matching the incoming context
+
+@param forceNew forces the creation of a new (unlisted) version
+
+Note: the forceNew flag was added to properly implement capture_shape
+by hijacking the BBV mechanism. I believe that a better solution instead
+would be to dynamically generate new basic blocks (not block versions).
 */
 BlockVersion getBlockVersion(
     IRBlock block,
-    CodeGenCtx ctx
+    CodeGenCtx ctx,
+    bool forceNew = false
 )
 {
     auto fun = ctx.fun;
 
-    // Get the list of versions for this block
-    auto versions = fun.versionMap.get(block, []);
-
-    // Best version found
-    BlockVersion bestVer;
-    size_t bestDiff = size_t.max;
-
-    //writeln("requesting: ", block.getName);
-
-    // For each successor version available
-    foreach (ver; versions)
+    // If we are to look for an existing match
+    if (forceNew is false)
     {
-        // Compute the difference with the incoming context
-        auto diff = ctx.diff(ver.ctx);
+        // Get the list of versions for this block
+        auto versions = fun.versionMap.get(block, []);
 
-        //writeln("diff: ", diff);
+        // Best version found
+        BlockVersion bestVer;
+        size_t bestDiff = size_t.max;
 
-        // If this is a perfect match, return it
-        if (diff is 0)
-            return ver;
+        //writeln("requesting: ", block.getName);
 
-        // Update the best version found
-        if (diff < bestDiff)
+        // For each successor version available
+        foreach (ver; versions)
         {
-            bestDiff = diff;
-            bestVer = ver;
-        }
-    }
+            // Compute the difference with the incoming context
+            auto diff = ctx.diff(ver.ctx);
 
-    // If the block version cap is hit
-    if (versions.length >= opts.maxvers)
-    {
-        debug
-        {
-            if (opts.maxvers > 0)
-                writefln("version limit hit (%s) in %s", versions.length, fun.getName);
-        }
+            //writeln("diff: ", diff);
 
-        // If a compatible match was found
-        if (bestDiff < size_t.max)
-        {
-            // Return the best match found
-            assert (bestVer.ctx.fun is fun);
-            return bestVer;
-        }
+            // If this is a perfect match, return it
+            if (diff is 0)
+                return ver;
 
-        //writeln("producing general version for: ", block.getName);
-
-        // Strip the context of known types and constants,
-        // except for hidden function arguments
-        auto genCtx = new CodeGenCtx(ctx);
-        foreach (val, valSt; genCtx.valMap)
-        {
-            if (val !is fun.closVal &&
-                val !is fun.argcVal &&
-                val !is fun.raVal &&
-                (valSt.tagKnown || valSt.shapeKnown))
+            // Update the best version found
+            if (diff < bestDiff)
             {
-                genCtx.valMap[val] = valSt.clearType();
+                bestDiff = diff;
+                bestVer = ver;
             }
         }
 
-        // Clear the argument count match flag
-        genCtx.argcMatch = false;
+        // If the block version cap is hit
+        if (versions.length >= opts.maxvers)
+        {
+            debug
+            {
+                if (opts.maxvers > 0)
+                    writefln("version limit hit (%s) in %s", versions.length, fun.getName);
+            }
 
-        // Ensure that the general version matches
-        assert(ctx.diff(genCtx) !is size_t.max);
+            // If a compatible match was found
+            if (bestDiff < size_t.max)
+            {
+                // Return the best match found
+                assert (bestVer.ctx.fun is fun);
+                return bestVer;
+            }
 
-        assert (genCtx.fun is fun);
-        ctx = genCtx;
+            //writeln("producing general version for: ", block.getName);
+
+            // Strip the context of known types and constants,
+            // except for hidden function arguments
+            auto genCtx = new CodeGenCtx(ctx);
+            foreach (val, valSt; genCtx.valMap)
+            {
+                if (val !is fun.closVal &&
+                    val !is fun.argcVal &&
+                    val !is fun.raVal &&
+                    (valSt.tagKnown || valSt.shapeKnown))
+                {
+                    genCtx.valMap[val] = valSt.clearType();
+                }
+            }
+
+            // Clear the argument count match flag
+            genCtx.argcMatch = false;
+
+            // Ensure that the general version matches
+            assert(ctx.diff(genCtx) !is size_t.max);
+
+            assert (genCtx.fun is fun);
+            ctx = genCtx;
+        }
+
+        // Ensure that we never create multiple versions when maxvers=0
+        assert (
+            !(opts.maxvers is 0 && versions.length > 0),
+            format(
+                "generic version doesn't match when maxvers=0, block.id=%s",
+                block.id
+            )
+        );
     }
-
-    // Ensure that we never create multiple versions when maxvers=0
-    assert (
-        !(opts.maxvers is 0 && versions.length > 0),
-        format(
-            "generic version doesn't match when maxvers=0, block.id=%s",
-            block.id
-        )
-    );
 
     //writeln("best ver diff: ", bestDiff, " (", versions.length, ")");
 
     // Create a new block version object using the predecessor's context
     auto ver = new BlockVersion(block, ctx);
 
-    // Add the new version to the list for this block
-    fun.versionMap[block] ~= ver;
-
-    // If block version stats should be computed
-    if (opts.stats)
+    // If forceNew is set, the new version will be "unlisted", that is,
+    // only accessible to the branch that originally requested it
+    if (forceNew is false)
     {
-        auto numVersions = fun.versionMap[block].length;
+        // Add the new version to the list for this block
+        fun.versionMap[block] ~= ver;
 
-        // If this is the first version for this block
-        if (numVersions is 1)
+        // If block version stats should be computed
+        if (opts.stats)
         {
-            // Increment the number of compiled blocks
-            stats.numBlocks++;
+            auto numVersions = fun.versionMap[block].length;
 
-            // Increment the number of blocks with 1 version
-            stats.numVerBlocks[1]++;
+            // If this is the first version for this block
+            if (numVersions is 1)
+            {
+                // Increment the number of compiled blocks
+                stats.numBlocks++;
+
+                // Increment the number of blocks with 1 version
+                stats.numVerBlocks[1]++;
+            }
+            else
+            {
+                // Update counts of blocks with specific numbers of versions
+                stats.numVerBlocks[numVersions-1]--;
+                stats.numVerBlocks[numVersions]++;
+            }
+
+            // Increment the total number of block versions generated
+            stats.numVersions++;
+
+            // Update the maximum version count
+            stats.maxVersions = max(stats.maxVersions, numVersions);
         }
-        else
-        {
-            // Update counts of blocks with specific numbers of versions
-            stats.numVerBlocks[numVersions-1]--;
-            stats.numVerBlocks[numVersions]++;
-        }
-
-        // Increment the total number of block versions generated
-        stats.numVersions++;
-
-        // Update the maximum version count
-        stats.maxVersions = max(stats.maxVersions, numVersions);
     }
 
     // Queue the block version for compilation
@@ -2186,7 +2207,8 @@ BranchCode getBranchEdge(
     BranchEdge branch,
     CodeGenCtx predCtx,
     bool noStub,
-    PrelGenFn prelGenFn = null
+    PrelGenFn prelGenFn = null,
+    bool forceNew = false
 )
 {
     assert (
@@ -2198,7 +2220,8 @@ BranchCode getBranchEdge(
     auto branchCode = new BranchCode(
         predCtx,
         branch,
-        prelGenFn
+        prelGenFn,
+        forceNew
     );
 
     // If we know this will be executed, queue the branch edge for compilation
@@ -2527,7 +2550,8 @@ void compile(VM vm, IRInstr curInstr)
             // Get a version of the successor matching the incoming context
             branch.target = getBlockVersion(
                 branch.branch.target,
-                succCtx
+                succCtx,
+                branch.forceNew
             );
 
             // Generate the moves to transition to the successor context

@@ -3109,9 +3109,8 @@ void gen_capture_shape(
         return gen_jump(ver, ctx, instr, as);
     }
 
-    // If we hit the version limit and we're in a generic block version,
-    // exit the capture_shape chain without capturing the shape
-    if (!ctx.shapeKnown(shapeIdxVal))
+    // If we hit the version limit, stop extending the capture_shape chain
+    if (ctx.fun.versionMap.get(instr.block, []).length >= opts.maxvers)
     {
         return gen_jump(ver, ctx, instr, as);
     }
@@ -3135,12 +3134,10 @@ void gen_capture_shape(
     trueCtx.setShape(objVal, vm.objShapes[curShapeIdx]);
     auto branchT = getBranchEdge(instr.getTarget(0), trueCtx, true);
 
-    // On the recursive (false) branch, no info about the object shape gained
-    // We mark the shape idx as having the shape we just tested, this is a
-    // hack to create new block versions during the shape dispatch
-    auto falseCtx = new CodeGenCtx(ctx);
-    falseCtx.setShape(shapeIdxVal, vm.objShapes[curShapeIdx]);
-    auto branchF = getBranchEdge(instr.getTarget(1), falseCtx, false);
+    // On the recursive (false) branch, no info about the object shape is
+    // gained. We force the creation of a new version of the target block,
+    // essentially unrolling/extending the capture_shape loop as needed.
+    auto branchF = getBranchEdge(instr.getTarget(1), ctx, false, null, true);
 
     // Generate the branch code
     ver.genBranch(
@@ -3240,10 +3237,6 @@ void gen_read_shape_idx(
     as.getField(outOpnd.reg, opnd0.reg, obj_ofs_shape_idx(null));
 
     ctx.setOutTag(as, instr, Tag.INT32);
-
-    // Mark the shape of this instructon's output as null
-    // We do this to signal to capture_shape that the shape was just read
-    ctx.setShape(instr, null);
 }
 
 /// Initializes an object to the empty shape
