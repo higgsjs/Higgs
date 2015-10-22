@@ -2111,11 +2111,11 @@ BlockVersion getBlockVersion(
     // If the block version cap is hit
     if (versions.length >= opts.maxvers)
     {
-        debug
+        /*debug
         {
             if (opts.maxvers > 0)
                 writefln("version limit hit (%s) in %s", versions.length, fun.getName);
-        }
+        }*/
 
         // If a compatible match was found
         if (bestDiff < size_t.max)
