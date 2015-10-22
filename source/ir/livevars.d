@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2011-2014, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2011-2015, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -53,6 +53,8 @@ class LiveInfo
 {
     /**
     Live variable set implementation
+    Tells us which variables are live at a given program point
+    This is implemented as an array set with a linear search
     */
     struct LiveSet
     {
@@ -123,6 +125,7 @@ class LiveInfo
 
     /**
     Compile a list of all values live before a given instruction
+    This method is only used by the garbage collector
     */
     public IRDstValue[] valsLiveBefore(IRInstr beforeInstr)
     {
@@ -146,6 +149,7 @@ class LiveInfo
 
     /**
     Compile a list of all values live after a given instruction
+    This method is only used by the garbage collector
     */
     public IRDstValue[] valsLiveAfter(IRInstr afterInstr)
     {
@@ -216,7 +220,6 @@ class LiveInfo
 
     /**
     Test if a value is live before a given instruction
-    Note: this function is exposed outside of this analysis
     */
     public bool liveBefore(IRDstValue val, IRInstr beforeInstr)
     {
@@ -242,7 +245,8 @@ class LiveInfo
 
     /**
     Test if a value is live after a given instruction
-    Note: this function is exposed outside of this analysis
+    This is the main function used to query the analysis results,
+    it is very frequently called by the JIT backend.
     */
     public bool liveAfter(IRDstValue val, IRInstr afterInstr)
     {
@@ -266,6 +270,7 @@ class LiveInfo
 
     /**
     Mark a value as live after a given instruction
+    Note: this function is private and only used during the analysis
     */
     private void markLiveAfter(IRDstValue val, IRInstr afterInstr)
     {
