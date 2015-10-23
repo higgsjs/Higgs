@@ -1,0 +1,9 @@
+"loop-global-incr", "benchmarks/micro/loop-global-incr.js"
+
+"fib44", "benchmarks/micro/fib44.js"
+
+"100m-for-in", "benchmarks/micro/100m-for-in.js"
+
+"list-sum-100", "benchmarks/micro/list-sum-100.js"
+"list-sum-1000", "benchmarks/micro/list-sum-1000.js"
+
