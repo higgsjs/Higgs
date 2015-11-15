@@ -9,8 +9,8 @@ function listSum(lst) {
         return lst.val + listSum(lst.next);
 }
 
-// 1M
-for (var k = 0; k < 1000000; ++k)
+// 5M
+for (var k = 0; k < 5000000; ++k)
     s = listSum(lst);
 
 //print(s)
