@@ -1741,9 +1741,7 @@ void gen_call_prim(
         else
         {
             auto argOpnd = ctx.getWordOpnd(argVal, 64);
-
-            if (dstOpnd != argOpnd)
-                argMoves.assumeSafeAppend ~= Move(dstOpnd, argOpnd);
+            argMoves.assumeSafeAppend ~= Move(dstOpnd, argOpnd);
         }
 
         // If the entry context knows the type tag
@@ -1899,8 +1897,7 @@ void gen_call(
             auto instrArgIdx = 2 + i;
             auto dstIdx = -(numPassed - i);
 
-            // TODO
-            //auto argVal = instr.getArg(instrArgIdx);
+            auto argVal = instr.getArg(instrArgIdx);
 
             auto paramVal = (i < fun.numParams)? fun.paramVals[i]:null;
 
@@ -1911,11 +1908,6 @@ void gen_call(
             if (paramVal && paramVal.hasNoUses && !fun.usesVarArg)
                 continue;
 
-
-
-
-
-            /*
             // Get the destination operand
             auto dstOpnd = paramSt.isReg? argRegs[i].opnd:wordStackOpnd(dstIdx);
 
@@ -1927,30 +1919,8 @@ void gen_call(
             else
             {
                 auto argOpnd = ctx.getWordOpnd(argVal, 64);
-
-                if (dstOpnd != argOpnd)
-                    argMoves.assumeSafeAppend ~= Move(dstOpnd, argOpnd);
+                argMoves.assumeSafeAppend ~= Move(dstOpnd, argOpnd);
             }
-            */
-
-
-
-            // Copy the argument word
-            auto argOpnd = ctx.getWordOpnd(
-                as,
-                instr,
-                instrArgIdx,
-                64,
-                scrRegs[0].opnd(64),
-                true,
-                false
-            );
-            as.setWord(dstIdx, argOpnd);
-
-
-
-
-
 
             // If the entry context knows the type tag, skip this
             if (paramVal && paramSt.tagKnown && !fun.usesVarArg)
@@ -1967,13 +1937,21 @@ void gen_call(
             as.setTag(dstIdx, tagOpnd);
         }
 
-        // TODO: handle register args, generate moves for these too
         // Write undefined values for the missing arguments
         for (int32_t i = 0; i < numMissing; ++i)
         {
             auto dstIdx = -(i + 1);
+            auto paramIdx = fun.numParams-1-i;
 
-            as.setWord(dstIdx, UNDEF.word.int8Val);
+            // Set the argument value to  undefined
+            auto paramVal = fun.paramVals[paramIdx];
+            auto paramSt = entryVer.ctx.getState(paramVal);
+            auto dstOpnd = paramSt.isReg? argRegs[paramIdx].opnd:wordStackOpnd(dstIdx);
+
+            auto argOpnd = X86Opnd(UNDEF.word.int8Val);
+            argMoves.assumeSafeAppend ~= Move(dstOpnd, argOpnd);
+
+            // Set the type tag
             as.setTag(dstIdx, UNDEF.tag);
         }
 
