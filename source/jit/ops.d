@@ -1889,11 +1889,18 @@ void gen_call(
         // Request an instance for the function entry block
         auto entryVer = getBlockVersion(fun.entryBlock, entrySt);
 
+        // List of argument moves
+        Move[] argMoves;
+        argMoves.reserve(numArgs);
+
         // Copy the function arguments supplied
         for (int32_t i = 0; i < numArgs; ++i)
         {
             auto instrArgIdx = 2 + i;
             auto dstIdx = -(numPassed - i);
+
+            // TODO
+            //auto argVal = instr.getArg(instrArgIdx);
 
             auto paramVal = (i < fun.numParams)? fun.paramVals[i]:null;
 
@@ -1904,19 +1911,48 @@ void gen_call(
             if (paramVal && paramVal.hasNoUses && !fun.usesVarArg)
                 continue;
 
+
+
+
+
+            /*
+            // Get the destination operand
+            auto dstOpnd = paramSt.isReg? argRegs[i].opnd:wordStackOpnd(dstIdx);
+
+            // If the argument is a string constant
+            if (auto argStr = cast(IRString)argVal)
+            {
+                argMoves.assumeSafeAppend ~= Move(dstOpnd, argStr);
+            }
+            else
+            {
+                auto argOpnd = ctx.getWordOpnd(argVal, 64);
+
+                if (dstOpnd != argOpnd)
+                    argMoves.assumeSafeAppend ~= Move(dstOpnd, argOpnd);
+            }
+            */
+
+
+
             // Copy the argument word
             auto argOpnd = ctx.getWordOpnd(
                 as,
                 instr,
                 instrArgIdx,
                 64,
-                scrRegs[1].opnd(64),
+                scrRegs[0].opnd(64),
                 true,
                 false
             );
             as.setWord(dstIdx, argOpnd);
 
-            // If the entry context doesn't know the type tag
+
+
+
+
+
+            // If the entry context knows the type tag, skip this
             if (paramVal && paramSt.tagKnown && !fun.usesVarArg)
                 continue;
 
@@ -1925,12 +1961,13 @@ void gen_call(
                 as,
                 instr,
                 instrArgIdx,
-                scrRegs[1].opnd(8),
+                scrRegs[0].opnd(8),
                 true
             );
             as.setTag(dstIdx, tagOpnd);
         }
 
+        // TODO: handle register args, generate moves for these too
         // Write undefined values for the missing arguments
         for (int32_t i = 0; i < numMissing; ++i)
         {
@@ -1951,7 +1988,7 @@ void gen_call(
                 instr,
                 1,
                 64,
-                scrRegs[1].opnd(64),
+                scrRegs[0].opnd(64),
                 true,
                 false
             );
@@ -1964,7 +2001,7 @@ void gen_call(
                     as,
                     instr,
                     1,
-                    scrRegs[1].opnd(8),
+                    scrRegs[0].opnd(8),
                     true
                 );
                 as.setTag(-numPassed - 2, tagOpnd);
@@ -1988,6 +2025,9 @@ void gen_call(
 
         // Spill the values that are live after the call
         ctx.spillLiveAfter(as, instr);
+
+        // Execute the argument moves
+        as.execMoves(argMoves, scrRegs[1], scrRegs[2]);
 
         // Push space for the callee arguments and locals
         as.sub(X86Opnd(tspReg), X86Opnd(frameSize));

@@ -61,6 +61,26 @@ struct Move
     X86Opnd src;
 
     IRString srcStr;
+
+    /// Test if a move can be executed directly (without temp registers)
+    bool simple()
+    {
+        if (dst.isReg)
+        {
+            return true;
+        }
+
+        if (dst.isMem)
+        {
+            if (src.isReg)
+                return true;
+
+            if (src.isImm && src.imm.immSize <= 32)
+                return true;
+        }
+
+        return false;
+    }
 }
 
 /**
@@ -161,14 +181,6 @@ void execMoves(CodeBlock as, Move[] moveList, X86Reg tmp0, X86Reg tmp1)
             continue;
         }
     }
-
-
-    // FIXME: want to use just one temp
-    // execMove should not have its own temp?
-    // break up mem/mem moves and impossible imms
-    // mem or imm to tmpReg, then tmpReg -> whatever
-
-
 
     // Until all moves are executed
     EXEC_LOOP:
