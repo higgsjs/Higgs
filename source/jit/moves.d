@@ -5,7 +5,7 @@
 *  This file is part of the Higgs project. The project is distributed at:
 *  https://github.com/maximecb/Higgs
 *
-*  Copyright (c) 2011-2013, Maxime Chevalier-Boisvert. All rights reserved.
+*  Copyright (c) 2011-2015, Maxime Chevalier-Boisvert. All rights reserved.
 *
 *  This software is licensed under the following license (Modified BSD
 *  License):
@@ -216,10 +216,8 @@ void execMoves(CodeBlock as, Move[] moveList, X86Reg tmp0, X86Reg tmp1)
         auto dst = move.dst;
 
         X86Opnd tmpReg;
-        if (src.isReg)
-            tmpReg = tmp0.opnd(src.reg.size);
-        else if (src.isMem)
-            tmpReg = tmp0.opnd(src.mem.size);
+        if (src.isReg || src.isMem)
+            tmpReg = tmp0.opnd(src.size);
         else
             tmpReg = X86Opnd(tmp0);
 

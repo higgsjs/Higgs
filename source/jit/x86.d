@@ -615,6 +615,16 @@ struct X86Opnd
     {
         return (kind is Kind.MEM && mem.sibNeeded);
     }
+
+    size_t size()
+    {
+        with (Kind) switch (kind)
+        {
+            case MEM: return this.mem.size;
+            case REG: return this.reg.size;
+            default: assert (false);
+        }
+    }
 }
 
 /**
