@@ -373,8 +373,9 @@ class CodeGenCtx
             mapToStack(paramVal, !argType.tagKnown);
             setType(paramVal, argType);
 
-            // TODO: generalize to non-primitives
-            if (fun.isPrim && argIdx < argRegs.length)
+            if ((argIdx < argRegs.length) &&
+                (fun.isPrim || argcMatch) && 
+                (!fun.usesVarArg))
             {
                 mapToReg(argRegs[argIdx], paramVal);
             }
