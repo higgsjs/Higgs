@@ -2643,19 +2643,6 @@ IRValue genIIR(IRGenCtx ctx, ASTExpr expr)
             argVal = IRConst.int32Cst(cast(int32_t)intExpr.val);
             break;
 
-            // Raw pointer constant
-            case OpArg.RAWPTR:
-            auto intExpr = cast(IntExpr)argExpr;
-            if (intExpr is null)
-            {
-                throw new ParseError(
-                    "expected integer argument",
-                    argExpr.pos
-                );
-            }
-            argVal = new IRRawPtr(cast(ubyte*)intExpr.val);
-            break;
-
             // String argument
             case OpArg.STRING:
             auto strExpr = cast(StringExpr)argExpr;
@@ -2667,19 +2654,6 @@ IRValue genIIR(IRGenCtx ctx, ASTExpr expr)
                 );
             }
             argVal = new IRString(strExpr.val);
-            break;
-
-            // Link table index
-            case OpArg.LINK:
-            auto intExpr = cast(IntExpr)argExpr;
-            if (intExpr is null || intExpr.val != 0)
-            {
-                throw new ParseError(
-                    "expected 0 argument", 
-                    argExpr.pos
-                );
-            }
-            argVal = new IRLinkIdx();
             break;
 
             default:

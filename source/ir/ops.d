@@ -48,7 +48,6 @@ enum OpArg
 {
     INT32,
     FLOAT64,
-    RAWPTR,
     STRING,
     LOCAL,
     LINK,

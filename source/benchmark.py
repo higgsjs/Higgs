@@ -184,7 +184,7 @@ for key in sorted(valLists.keys()):
     if valsInt(valList):
         print "%s: %s" % (key, int(mean))
     else:
-        print "%s: %.1f" % (key, mean)
+        print "%s: %.2f" % (key, mean)
 
 # Produce CSV output
 if options.csv_file != '':

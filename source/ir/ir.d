@@ -1016,31 +1016,6 @@ class IRString : IRValue
 }
 
 /**
-Raw pointer constant
-*/
-class IRRawPtr : IRValue
-{
-    ValuePair ptr;
-
-    this(rawptr ptr)
-    {
-        this.ptr = ValuePair(Word.ptrv(ptr), Tag.RAWPTR);
-    }
-
-    override string toString()
-    {
-        auto p = ptr.word.ptrVal;
-        return "<rawptr:" ~ ((p is null)? "NULL":"0x"~to!string(p)) ~ ">";
-    }
-
-    /// Get the constant value pair for this IR value
-    override ValuePair cstValue()
-    {
-        return ptr;
-    }
-}
-
-/**
 IR function pointer constant (stateful, non-constant, may be null)
 */
 class IRFunPtr : IRValue
@@ -1055,23 +1030,6 @@ class IRFunPtr : IRValue
     override string toString()
     {
         return "<fun:" ~ (fun? fun.getName():"NULL") ~ ">";
-    }
-}
-
-/**
-Link tanle index value (stateful, non-constant, initially null)
-*/
-class IRLinkIdx : IRValue
-{
-    LinkIdx linkIdx = NULL_LINK;
-
-    this()
-    {
-    }
-
-    override string toString()
-    {
-        return "<link:" ~ ((linkIdx is NULL_LINK)? "NULL":to!string(linkIdx)) ~ ">";
     }
 }
 
