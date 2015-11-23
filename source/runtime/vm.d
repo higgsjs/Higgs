@@ -168,7 +168,7 @@ enum Tag : ubyte
     // Note: undef has value zero so that zeroed memory has value undefined
     UNDEF = 0,
     NULL,
-    CONST,
+    BOOL,
     INT32,
     INT64,
     FLOAT64,
@@ -202,7 +202,7 @@ bool isHeapPtr(Tag tag)
 
         case Tag.UNDEF:
         case Tag.NULL:
-        case Tag.CONST:
+        case Tag.BOOL:
         case Tag.INT32:
         case Tag.INT64:
         case Tag.FLOAT64:
@@ -243,7 +243,7 @@ string tagToString(Tag tag)
     {
         case Tag.UNDEF:    return "undef";
         case Tag.NULL :    return "null";
-        case Tag.CONST:    return "const";
+        case Tag.BOOL:     return "bool";
         case Tag.INT32:    return "int32";
         case Tag.INT64:    return "int64";
         case Tag.FLOAT64:  return "float64";
@@ -327,7 +327,7 @@ struct ValuePair
             case Tag.NULL:
             return "null";
 
-            case Tag.CONST:
+            case Tag.BOOL:
             if (this == TRUE)
                 return "true";
             if (this == FALSE)
@@ -416,8 +416,8 @@ struct ValuePair
 // Note: undefined has value zero so that zeroed memory has value undefined
 immutable NULL    = ValuePair(Word(0x00), Tag.NULL);
 immutable UNDEF   = ValuePair(Word(0x00), Tag.UNDEF);
-immutable TRUE    = ValuePair(Word(0x01), Tag.CONST);
-immutable FALSE   = ValuePair(Word(0x02), Tag.CONST);
+immutable TRUE    = ValuePair(Word(0x01), Tag.BOOL);
+immutable FALSE   = ValuePair(Word(0x02), Tag.BOOL);
 
 /// Stack size, 256K words (2MB)
 immutable size_t STACK_SIZE = 2^^18;
@@ -1002,8 +1002,8 @@ class VM
         auto argVal = getArgVal(instr, argIdx);
 
         assert (
-            argVal.tag == Tag.CONST,
-            "expected constant value for arg " ~ to!string(argIdx)
+            argVal.tag == Tag.BOOL,
+            "expected boolean value for arg " ~ to!string(argIdx)
         );
 
         return (argVal.word.int8Val == TRUE.word.int8Val);

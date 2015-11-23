@@ -263,7 +263,7 @@ static this()
     // Pre-register type test counters
     getTagTestCtr("is_undef");
     getTagTestCtr("is_null");
-    getTagTestCtr("is_const");
+    getTagTestCtr("is_bool");
     getTagTestCtr("is_int32");
     getTagTestCtr("is_int64");
     getTagTestCtr("is_float64");

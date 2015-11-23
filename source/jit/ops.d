@@ -893,7 +893,7 @@ void TagTestOp(Tag tag)(
             auto outOpnd = ctx.getOutOpnd(as, instr, 64);
             auto outVal = boolResult? TRUE:FALSE;
             as.mov(outOpnd, X86Opnd(outVal.word.int8Val));
-            ctx.setOutTag(as, instr, Tag.CONST);
+            ctx.setOutTag(as, instr, Tag.BOOL);
         }
 
         // If our only use is an immediately following if_true
@@ -961,7 +961,7 @@ void TagTestOp(Tag tag)(
             as.mov(outOpnd, outReg.reg.opnd(64));
 
         // Set the output type tag
-        ctx.setOutTag(as, instr, Tag.CONST);
+        ctx.setOutTag(as, instr, Tag.BOOL);
     }
 
     // If our only use is an immediately following if_true
@@ -1014,7 +1014,7 @@ void TagTestOp(Tag tag)(
 
 alias gen_is_undef = TagTestOp!(Tag.UNDEF);
 alias gen_is_null = TagTestOp!(Tag.NULL);
-alias gen_is_const = TagTestOp!(Tag.CONST);
+alias gen_is_bool = TagTestOp!(Tag.BOOL);
 alias gen_is_int32 = TagTestOp!(Tag.INT32);
 alias gen_is_int64 = TagTestOp!(Tag.INT64);
 alias gen_is_float64 = TagTestOp!(Tag.FLOAT64);
@@ -1230,7 +1230,7 @@ void CmpOp(string op, size_t numBits)(
             as.mov(outOpnd, outReg.reg.opnd(64));
 
         // Set the output type tag
-        ctx.setOutTag(as, instr, Tag.CONST);
+        ctx.setOutTag(as, instr, Tag.BOOL);
     }
 
     // If there is an immediately following if_true using this value
@@ -1427,8 +1427,8 @@ alias gen_gt_i32 = CmpOp!("gt", 32);
 alias gen_ge_i32 = CmpOp!("ge", 32);
 alias gen_eq_i64 = CmpOp!("eq", 64);
 
-alias gen_eq_const = CmpOp!("eq", 8);
-alias gen_ne_const = CmpOp!("ne", 8);
+alias gen_eq_bool = CmpOp!("eq", 8);
+alias gen_ne_bool = CmpOp!("ne", 8);
 alias gen_eq_refptr = CmpOp!("eq", 64);
 alias gen_ne_refptr = CmpOp!("ne", 64);
 alias gen_eq_rawptr = CmpOp!("eq", 64);

@@ -116,7 +116,7 @@ Perform an assertion test
 function assert(testVal, errorMsg)
 {
     // If testVal === true, do nothing
-    if ($ir_is_const(testVal) && $ir_eq_const(testVal, true))
+    if ($ir_is_bool(testVal) && $ir_eq_bool(testVal, true))
         return;
 
     // If no error message is specified
@@ -377,7 +377,7 @@ function $rt_strToInt(strVal)
         }
     }
 
-    if ($ir_eq_const(neg, true))
+    if ($ir_eq_bool(neg, true))
         intVal *= -1;
 
     return intVal;
@@ -424,7 +424,7 @@ function $rt_intToStr(intVal, radix)
     var strObj = $rt_str_alloc(strLen);
 
     // If the string is negative, write the minus sign
-    if ($ir_eq_const(neg, true))
+    if ($ir_eq_bool(neg, true))
     {
         $rt_str_set_data(strObj, 0, 45);
     }
@@ -626,9 +626,9 @@ function $rt_toString(v)
         return "null";
     }
 
-    if ($ir_is_const(v))
+    if ($ir_is_bool(v))
     {
-        return $ir_eq_const(v, true)? "true":"false";
+        return $ir_eq_bool(v, true)? "true":"false";
     }
 
     assert (false, "unhandled type in toString");
@@ -666,7 +666,7 @@ function $rt_toPrim(v)
     if ($ir_is_null(v))
         return v;
 
-    if ($ir_is_const(v))
+    if ($ir_is_bool(v))
         return v;
 
     if ($ir_is_string(v))
@@ -696,8 +696,8 @@ Evaluate a value as a boolean
 */
 function $rt_toBool(v)
 {
-    if ($ir_is_const(v))
-        return $ir_eq_const(v, true);
+    if ($ir_is_bool(v))
+        return $ir_eq_bool(v, true);
 
     if ($ir_is_int32(v))
         return $ir_ne_i32(v, 0);
@@ -729,8 +729,8 @@ function $rt_toNumber(v)
     if ($ir_is_null(v))
         return 0;
 
-    if ($ir_is_const(v))
-        return $ir_eq_const(v, true)? 1:0;
+    if ($ir_is_bool(v))
+        return $ir_eq_bool(v, true)? 1:0;
 
     if ($ir_is_string(v))
         return $rt_strToInt(v);
@@ -818,7 +818,7 @@ function $rt_typeof(v)
     if ($ir_is_null(v))
         return "object";
 
-    if ($ir_is_const(v))
+    if ($ir_is_bool(v))
         return "boolean";
 
     if ($ir_is_object(v) || $ir_is_array(v))
@@ -1761,10 +1761,10 @@ function $rt_eq(x, y)
     }
 
     // If x is a constant
-    else if ($ir_is_const(x))
+    else if ($ir_is_bool(x))
     {
-        if ($ir_is_const(y))
-            return $ir_eq_const(x, y);
+        if ($ir_is_bool(y))
+            return $ir_eq_bool(x, y);
     }
 
     // If x is float
@@ -1867,6 +1867,7 @@ function $rt_se(x, y)
     {
         if ($ir_is_object(y))
             return $ir_eq_refptr(x, y);
+
         return false;
     }
 
@@ -1874,6 +1875,7 @@ function $rt_se(x, y)
     {
         if ($ir_is_array(y))
             return $ir_eq_refptr(x, y);
+
         return false;
     }
 
@@ -1881,6 +1883,7 @@ function $rt_se(x, y)
     {
         if ($ir_is_closure(y))
             return $ir_eq_refptr(x, y);
+
         return false;
     }
 
@@ -1888,8 +1891,10 @@ function $rt_se(x, y)
     {
         if ($ir_is_string(y))
             return $ir_eq_refptr(x, y);
+
         if ($ir_is_rope(y))
             return $ir_eq_refptr(x, $rt_ropeToStr(y));
+
         return false;
     }
 
@@ -1909,10 +1914,11 @@ function $rt_se(x, y)
     }
 
     // If x is a constant
-    else if ($ir_is_const(x))
+    else if ($ir_is_bool(x))
     {
-        if ($ir_is_const(y))
-            return $ir_eq_const(x, y);
+        if ($ir_is_bool(y))
+            return $ir_eq_bool(x, y);
+
         return false;
     }
 
@@ -2003,10 +2009,10 @@ function $rt_ns(x, y)
     }
 
     // If x is a constant
-    else if ($ir_is_const(x))
+    else if ($ir_is_bool(x))
     {
-        if ($ir_is_const(y))
-            return $ir_ne_const(x, y);
+        if ($ir_is_bool(y))
+            return $ir_ne_bool(x, y);
         return true;
     }
 
@@ -3081,7 +3087,7 @@ function $rt_hasOwnProp(base, prop)
         $ir_is_float64(base) ||
         $ir_is_null(base) ||
         $ir_is_undef(base) ||
-        $ir_is_const(base))
+        $ir_is_bool(base))
     {
         return false;
     }

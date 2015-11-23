@@ -70,14 +70,9 @@ Map.defHashFn = function (val)
         return 0;
     }
 
-    if ($ir_is_const(val))
+    if ($ir_is_bool(val))
     {
-        if (val === false)
-            return 0;
-        if (val === true)
-            return 1;
-
-        assert (false);
+        return (val === false)? 0:1
     }
 
     if (val.__hashCode__ === undefined)

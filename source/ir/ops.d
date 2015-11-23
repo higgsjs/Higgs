@@ -107,7 +107,7 @@ Opcode GET_TAG = { "get_tag", true, [OpArg.LOCAL], &gen_get_tag };
 // Type tag test
 Opcode IS_UNDEF = { "is_undef", true, [OpArg.LOCAL], &gen_is_undef, OpInfo.BOOL_VAL };
 Opcode IS_NULL = { "is_null", true, [OpArg.LOCAL], &gen_is_null, OpInfo.BOOL_VAL };
-Opcode IS_CONST = { "is_const", true, [OpArg.LOCAL], &gen_is_const, OpInfo.BOOL_VAL };
+Opcode IS_BOOL = { "is_bool", true, [OpArg.LOCAL], &gen_is_bool, OpInfo.BOOL_VAL };
 Opcode IS_INT32 = { "is_int32", true, [OpArg.LOCAL], &gen_is_int32, OpInfo.BOOL_VAL };
 Opcode IS_INT64 = { "is_int64", true, [OpArg.LOCAL], &gen_is_int64, OpInfo.BOOL_VAL };
 Opcode IS_FLOAT64 = { "is_float64", true, [OpArg.LOCAL], &gen_is_float64, OpInfo.BOOL_VAL };
@@ -180,9 +180,9 @@ Opcode NE_REFPTR = { "ne_refptr", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_ne_refp
 Opcode EQ_RAWPTR = { "eq_rawptr", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_eq_rawptr, OpInfo.BOOL_VAL };
 Opcode NE_RAWPTR = { "ne_rawptr", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_ne_rawptr, OpInfo.BOOL_VAL };
 
-// Constant comparison instructions
-Opcode EQ_CONST = { "eq_const", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_eq_const, OpInfo.BOOL_VAL };
-Opcode NE_CONST = { "ne_const", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_ne_const, OpInfo.BOOL_VAL };
+// Boolean comparison instructions
+Opcode EQ_BOOL = { "eq_bool", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_eq_bool, OpInfo.BOOL_VAL };
+Opcode NE_BOOL = { "ne_bool", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_ne_bool, OpInfo.BOOL_VAL };
 
 // Floating-point comparison instructions
 Opcode EQ_F64 = { "eq_f64", true, [OpArg.LOCAL, OpArg.LOCAL], &gen_eq_f64, OpInfo.BOOL_VAL };

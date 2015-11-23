@@ -117,8 +117,8 @@ void assertBool(VM vm, string input, bool boolVal)
     auto ret = vm.evalString(input);
 
     assert (
-        ret.tag == Tag.CONST,
-        "non-const value: " ~ ret.toString
+        ret.tag == Tag.BOOL,
+        "non-boolean value: " ~ ret.toString
     );
 
     assert (

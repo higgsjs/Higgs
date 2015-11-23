@@ -998,9 +998,9 @@ void stmtToIR(IRGenCtx ctx, ASTStmt stmt)
 
         auto propTestCtx = loopEntryCtx.subCtx(propTestBlock);
 
-        // If the property is a null pointer, continue to the next property
-        auto isConst = propTestCtx.addInstr(new IRInstr(&IS_CONST, propName));
-        propTestCtx.ifTrue(isConst, nextObjBlock, bodyBlock);
+        // If the property is the false value, continue to the next property
+        auto isFalse = propTestCtx.addInstr(new IRInstr(&IS_BOOL, propName));
+        propTestCtx.ifTrue(isFalse, nextObjBlock, bodyBlock);
 
         //
         // 4: Get next object

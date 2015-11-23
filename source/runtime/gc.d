@@ -625,7 +625,7 @@ Word gcForward(VM vm, Word word, Tag tag)
         // Return the word unchanged
         case Tag.UNDEF:
         case Tag.NULL:
-        case Tag.CONST:
+        case Tag.BOOL:
         case Tag.INT32:
         case Tag.INT64:
         case Tag.FLOAT64:
