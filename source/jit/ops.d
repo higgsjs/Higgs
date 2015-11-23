@@ -1012,6 +1012,7 @@ void TagTestOp(Tag tag)(
     }
 }
 
+alias gen_is_undef = TagTestOp!(Tag.UNDEF);
 alias gen_is_null = TagTestOp!(Tag.NULL);
 alias gen_is_const = TagTestOp!(Tag.CONST);
 alias gen_is_int32 = TagTestOp!(Tag.INT32);
@@ -2094,7 +2095,7 @@ void gen_call(
     as.cmp(scrReg3.opnd(64), X86Opnd(0));
     as.jge(Label.LOOP_EXIT);
     as.mov(X86Opnd(64, wspReg, 0, 8, scrReg3), X86Opnd(UNDEF.word.int8Val));
-    as.mov(X86Opnd(8, tspReg, 0, 1, scrReg3), X86Opnd(Tag.CONST));
+    as.mov(X86Opnd(8, tspReg, 0, 1, scrReg3), X86Opnd(UNDEF.tag));
     as.add(scrReg3.opnd(64), X86Opnd(1));
     as.jmp(Label.LOOP);
     as.label(Label.LOOP_EXIT);
@@ -3691,7 +3692,7 @@ void gen_obj_get_prop(
         if (defShape is null)
         {
             outVal.word = UNDEF.word;
-            outVal.tag = Tag.CONST;
+            outVal.tag = UNDEF.tag;
             outVal.success = 0;
             return;
         }
@@ -3827,8 +3828,8 @@ void gen_obj_get_prop(
     {
         auto outOpnd = ctx.getOutOpnd(as, instr, 64);
 
-        // Set the output type tag to const (undefined)
-        ctx.setOutTag(as, instr, Tag.CONST);
+        // Set the output type tag
+        ctx.setOutTag(as, instr, UNDEF.tag);
 
         // Jump to the false branch
         return gen_jump_false(ver, ctx, instr, as);
@@ -4939,7 +4940,7 @@ void gen_call_ffi(
     else if (retType == "void")
     {
         as.mov(outOpnd, X86Opnd(UNDEF.word.int8Val));
-        ctx.setOutTag(as, instr, Tag.CONST);
+        ctx.setOutTag(as, instr, UNDEF.tag);
     }
     else
     {

@@ -65,21 +65,19 @@ Map.defHashFn = function (val)
         return val | 0;
     }
 
+    if ($ir_is_undef(val) || $ir_is_null(val))
+    {
+        return 0;
+    }
+
     if ($ir_is_const(val))
     {
         if (val === false)
             return 0;
         if (val === true)
             return 1;
-        if (val === undefined)
-            return 2;
 
         assert (false);
-    }
-
-    if (val === null)
-    {
-        return 0;
     }
 
     if (val.__hashCode__ === undefined)

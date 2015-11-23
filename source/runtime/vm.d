@@ -165,9 +165,10 @@ unittest
 /// Type tag values
 enum Tag : ubyte
 {
-    // Note: const has value zero so that zeroed memory has value undefined
-    CONST = 0,
+    // Note: undef has value zero so that zeroed memory has value undefined
+    UNDEF = 0,
     NULL,
+    CONST,
     INT32,
     INT64,
     FLOAT64,
@@ -199,6 +200,7 @@ bool isHeapPtr(Tag tag)
         case Tag.ROPE:
         return true;
 
+        case Tag.UNDEF:
         case Tag.NULL:
         case Tag.CONST:
         case Tag.INT32:
@@ -239,12 +241,14 @@ string tagToString(Tag tag)
     // Switch on the type tag
     switch (tag)
     {
+        case Tag.UNDEF:    return "undef";
+        case Tag.NULL :    return "null";
+        case Tag.CONST:    return "const";
         case Tag.INT32:    return "int32";
         case Tag.INT64:    return "int64";
         case Tag.FLOAT64:  return "float64";
         case Tag.RAWPTR:   return "rawptr";
         case Tag.RETADDR:  return "retaddr";
-        case Tag.CONST:    return "const";
         case Tag.FUNPTR:   return "funptr";
 
         case Tag.REFPTR:   return "refptr";
@@ -317,6 +321,9 @@ struct ValuePair
         // Switch on the type tag
         switch (tag)
         {
+            case Tag.UNDEF:
+            return "undefined";
+
             case Tag.NULL:
             return "null";
 
@@ -325,11 +332,9 @@ struct ValuePair
                 return "true";
             if (this == FALSE)
                 return "false";
-            if (this == UNDEF)
-                return "undefined";
             assert (
                 false,
-                "unsupported constant " ~ to!string(word.uint64Val)
+                "unsupported const-tagged value " ~ to!string(word.uint64Val)
             );
 
             case Tag.INT32:
@@ -408,9 +413,9 @@ struct ValuePair
 }
 
 // Note: low byte is set to allow for one byte immediate comparison
-// Note: undefined has value zero so that zeroed memory has undefined value
+// Note: undefined has value zero so that zeroed memory has value undefined
 immutable NULL    = ValuePair(Word(0x00), Tag.NULL);
-immutable UNDEF   = ValuePair(Word(0x00), Tag.CONST);
+immutable UNDEF   = ValuePair(Word(0x00), Tag.UNDEF);
 immutable TRUE    = ValuePair(Word(0x01), Tag.CONST);
 immutable FALSE   = ValuePair(Word(0x02), Tag.CONST);
 

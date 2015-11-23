@@ -115,6 +115,7 @@ Perform an assertion test
 */
 function assert(testVal, errorMsg)
 {
+    // If testVal === true, do nothing
     if ($ir_is_const(testVal) && $ir_eq_const(testVal, true))
         return;
 
@@ -615,21 +616,19 @@ function $rt_toString(v)
         return $rt_ropeToStr(v);
     }
 
-    if ($ir_is_const(v))
+    if ($ir_is_undef(v))
     {
-        if ($ir_eq_const(v, $undef))
-            return "undefined";
-
-        if ($ir_eq_const(v, true))
-            return "true";
-
-        if ($ir_eq_const(v, false))
-            return "false";
+        return "undefined";
     }
 
     if ($ir_is_null(v))
     {
         return "null";
+    }
+
+    if ($ir_is_const(v))
+    {
+        return $ir_eq_const(v, true)? "true":"false";
     }
 
     assert (false, "unhandled type in toString");
@@ -645,12 +644,9 @@ function $rt_toObject(arg)
 
     switch (typeof(arg))
     {
-        case 'boolean':
-            return new Boolean(arg);
-        case 'number':
-            return new Number(arg);
-        case 'string':
-            return new String(arg);
+        case 'boolean': return new Boolean(arg);
+        case 'number' : return new Number(arg);
+        case 'string' : return new String(arg);
     }
 
     return arg;
@@ -661,12 +657,16 @@ Convert any value to a primitive value
 */
 function $rt_toPrim(v)
 {
-    if ($ir_is_int32(v) ||
-        $ir_is_float64(v) ||
-        $ir_is_const(v))
+    if ($ir_is_int32(v) || $ir_is_float64(v))
         return v
 
+    if ($ir_is_undef(v))
+        return v;
+
     if ($ir_is_null(v))
+        return v;
+
+    if ($ir_is_const(v))
         return v;
 
     if ($ir_is_string(v))
@@ -705,9 +705,6 @@ function $rt_toBool(v)
     if ($ir_is_float64(v))
         return $ir_ne_f64(v, 0.0) && $ir_eq_f64(v, v);
 
-    if ($ir_is_null(v))
-        return false;
-
     if ($ir_is_string(v))
         return $ir_gt_i32($rt_str_get_len(v), 0);
 
@@ -722,6 +719,7 @@ function $rt_toBool(v)
 
 /**
 Attempt to convert a value to a number. If this fails, return NaN
+Note: toNumber(undefined) is NaN according to the ES5 specification
 */
 function $rt_toNumber(v)
 {
@@ -732,13 +730,7 @@ function $rt_toNumber(v)
         return 0;
 
     if ($ir_is_const(v))
-    {
-        if ($ir_eq_const(v, true))
-            return 1;
-
-        if ($ir_eq_const(v, false))
-            return 0;
-    }
+        return $ir_eq_const(v, true)? 1:0;
 
     if ($ir_is_string(v))
         return $rt_strToInt(v);
@@ -820,17 +812,14 @@ function $rt_typeof(v)
     if ($ir_is_int32(v) || $ir_is_float64(v))
         return "number";
 
-    if ($ir_is_const(v))
-    {
-        if ($ir_eq_const(v, true) || $ir_eq_const(v, false))
-            return "boolean";
-
-        if ($ir_eq_const(v, undefined))
-            return "undefined";
-    }
+    if ($ir_is_undef(v))
+        return "undefined";
 
     if ($ir_is_null(v))
         return "object";
+
+    if ($ir_is_const(v))
+        return "boolean";
 
     if ($ir_is_object(v) || $ir_is_array(v))
         return "object";
@@ -1345,7 +1334,7 @@ function $rt_or(x, y)
     }
 
     // If x is undefined
-    if ($ir_is_const(x) && $ir_eq_const(x, $undef))
+    if ($ir_is_undef(x))
     {
         if ($ir_is_int32(y))
             return y;
@@ -1442,7 +1431,7 @@ function $rt_lt(x, y)
         if ($ir_is_float64(y))
             return $ir_lt_f64(x, y);
 
-        if ($ir_is_const(y) && $ir_eq_const(y, $undef))
+        if ($ir_is_undef(y))
             return false;
     }
 
@@ -1564,6 +1553,9 @@ function $rt_gt(x, y)
 
         if ($ir_is_float64(y))
             return $ir_gt_f64($ir_i32_to_f64(x), y);
+
+        if ($ir_is_undef(y))
+            return false;
     }
 
     // If x is float
@@ -1575,7 +1567,7 @@ function $rt_gt(x, y)
         if ($ir_is_float64(y))
             return $ir_gt_f64(x, y);
 
-        if ($ir_is_const(y) && $ir_eq_const(y, $undef))
+        if ($ir_is_undef(y))
             return false;
     }
 
@@ -1740,11 +1732,25 @@ function $rt_eq(x, y)
             return false;
     }
 
+    // If x is undefined
+    else if ($ir_is_undef(x))
+    {
+        // undefined == null
+        if ($ir_is_null(y))
+            return true;
+
+        // undefined == undefined
+        if ($ir_is_undef(y))
+            return true;
+
+        return false;
+    }
+
     // If x is null
     else if ($ir_is_null(x))
     {
         // null == undefined
-        if ($ir_is_const(y) && $ir_eq_const(y, $undef))
+        if ($ir_is_undef(y))
             return true;
 
         // null == null
@@ -1759,10 +1765,6 @@ function $rt_eq(x, y)
     {
         if ($ir_is_const(y))
             return $ir_eq_const(x, y);
-
-        // undefined == null
-        if ($ir_eq_const(x, undefined) && $ir_is_null(y))
-            return true;
     }
 
     // If x is float
@@ -1816,7 +1818,7 @@ function $rt_eqNull(x)
     if ($ir_is_null(x))
         return true;
 
-    if ($ir_is_const(x) && $ir_eq_const(x, $undef))
+    if ($ir_is_undef(x))
         return true;
 
     return false;
@@ -1838,7 +1840,7 @@ function $rt_neNull(x)
     if ($ir_is_null(x))
         return false;
 
-    if ($ir_is_const(x) && $ir_eq_const(x, $undef))
+    if ($ir_is_undef(x))
         return false;
 
     return true;
@@ -1896,9 +1898,14 @@ function $rt_se(x, y)
         return $ir_eq_refptr($rt_ropeToStr(x), $rt_toString(y));
     }
 
+    else if ($ir_is_undef(x))
+    {
+        return $ir_is_undef(y);
+    }
+
     else if ($ir_is_null(x))
     {
-        return ($ir_is_null(y));
+        return $ir_is_null(y);
     }
 
     // If x is a constant
@@ -1985,6 +1992,11 @@ function $rt_ns(x, y)
         return $rt_ns($rt_ropeToStr(x), y);
     }
 
+    else if ($ir_is_undef(x))
+    {
+        return !$ir_is_undef(y);
+    }
+
     else if ($ir_is_null(x))
     {
         return !$ir_is_null(y);
@@ -2038,11 +2050,11 @@ function $rt_ctorNewThis(clos)
 }
 
 /**
-Select the return value after a new/constructor call
+Select the return value after a new/constructor function call
 */
 function $rt_ctorSelectRet(retVal, thisVal)
 {
-    if ($ir_is_const(retVal) && $ir_eq_const(retVal, $undef))
+    if ($ir_is_undef(retVal))
         return thisVal;
 
     return retVal;
@@ -3064,14 +3076,12 @@ function $rt_hasOwnProp(base, prop)
         );
     }
 
-    // If the base is a number
-    if ($ir_is_int32(base) || $ir_is_float64(base))
-    {
-        return false;
-    }
-
-    // If the base is a constant
-    if ($ir_is_const(base))
+    // If the base is a number, undefined, null or a boolean
+    if ($ir_is_int32(base) || 
+        $ir_is_float64(base) ||
+        $ir_is_null(base) ||
+        $ir_is_undef(base) ||
+        $ir_is_const(base))
     {
         return false;
     }

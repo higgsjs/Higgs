@@ -1125,6 +1125,7 @@ unittest
     vm.assertBool("isNaN(3)", false);
     vm.assertBool("isNaN(3.5)", false);
     vm.assertBool("isNaN(NaN)", true);
+    vm.assertBool("isNaN(undefined + 0)", true);
     vm.assertBool("isNaN(0 / 0)", true);
     vm.assertBool("isNaN(0 % 0)", true);
 

@@ -1422,7 +1422,7 @@ IRValue exprToIR(IRGenCtx ctx, ASTExpr expr)
 {
     //writeln("expr to IR: ", expr);
 
-    // Function expression
+    // Function/closure expression
     if (auto funExpr = cast(FunExpr)expr)
     {
         // If this is not a function declaration
