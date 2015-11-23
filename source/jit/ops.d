@@ -1012,6 +1012,7 @@ void TagTestOp(Tag tag)(
     }
 }
 
+alias gen_is_null = TagTestOp!(Tag.NULL);
 alias gen_is_const = TagTestOp!(Tag.CONST);
 alias gen_is_int32 = TagTestOp!(Tag.INT32);
 alias gen_is_int64 = TagTestOp!(Tag.INT64);

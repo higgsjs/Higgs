@@ -792,7 +792,8 @@ refptr getArrTbl(refptr arrPtr)
 
 void setArrTbl(refptr arrPtr, refptr tblPtr)
 {
-    clos_set_word(arrPtr, ARRTBL_SLOT_IDX, cast(uint64_t)tblPtr);
+    obj_set_word(arrPtr, ARRTBL_SLOT_IDX, cast(uint64_t)tblPtr);
+    obj_set_tag(arrPtr, ARRTBL_SLOT_IDX, Tag.REFPTR);
 }
 
 uint32_t getArrLen(refptr arrPtr)

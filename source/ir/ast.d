@@ -983,7 +983,7 @@ void stmtToIR(IRGenCtx ctx, ASTStmt stmt)
         ));
 
         // If the property is a null pointer, continue to the next property
-        auto isPropRef = loopEntryCtx.addInstr(new IRInstr(&IS_REFPTR, propName));
+        auto isPropRef = loopEntryCtx.addInstr(new IRInstr(&IS_NULL, propName));
         auto ifPropRef = loopEntryCtx.ifTrue(isPropRef, entryBlock, propTestBlock);
 
         // Set the phi args for the null property name branch
@@ -1017,7 +1017,7 @@ void stmtToIR(IRGenCtx ctx, ASTStmt stmt)
         );
 
         // If the next object is null, exit the loop, we are done
-        auto isObjRef = nextObjCtx.addInstr(new IRInstr(&IS_REFPTR, nextObj));
+        auto isObjRef = nextObjCtx.addInstr(new IRInstr(&IS_NULL, nextObj));
         auto ifObjNull = nextObjCtx.ifTrue(isObjRef, exitBlock, entryBlock);
         breakCtxLst ~= nextObjCtx.subCtx();
 

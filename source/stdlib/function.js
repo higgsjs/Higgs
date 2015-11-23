@@ -210,7 +210,7 @@ Function.prototype.apply = function (thisArg, argArray)
     if (!$ir_is_closure(this))
         throw new TypeError('apply on non-function');
 
-    if (($ir_is_refptr(argArray) && $ir_eq_refptr(argArray, null)) ||
+    if (($ir_is_null(argArray)) ||
         ($ir_is_const(argArray) && $ir_eq_const(argArray, $undef)))
         argArray = [];
 
@@ -220,7 +220,7 @@ Function.prototype.apply = function (thisArg, argArray)
     // If the this argument is null or undefined,
     // make it the global object
 
-    if (($ir_is_refptr(thisArg) && $ir_eq_refptr(thisArg, null)) ||
+    if (($ir_is_null(thisArg)) ||
         ($ir_is_const(thisArg) && $ir_eq_const(thisArg, $undef)))
         thisArg = $global;
 

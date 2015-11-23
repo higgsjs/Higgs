@@ -623,6 +623,7 @@ Word gcForward(VM vm, Word word, Tag tag)
 
         // Non-GCd types
         // Return the word unchanged
+        case Tag.NULL:
         case Tag.CONST:
         case Tag.INT32:
         case Tag.INT64:

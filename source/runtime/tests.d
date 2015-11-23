@@ -946,6 +946,7 @@ unittest
 
     initVMNoStdLib();
  
+    vm.assertTrue("a = []; a[1] === undefined");
     vm.assertInt("a = []; return 0", 0);
     vm.assertInt("a = [1]; return 0", 0);
     vm.assertInt("a = [1,2]; return 0", 0);

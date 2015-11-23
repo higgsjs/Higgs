@@ -50,9 +50,7 @@ enum OpArg
     FLOAT64,
     STRING,
     LOCAL,
-    LINK,
-    FUN,
-    MAP
+    FUN
 }
 
 /**
@@ -98,7 +96,7 @@ struct OpInfo
 /// Instruction type (opcode) alias
 alias static immutable(OpInfo) Opcode;
 
-// Access visible arguments by index
+// Access visible (non-hidden) function arguments by index
 Opcode GET_ARG = { "get_arg", true, [OpArg.LOCAL], &gen_get_arg };
 
 // Word/type manipulation primitives
@@ -107,10 +105,11 @@ Opcode GET_WORD = { "get_word", true, [OpArg.LOCAL], &gen_get_word };
 Opcode GET_TAG = { "get_tag", true, [OpArg.LOCAL], &gen_get_tag };
 
 // Type tag test
+Opcode IS_CONST = { "is_const", true, [OpArg.LOCAL], &gen_is_const, OpInfo.BOOL_VAL };
+Opcode IS_NULL = { "is_null", true, [OpArg.LOCAL], &gen_is_null, OpInfo.BOOL_VAL };
 Opcode IS_INT32 = { "is_int32", true, [OpArg.LOCAL], &gen_is_int32, OpInfo.BOOL_VAL };
 Opcode IS_INT64 = { "is_int64", true, [OpArg.LOCAL], &gen_is_int64, OpInfo.BOOL_VAL };
 Opcode IS_FLOAT64 = { "is_float64", true, [OpArg.LOCAL], &gen_is_float64, OpInfo.BOOL_VAL };
-Opcode IS_CONST  = { "is_const", true, [OpArg.LOCAL], &gen_is_const, OpInfo.BOOL_VAL };
 Opcode IS_RAWPTR = { "is_rawptr", true, [OpArg.LOCAL], &gen_is_rawptr, OpInfo.BOOL_VAL };
 Opcode IS_REFPTR = { "is_refptr", true, [OpArg.LOCAL], &gen_is_refptr, OpInfo.BOOL_VAL };
 Opcode IS_OBJECT = { "is_object", true, [OpArg.LOCAL], &gen_is_object, OpInfo.BOOL_VAL };

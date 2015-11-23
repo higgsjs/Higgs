@@ -627,7 +627,7 @@ function $rt_toString(v)
             return "false";
     }
 
-    if ($ir_is_refptr(v) && $ir_eq_refptr(v, null))
+    if ($ir_is_null(v))
     {
         return "null";
     }
@@ -666,7 +666,7 @@ function $rt_toPrim(v)
         $ir_is_const(v))
         return v
 
-    if ($ir_is_refptr(v) && $ir_eq_refptr(v, null))
+    if ($ir_is_null(v))
         return v;
 
     if ($ir_is_string(v))
@@ -705,7 +705,7 @@ function $rt_toBool(v)
     if ($ir_is_float64(v))
         return $ir_ne_f64(v, 0.0) && $ir_eq_f64(v, v);
 
-    if ($ir_is_refptr(v) && $ir_eq_refptr(v, null))
+    if ($ir_is_null(v))
         return false;
 
     if ($ir_is_string(v))
@@ -728,7 +728,7 @@ function $rt_toNumber(v)
     if ($ir_is_int32(v) || $ir_is_float64(v))
         return v;
 
-    if ($ir_is_refptr(v) && $ir_eq_refptr(v, null))
+    if ($ir_is_null(v))
         return 0;
 
     if ($ir_is_const(v))
@@ -829,7 +829,7 @@ function $rt_typeof(v)
             return "undefined";
     }
 
-    if ($ir_is_refptr(v) && $ir_eq_refptr(v, null))
+    if ($ir_is_null(v))
         return "object";
 
     if ($ir_is_object(v) || $ir_is_array(v))
@@ -1708,7 +1708,7 @@ function $rt_eq(x, y)
         if ($ir_is_object(y))
             return $ir_eq_refptr(x, y);
 
-        if ($ir_is_refptr(y) || $rt_valIsObj(y))
+        if ($ir_is_null(y) || $rt_valIsObj(y))
             return false;
     }
 
@@ -1717,7 +1717,7 @@ function $rt_eq(x, y)
         if ($ir_is_array(y))
             return $ir_eq_refptr(x, y);
 
-        if ($ir_is_refptr(y) || $rt_valIsObj(y))
+        if ($ir_is_null(y) || $rt_valIsObj(y))
             return false;
     }
 
@@ -1726,7 +1726,7 @@ function $rt_eq(x, y)
         if ($ir_is_closure(y))
             return $ir_eq_refptr(x, y);
 
-        if ($ir_is_refptr(y) || $rt_valIsObj(y))
+        if ($ir_is_null(y) || $rt_valIsObj(y))
             return false;
     }
 
@@ -1736,26 +1736,22 @@ function $rt_eq(x, y)
             return $ir_eq_refptr(x, y);
 
         // string != null
-        if ($ir_is_refptr(y) && $ir_eq_refptr(y, null))
+        if ($ir_is_null(y))
             return false;
     }
 
-    // If x is a references
-    else if ($ir_is_refptr(x))
+    // If x is null
+    else if ($ir_is_null(x))
     {
-        // If x is null
-        if ($ir_eq_refptr(x, null))
-        {
-            // null == undefined
-            if ($ir_is_const(y) && $ir_eq_const(y, $undef))
-                return true;
+        // null == undefined
+        if ($ir_is_const(y) && $ir_eq_const(y, $undef))
+            return true;
 
-            // null == null
-            if ($ir_is_refptr(y) && $ir_eq_refptr(y, null))
-                return true;
+        // null == null
+        if ($ir_is_null(y))
+            return true;
 
-            return false;
-        }
+        return false;
     }
 
     // If x is a constant
@@ -1765,8 +1761,7 @@ function $rt_eq(x, y)
             return $ir_eq_const(x, y);
 
         // undefined == null
-        if ($ir_eq_const(x, undefined) &&
-            $ir_is_refptr(y) && $ir_eq_refptr(y, null))
+        if ($ir_eq_const(x, undefined) && $ir_is_null(y))
             return true;
     }
 
@@ -1818,7 +1813,7 @@ Optimized equality (==) for comparisons with null
 */
 function $rt_eqNull(x)
 {
-    if ($ir_is_refptr(x) && $ir_eq_refptr(x, null))
+    if ($ir_is_null(x))
         return true;
 
     if ($ir_is_const(x) && $ir_eq_const(x, $undef))
@@ -1840,7 +1835,7 @@ Optimized inequality (!=) for comparisons with null
 */
 function $rt_neNull(x)
 {
-    if ($ir_is_refptr(x) && $ir_eq_refptr(x, null))
+    if ($ir_is_null(x))
         return false;
 
     if ($ir_is_const(x) && $ir_eq_const(x, $undef))
@@ -1901,11 +1896,9 @@ function $rt_se(x, y)
         return $ir_eq_refptr($rt_ropeToStr(x), $rt_toString(y));
     }
 
-    else if ($ir_is_refptr(x))
+    else if ($ir_is_null(x))
     {
-        if ($ir_is_refptr(y))
-            return $ir_eq_refptr(x, y);
-        return false;
+        return ($ir_is_null(y));
     }
 
     // If x is a constant
@@ -1992,11 +1985,9 @@ function $rt_ns(x, y)
         return $rt_ns($rt_ropeToStr(x), y);
     }
 
-    else if ($ir_is_refptr(x))
+    else if ($ir_is_null(x))
     {
-        if ($ir_is_refptr(y))
-            return $ir_ne_refptr(x, y);
-        return true;
+        return !$ir_is_null(y);
     }
 
     // If x is a constant
@@ -2091,7 +2082,7 @@ function $rt_newArr(length)
     $ir_arr_init_shape(objPtr);
     $rt_setProto(objPtr, $ir_get_arr_proto());
     $rt_setArrTbl(objPtr, tblPtr);
-    $rt_obj_set_tag(objPtr, $rt_ARRTBL_SLOT_IDX, $ir_get_tag(null));
+    $rt_obj_set_tag(objPtr, $rt_ARRTBL_SLOT_IDX, $ir_get_tag(tblPtr));
 
     // Set the array length
     $rt_setArrLen(objPtr, length);
@@ -2220,7 +2211,7 @@ function $rt_objGetProp(obj, propStr)
     var proto = $ir_obj_get_proto(obj);
 
     // If the prototype is null, produce undefined
-    if ($ir_is_refptr(proto))
+    if ($ir_is_null(proto))
         return $undef;
 
     // Do a recursive lookup on the prototype
@@ -2398,7 +2389,7 @@ function $rt_getPropField(base, propStr)
         var obj = $ir_obj_get_proto(obj);
 
         // If we have reached the end of the prototype chain
-        if ($ir_is_refptr(obj))
+        if ($ir_is_null(obj))
         {
             return $undef;
         }
@@ -2425,7 +2416,7 @@ function $rt_getPropField(base, propStr)
             var obj = $ir_obj_get_proto(obj);
 
             // If we have reached the end of the prototype chain
-            if ($ir_is_refptr(obj))
+            if ($ir_is_null(obj))
             {
                 return $undef;
             }
@@ -2530,7 +2521,7 @@ function $rt_getGlobal(obj, propStr)
     var proto = $ir_obj_get_proto(obj);
 
     // If the prototype is null, the property is not defined
-    if ($ir_is_refptr(proto))
+    if ($ir_is_null(proto))
     {
         //$ir_print_str(propStr); $ir_print_str('\n');
 
@@ -3287,3 +3278,4 @@ function $rt_getPropEnum(curObj, propName, propIdx)
     // Fall back to the array element read
     return $rt_getPropElem(curObj, propName);
 }
+

@@ -166,6 +166,7 @@ unittest
 enum Tag : ubyte
 {
     CONST = 0,
+    NULL,
     INT32,
     INT64,
     FLOAT64,
@@ -197,6 +198,7 @@ bool isHeapPtr(Tag tag)
         case Tag.ROPE:
         return true;
 
+        case Tag.NULL:
         case Tag.CONST:
         case Tag.INT32:
         case Tag.INT64:
@@ -314,6 +316,21 @@ struct ValuePair
         // Switch on the type tag
         switch (tag)
         {
+            case Tag.NULL:
+            return "null";
+
+            case Tag.CONST:
+            if (this == TRUE)
+                return "true";
+            if (this == FALSE)
+                return "false";
+            if (this == UNDEF)
+                return "undefined";
+            assert (
+                false,
+                "unsupported constant " ~ to!string(word.uint64Val)
+            );
+
             case Tag.INT32:
             return to!string(word.int32Val);
 
@@ -334,24 +351,12 @@ struct ValuePair
             case Tag.RETADDR:
             return to!string(word.ptrVal);
 
-            case Tag.CONST:
-            if (this == TRUE)
-                return "true";
-            if (this == FALSE)
-                return "false";
-            if (this == UNDEF)
-                return "undefined";
-            assert (
-                false,
-                "unsupported constant " ~ to!string(word.uint64Val)
-            );
-
             case Tag.FUNPTR:
             return "funptr";
 
             case Tag.REFPTR:
-            if (this == NULL)
-                return "null";
+            if (word.ptrVal is null)
+                return "null refptr";
             if (ptrValid(word.ptrVal) is false)
                 return "invalid refptr";
             if (isLayout(LAYOUT_OBJ))
@@ -402,7 +407,7 @@ struct ValuePair
 }
 
 // Note: low byte is set to allow for one byte immediate comparison
-immutable NULL    = ValuePair(Word(0x00), Tag.REFPTR);
+immutable NULL    = ValuePair(Word(0x00), Tag.NULL);
 immutable TRUE    = ValuePair(Word(0x01), Tag.CONST);
 immutable FALSE   = ValuePair(Word(0x02), Tag.CONST);
 immutable UNDEF   = ValuePair(Word(0x03), Tag.CONST);
