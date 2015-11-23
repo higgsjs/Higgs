@@ -165,6 +165,7 @@ unittest
 /// Type tag values
 enum Tag : ubyte
 {
+    // Note: const has value zero so that zeroed memory has value undefined
     CONST = 0,
     NULL,
     INT32,
@@ -407,10 +408,11 @@ struct ValuePair
 }
 
 // Note: low byte is set to allow for one byte immediate comparison
+// Note: undefined has value zero so that zeroed memory has undefined value
 immutable NULL    = ValuePair(Word(0x00), Tag.NULL);
+immutable UNDEF   = ValuePair(Word(0x00), Tag.CONST);
 immutable TRUE    = ValuePair(Word(0x01), Tag.CONST);
 immutable FALSE   = ValuePair(Word(0x02), Tag.CONST);
-immutable UNDEF   = ValuePair(Word(0x03), Tag.CONST);
 
 /// Stack size, 256K words (2MB)
 immutable size_t STACK_SIZE = 2^^18;

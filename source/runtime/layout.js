@@ -881,10 +881,6 @@ function $rt_arrtbl_alloc(cap)
     var o = $ir_alloc_refptr($rt_arrtbl_comp_size(cap));
     $rt_arrtbl_set_cap(o, cap);
     $rt_arrtbl_set_header(o, 7);
-    for (var i = 0; $ir_lt_i32(i, cap); i = $ir_add_i32(i, 1))
-    {    
-        $rt_arrtbl_set_word(o, i, $ir_get_word($undef));
-    }
     return o;
 }
 

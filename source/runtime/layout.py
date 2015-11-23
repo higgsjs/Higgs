@@ -165,10 +165,10 @@ layouts = [
             { 'name':"cap" , 'tag':"uint32" },
 
             # Element words
-            { 'name':"word", 'tag':"uint64", 'init':'undef_word', 'szField':"cap", 'tpField':'tag' },
+            { 'name':"word", 'tag':"uint64", 'szField':"cap", 'tpField':'tag' },
 
             # Element types
-            { 'name':"tag", 'tag':"uint8", 'init':'undef_type', 'szField':"cap" },
+            { 'name':"tag", 'tag':"uint8", 'szField':"cap" },
         ]
     },
 ]

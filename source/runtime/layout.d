@@ -900,10 +900,6 @@ extern (C) refptr arrtbl_alloc(VM vm, uint32 cap)
     auto o = vm.heapAlloc(arrtbl_comp_size(cap));
     arrtbl_set_cap(o, cap);
     arrtbl_set_header(o, 7);
-    for (uint32 i = 0; i < cap; ++i)
-    {    
-        arrtbl_set_word(o, i, UNDEF.word.uint8Val);
-    }
     return o;
 }
 
