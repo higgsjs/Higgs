@@ -2819,11 +2819,12 @@ function $rt_setProp(base, prop, val)
         }
 
         // If the property is a floating-point number
-        if ($ir_is_float64(prop))
+        if ($ir_is_float64(prop) && 
+            $ir_ge_f64(prop, 0.0) &&
+            $ir_le_f64(prop, 512000000.0))
         {
-            var intVal = $rt_toUint32(prop);
-            if (intVal === prop)
-                return $rt_setProp(base, intVal, val);
+            var idx = $ir_f64_to_i32(prop);
+            return $rt_setArrElem(base, idx, val);
         }
 
         return $rt_objSetProp(base, $rt_toString(prop), val);

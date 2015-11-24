@@ -227,7 +227,14 @@ Math.floor = function (x)
 
     // If x is floating-point
     if ($ir_is_float64(x))
-        return $ir_floor_f64(x);
+    {
+        var f = $ir_floor_f64(x);
+
+        if ($ir_ge_f64(f, -512000000.0) && $ir_le_f64(f, 512000000.0))
+            return $ir_f64_to_i32(f);
+
+        return f;
+    }
 
     return NaN;
 };
