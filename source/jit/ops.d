@@ -3218,7 +3218,7 @@ void gen_clear_shape(
     if (shapes.length > opts.maxshapes)
     {
         // Clear any known shape for this object
-        ctx.shapeChg(as, objVal);
+        ctx.clearShape(objVal);
     }
 }
 

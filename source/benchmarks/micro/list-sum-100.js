@@ -2,7 +2,8 @@ var lst = null
 for (var i = 0; i < 100; ++i)
     lst = { val: i, next: lst }
 
-function listSum(lst) {
+function listSum(lst) 
+{
     if (lst == null)
         return 0;
     else

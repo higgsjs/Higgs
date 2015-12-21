@@ -1455,6 +1455,8 @@ class CodeGenCtx
         // If the function is not already known to cause shape changes
         if (fun.shapeChg is false)
         {
+            //writeln(fun.getName);
+
             // Mark this function as possibly changing shapes
             fun.shapeChg = true;
 
@@ -1512,6 +1514,19 @@ class CodeGenCtx
                 if (state.type.shapeKnown)
                     valMap[value] = state.clearShape();
         }
+    }
+
+    /// Clear shape information for a given value
+    void clearShape(IRDstValue value)
+    {
+        assert (
+            value in valMap,
+            "setShape: value not in value map"
+        );
+
+        ValState state = getState(value);
+
+        valMap[value] = state.clearShape();
     }
 
     /// Test if the shape is known for a given value

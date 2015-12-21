@@ -328,6 +328,7 @@ static ~this()
         writefln("num call fast: %s", numCallFast);
         writefln("num call slow: %s", numCallSlow);
         writefln("num call apply: %s", numCallApply);
+        writefln("num call: %s", (numCallFast + numCallSlow + numCallApply));
 
         writefln("num funs comp: %s", numFunsComp);
         writefln("num cont invs: %s", numContInvs);
