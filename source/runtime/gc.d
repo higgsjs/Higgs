@@ -38,8 +38,8 @@
 module runtime.gc;
 
 import core.memory;
-import std.c.stdlib;
-import std.c.string;
+import core.stdc.stdlib;
+import core.stdc.string;
 import std.stdint;
 import std.stdio;
 import std.string;

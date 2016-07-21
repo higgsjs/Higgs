@@ -37,6 +37,7 @@
 
 module ir.ast;
 
+import stats;
 import std.ascii;
 import std.stdint;
 import std.stdio;

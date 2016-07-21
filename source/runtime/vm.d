@@ -38,7 +38,7 @@
 module runtime.vm;
 
 import core.memory;
-import std.c.string;
+import core.stdc.string;
 import std.stdio;
 import std.string;
 import std.array;
