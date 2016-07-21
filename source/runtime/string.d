@@ -37,7 +37,7 @@
 
 module runtime.string;
 
-import std.c.string;
+import core.stdc.string;
 import std.stdio;
 import std.stdint;
 import std.string;

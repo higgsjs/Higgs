@@ -39,7 +39,7 @@ module jit.ops;
 
 import core.memory;
 import core.stdc.string;
-import std.c.math;
+import core.stdc.math;
 import std.stdio;
 import std.string;
 import std.array;
@@ -628,15 +628,15 @@ void HostFPOp(alias cFPFun, size_t arity = 1)(
     ctx.setOutTag(as, instr, Tag.FLOAT64);
 }
 
-alias gen_sin_f64 = HostFPOp!(std.c.math.sin);
-alias gen_cos_f64 = HostFPOp!(std.c.math.cos);
-alias gen_sqrt_f64 = HostFPOp!(std.c.math.sqrt);
-alias gen_ceil_f64 = HostFPOp!(std.c.math.ceil);
-alias gen_floor_f64 = HostFPOp!(std.c.math.floor);
-alias gen_log_f64 = HostFPOp!(std.c.math.log);
-alias gen_exp_f64 = HostFPOp!(std.c.math.exp);
-alias gen_pow_f64 = HostFPOp!(std.c.math.pow, 2);
-alias gen_mod_f64 = HostFPOp!(std.c.math.fmod, 2);
+alias gen_sin_f64 = HostFPOp!(core.stdc.math.sin);
+alias gen_cos_f64 = HostFPOp!(core.stdc.math.cos);
+alias gen_sqrt_f64 = HostFPOp!(core.stdc.math.sqrt);
+alias gen_ceil_f64 = HostFPOp!(core.stdc.math.ceil);
+alias gen_floor_f64 = HostFPOp!(core.stdc.math.floor);
+alias gen_log_f64 = HostFPOp!(core.stdc.math.log);
+alias gen_exp_f64 = HostFPOp!(core.stdc.math.exp);
+alias gen_pow_f64 = HostFPOp!(core.stdc.math.pow, 2);
+alias gen_mod_f64 = HostFPOp!(core.stdc.math.fmod, 2);
 
 void FPToStr(string fmt)(
     BlockVersion ver,

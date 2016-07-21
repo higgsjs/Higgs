@@ -38,8 +38,8 @@
 import core.sys.posix.signal;
 import core.stdc.signal;
 import core.memory;
-import std.c.string;
-import std.c.stdlib;
+import core.stdc.string;
+import core.stdc.stdlib;
 import std.stdio;
 import std.file;
 import std.algorithm;
