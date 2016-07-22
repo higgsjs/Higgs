@@ -37,7 +37,6 @@
 
 module ir.ast;
 
-import stats;
 import std.ascii;
 import std.stdint;
 import std.stdio;
@@ -57,6 +56,7 @@ import ir.livevars;
 import ir.slotalloc;
 import runtime.vm;
 import options;
+import stats;
 
 /**
 IR generation context
