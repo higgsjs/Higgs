@@ -38,8 +38,8 @@
 module stats;
 
 import core.sys.posix.sys.resource;
+import core.time;
 import std.stdio;
-import std.datetime;
 import std.string;
 import std.array;
 import std.stdint;
@@ -168,93 +168,87 @@ ulong* getTagTestCtr(string testOp)
     return numTypeTests[testOp];
 }
 
-/// Total compilation time in microseconds
-private ulong compTimeUsecs = 0;
+/// Total compilation time
+private Duration compTime;
 
-/// Total execution time in microseconds
-private ulong execTimeUsecs = 0;
+/// Total execution time
+private Duration execTime;
 
-/// Total garbage collection time in microseconds
-private ulong gcTimeUsecs = 0;
+/// Total garbage collection time
+private Duration gcTime;
 
 /// Compilation timer start
-private ulong compStartUsecs = 0;
+private MonoTime compStart;
 
 /// Execution timer start
-private ulong execStartUsecs = 0;
+private MonoTime execStart;
 
 /// Garbage collection timer start
-private ulong gcStartUsecs = 0;
-
-/// Get the current process time in microseconds
-ulong getTimeUsecs()
-{
-    return Clock.currAppTick().usecs();
-}
+private MonoTime gcStart;
 
 /// Start recording compilation time
 void compTimeStart()
 {
-    assert (compStartUsecs is 0, "comp timer already started");
-    assert (execStartUsecs is 0, "exec timer ongoing");
+    assert (compStart == MonoTime.init, "comp timer already started");
+    assert (execStart == MonoTime.init, "exec timer ongoing");
 
-    compStartUsecs = getTimeUsecs();
+    compStart = MonoTime.currTime();
 }
 
 /// Stop recording compilation time
 void compTimeStop()
 {
-    assert (compStartUsecs !is 0);
+    assert (compStart != MonoTime.init);
 
-    auto compEndUsecs = getTimeUsecs();
-    compTimeUsecs += compEndUsecs - compStartUsecs;
+    auto compEnd = MonoTime.currTime();
+    compTime += compEnd - compStart;
 
-    compStartUsecs = 0;
+    compStart = MonoTime.init;
 }
 
 /// Start recording execution time
 void execTimeStart()
 {
-    assert (execStartUsecs is 0, "exec timer already started");
-    assert (compStartUsecs is 0, "comp timer ongoing");
+    assert (execStart == MonoTime.init, "exec timer already started");
+    assert (compStart == MonoTime.init, "comp timer ongoing");
 
-    execStartUsecs = getTimeUsecs();
+    execStart = MonoTime.currTime();
 }
 
 /// Stop recording execution time
 void execTimeStop()
 {
-    assert (execStartUsecs !is 0);
+    assert (execStart != MonoTime.init);
 
-    auto execEndUsecs = getTimeUsecs();
-    execTimeUsecs += execEndUsecs - execStartUsecs;
+    auto execEnd = MonoTime.currTime();
+    execTime += execEnd - execStart;
 
-    execStartUsecs = 0;
+    execStart = MonoTime.init;
 }
 
 /// Check if the execution time is being recorded
 bool execTimeStarted()
 {
-    return execStartUsecs != 0;
+    return execStart != MonoTime.init;
 }
 
 /// Start recording garbage collection time
 void gcTimeStart()
 {
-    assert (gcStartUsecs is 0, "gc timer already started");
+    assert (gcStart == MonoTime.init, "gc timer already started");
 
-    gcStartUsecs = getTimeUsecs();
+    gcStart = MonoTime.currTime();
 }
 
 /// Stop recording garbage collection time
 void gcTimeStop()
 {
-    assert (gcStartUsecs !is 0);
+    assert (gcStart != MonoTime.init);
 
-    auto gcEndUsecs = getTimeUsecs();
-    gcTimeUsecs += gcEndUsecs - gcStartUsecs;
+    auto gcEnd = MonoTime.currTime();
+    gcTime += gcEnd - gcStart;
 
-    gcStartUsecs = 0;
+    gcStart = MonoTime.init;
 }
 
 /// Static module constructor
@@ -297,10 +291,10 @@ static ~this()
     if (opts.stats || opts.perf_stats)
     {
         writeln();
-        writefln("comp time (ms): %s", compTimeUsecs / 1000);
-        writefln("exec time (ms): %s", execTimeUsecs / 1000);
-        writefln("gc time (ms): %s", gcTimeUsecs / 1000);
-        writefln("total time (ms): %s", (compTimeUsecs + execTimeUsecs) / 1000);
+        writefln("comp time (ms): %s", compTime.total!"msecs");
+        writefln("exec time (ms): %s", execTime.total!"msecs");
+        writefln("gc time (ms): %s", gcTime.total!"msecs");
+        writefln("total time (ms): %s", compTime.total!"msecs" + execTime.total!"msecs");
         writefln("code size (bytes): %s", genCodeSize);
     }
 
