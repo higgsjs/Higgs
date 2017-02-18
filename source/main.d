@@ -53,6 +53,10 @@ import util.os;
 import repl;
 import options;
 
+// disable module cycle detection (harmless AA initializations for Higgs)
+// see https://issues.dlang.org/show_bug.cgi?id=16673 for a possible compiler fix
+extern(C) __gshared string[] rt_options = [ "oncycle=ignore" ];
+
 /**
 Program entry point
 */
