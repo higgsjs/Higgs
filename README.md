@@ -17,6 +17,13 @@ A JIT compiler for JavaScript targetting x86-64 platforms.
 
 **Quickstart:**
 
+*Precompiled Docker Image*
+
+Higgs could be used as docker image.
+
+Run `docker run -ti dlanguage/higgs` for the Higgs REPL.
+Run `docker run -ti -v $(pwd):/work -w /work dlanguage/higgs your_local_file.js` to evaluate a local .js-file.
+
 *Get the source:*
 
 `git clone https://github.com/higgsjs/Higgs.git && cd Higgs/source`
