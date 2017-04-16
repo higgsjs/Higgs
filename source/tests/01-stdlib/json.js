@@ -42,6 +42,7 @@
 
 // Test case from mjsunit (http://v8.googlecode.com/svn/trunk/test/mjsunit/)
 // TODO: test invalid inputs
+require('lib/test');
 
 function equal(a, b)
 {
@@ -194,6 +195,76 @@ function test()
 }
 
 // TODO: convert this test to use assertions &
-// exceptions instead of return codes 
+// exceptions instead of return codes
 assert (test() === 0);
 
+// Test circular references
+// should throw
+assertThrows(function () {
+    var a = [];
+    a.push(a);
+    JSON.stringify(a);
+});
+
+// should not throw
+(function () {
+    var a = [],
+        b = [],
+        c = [],
+        d = [],
+        e = [];
+        g = [];
+    a.push(b, c);
+    b.push(d, e);
+    c.push(g);
+    d.push(c, g);
+    JSON.stringify(a);
+})();
+
+// should throw
+assertThrows(function () {
+    var a = [],
+        b = [],
+        c = [],
+        d = [],
+        e = [];
+        g = [];
+    a.push(b, c);
+    b.push(d, e);
+    c.push(g);
+    d.push(a);
+    JSON.stringify(a);
+});
+
+// 2nd paragraph
+
+// should not throw
+(function () {
+    var a = [],
+        b = [],
+        c = [],
+        d = [],
+        e = [];
+        g = [];
+    a.push(b, c);
+    b.push(d, e);
+    c.push(g);
+    g.push(d);
+    JSON.stringify(a);
+})();
+
+// should throw
+assertThrows(function () {
+    var a = [],
+        b = [],
+        c = [],
+        d = [],
+        e = [];
+        g = [];
+    a.push(b, c);
+    b.push(d, e);
+    c.push(g);
+    d.push(a);
+    g.push(d);
+    JSON.stringify(a);
+});

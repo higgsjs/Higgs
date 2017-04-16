@@ -137,7 +137,7 @@ JSON.parse = function (
 
         // Consume opening {
         consume();
-    
+
         skipWhiteSpace();
         while (current() !== 125) // '}'
         {
@@ -146,7 +146,7 @@ JSON.parse = function (
             if (current() !== 34) // '"'
                 // FIXME: throw SyntaxError
                 return undefined;
-            
+
             var propName = parseString();
 
             skipWhiteSpace();
@@ -187,7 +187,7 @@ JSON.parse = function (
 
         // Consume opening [
         consume();
-    
+
         skipWhiteSpace();
 
         while (current() !== 93) // ']'
@@ -210,7 +210,7 @@ JSON.parse = function (
                 // FIXME: throw SyntaxError
                 return undefined;
         }
-        
+
         // Consume closing ]
         consume();
         return a;
@@ -225,7 +225,7 @@ JSON.parse = function (
 
         while (true)
         {
-            var c = current(); 
+            var c = current();
 
             if (c === 34) // '"'
             {
@@ -358,7 +358,7 @@ JSON.parse = function (
         if (current() === 69 || current() === 101) // 'e' | 'E'
         {
             consume();
-            
+
             // Parse exponent
             while (isDigit(current()))
                 consume();
@@ -423,7 +423,6 @@ JSON.stringify = function (
 )
 {
     // Holds references to stringified object to avoid cyclic evaluation.
-    var objStack = [];
     var replacerFunction;
     var propertyList;
     var espace;
@@ -466,7 +465,8 @@ JSON.stringify = function (
     function toJSON (
         key,
         holder,
-        depth
+        depth,
+        parents
     )
     {
         var value;
@@ -476,10 +476,10 @@ JSON.stringify = function (
         else
             value = holder[key];
 
-        if (value !== null && 
-            value !== undefined && 
+        if (value !== null &&
+            value !== undefined &&
             typeof value.toJSON === "function")
-           value = value.toJSON(); 
+           value = value.toJSON();
 
         if (replacerFunction !== undefined)
             value = replacerFunction.call(holder, key, value);
@@ -507,25 +507,20 @@ JSON.stringify = function (
 
         if (typeof value === "object")
         {
-            // If value is already in objStack, a cyclic object is detected.
-            for (var i = 0; i < objStack.length; ++i)
-                if (objStack[i] === value)
-                    // FIXME: throw SyntaxError
-                    return undefined;
-
-            objStack.push(value);
+            parents = parents || [];
+            if (parents.indexOf(value) !== -1) throw new Error("Circular refrence detected");
 
             if (value instanceof Array)
-                return arrayToJSON(value, depth);
-
-            return objectToJSON(value, depth);
+                return arrayToJSON(value, depth, parents);
+            return objectToJSON(value, depth, parents);
         }
         return undefined;
     }
 
     function objectToJSON (
         o,
-        depth
+        depth,
+        parents
     )
     {
         if (o === null)
@@ -546,19 +541,22 @@ JSON.stringify = function (
         if (espace === undefined)
         {
             parts.push("{");
+            parents.push(o);
 
             for (var i = 0; i < keys.length; ++i)
             {
-                var strp = toJSON(keys[i], o, depth + 1);
+                var strp = toJSON(keys[i], o, depth + 1, parents);
 
                 if (strp !== undefined)
                 {
-                    parts.push(quote(keys[i]));        
+                    parts.push(quote(keys[i]));
                     parts.push(":");
                     parts.push(strp);
                     parts.push(",");
                 }
             }
+
+            parents.pop();
 
             if (parts.length > 1)
                 parts.pop();
@@ -567,22 +565,25 @@ JSON.stringify = function (
         else
         {
             parts.push("{\n");
+            parents.push(o);
 
             for (var i = 0; i < keys.length; ++i)
             {
-                var strp = toJSON(keys[i], o, depth + 1);
+                var strp = toJSON(keys[i], o, depth + 1, parents);
 
                 if (strp !== undefined)
                 {
                     for (var j = 0; j < depth; ++j)
                         parts.push(espace);
 
-                    parts.push(quote(keys[i]));        
+                    parts.push(quote(keys[i]));
                     parts.push(": ");
                     parts.push(strp);
                     parts.push(",\n");
                 }
             }
+
+            parents.pop();
 
             if (parts.length > 1)
                 parts.pop();
@@ -598,7 +599,8 @@ JSON.stringify = function (
 
     function arrayToJSON (
         a,
-        depth
+        depth,
+        parents
     )
     {
         var parts = [];
@@ -610,16 +612,18 @@ JSON.stringify = function (
         {
             parts.push("[");
 
+            var elems = [];
+            parents.push(a);
+
             for (var i = 0; i < a.length; ++i)
             {
-                var strp = toJSON(i.toString(), a, depth + 1);
-
-                parts.push(strp);
-                parts.push(",");
+                var strp = toJSON(i.toString(), a, depth + 1, parents);
+                if (strp === undefined) continue;
+                elems.push(strp);
             }
 
-            if (a.length > 0)
-                parts.pop();
+            parents.pop();
+            parts.push(elems.join(","));
 
             parts.push("]");
         }
@@ -627,18 +631,23 @@ JSON.stringify = function (
         {
             parts.push("[\n");
 
+            var elems = [];
+            parents.push(a);
+
             for (var i = 0; i < a.length; ++i)
             {
-                var strp = toJSON(i.toString(), a, depth + 1);
+                var strp = toJSON(i.toString(), a, depth + 1, parents);
+                if (strp === undefined) continue;
 
+                var buff = [];
                 for (var j = 0; j < depth; ++j)
-                    parts.push(espace);
-                parts.push(strp);
-                parts.push(",\n");
+                    buff.push(espace);
+                buff.push(strp);
+                elems.push(buff.join(""));
             }
 
-            if (a.length > 0)
-                parts.pop();
+            parents.pop();
+            parts.push(elems.join(",\n"));
 
             parts.push("\n");
             for (var j = 0; j < depth - 1; ++j)
@@ -719,4 +728,3 @@ JSON.stringify = function (
 
     return toJSON("", value, 1);
 }
-
