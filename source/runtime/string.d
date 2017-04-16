@@ -245,7 +245,7 @@ refptr getTableStr(VM vm, refptr str)
     auto hashIndex = hashCode & (tblSize - 1);
 
     // Until the key is found, or a free slot is encountered
-    while (true)
+    for (size_t step = 1; ; ++step)
     {
         // Get the string value at this hash slot
         auto strVal = strtbl_get_str(strTbl, hashIndex);
@@ -265,7 +265,9 @@ refptr getTableStr(VM vm, refptr str)
         }
 
         // Move to the next hash table slot
-        hashIndex = (hashIndex + 1) & (tblSize - 1);
+        // This uses quadratic probing with triangular numbers.
+        // http://stackoverflow.com/questions/2348187/moving-from-linear-probing-to-quadratic-probing-hash-collisons/2349774#2349774
+        hashIndex = (hashIndex + step) & (tblSize - 1);
     }
 
     //
@@ -342,7 +344,7 @@ void extStrTable(VM vm, refptr curTbl, uint32 curSize, uint32 numStrings)
         auto hashIndex = startHashIndex;
 
         // Until a free slot is encountered
-        while (true)
+        for (size_t step = 1; ; ++step)
         {
             // Get the value at this hash slot
             auto slotVal2 = strtbl_get_str(newTbl, hashIndex);
@@ -358,11 +360,11 @@ void extStrTable(VM vm, refptr curTbl, uint32 curSize, uint32 numStrings)
             }
 
             // Move to the next hash table slot
-            hashIndex = (hashIndex + 1) & (newSize - 1);
+            hashIndex = (hashIndex + step) & (newSize - 1);
 
             // Ensure that a free slot was found for this key
             assert (
-                hashIndex != startHashIndex,
+                step < newSize,
                 "no free slots found in extended hash table"
             );
         }
