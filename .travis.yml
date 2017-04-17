@@ -1,6 +1,12 @@
 # This is the config file for travis-ci which runs our tests upon pushing to GitHub
 language: d
 
+# Specify which compilers to test
+d:
+  - dmd
+  - gdc
+  - ldc-0.16.0-alpha4 # stable doesn't work
+
 # build a test binary and run tests
 script: make -C source test
 
