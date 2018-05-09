@@ -187,7 +187,7 @@ uint64_t murmurHash64A(const void* key, size_t len, uint64_t seed = 1337)
         case 1: h ^= (cast(uint64_t)tail[0]);
                 h *= m;  goto default;
         default:
-    };
+    }
 
     h ^= h >> r;
     h *= m;

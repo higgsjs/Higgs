@@ -853,7 +853,7 @@ void TagTestOp(Tag tag)(
     if (opts.load_tag_tests)
     {
         // Get the type analysis result for this value at this instruction
-        auto anaResult = getTagTestResult(ver);;
+        auto anaResult = getTagTestResult(ver);
 
         //writeln("result: ", anaResult);
 
