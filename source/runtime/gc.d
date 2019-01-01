@@ -94,7 +94,7 @@ struct GCRoot
         //writeln("GCRoot destructor done");
     }
 
-    GCRoot* opAssign(ValuePair v)
+    GCRoot* opAssign(ValuePair v) return
     {
         // If the new pointer is non-null and this root isn't listed yet
         if (v.word.ptrVal && !ptr)
@@ -142,7 +142,7 @@ struct GCRoot
         return &this;
     }
 
-    GCRoot* opAssign(GCRoot v)
+    GCRoot* opAssign(GCRoot v) return
     {
         this = v.pair;
         return &this;

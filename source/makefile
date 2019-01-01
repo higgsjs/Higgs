@@ -12,11 +12,11 @@ else
 	LIBS := -L-ldl
 endif
 
-COPTS := -m64 -O -J./
-TESTOPTS := -m64 -O -J./ -unittest -debug
-DBGOPTS := -m64 -O  -J./ -gc -debug
-RELOPTS := -m64 -O -J./ -release -inline -boundscheck=off -version=release
-PROFOPTS := -m64 -O -J./ -release -inline -boundscheck=off -profile
+COPTS := -m64 -O -J./ -dip25
+TESTOPTS := -m64 -O -J./ -unittest -debug -dip25
+DBGOPTS := -m64 -O  -J./ -gc -debug -dip25
+RELOPTS := -m64 -O -J./ -release -inline -boundscheck=off -version=release -dip25
+PROFOPTS := -m64 -O -J./ -release -inline -boundscheck=off -profile -dip25
 
 BIN_NAME = higgs
 BIN_NAME_TEST = higgs-test
