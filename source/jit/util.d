@@ -336,7 +336,7 @@ void saveAllocRegs(CodeBlock as)
     assert (scrRegs[0] == RAX);
     as.mov(scrRegs[0], &vm.regSave);
 
-    foreach (uint regIdx, reg; allocRegs)
+    foreach (const regIdx, reg; allocRegs)
     {
         //as.printStr("save " ~ reg.toString);
         //as.printUint(reg.opnd);
@@ -356,7 +356,7 @@ void loadAllocRegs(CodeBlock as)
     assert (scrRegs[0] == RAX);
     as.mov(scrRegs[0], &vm.regSave);
 
-    foreach (uint regIdx, reg; allocRegs)
+    foreach (const regIdx, reg; allocRegs)
     {
         auto memOpnd = X86Opnd(64, scrRegs[0], 8 * regIdx);
         as.mov(reg.opnd, memOpnd);
