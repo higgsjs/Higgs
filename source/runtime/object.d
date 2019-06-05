@@ -303,6 +303,17 @@ struct ValType
         return true;
     }
 
+    // Hashing operator that does memberwise hashing
+    size_t toHash() const nothrow
+    {
+        size_t h = 0;
+        foreach(i, T; typeof(this.tupleof))
+        {
+            h = h * 33 + typeid(T).getHash(cast(const void*)&this.tupleof[i]);
+        }
+        return h;
+    }
+
     /**
     Compute the union with another type
     */
