@@ -192,7 +192,8 @@ def indent(input, indentStr = '    '):
     return output
 
 def sepList(lst, sep = ', '):
-    if len(lst) == 0:
+    from functools import reduce
+    if len(list(lst)) == 0:
         return ''
     return reduce(lambda x,y: x + sep + y, lst)
 
@@ -264,7 +265,7 @@ class Function:
         params = self.params
         if len(params) >= 1 and params[0].name == 'vm':
             params = params[1:]
-        out += sepList(map(lambda v:v.genJS(), params))
+        out += sepList(list(map(lambda v:v.genJS(), params)))
         out += ')\n'
         out += '{'
         stmts = ''
@@ -277,7 +278,7 @@ class Function:
     def genD(self):
         out = ''
         out += 'extern (C) ' + self.type + ' ' + self.name + '('
-        out += sepList(map(lambda v:v.genDeclD(), self.params))
+        out += sepList(list(map(lambda v:v.genDeclD(), self.params)))
         out += ')\n'
         out += '{'
         stmts = ''
@@ -466,13 +467,13 @@ class CallExpr:
 
     def genJS(self):
         out = JS_DEF_PREFIX + self.fName + '('
-        out += sepList(map(lambda v:v.genJS(), self.args))
+        out += sepList(list(map(lambda v:v.genJS(), self.args)))
         out += ')'
         return out
 
     def genD(self):
         out = self.fName + '('
-        out += sepList(map(lambda v:v.genD(), self.args))
+        out += sepList(list(map(lambda v:v.genD(), self.args)))
         out += ')'
         return out
 

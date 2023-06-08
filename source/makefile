@@ -1,6 +1,6 @@
 DC = dmd
 ifndef PYTHON
-	PYTHON = python
+	PYTHON = python3
 endif
 # compiler options
 UNAME := $(shell uname)
