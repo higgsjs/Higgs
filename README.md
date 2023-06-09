@@ -9,7 +9,7 @@ A JIT compiler for JavaScript targetting x86-64 platforms.
 
 - D compiler (latest [DMD](http://dlang.org/download.html) recommended)
 - POSIX compliant OS (Linux, Unix, MacOS X)
-- Python 2.7 (if regenerating object layouts)
+- Python 3.x (if regenerating object layouts)
 - x86 64-bit CPU
 - 2 GB of RAM
 - GNU make
@@ -32,7 +32,7 @@ Run `docker run -ti -v $(pwd):/work -w /work dlanguage/higgs your_local_file.js`
 
 NOTE: if you run a non-Linux OS like FreeBSD you may not have `GNU make` installed. You may need to install the "gmake" package or otherwise acquire `GNU make`.
 
-NOTE: if your default python version is 3.x, just append `PYTHON=$PATH_TO_PYTHON2` to the `make` commands
+NOTE: it is possible to customize the Python version used by appending `PYTHON=$PATH_TO_PYTHON` to the `make` commands
 
 `make all`
 generates a binary `higgs` in the source directory.
